@@ -1,12 +1,22 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Search, Edit2, Save, UserPlus } from 'lucide-react';
+import { Search, Edit2, Save, UserPlus, Truck } from 'lucide-react';
 import { Av, Badge, Btn, Confirm, Eyebrow, Field, H1, Modal, Money, Panel, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
-import { CREWS } from '../data/seed';
+import { CREWS, POSITIONS } from '../data/seed';
+import { isCrewPosition } from '../lib/payroll';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
-const BLANK_EMP = { name: '', position: 'Administrative Staff', rate: '', declaredSalary: '', status: 'Active', sssOn: false, phOn: false, piOn: false, mp2: 0 };
+// Registration fields required by the client spec: ID number, name, position,
+// daily rate, plus personal information (address, contact number, birthdate).
+// Date hired is carried too — the 13th-month computation prorates by months
+// worked, which is impossible without it. Personal info is captured here but
+// deliberately never printed on a payslip.
+const BLANK_EMP = {
+  id: '', name: '', position: 'Administrative Staff', rate: '', declaredSalary: '',
+  status: 'Active', sssOn: false, phOn: false, piOn: false, mp2: 0,
+  address: '', contact: '', birthdate: '', dateHired: '',
+};
 
 export const EmployeesView = ({ staff, setStaff, toast }) => {
   const [q, setQ] = useState('');
@@ -23,16 +33,27 @@ export const EmployeesView = ({ staff, setStaff, toast }) => {
 
   const rows = useMemo(() => [...staff, ...crewRows].filter(r => r.name.toLowerCase().includes(q.toLowerCase())), [staff, crewRows, q]);
 
-  const openAdd = () => { setEditing(null); setForm(BLANK_EMP); setModal(true); };
-  const openEdit = (r) => { setEditing(r); setForm({ ...r, rate: String(r.rate), declaredSalary: String(r.declaredSalary || '') }); setModal(true); };
+  // Next free EMP-### — offered as a starting point so the admin isn't forced to
+  // invent one, but the field stays editable because the ID has to match the
+  // number the biometric scanner exports for that employee.
+  const suggestId = () => {
+    const nums = staff.map(s => parseInt(String(s.id).replace(/\D/g, ''), 10)).filter(n => !isNaN(n));
+    return 'EMP-' + String((nums.length ? Math.max(...nums) : 0) + 1).padStart(3, '0');
+  };
+
+  const openAdd = () => { setEditing(null); setForm({ ...BLANK_EMP, id: suggestId() }); setModal(true); };
+  const openEdit = (r) => { setEditing(r); setForm({ ...BLANK_EMP, ...r, rate: String(r.rate), declaredSalary: String(r.declaredSalary || '') }); setModal(true); };
   const save = () => {
+    if (!form.id.trim()) { toast('ID number is required — it links this employee to the biometric logs.', 'error'); return; }
     if (!form.name.trim()) { toast('Name is required.', 'error'); return; }
-    const data = { ...form, rate: parseFloat(form.rate) || 0, declaredSalary: parseFloat(form.declaredSalary) || 0, mp2: parseFloat(form.mp2) || 0 };
+    const dupe = staff.some(s => String(s.id).toLowerCase() === form.id.trim().toLowerCase() && (!editing || s.id !== editing.id));
+    if (dupe) { toast(`ID ${form.id.trim()} is already used by another employee.`, 'error'); return; }
+    const data = { ...form, id: form.id.trim(), rate: parseFloat(form.rate) || 0, declaredSalary: parseFloat(form.declaredSalary) || 0, mp2: parseFloat(form.mp2) || 0 };
     if (editing) {
       setStaff(list => list.map(s => s.id === editing.id ? { ...s, ...data } : s));
       toast('Employee updated.');
     } else {
-      setStaff(list => [...list, { ...data, id: 'EMP-' + String(list.length + 1).padStart(3, '0') }]);
+      setStaff(list => [...list, data]);
       toast('Employee registered.');
     }
     setModal(false);
@@ -90,12 +111,27 @@ export const EmployeesView = ({ staff, setStaff, toast }) => {
 
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit Employee' : 'Register Employee'} width={480}>
         <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="ID number*">
+              <input value={form.id} onChange={e => ff('id', e.target.value)} placeholder="EMP-015" className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
+            </Field>
+            <Field label="Date hired">
+              <input type="date" value={form.dateHired} onChange={e => ff('dateHired', e.target.value)} className={inputCls} style={inputStyle} />
+            </Field>
+          </div>
+          <div className="text-xs -mt-1.5" style={{ fontFamily: F_BODY, color: T.soft }}>The ID number must match the number this employee's fingerprint is registered under on the biometric scanner — that's what links their attendance logs to this record. Date hired is used to prorate 13th-month pay.</div>
           <Field label="Full name*"><input value={form.name} onChange={e => ff('name', e.target.value)} placeholder="Dela Cruz, Juan P." className={inputCls} style={inputStyle} /></Field>
           <Field label="Position">
             <select value={form.position} onChange={e => ff('position', e.target.value)} className={inputCls} style={inputStyle}>
-              {['Operations Head', 'Administrative Staff', 'Secretary — Special 6:00 AM Shift', 'Checker'].map(p => <option key={p}>{p}</option>)}
+              {POSITIONS.map(p => <option key={p}>{p}</option>)}
             </select>
           </Field>
+          {isCrewPosition(form.position) && (
+            <div className="flex items-start gap-2 p-2.5 rounded text-xs -mt-1.5" style={{ backgroundColor: T.warnBg, fontFamily: F_BODY, color: T.ink }}>
+              <Truck size={13} color={T.warn} className="mt-0.5 shrink-0" />
+              <span>Paid through <strong>Truck Payroll (pakyawan)</strong> — fixed daily rate plus per-delivery piece rates. Attendance is still imported for this employee, but only their tardiness affects pay.</span>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <Field label="Daily rate (₱)"><input type="number" value={form.rate} onChange={e => ff('rate', e.target.value)} className={inputCls} style={inputStyle} /></Field>
             <Field label="Status">
@@ -108,6 +144,24 @@ export const EmployeesView = ({ staff, setStaff, toast }) => {
             <input type="number" value={form.declaredSalary} onChange={e => ff('declaredSalary', e.target.value)} placeholder="e.g. daily rate × 26" className={inputCls} style={inputStyle} />
           </Field>
           <div className="text-xs -mt-1.5" style={{ fontFamily: F_BODY, color: T.soft }}>Basis for SSS, PhilHealth, and Pag-IBIG lookups — see Settings → Statutory Deductions for the actual bracket tables.</div>
+
+          <div className="p-3 rounded" style={{ backgroundColor: T.bg }}>
+            <Eyebrow>Personal Information</Eyebrow>
+            <div className="text-xs mb-2.5" style={{ fontFamily: F_BODY, color: T.soft }}>Kept on file for company records only — never printed on payslips.</div>
+            <div className="space-y-2.5">
+              <Field label="Address">
+                <input value={form.address} onChange={e => ff('address', e.target.value)} placeholder="Brgy. Poblacion, Mabini, Batangas" className={inputCls} style={inputStyle} />
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Contact number">
+                  <input value={form.contact} onChange={e => ff('contact', e.target.value)} placeholder="09XX XXX XXXX" className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
+                </Field>
+                <Field label="Birthdate">
+                  <input type="date" value={form.birthdate} onChange={e => ff('birthdate', e.target.value)} className={inputCls} style={inputStyle} />
+                </Field>
+              </div>
+            </div>
+          </div>
           <div className="p-3 rounded" style={{ backgroundColor: T.bg }}>
             <Eyebrow>Government Contributions</Eyebrow>
             {[['sssOn', 'SSS'], ['phOn', 'PhilHealth'], ['piOn', 'Pag-IBIG (HDMF)']].map(([k, l]) => (

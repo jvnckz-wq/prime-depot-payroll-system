@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Plus, Check, Trash2, Repeat, MapPin } from 'lucide-react';
 import { Av, Btn, Eyebrow, Field, inputCls, inputStyle } from './ui.jsx';
-import { ALL_HELPERS, DOBLE_AREAS } from '../data/seed';
+import { ALL_DRIVERS, ALL_HELPERS, DOBLE_AREAS } from '../data/seed';
 import { matchDobleArea } from '../lib/payroll';
 import { peso } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
@@ -17,13 +17,20 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
   const [customer, setCustomer] = useState('');
   const [dbl, setDbl] = useState(false);
   const [lineRows, setLineRows] = useState([{ item: rates[0].cat, qty: '' }]);
+  // Driver, truck, and helpers are each chosen per delivery. Nothing in the
+  // client's interview says a driver is permanently assigned to one truck, so
+  // the form never enforces it — the pairing on each CREWS row is only the
+  // usual one, used to prefill.
+  const [driver, setDriver] = useState(crew?.driver || '');
   const [helper1, setHelper1] = useState(defaultHelpers[0] || '');
   const [helper2, setHelper2] = useState(defaultHelpers[1] || '');
 
-  // Reload the default crew whenever a different truck is picked (fixed or dropdown).
+  // Picking a different truck reloads that truck's usual crew as a starting
+  // point. The admin or checker can still override any of the three.
   useEffect(() => {
     const c = crews.find(x => x.id === crewId);
     const def = (c?.helpers || []).filter(h => h !== '—');
+    setDriver(c?.driver || '');
     setHelper1(def[0] || ''); setHelper2(def[1] || '');
   }, [crewId]);
 
@@ -41,30 +48,43 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
 
   const dobleMatch = matchDobleArea(address);
   const helpersUsed = [helper1, helper2].map(h => h.trim()).filter(Boolean);
-  const isSwap = defaultHelpers.length > 0 && JSON.stringify(helpersUsed) !== JSON.stringify(defaultHelpers);
+  const helperSwap = defaultHelpers.length > 0 && JSON.stringify(helpersUsed) !== JSON.stringify(defaultHelpers);
+  const driverSwap = !!(crew?.driver && driver && driver !== crew.driver);
+  const isSwap = helperSwap || driverSwap;
 
   const submit = () => {
+    if (!driver) return;
     if (!address || computed.every(r => !r.qty)) return;
-    onSubmit(crewId, address, customer, computed.map(r => ({ ...r, dbl })), helpersUsed);
+    onSubmit(crewId, address, customer, computed.map(r => ({ ...r, dbl })), helpersUsed, driver);
     setAddress(''); setCustomer(''); setDbl(false); setLineRows([{ item: rates[0].cat, qty: '' }]);
-    // Helpers are left as-is — the next delivery for this truck is usually the same crew.
+    // Driver and helpers are left as-is — the next delivery is usually the same crew.
   };
 
   return (
     <div>
       <div className="text-base font-bold mb-4" style={{ fontFamily: F_HEAD, color: T.ink }}>Trip details</div>
 
-      {/* Driver + Plate number row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+      {/* 1. Driver — picked from the whole driver pool, not tied to the truck */}
+      <div className="mb-3">
         <Field label={<>Driver <span style={{ color: T.brand }}>*</span></>}>
+          <select value={driver} onChange={e => setDriver(e.target.value)} className={inputCls} style={inputStyle}>
+            <option value="">Select driver…</option>
+            {ALL_DRIVERS.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+        </Field>
+      </div>
+
+      {/* 2. Truck + plate. Picking the truck fills the plate automatically. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+        <Field label={<>Truck <span style={{ color: T.brand }}>*</span></>}>
           {fixedCrewId ? (
             <div className="flex items-center gap-2.5 px-3 py-2 rounded border" style={{ borderColor: T.line, backgroundColor: T.bg }}>
-              <Av name={crew?.driver || '?'} size={26} tone={T.brand} />
-              <span className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>{crew?.driver}</span>
+              <span className="text-sm font-semibold" style={{ fontFamily: F_MONO, color: T.ink }}>{crew?.id}</span>
+              <span className="text-sm" style={{ fontFamily: F_BODY, color: T.soft }}>{crew?.vehicle}</span>
             </div>
           ) : (
             <select value={crewId} onChange={e => setCrewId(e.target.value)} className={inputCls} style={inputStyle}>
-              {crews.map(c => <option key={c.id} value={c.id}>{c.driver} — {c.id} ({c.vehicle})</option>)}
+              {crews.map(c => <option key={c.id} value={c.id}>{c.id} — {c.vehicle}</option>)}
             </select>
           )}
         </Field>
@@ -73,19 +93,25 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
         </Field>
       </div>
 
-      {/* Pahinante 1 + Pahinante 2 row */}
+      {/* 3. Helpers — the full pahinante pool is available for either slot */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-1">
         <Field label="Pahinante 1">
-          <input list="helper-pool" value={helper1} onChange={e => setHelper1(e.target.value)} placeholder="None" className={inputCls} style={inputStyle} />
+          <select value={helper1} onChange={e => setHelper1(e.target.value)} className={inputCls} style={inputStyle}>
+            <option value="">None</option>
+            {ALL_HELPERS.map(h => <option key={h} value={h}>{h}</option>)}
+          </select>
         </Field>
         <Field label="Pahinante 2">
-          <input list="helper-pool" value={helper2} onChange={e => setHelper2(e.target.value)} placeholder="None" className={inputCls} style={inputStyle} />
+          <select value={helper2} onChange={e => setHelper2(e.target.value)} className={inputCls} style={inputStyle}>
+            <option value="">None</option>
+            {ALL_HELPERS.filter(h => h !== helper1).map(h => <option key={h} value={h}>{h}</option>)}
+          </select>
         </Field>
       </div>
-      <datalist id="helper-pool">{ALL_HELPERS.map(h => <option key={h} value={h} />)}</datalist>
       {isSwap && (
-        <div className="mt-2.5 mb-1 flex items-center gap-1.5 text-xs" style={{ fontFamily: F_BODY, color: T.warn }}>
-          <Repeat size={12} /> Substitute for today — {crew?.id}'s regular crew is {defaultHelpers.join(' & ') || 'none'}.
+        <div className="mt-2.5 mb-1 flex items-start gap-1.5 text-xs" style={{ fontFamily: F_BODY, color: T.warn }}>
+          <Repeat size={12} className="mt-0.5 shrink-0" />
+          <span>Different from {crew?.id}'s usual crew ({crew?.driver || '—'}{defaultHelpers.length ? ' + ' + defaultHelpers.join(' & ') : ''}). That's fine — this delivery is recorded with the crew selected above.</span>
         </div>
       )}
 
@@ -150,7 +176,7 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
         </button>
         <div className="text-sm" style={{ fontFamily: F_MONO, color: T.soft }}>Trip total: <span style={{ color: T.green, fontWeight: 600 }}>{peso(totalD)} / {peso(totalH)}</span></div>
       </div>
-      <Btn onClick={submit} icon={Check} disabled={!address} full>Save delivery</Btn>
+      <Btn onClick={submit} icon={Check} disabled={!address || !driver} full>Save delivery</Btn>
     </div>
   );
 };

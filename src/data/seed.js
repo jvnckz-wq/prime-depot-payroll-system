@@ -38,6 +38,29 @@ export const CREWS = [
 // substitute helper from when a crew's regular helper isn't working that day.
 export const ALL_HELPERS = [...new Set(CREWS.flatMap(c => c.helpers).filter(h => h !== '—'))].sort();
 
+// Every driver name in the fleet. The client never stated that a driver is
+// permanently tied to one truck, so the delivery form lets the Checker pick the
+// driver, the truck, and the helpers independently. The crew listed on each
+// CREWS row is only the *usual* pairing, used to pre-fill the form — never
+// enforced.
+export const ALL_DRIVERS = [...new Set(CREWS.map(c => c.driver))].sort();
+
+// Job positions available at registration. The position alone decides which
+// payroll module an employee belongs to — see isCrewPosition() in lib/payroll.
+// There is deliberately no separate "employee type" field: two fields that mean
+// the same thing can disagree, and then nobody knows which one to trust.
+export const POSITIONS = [
+  'Operations Head',
+  'Administrative Staff',
+  'Secretary — Special 6:00 AM Shift',
+  'Checker',
+  'Driver',
+  'Pahinante',
+];
+
+// Positions paid by the piece-rate (pakyawan) module instead of staff payroll.
+export const CREW_POSITIONS = ['Driver', 'Pahinante'];
+
 export const RATES_INIT = [
   { cat: 'Aggregates (Elf)', unit: 'trip', s: [15, 70], d: [30, 140] },
   { cat: 'Aggregates (Mini Dump)', unit: 'trip', s: [20, 60], d: [40, 120] },

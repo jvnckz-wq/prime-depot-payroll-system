@@ -33,15 +33,19 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, rates, setRates, l
     setConfirmApply(false);
   };
 
-  const logDelivery = (crewId, address, customer, items, helpers) => {
+  const logDelivery = (crewId, address, customer, items, helpers, driverName) => {
     setDeliveries(prev => {
       const existing = prev[crewId] || { date: 'Jul 16, 2026', items: [], kaltas: [] };
       const nums = existing.items.map(i => i.seq).filter(Boolean);
       const nextSeq = nums.length ? Math.max(...nums) + 1 : 1;
-      const crewDef = (CREWS.find(c => c.id === crewId)?.helpers || []).filter(h => h !== '—');
+      const crewRow = CREWS.find(c => c.id === crewId);
+      const crewDef = (crewRow?.helpers || []).filter(h => h !== '—');
       const usedHelpers = helpers !== undefined ? helpers : crewDef; // [] means the checker explicitly recorded no helper that trip
-      const isSwap = JSON.stringify(usedHelpers) !== JSON.stringify(crewDef);
-      const newItems = items.map((r, i) => ({ seq: i === 0 ? nextSeq : null, address: i === 0 ? address : '', customer: i === 0 ? customer : '', item: r.item, qty: r.qty, unit: r.unit, d: r.d, h: r.h, dbl: r.dbl, helpers: i === 0 ? usedHelpers : undefined, swap: i === 0 ? isSwap : undefined }));
+      const usedDriver = driverName || crewRow?.driver || '';
+      // A trip counts as a substitution if either the driver or the helpers
+      // differ from the truck's usual pairing — neither is fixed.
+      const isSwap = JSON.stringify(usedHelpers) !== JSON.stringify(crewDef) || (!!crewRow?.driver && usedDriver !== crewRow.driver);
+      const newItems = items.map((r, i) => ({ seq: i === 0 ? nextSeq : null, address: i === 0 ? address : '', customer: i === 0 ? customer : '', item: r.item, qty: r.qty, unit: r.unit, d: r.d, h: r.h, dbl: r.dbl, helpers: i === 0 ? usedHelpers : undefined, driver: i === 0 ? usedDriver : undefined, swap: i === 0 ? isSwap : undefined }));
       return { ...prev, [crewId]: { ...existing, items: [...existing.items, ...newItems] } };
     });
     toast('Delivery logged for ' + crewId + '.');
@@ -88,21 +92,31 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, rates, setRates, l
     // annotated inline, rather than needing its own column.
     const p1Name = defaultHelperNames[0] || null;
     const p2Name = defaultHelperNames[1] || null;
+    const usualDriver = crew.driver || null;
     const payslipRows = [];
     if (log) {
-      let currentHelpers = defaultHelperNames, currentTrip = null;
+      let currentHelpers = defaultHelperNames, currentDriver = usualDriver, currentTrip = null;
       log.items.forEach(it => {
-        if (it.seq) { currentHelpers = (it.helpers && it.helpers.length) ? it.helpers : defaultHelperNames; currentTrip = it.seq; }
+        if (it.seq) {
+          currentHelpers = (it.helpers && it.helpers.length) ? it.helpers : defaultHelperNames;
+          currentDriver = it.driver || usualDriver;
+          currentTrip = it.seq;
+        }
         const n = currentHelpers.length;
         const share = n ? it.h / n : 0;
         const h1 = currentHelpers[0], h2 = currentHelpers[1];
         payslipRows.push({
           item: it.item, qty: it.qty, unit: it.unit, dbl: it.dbl, driverAmt: it.d,
+          driverWho: currentDriver, driverSub: !!(currentDriver && usualDriver && currentDriver !== usualDriver),
           p1Amt: h1 ? share : 0, p1Who: h1 || null, p1Sub: !!(h1 && p1Name && h1 !== p1Name),
           p2Amt: h2 ? share : 0, p2Who: h2 || null, p2Sub: !!(h2 && p2Name && h2 !== p2Name),
         });
       });
     }
+    // Every driver who actually drove this truck during the period — normally
+    // one name, but a substitution shows up here rather than being silently
+    // paid to the truck's usual driver.
+    const driversWorked = [...new Set(payslipRows.map(r => r.driverWho).filter(Boolean))];
     const p1SubtotalPiece = payslipRows.reduce((s, r) => s + r.p1Amt, 0);
     const p2SubtotalPiece = payslipRows.reduce((s, r) => s + r.p2Amt, 0);
     const p1Daily = p1Name ? HELPER_DAILY / activeHelpers : 0;
@@ -136,7 +150,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, rates, setRates, l
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
               <Eyebrow>Delivery Manifest — {crew.id}</Eyebrow>
-              <div className="text-xl font-bold" style={{ fontFamily: F_HEAD, color: T.ink }}>{crew.driver} + {crew.helpers.join(' & ')}</div>
+              <div className="text-xl font-bold" style={{ fontFamily: F_HEAD, color: T.ink }}>{(driversWorked.length ? driversWorked.join(' / ') : crew.driver) + (crew.helpers.filter(h => h !== '—').length ? ' + ' + crew.helpers.filter(h => h !== '—').join(' & ') : '')}</div>
               <div className="text-sm" style={{ fontFamily: F_BODY, color: T.soft }}>{crew.vehicle} · {log ? log.date : 'No date logged'} {bonusEligible && <span style={{ color: T.amber, fontWeight: 600 }}>· {tripCount} trips — palima bonus applies!</span>}</div>
             </div>
             <div className="flex items-center gap-2">
@@ -225,7 +239,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, rates, setRates, l
                     <thead>
                       <tr>
                         <Th>Item</Th>
-                        <Th right>Driver — {crew.driver}</Th>
+                        <Th right>Driver — {driversWorked.length ? driversWorked.join(' / ') : crew.driver}</Th>
                         <Th right>Pahinante 1{p1Name ? ` — ${p1Name}` : ''}</Th>
                         <Th right>Pahinante 2{p2Name ? ` — ${p2Name}` : ''}</Th>
                       </tr>
@@ -288,7 +302,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, rates, setRates, l
                   </table>
                 </div>
                 <div className="grid grid-cols-3 gap-6 px-6 py-6">
-                  {[crew.driver, p1Name || '—', p2Name || '—'].map((n, i) => (
+                  {[(driversWorked.length ? driversWorked.join(' / ') : crew.driver), p1Name || '—', p2Name || '—'].map((n, i) => (
                     <div key={i}>
                       <div className="h-px mb-1.5" style={{ backgroundColor: T.line }} />
                       <div className="text-xs text-center" style={{ fontFamily: F_BODY, color: T.soft }}>{n} — Signature / Date</div>

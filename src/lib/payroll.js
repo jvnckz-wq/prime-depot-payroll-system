@@ -1,4 +1,13 @@
-import { DOBLE_AREAS } from '../data/seed';
+import { CREW_POSITIONS, DOBLE_AREAS } from '../data/seed';
+
+// The one place that decides which payroll an employee belongs to. Position is
+// the only input: Driver and Pahinante are paid piece-rate (pakyawan) through
+// the Truck Payroll module, everyone else runs through Staff Payroll. Keeping
+// this in a single function means a future rule change is a one-line edit
+// instead of a hunt through every view.
+export function isCrewPosition(position) {
+  return CREW_POSITIONS.includes(position);
+}
 
 export function flattenDeliveries(deliveries, filterCrewId) {
   const out = [];

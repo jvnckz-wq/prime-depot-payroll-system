@@ -12,19 +12,20 @@ import { FONTS, F_BODY, F_HEAD, T } from '../theme';
 export const CheckerView = ({ deliveries, setDeliveries, rates, onLogout, toast }) => {
   const [page, setPage] = useState('log');
 
-  const logDelivery = (cId, address, customer, items, helpers) => {
+  const logDelivery = (cId, address, customer, items, helpers, driverName) => {
     setDeliveries(prev => {
       const existing = prev[cId] || { date: 'Jul 16, 2026', items: [], kaltas: [] };
       const nums = existing.items.map(i => i.seq).filter(Boolean);
       const nextSeq = nums.length ? Math.max(...nums) + 1 : 1;
-      const crewDef = (CREWS.find(c => c.id === cId)?.helpers || []).filter(h => h !== '—');
+      const crewRow = CREWS.find(c => c.id === cId);
+      const crewDef = (crewRow?.helpers || []).filter(h => h !== '—');
       const usedHelpers = helpers !== undefined ? helpers : crewDef; // [] means the checker explicitly recorded no helper that trip
-      const isSwap = JSON.stringify(usedHelpers) !== JSON.stringify(crewDef);
-      const newItems = items.map((r, i) => ({ seq: i === 0 ? nextSeq : null, address: i === 0 ? address : '', customer: i === 0 ? customer : '', item: r.item, qty: r.qty, unit: r.unit, d: r.d, h: r.h, dbl: r.dbl, helpers: i === 0 ? usedHelpers : undefined, swap: i === 0 ? isSwap : undefined }));
+      const usedDriver = driverName || crewRow?.driver || '';
+      const isSwap = JSON.stringify(usedHelpers) !== JSON.stringify(crewDef) || (!!crewRow?.driver && usedDriver !== crewRow.driver);
+      const newItems = items.map((r, i) => ({ seq: i === 0 ? nextSeq : null, address: i === 0 ? address : '', customer: i === 0 ? customer : '', item: r.item, qty: r.qty, unit: r.unit, d: r.d, h: r.h, dbl: r.dbl, helpers: i === 0 ? usedHelpers : undefined, driver: i === 0 ? usedDriver : undefined, swap: i === 0 ? isSwap : undefined }));
       return { ...prev, [cId]: { ...existing, items: [...existing.items, ...newItems] } };
     });
-    const crew = CREWS.find(c => c.id === cId);
-    toast(`Delivery logged for ${crew.driver}'s truck (${cId}).`);
+    toast(`Delivery logged — ${driverName || 'crew'} on ${cId}.`);
   };
 
   const allTrips = useMemo(() => flattenDeliveries(deliveries), [deliveries]);
