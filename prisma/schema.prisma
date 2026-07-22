@@ -426,13 +426,29 @@ model PhilhealthConfig {
   @@map("philhealth_config")
 }
 
+/// Pag-IBIG is a percentage of salary by bracket, capped at a monthly maximum.
+/// In practice every Prime Depot employee earns above the second bracket, so
+/// they all pay the cap — but the bracket structure is stored rather than the
+/// flat amount, so the table stays correct if HDMF changes the rule.
 model PagibigConfig {
-  id             String  @id @default(cuid())
-  effectiveYear  Int     @unique
-  employeeAmount Decimal @db.Decimal(12, 2) // fixed, e.g. 200
-  employerAmount Decimal @default(0) @db.Decimal(12, 2)
+  id             String           @id @default(cuid())
+  effectiveYear  Int              @unique
+  monthlyCap     Decimal          @db.Decimal(12, 2) // e.g. 200
+  brackets       PagibigBracket[]
 
   @@map("pagibig_config")
+}
+
+model PagibigBracket {
+  id              String        @id @default(cuid())
+  configId        String
+  salaryUpTo      Decimal?      @db.Decimal(12, 2) // null = no upper bound
+  employeePercent Decimal       @db.Decimal(5, 2)
+  employerPercent Decimal       @default(0) @db.Decimal(5, 2)
+
+  config          PagibigConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  @@map("pagibig_brackets")
 }
 
 /// Withholding tax brackets. Employees at or below the exemption threshold
