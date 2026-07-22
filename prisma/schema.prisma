@@ -1,0 +1,518 @@
+// ============================================================================
+// PRIME DEPOT HARDWARE & CONSTRUCTION SUPPLY
+// Payroll Management System with Biometrics Attendance Importing
+// Database schema — PostgreSQL (Neon)
+//
+// Money is stored as Decimal(12,2), never Float. Floating-point arithmetic
+// introduces rounding drift, which is unacceptable when the numbers are
+// somebody's salary.
+// ============================================================================
+
+// Prisma 7 notes:
+//  - `output` is now REQUIRED; the client is no longer generated into
+//    node_modules by default.
+//  - The datasource block no longer accepts `url`. The connection string for
+//    migrations lives in prisma.config.ts; the running app passes a driver
+//    adapter instead. That is why this block only declares the provider.
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum Role {
+  ADMIN // Operations Head — full access
+  CHECKER // Delivery logging only
+}
+
+/// Job positions. Position ALONE decides which payroll module an employee
+/// belongs to — DRIVER and PAHINANTE are paid piece-rate (pakyawan) through
+/// Truck Payroll, everyone else runs through Staff Payroll. There is
+/// deliberately no separate "employee type" column: two fields meaning the
+/// same thing can disagree, and then nobody knows which one to trust.
+enum Position {
+  OPERATIONS_HEAD
+  ADMINISTRATIVE_STAFF
+  SECRETARY_SPECIAL_SHIFT // 6:00 AM call time
+  CHECKER
+  DRIVER
+  PAHINANTE
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum LoanType {
+  LOAN
+  CASH_ADVANCE // "bale"
+}
+
+/// Ledger entries are typed so a balance can be derived by summing them.
+/// The balance is never stored as a mutable column — see the Loan model.
+enum LedgerEntryType {
+  GRANT // money released to the employee (increases balance)
+  DEDUCTION // money withheld from pay (decreases balance)
+}
+
+enum ImportStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum PayrollType {
+  STAFF // semi-monthly, attendance-based
+  TRUCK // pakyawan, delivery-based
+}
+
+// ============================================================================
+// ACCESS
+// ============================================================================
+
+/// System accounts. There is no public registration — the Operations Head
+/// creates every account from Settings. Passwords are stored hashed only.
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  displayName  String
+  role         Role     @default(CHECKER)
+  isActive     Boolean  @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  loggedDeliveries Delivery[] @relation("DeliveryLoggedBy")
+
+  @@map("users")
+}
+
+// ============================================================================
+// EMPLOYEES
+// ============================================================================
+
+/// One row per person on the payroll.
+///
+/// `id` is the employee's ID number as printed on their record AND as
+/// registered on the biometric scanner — that shared value is what links an
+/// imported attendance row to a person. It is entered manually at
+/// registration rather than generated, because the scanner assigns it.
+model Employee {
+  id              String         @id
+  name            String
+  position        Position
+  dailyRate       Decimal        @db.Decimal(12, 2)
+  /// Basis for SSS / PhilHealth / Pag-IBIG bracket lookups.
+  declaredSalary  Decimal        @default(0) @db.Decimal(12, 2)
+  status          EmployeeStatus @default(ACTIVE)
+
+  // Statutory contribution switches — not every employee is enrolled in all.
+  sssEnrolled     Boolean        @default(false)
+  philhealthEnrolled Boolean     @default(false)
+  pagibigEnrolled Boolean        @default(false)
+  /// Voluntary Pag-IBIG MP2 savings, on top of the mandatory contribution.
+  mp2Amount       Decimal        @default(0) @db.Decimal(12, 2)
+
+  // Personal information — required by the client spec for company records.
+  // Deliberately never printed on payslips; the client asked to keep those
+  // clean. Also the reason this table needs care under RA 10173.
+  address         String?
+  contactNumber   String?
+  birthdate       DateTime?      @db.Date
+  /// Needed to prorate 13th-month pay for anyone who did not work the full year.
+  dateHired       DateTime?      @db.Date
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  attendance      Attendance[]
+  loans           Loan[]
+  payslips        Payslip[]
+  drivenDeliveries  Delivery[]   @relation("DeliveryDriver")
+  helper1Deliveries Delivery[]   @relation("DeliveryHelper1")
+  helper2Deliveries Delivery[]   @relation("DeliveryHelper2")
+  usualDriverOf     Truck[]      @relation("TruckUsualDriver")
+
+  @@index([position])
+  @@index([status])
+  @@map("employees")
+}
+
+// ============================================================================
+// ATTENDANCE
+// ============================================================================
+
+/// One row per employee per day, imported from the biometric .xls export.
+///
+/// The import is deliberately "dumb": it records everyone — office staff and
+/// truck crew alike — and makes no decision about pay. Each payroll module
+/// then reads what it needs. Staff Payroll uses days present, tardiness, and
+/// overtime; Truck Payroll uses ONLY tardiness, because crew daily rates are
+/// fixed regardless of hours.
+model Attendance {
+  id            String   @id @default(cuid())
+  employeeId    String
+  date          DateTime @db.Date
+  timeIn        DateTime?
+  timeOut       DateTime?
+
+  /// Minutes late, computed against the position's call time
+  /// (6:00 AM special shift, 6:30 AM driver/helper/checker, 6:40 AM standard).
+  tardinessMins Int      @default(0)
+  overtimeMins  Int      @default(0)
+  isAbsent      Boolean  @default(false)
+
+  /// A missing time-in is penalised 30 minutes; a missing time-out is assumed
+  /// to be 5:00 PM so no accidental overtime is credited. Flagged so the
+  /// Operations Head can see which rows were filled in by rule, not by scan.
+  isAssumedIn   Boolean  @default(false)
+  isAssumedOut  Boolean  @default(false)
+  /// Manual corrections are permitted (brownouts, scanner failures) but are
+  /// always marked, so an edited row is never mistaken for a raw scan.
+  isManualEdit  Boolean  @default(false)
+  editNote      String?
+
+  importBatchId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  employee      Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  importBatch   ImportBatch? @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+
+  @@unique([employeeId, date])
+  @@index([date])
+  @@map("attendance")
+}
+
+/// One row per uploaded biometric file — the "Import History" tab.
+model ImportBatch {
+  id            String       @id @default(cuid())
+  filename      String
+  importedAt    DateTime     @default(now())
+  periodStart   DateTime?    @db.Date
+  periodEnd     DateTime?    @db.Date
+  totalRows     Int          @default(0)
+  mappedRows    Int          @default(0)
+  unmappedRows  Int          @default(0)
+  status        ImportStatus @default(PROCESSING)
+  errorMessage  String?
+
+  attendance    Attendance[]
+  unmappedLogs  UnmappedLog[]
+
+  @@map("import_batches")
+}
+
+/// Scanner rows whose ID doesn't match any registered employee. Held here
+/// instead of being dropped, so the Operations Head can register the person
+/// and then resolve the backlog — this is the dashboard's "Unmapped IDs" count.
+model UnmappedLog {
+  id            String      @id @default(cuid())
+  importBatchId String
+  biometricId   String
+  date          DateTime    @db.Date
+  timeIn        DateTime?
+  timeOut       DateTime?
+  isResolved    Boolean     @default(false)
+  resolvedAt    DateTime?
+
+  importBatch   ImportBatch @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+
+  @@index([isResolved])
+  @@map("unmapped_logs")
+}
+
+// ============================================================================
+// FLEET & DELIVERIES (PAKYAWAN)
+// ============================================================================
+
+/// The fleet. `usualDriverId` and the usual helpers are only a convenience
+/// for pre-filling the delivery form — they are NOT an assignment. Nothing in
+/// the client interview says a driver is permanently tied to one truck, so
+/// the system never enforces it.
+model Truck {
+  id             String     @id // e.g. "TRK-01"
+  vehicle        String // e.g. "Blue MD"
+  plateNumber    String
+  usualDriverId  String?
+  usualHelper1   String?
+  usualHelper2   String?
+  isActive       Boolean    @default(true)
+
+  usualDriver    Employee?  @relation("TruckUsualDriver", fields: [usualDriverId], references: [id], onDelete: SetNull)
+  deliveries     Delivery[]
+
+  @@map("trucks")
+}
+
+/// One trip. The crew is recorded per delivery — driver included — because
+/// crew composition is decided on the day, not by a standing assignment.
+/// This is why `driverId` lives here and is not read from Truck.
+model Delivery {
+  id           String   @id @default(cuid())
+  date         DateTime @db.Date
+  truckId      String
+  driverId     String
+  helper1Id    String?
+  helper2Id    String?
+
+  /// Trip number within that truck's day. Drives the palima bonus, which is
+  /// awarded per head once a truck reaches the trip threshold.
+  sequenceNo   Int
+  customerName String?
+  address      String
+
+  /// True when the destination falls in a double-rate ("doble") area. Set
+  /// automatically from the known area list, but overridable — the checker
+  /// can mark a trip doble even if the address text doesn't match.
+  isDouble     Boolean  @default(false)
+  matchedArea  String?
+
+  loggedById   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  truck        Truck          @relation(fields: [truckId], references: [id])
+  driver       Employee       @relation("DeliveryDriver", fields: [driverId], references: [id])
+  helper1      Employee?      @relation("DeliveryHelper1", fields: [helper1Id], references: [id], onDelete: SetNull)
+  helper2      Employee?      @relation("DeliveryHelper2", fields: [helper2Id], references: [id], onDelete: SetNull)
+  loggedBy     User?          @relation("DeliveryLoggedBy", fields: [loggedById], references: [id], onDelete: SetNull)
+  items        DeliveryItem[]
+
+  @@unique([truckId, date, sequenceNo])
+  @@index([date])
+  @@index([driverId])
+  @@map("deliveries")
+}
+
+/// Line items within a trip. The peso amounts are frozen at the moment of
+/// logging rather than recomputed from RateItem later — if the rate table is
+/// edited next month, past payslips must not silently change.
+model DeliveryItem {
+  id            String   @id @default(cuid())
+  deliveryId    String
+  rateItemId    String?
+  itemName      String
+  unit          String
+  quantity      Decimal  @db.Decimal(12, 2)
+  driverAmount  Decimal  @db.Decimal(12, 2)
+  helperAmount  Decimal  @db.Decimal(12, 2)
+
+  delivery      Delivery  @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  rateItem      RateItem? @relation(fields: [rateItemId], references: [id], onDelete: SetNull)
+
+  @@map("delivery_items")
+}
+
+/// The piece-rate table ("VALUES" sheet). Editable by the Operations Head.
+model RateItem {
+  id                  String         @id @default(cuid())
+  itemName            String
+  unit                String
+  driverRate          Decimal        @db.Decimal(12, 2)
+  helperRate          Decimal        @db.Decimal(12, 2)
+  driverRateDouble    Decimal        @db.Decimal(12, 2)
+  helperRateDouble    Decimal        @db.Decimal(12, 2)
+  isActive            Boolean        @default(true)
+
+  deliveryItems       DeliveryItem[]
+
+  @@unique([itemName, unit])
+  @@map("rate_items")
+}
+
+/// Barangay / sitio names that qualify for double rates.
+model DoubleRateArea {
+  id       String  @id @default(cuid())
+  areaName String  @unique
+  isActive Boolean @default(true)
+
+  @@map("double_rate_areas")
+}
+
+// ============================================================================
+// LOANS & ADVANCES
+// ============================================================================
+
+/// A loan or cash advance (bale).
+///
+/// There is no `balance` column by design. The outstanding amount is derived
+/// by summing this loan's ledger entries, so the number on screen can always
+/// be traced to dated events. The client's stated problem was employees
+/// questioning their balances; a computed balance can be explained line by
+/// line, a stored one cannot.
+model Loan {
+  id           String      @id @default(cuid())
+  employeeId   String
+  type         LoanType    @default(CASH_ADVANCE)
+  principal    Decimal     @db.Decimal(12, 2)
+  dateGranted  DateTime    @db.Date
+
+  /// Amount withheld each payroll run. Office staff are deducted per cutoff;
+  /// drivers are deducted in smaller daily increments so a single payday
+  /// isn't wiped out.
+  deductionPerRun Decimal  @default(0) @db.Decimal(12, 2)
+  /// "Option not to pay" — pauses deductions without deleting the loan.
+  isPaused     Boolean     @default(false)
+  isSettled    Boolean     @default(false)
+  settledAt    DateTime?
+  note         String?
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  employee     Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  entries      LoanEntry[]
+
+  @@index([employeeId])
+  @@map("loans")
+}
+
+/// Dated, typed ledger events. Balance = sum(GRANT) − sum(DEDUCTION).
+/// Rows are append-only: a correction is a new entry, never an edit, so the
+/// history stays auditable.
+model LoanEntry {
+  id        String          @id @default(cuid())
+  loanId    String
+  date      DateTime        @db.Date
+  type      LedgerEntryType
+  amount    Decimal         @db.Decimal(12, 2)
+  note      String?
+  /// Set when the entry was written by a payroll run rather than by hand.
+  payslipId String?
+  createdAt DateTime        @default(now())
+
+  loan      Loan            @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  @@index([loanId, date])
+  @@map("loan_entries")
+}
+
+// ============================================================================
+// STATUTORY TABLES — all admin-editable, all versioned by year
+// ============================================================================
+// Government rates change annually. Every table carries an effectivity year
+// so a payslip computed in 2026 can still be reproduced after the 2027 tables
+// are entered.
+
+model SssBracket {
+  id             String  @id @default(cuid())
+  effectiveYear  Int
+  salaryFrom     Decimal @db.Decimal(12, 2)
+  salaryTo       Decimal @db.Decimal(12, 2)
+  employeeShare  Decimal @db.Decimal(12, 2)
+  employerShare  Decimal @default(0) @db.Decimal(12, 2)
+
+  @@index([effectiveYear])
+  @@map("sss_brackets")
+}
+
+model PhilhealthConfig {
+  id            String  @id @default(cuid())
+  effectiveYear Int     @unique
+  ratePercent   Decimal @db.Decimal(5, 2) // e.g. 5.00
+  salaryFloor   Decimal @db.Decimal(12, 2) // e.g. 10,000
+  salaryCeiling Decimal @db.Decimal(12, 2) // e.g. 100,000
+
+  @@map("philhealth_config")
+}
+
+model PagibigConfig {
+  id             String  @id @default(cuid())
+  effectiveYear  Int     @unique
+  employeeAmount Decimal @db.Decimal(12, 2) // fixed, e.g. 200
+  employerAmount Decimal @default(0) @db.Decimal(12, 2)
+
+  @@map("pagibig_config")
+}
+
+/// Withholding tax brackets. Employees at or below the exemption threshold
+/// compute to zero, but the line still appears on the payslip — the client
+/// wants the field present for correct formatting.
+model BirBracket {
+  id             String  @id @default(cuid())
+  effectiveYear  Int
+  incomeFrom     Decimal @db.Decimal(12, 2)
+  incomeTo       Decimal? @db.Decimal(12, 2) // null = no upper bound
+  baseTax        Decimal @db.Decimal(12, 2)
+  percentOverExcess Decimal @db.Decimal(5, 2)
+
+  @@index([effectiveYear])
+  @@map("bir_brackets")
+}
+
+// ============================================================================
+// PAYROLL RUNS
+// ============================================================================
+
+/// A semi-monthly cutoff (1–15, 16–end). Statutory contributions are halved
+/// across the two runs in a month.
+model PayrollPeriod {
+  id          String      @id @default(cuid())
+  label       String // e.g. "May 16–31, 2026"
+  startDate   DateTime    @db.Date
+  endDate     DateTime    @db.Date
+  isReleased  Boolean     @default(false)
+  releasedAt  DateTime?
+  createdAt   DateTime    @default(now())
+
+  payslips    Payslip[]
+
+  @@unique([startDate, endDate])
+  @@map("payroll_periods")
+}
+
+/// A computed payslip, stored as a snapshot rather than recalculated on
+/// demand. Once a period is released, its figures must stay fixed even if
+/// rates, statutory tables, or employee records change afterwards — that is
+/// what makes the payroll history trustworthy.
+model Payslip {
+  id              String      @id @default(cuid())
+  payrollPeriodId String
+  employeeId      String
+  payrollType     PayrollType
+
+  daysPresent     Int         @default(0)
+  basicPay        Decimal     @default(0) @db.Decimal(12, 2)
+  overtimeWeekday Decimal     @default(0) @db.Decimal(12, 2)
+  overtimeWeekend Decimal     @default(0) @db.Decimal(12, 2)
+  allowances      Decimal     @default(0) @db.Decimal(12, 2)
+
+  // Pakyawan components — zero for office staff.
+  pieceRateTotal  Decimal     @default(0) @db.Decimal(12, 2)
+  palimaBonus     Decimal     @default(0) @db.Decimal(12, 2)
+  tripCount       Int         @default(0)
+
+  grossPay        Decimal     @default(0) @db.Decimal(12, 2)
+
+  sssDeduction        Decimal @default(0) @db.Decimal(12, 2)
+  philhealthDeduction Decimal @default(0) @db.Decimal(12, 2)
+  pagibigDeduction    Decimal @default(0) @db.Decimal(12, 2)
+  mp2Deduction        Decimal @default(0) @db.Decimal(12, 2)
+  withholdingTax      Decimal @default(0) @db.Decimal(12, 2)
+  loanDeduction       Decimal @default(0) @db.Decimal(12, 2)
+  tardinessDeduction  Decimal @default(0) @db.Decimal(12, 2)
+  otherDeductions     Decimal @default(0) @db.Decimal(12, 2)
+
+  totalDeductions Decimal     @default(0) @db.Decimal(12, 2)
+  netPay          Decimal     @default(0) @db.Decimal(12, 2)
+  remarks         String?
+
+  createdAt       DateTime    @default(now())
+
+  payrollPeriod   PayrollPeriod @relation(fields: [payrollPeriodId], references: [id], onDelete: Cascade)
+  employee        Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([payrollPeriodId, employeeId])
+  @@index([employeeId])
+  @@map("payslips")
+}
