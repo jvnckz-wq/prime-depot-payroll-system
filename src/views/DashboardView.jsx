@@ -1,0 +1,148 @@
+'use client';
+
+import React, { useMemo } from 'react';
+import { Users, Truck, Wallet, FileText, AlertTriangle, TrendingUp } from 'lucide-react';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Av, Eyebrow, H1, Panel, StatCard, Td, Th } from '../components/ui.jsx';
+import { CREWS, CUTOFF_LABEL, PAYROLL_TREND } from '../data/seed';
+import { genAttendanceHistory } from '../lib/attendance';
+import { computeStaffPayroll, flattenDeliveries, loanBalance } from '../lib/payroll';
+import { peso } from '../lib/utils';
+import { F_BODY, T } from '../theme';
+
+export const DashboardView = ({ deliveries, staff = [], loans = [], statutory, setTab }) => {
+  const loggedToday = Object.keys(deliveries).length;
+  const deliveriesLogged = useMemo(() => flattenDeliveries(deliveries).length, [deliveries]);
+
+  // Net pay this cutoff — sum of every staff payslip's net, using the same shared math the
+  // Staff Payroll page uses, so the headline number always agrees with the payslips.
+  const netThisCutoff = useMemo(
+    () => staff.reduce((s, e) => s + computeStaffPayroll(e, loans, statutory).net, 0),
+    [staff, loans, statutory]
+  );
+  // Active loans & advances — total outstanding balance across every unpaid ledger.
+  const activeLoans = useMemo(() => loans.reduce((s, l) => s + Math.max(0, loanBalance(l)), 0), [loans]);
+  const activeLoanCount = loans.filter(l => loanBalance(l) > 0).length;
+
+  // Per-cutoff attendance mix (Present / Late / Absent), aggregated across all staff.
+  const attendanceData = useMemo(() => {
+    const buckets = ['Apr 1–15', 'Apr 16–30', 'May 1–15', 'May 16–31'];
+    return buckets.map((label, idx) => {
+      let present = 0, late = 0, absent = 0;
+      staff.forEach(e => {
+        const h = genAttendanceHistory(e.id);
+        const row = h[h.length - 4 + idx] || h[idx] || {};
+        present += row.present || 0; late += row.daysLate || 0; absent += row.absent || 0;
+      });
+      return { label, Present: present, Late: late, Absent: absent };
+    });
+  }, [staff]);
+
+  // Payslip snapshot — first rows of the current staff payroll, matching the mockup table.
+  const snapshot = useMemo(
+    () => staff.map(e => { const c = computeStaffPayroll(e, loans, statutory); return { name: e.name, gross: c.gross, net: c.net }; }),
+    [staff, loans, statutory]
+  );
+
+  const go = (t) => setTab && setTab(t);
+
+  return (
+    <div className="p-6">
+      <H1 sub="Snapshot of headcount, this cutoff's payroll, deliveries, and outstanding advances.">Dashboard Overview</H1>
+
+      {/* Top row: 4 stat cards + Attention Needed, mirroring the approved layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        <div className="lg:col-span-2 grid grid-cols-2 gap-4">
+          <StatCard label="Total Employees" value={staff.length + CREWS.length * 3} icon={Users} />
+          <StatCard label="Net Pay This Cutoff" value={peso(netThisCutoff)} tone="amber" icon={Wallet} />
+          <StatCard label="Deliveries Logged" value={deliveriesLogged} tone="green" icon={Truck} />
+          <StatCard label="Active Loans & Advances" value={peso(activeLoans)} tone="amber" icon={FileText} />
+        </div>
+        <Panel className="p-4">
+          <Eyebrow>Attention Needed</Eyebrow>
+          <button onClick={() => go('attendance')} className="w-full text-left mt-2 flex items-start gap-3 p-3 rounded" style={{ backgroundColor: T.warnBg }}>
+            <AlertTriangle size={16} color={T.warn} className="mt-0.5 shrink-0" />
+            <div>
+              <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>Biometric ID #47 is unmapped</div>
+              <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft }}>3 log entries this week aren't linked to a registered employee.</div>
+            </div>
+          </button>
+          {activeLoanCount > 0 && (
+            <button onClick={() => go('loans')} className="w-full text-left mt-3 flex items-start gap-3 p-3 rounded" style={{ backgroundColor: T.brandBg }}>
+              <FileText size={16} color={T.brand} className="mt-0.5 shrink-0" />
+              <div>
+                <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>{activeLoanCount} loan{activeLoanCount > 1 ? 's' : ''} awaiting cutoff deduction</div>
+                <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft }}>Review balances before releasing this cutoff's payroll.</div>
+              </div>
+            </button>
+          )}
+        </Panel>
+      </div>
+
+      {/* Payroll snapshot table + two charts */}
+      <div className="grid lg:grid-cols-2 gap-4">
+        <Panel className="overflow-hidden">
+          <div className="px-4 pt-4 pb-2"><Eyebrow>{CUTOFF_LABEL} · Payroll Snapshot</Eyebrow></div>
+          <div className="overflow-x-auto" style={{ maxHeight: 360 }}>
+            <table className="w-full">
+              <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}>
+                <tr><Th>Employee</Th><Th right>Gross</Th><Th right>Net Pay</Th></tr>
+              </thead>
+              <tbody>
+                {snapshot.map((r, i) => (
+                  <tr key={i}>
+                    <Td>
+                      <div className="flex items-center gap-2.5">
+                        <Av name={r.name} size={26} tone={T.brand} />
+                        <span className="font-semibold text-sm" style={{ fontFamily: F_BODY }}>{r.name}</span>
+                      </div>
+                    </Td>
+                    <Td right mono>{peso(r.gross)}</Td>
+                    <Td right mono style={{ color: r.net < 0 ? T.red : T.ink, fontWeight: 600 }}>{peso(r.net)}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+
+        <div className="flex flex-col gap-4">
+          <Panel className="p-4">
+            <Eyebrow>Attendance</Eyebrow>
+            <div className="text-xs mb-3" style={{ fontFamily: F_BODY, color: T.soft }}>Present / Late / Absent · last 4 cutoffs</div>
+            <ResponsiveContainer width="100%" height={170}>
+              <BarChart data={attendanceData} margin={{ left: -20, right: 5, top: 5, bottom: 0 }} barGap={2} barCategoryGap="22%">
+                <CartesianGrid strokeDasharray="3 3" stroke={T.lineSoft} vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 10, fill: T.soft }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: T.soft }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ borderRadius: 8, border: `1px solid ${T.line}`, fontSize: 12, fontFamily: F_BODY }} />
+                <Legend wrapperStyle={{ fontSize: 11, fontFamily: F_BODY }} iconType="circle" iconSize={8} />
+                <Bar dataKey="Present" fill={T.green} radius={[2, 2, 0, 0]} />
+                <Bar dataKey="Late" fill={T.brand} radius={[2, 2, 0, 0]} />
+                <Bar dataKey="Absent" fill={T.warn} radius={[2, 2, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Panel>
+          <Panel className="p-4">
+            <div className="flex items-center justify-between mb-1">
+              <Eyebrow>Bi-monthly Payroll Cost</Eyebrow>
+              <TrendingUp size={14} color={T.soft} />
+            </div>
+            <div className="text-xs mb-3" style={{ fontFamily: F_BODY, color: T.soft }}>Net salary released · last 6 cutoffs</div>
+            <ResponsiveContainer width="100%" height={150}>
+              <LineChart data={PAYROLL_TREND} margin={{ left: -20, right: 5, top: 5, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={T.lineSoft} vertical={false} />
+                <XAxis dataKey="mo" tick={{ fontSize: 11, fill: T.soft }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: T.soft }} axisLine={false} tickLine={false} tickFormatter={v => `₱${v / 1000}k`} />
+                <Tooltip formatter={v => [peso(v), 'Payroll']} contentStyle={{ borderRadius: 8, border: `1px solid ${T.line}`, fontSize: 12, fontFamily: F_BODY }} />
+                <Line type="monotone" dataKey="payroll" stroke={T.brand} strokeWidth={2.5} dot={{ r: 3, fill: T.brand }} activeDot={{ r: 5 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </Panel>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ============================= EMPLOYEES ============================= */
