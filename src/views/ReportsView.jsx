@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import { AlertTriangle, Check, Download } from 'lucide-react';
-import { Badge, Btn, Eyebrow, H1, Panel, Td, Th } from '../components/ui.jsx';
-import { BONUS_HEAD, BONUS_TRIPS, CREWS, DRIVER_DAILY } from '../data/seed';
-import { computePagIBIG, computePhilHealth, computeSSS } from '../lib/payroll';
+import { Badge, Btn, EmptyState, Eyebrow, H1, Panel, Td, Th } from '../components/ui.jsx';
+import { BONUS_HEAD, BONUS_TRIPS, DRIVER_DAILY, HELPER_DAILY } from '../data/seed';
+import { computePagIBIG, computePhilHealth, computeSSS, crewEarnings } from '../lib/payroll';
 import { exportXLSX, peso } from '../lib/utils';
 import { F_BODY, F_HEAD, T } from '../theme';
 
@@ -19,19 +19,23 @@ export const ReportsView = ({ staff, deliveries, loans, statutory }) => {
     return { emp: e, gross, sss, ph, hdmf, net: gross - sss - ph - hdmf };
   });
   const T13 = staff.map(e => ({ name: e.name, months: 12, basic: e.rate * 22 * 12, pay: Math.round(e.rate * 22 * 12 / 12 * 100) / 100 }));
-  const driverStats = CREWS.map(c => {
-    const log = deliveries[c.id];
-    const trips = log ? new Set(log.items.map(i => i.seq).filter(Boolean)).size : 0;
-    const earn = log ? DRIVER_DAILY + log.items.reduce((s, i) => s + i.d, 0) + (trips >= BONUS_TRIPS ? BONUS_HEAD : 0) : 0;
-    return { crew: c, trips, earn, bonus: trips >= BONUS_TRIPS };
+  // Earnings are reported per PERSON, not per truck. A pahinante can ride with
+  // two different drivers in one day, so a per-truck total cannot answer what
+  // any one of them is owed. Voided trips are already excluded upstream.
+  const crewRows = crewEarnings(deliveries, {
+    driverDaily: DRIVER_DAILY, helperDaily: HELPER_DAILY,
+    bonusHead: BONUS_HEAD, bonusTrips: BONUS_TRIPS,
   });
 
   const exportRegister = () => exportXLSX('Payroll-Register.xlsx', [{ name: 'Register', rows: registerRows.map(r => ({ Employee: r.emp.name, Gross: r.gross, SSS: r.sss, PhilHealth: r.ph, 'Pag-IBIG': r.hdmf, Net: r.net })) }]);
   const exportRemit = () => exportXLSX('Gov-Remittance.xlsx', [{ name: 'Remittance', rows: registerRows.map(r => ({ Employee: r.emp.name, SSS: r.sss, PhilHealth: r.ph, 'Pag-IBIG': r.hdmf, Total: r.sss + r.ph + r.hdmf })) }]);
   const export13 = () => exportXLSX('13th-Month-Pay.xlsx', [{ name: '13th Month', rows: T13.map(r => ({ Employee: r.name, 'Months Worked': r.months, 'Total Basic': r.basic, '13th Month Pay': r.pay })) }]);
-  const exportDriver = () => exportXLSX('Driver-Earnings.xlsx', [{ name: 'Drivers', rows: driverStats.map(d => ({ Driver: d.crew.driver, Truck: d.crew.id, Trips: d.trips, 'Total Earned': d.earn })) }]);
+  const exportDriver = () => exportXLSX('Crew-Earnings.xlsx', [{ name: 'Crew', rows: crewRows.map(r => ({
+    Name: r.name, Role: r.role, Trucks: r.trucks.join(', '), Days: r.days, Trips: r.trips,
+    'Daily Rate': r.dailyRate, 'Piece Rate': r.pieceRate, 'Palima Bonus': r.bonus, 'Total Earned': r.total,
+  })) }]);
 
-  const tabs = [['register', 'Payroll Register'], ['remittance', "Gov't Remittance"], ['13th', '13th Month Pay'], ['drivers', 'Driver & Delivery'], ['bir', 'BIR Reference']];
+  const tabs = [['register', 'Payroll Register'], ['remittance', "Gov't Remittance"], ['13th', '13th Month Pay'], ['drivers', 'Crew Earnings'], ['bir', 'BIR Reference']];
 
   return (
     <div className="p-6">
@@ -83,13 +87,32 @@ export const ReportsView = ({ staff, deliveries, loans, statutory }) => {
       {tab === 'drivers' && (
         <Panel className="overflow-hidden">
           <div className="px-4 py-2.5 flex justify-between items-center" style={{ borderBottom: `1px solid ${T.line}` }}>
-            <Eyebrow>Driver & Delivery Earnings</Eyebrow>
+            <Eyebrow>Crew Earnings — per person</Eyebrow>
             <Btn size="sm" variant="outline" icon={Download} onClick={exportDriver}>Export Excel</Btn>
           </div>
-          <table className="w-full">
-            <thead><tr><Th>Driver</Th><Th>Truck</Th><Th right>Trips</Th><Th>Bonus</Th><Th right>Total Earned</Th></tr></thead>
-            <tbody>{driverStats.map((d, i) => <tr key={i}><Td>{d.crew.driver}</Td><Td mono>{d.crew.id}</Td><Td right mono>{d.trips}</Td><Td>{d.bonus && <Badge tone="amber">Palima</Badge>}</Td><Td right mono>{peso(d.earn)}</Td></tr>)}</tbody>
-          </table>
+          <p className="text-xs px-4 pb-3" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
+            One row per person, totalled across every truck they rode. A pahinante who worked with two
+            different drivers appears once here, not twice.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead><tr><Th>Name</Th><Th>Role</Th><Th>Trucks</Th><Th right>Days</Th><Th right>Trips</Th><Th right>Daily</Th><Th right>Piece Rate</Th><Th right>Palima</Th><Th right>Total</Th></tr></thead>
+              <tbody>{crewRows.map((r, i) => (
+                <tr key={i}>
+                  <Td>{r.name}</Td>
+                  <Td><Badge tone={r.role === 'Driver' ? 'amber' : 'neutral'}>{r.role}</Badge></Td>
+                  <Td mono><span style={{ color: T.soft }}>{r.trucks.join(', ')}</span></Td>
+                  <Td right mono>{r.days}</Td>
+                  <Td right mono>{r.trips}</Td>
+                  <Td right mono>{peso(r.dailyRate)}</Td>
+                  <Td right mono>{peso(r.pieceRate)}</Td>
+                  <Td right mono>{r.bonus ? <span style={{ color: T.green }}>{peso(r.bonus)}</span> : '—'}</Td>
+                  <Td right mono><span style={{ fontWeight: 700 }}>{peso(r.total)}</span></Td>
+                </tr>
+              ))}</tbody>
+            </table>
+            {!crewRows.length && <EmptyState title="No crew earnings yet" desc="Totals appear once deliveries are logged." />}
+          </div>
         </Panel>
       )}
       {tab === 'bir' && (

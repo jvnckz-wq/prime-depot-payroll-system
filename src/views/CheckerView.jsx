@@ -8,24 +8,28 @@ import { BONUS_TRIPS, CREWS } from '../data/seed';
 import { flattenDeliveries } from '../lib/payroll';
 import { peso } from '../lib/utils';
 import { FONTS, F_BODY, F_HEAD, T } from '../theme';
+import { AccountPage } from './AccountPage.jsx';
 
-export const CheckerView = ({ deliveries, setDeliveries, rates, onLogout, toast }) => {
+export const CheckerView = ({ currentUser, onUserChange, onSignedOut, deliveries, setDeliveries, reloadDeliveries, rates, onLogout, toast }) => {
   const [page, setPage] = useState('log');
 
-  const logDelivery = (cId, address, customer, items, helpers, driverName) => {
-    setDeliveries(prev => {
-      const existing = prev[cId] || { date: 'Jul 16, 2026', items: [], kaltas: [] };
-      const nums = existing.items.map(i => i.seq).filter(Boolean);
-      const nextSeq = nums.length ? Math.max(...nums) + 1 : 1;
-      const crewRow = CREWS.find(c => c.id === cId);
-      const crewDef = (crewRow?.helpers || []).filter(h => h !== '—');
-      const usedHelpers = helpers !== undefined ? helpers : crewDef; // [] means the checker explicitly recorded no helper that trip
-      const usedDriver = driverName || crewRow?.driver || '';
-      const isSwap = JSON.stringify(usedHelpers) !== JSON.stringify(crewDef) || (!!crewRow?.driver && usedDriver !== crewRow.driver);
-      const newItems = items.map((r, i) => ({ seq: i === 0 ? nextSeq : null, address: i === 0 ? address : '', customer: i === 0 ? customer : '', item: r.item, qty: r.qty, unit: r.unit, d: r.d, h: r.h, dbl: r.dbl, helpers: i === 0 ? usedHelpers : undefined, driver: i === 0 ? usedDriver : undefined, swap: i === 0 ? isSwap : undefined }));
-      return { ...prev, [cId]: { ...existing, items: [...existing.items, ...newItems] } };
-    });
-    toast(`Delivery logged — ${driverName || 'crew'} on ${cId}.`);
+  // Logging writes straight to the database. The trip number, the frozen peso
+  // amounts, and the record of who entered it are all decided server-side —
+  // the browser only reports what was chosen.
+  const logDelivery = async (payload) => {
+    try {
+      const res = await fetch('/api/deliveries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast(data.error || 'Could not save the delivery.', 'error'); return; }
+      await reloadDeliveries();
+      toast(`Delivery logged for ${payload.truckId}.`);
+    } catch {
+      toast('Could not reach the server.', 'error');
+    }
   };
 
   const allTrips = useMemo(() => flattenDeliveries(deliveries), [deliveries]);
@@ -52,7 +56,9 @@ export const CheckerView = ({ deliveries, setDeliveries, rates, onLogout, toast 
             <button key={k} onClick={() => setPage(k)} className="px-3 py-1.5 rounded text-xs font-semibold"
               style={{ fontFamily: F_HEAD, backgroundColor: page === k ? 'rgba(255,255,255,0.1)' : 'transparent', color: page === k ? '#fff' : T.sidebarSoft }}>{l}</button>
           ))}
-          <Av name="Checker" size={28} tone={T.amber} />
+          {currentUser?.avatar
+            ? <img src={currentUser.avatar} alt="" className="rounded-full object-cover" style={{ width: 28, height: 28 }} />
+            : <Av name={currentUser?.displayName || 'Checker'} size={28} tone={T.amber} />}
           <button onClick={onLogout} className="flex items-center gap-1.5 text-sm" style={{ fontFamily: F_BODY, color: T.sidebarSoft }}><LogOut size={15} /></button>
         </div>
       </div>
@@ -116,16 +122,8 @@ export const CheckerView = ({ deliveries, setDeliveries, rates, onLogout, toast 
             </Panel>
           </>
         )}
-        {page === 'account' && (
-          <Panel className="p-5 max-w-md">
-            <Eyebrow>Profile</Eyebrow>
-            <div className="text-sm mb-4" style={{ fontFamily: F_BODY, color: T.soft }}>Checker account — general dispatch access (all trucks).</div>
-            <div className="space-y-3">
-              <Field label="Username"><input defaultValue="checker01" className={inputCls} style={inputStyle} readOnly /></Field>
-              <Field label="New password"><input type="password" placeholder="Leave blank to keep current" className={inputCls} style={inputStyle} /></Field>
-            </div>
-            <div className="mt-4"><Btn icon={Save} onClick={() => toast('Account settings saved.')} full>Save changes</Btn></div>
-          </Panel>
+        {page === 'account' && currentUser && (
+          <AccountPage user={currentUser} toast={toast} onUserChange={onUserChange} onSignedOut={onSignedOut} />
         )}
       </div>
     </div>

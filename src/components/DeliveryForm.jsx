@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Plus, Check, Trash2, Repeat, MapPin } from 'lucide-react';
+import { AlertTriangle, Plus, Check, Trash2, MapPin } from 'lucide-react';
 import { Av, Btn, Eyebrow, Field, inputCls, inputStyle } from './ui.jsx';
-import { ALL_DRIVERS, ALL_HELPERS, DOBLE_AREAS } from '../data/seed';
+import { DOBLE_AREAS } from '../data/seed';
 import { matchDobleArea } from '../lib/payroll';
 import { peso } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
@@ -11,53 +11,82 @@ import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
   const [crewId, setCrewId] = useState(fixedCrewId || (crews[0] && crews[0].id) || '');
   const crew = crews.find(c => c.id === crewId) || crews[0];
-  const defaultHelpers = (crew?.helpers || []).filter(h => h !== '—');
+
+  // Names alone are not enough to record who was paid — two people can share
+  // one, and a delivery has to point at a person. The crew roster is fetched
+  // so every selection carries an employee id.
+  const [pool, setPool] = useState({ drivers: [], helpers: [] });
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/crew')
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+      .then(data => { if (!cancelled) setPool({ drivers: data.drivers, helpers: data.helpers }); })
+      .catch(err => console.error('Could not load crew roster:', err));
+    return () => { cancelled = true; };
+  }, []);
 
   const [address, setAddress] = useState('');
   const [customer, setCustomer] = useState('');
   const [dbl, setDbl] = useState(false);
-  const [lineRows, setLineRows] = useState([{ item: rates[0].cat, qty: '' }]);
+  const [lineRows, setLineRows] = useState([{ item: rates[0] ? (rates[0].id || `${rates[0].cat}|${rates[0].unit}`) : '', qty: '' }]);
   // Driver, truck, and helpers are each chosen per delivery. Nothing in the
-  // client's interview says a driver is permanently assigned to one truck, so
-  // the form never enforces it — the pairing on each CREWS row is only the
-  // usual one, used to prefill.
-  const [driver, setDriver] = useState(crew?.driver || '');
-  const [helper1, setHelper1] = useState(defaultHelpers[0] || '');
-  const [helper2, setHelper2] = useState(defaultHelpers[1] || '');
+  // client's account ties a driver to a truck, so nothing here assumes it.
+  const [driverId, setDriverId] = useState('');
+  const [helper1Id, setHelper1Id] = useState('');
+  const [helper2Id, setHelper2Id] = useState('');
 
-  // Picking a different truck reloads that truck's usual crew as a starting
-  // point. The admin or checker can still override any of the three.
+  // A rate is identified by its database id, never by its name. The client's
+  // real table has two rows called "Aggregates" — one per elf, one per mini
+  // dump — priced differently. Matching on the name would return whichever
+  // came first and quietly pay the wrong amount.
+  const rateKey = (r) => (r ? (r.id || `${r.cat}|${r.unit}`) : '');
+  const rateByKey = (k) => rates.find(r => rateKey(r) === k) || rates[0];
+  // Units are shown in the dropdown for the same reason: without them, two
+  // rows read as the same choice.
+  const rateLabel = (r) => (r.unit ? `${r.cat} — per ${r.unit}` : r.cat);
+
+  const addRow = () => setLineRows(r => [...r, { item: rateKey(rates[0]), qty: '' }]);
+
+  // The rate table arrives from the database a moment after the form mounts,
+  // and the seed rows used until then have different keys. Without this, the
+  // item dropdown would be left pointing at a key that no longer exists.
   useEffect(() => {
-    const c = crews.find(x => x.id === crewId);
-    const def = (c?.helpers || []).filter(h => h !== '—');
-    setDriver(c?.driver || '');
-    setHelper1(def[0] || ''); setHelper2(def[1] || '');
-  }, [crewId]);
-
-  const addRow = () => setLineRows(r => [...r, { item: rates[0].cat, qty: '' }]);
+    if (!rates.length) return;
+    const valid = new Set(rates.map(rateKey));
+    setLineRows(rows => rows.every(r => valid.has(r.item))
+      ? rows
+      : rows.map(r => (valid.has(r.item) ? r : { ...r, item: rateKey(rates[0]) })));
+  }, [rates]);
   const removeRow = (i) => setLineRows(r => r.filter((_, idx) => idx !== i));
   const updateRow = (i, patch) => setLineRows(r => r.map((row, idx) => idx === i ? { ...row, ...patch } : row));
 
+  // Peso amounts are worked out here and sent with the delivery, then frozen on
+  // the record. Recomputing them later from the rate table would mean an edit
+  // to a rate silently rewrote what someone already earned.
   const computed = lineRows.map(row => {
-    const rate = rates.find(r => r.cat === row.item) || rates[0];
+    const rate = rateByKey(row.item);
     const [dR, hR] = dbl ? rate.d : rate.s;
     const q = parseFloat(row.qty) || 0;
-    return { item: row.item, qty: q, unit: rate.unit, d: +(dR * q).toFixed(2), h: +(hR * q).toFixed(2) };
+    return { item: rate.cat, qty: q, unit: rate.unit, d: +(dR * q).toFixed(2), h: +(hR * q).toFixed(2) };
   });
   const totalD = computed.reduce((s, r) => s + r.d, 0), totalH = computed.reduce((s, r) => s + r.h, 0);
 
   const dobleMatch = matchDobleArea(address);
-  const helpersUsed = [helper1, helper2].map(h => h.trim()).filter(Boolean);
-  const helperSwap = defaultHelpers.length > 0 && JSON.stringify(helpersUsed) !== JSON.stringify(defaultHelpers);
-  const driverSwap = !!(crew?.driver && driver && driver !== crew.driver);
-  const isSwap = helperSwap || driverSwap;
 
   const submit = () => {
-    if (!driver) return;
-    if (!address || computed.every(r => !r.qty)) return;
-    onSubmit(crewId, address, customer, computed.map(r => ({ ...r, dbl })), helpersUsed, driver);
-    setAddress(''); setCustomer(''); setDbl(false); setLineRows([{ item: rates[0].cat, qty: '' }]);
-    // Driver and helpers are left as-is — the next delivery is usually the same crew.
+    if (!driverId || !address || computed.every(r => !r.qty)) return;
+    onSubmit({
+      truckId: crewId,
+      driverId,
+      helper1Id: helper1Id || null,
+      helper2Id: helper2Id || null,
+      address, customer, dbl,
+      matchedArea: dobleMatch || null,
+      items: computed.map(r => ({ ...r, dbl })),
+    });
+    setAddress(''); setCustomer(''); setDbl(false); setLineRows([{ item: rateKey(rates[0]), qty: '' }]);
+    // Crew stays selected — the next load that day is usually the same three
+    // people, and re-picking them every time would be its own annoyance.
   };
 
   return (
@@ -67,9 +96,9 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
       {/* 1. Driver — picked from the whole driver pool, not tied to the truck */}
       <div className="mb-3">
         <Field label={<>Driver <span style={{ color: T.brand }}>*</span></>}>
-          <select value={driver} onChange={e => setDriver(e.target.value)} className={inputCls} style={inputStyle}>
-            <option value="">Select driver…</option>
-            {ALL_DRIVERS.map(d => <option key={d} value={d}>{d}</option>)}
+          <select value={driverId} onChange={e => setDriverId(e.target.value)} className={inputCls} style={inputStyle}>
+            <option value="">Select driver...</option>
+            {pool.drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
         </Field>
       </div>
@@ -96,24 +125,18 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
       {/* 3. Helpers — the full pahinante pool is available for either slot */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-1">
         <Field label="Pahinante 1">
-          <select value={helper1} onChange={e => setHelper1(e.target.value)} className={inputCls} style={inputStyle}>
+          <select value={helper1Id} onChange={e => setHelper1Id(e.target.value)} className={inputCls} style={inputStyle}>
             <option value="">None</option>
-            {ALL_HELPERS.map(h => <option key={h} value={h}>{h}</option>)}
+            {pool.helpers.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
           </select>
         </Field>
         <Field label="Pahinante 2">
-          <select value={helper2} onChange={e => setHelper2(e.target.value)} className={inputCls} style={inputStyle}>
+          <select value={helper2Id} onChange={e => setHelper2Id(e.target.value)} className={inputCls} style={inputStyle}>
             <option value="">None</option>
-            {ALL_HELPERS.filter(h => h !== helper1).map(h => <option key={h} value={h}>{h}</option>)}
+            {pool.helpers.filter(h => h.id !== helper1Id).map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
           </select>
         </Field>
       </div>
-      {isSwap && (
-        <div className="mt-2.5 mb-1 flex items-start gap-1.5 text-xs" style={{ fontFamily: F_BODY, color: T.warn }}>
-          <Repeat size={12} className="mt-0.5 shrink-0" />
-          <span>Different from {crew?.id}'s usual crew ({crew?.driver || '—'}{defaultHelpers.length ? ' + ' + defaultHelpers.join(' & ') : ''}). That's fine — this delivery is recorded with the crew selected above.</span>
-        </div>
-      )}
 
       {/* Address + customer */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 mb-1">
@@ -144,29 +167,62 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
         <Eyebrow>Items Delivered</Eyebrow>
         <button onClick={addRow} className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold border" style={{ fontFamily: F_HEAD, color: T.ink, borderColor: T.line, backgroundColor: T.surface }}><Plus size={13} /> Add item</button>
       </div>
-      <div className="border rounded-md overflow-hidden mb-3" style={{ borderColor: T.line }}>
-        <div className="overflow-x-auto">
-          <div className="grid px-3 py-2.5 text-xs font-semibold uppercase" style={{ gridTemplateColumns: '2.2fr 68px 74px 74px 84px 26px', minWidth: 500, backgroundColor: T.bg, fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.04em' }}>
-            <span>Item</span><span className="text-right">Qty</span><span className="text-right">Drv. Rate</span><span className="text-right">Pah. Rate</span><span className="text-right">Drv. Earn</span><span></span>
-          </div>
-          {lineRows.map((row, i) => {
-            const rate = rates.find(r => r.cat === row.item) || rates[0];
-            const [dR, hR] = dbl ? rate.d : rate.s;
-            const q = parseFloat(row.qty) || 0;
-            return (
-              <div key={i} className="grid items-center px-3 py-2 gap-2" style={{ gridTemplateColumns: '2.2fr 68px 74px 74px 84px 26px', minWidth: 500, borderTop: `1px solid ${T.lineSoft}` }}>
-                <select value={row.item} onChange={e => updateRow(i, { item: e.target.value })} className="px-2 py-1.5 rounded border text-xs" style={{ fontFamily: F_BODY, borderColor: T.line }}>
-                  {rates.map(r => <option key={r.cat} value={r.cat}>{r.cat}</option>)}
+      {/* Each item is its own block rather than a row in a cramped table. The
+          form lives in a 560px modal; six columns squeezed into that width left
+          the quantity field too narrow to read what had just been typed. */}
+      <div className="flex flex-col gap-2 mb-3">
+        {lineRows.map((row, i) => {
+          const rate = rateByKey(row.item);
+          const [dR, hR] = dbl ? rate.d : rate.s;
+          const q = parseFloat(row.qty) || 0;
+          return (
+            <div key={i} className="border rounded-md p-2.5" style={{ borderColor: T.line, backgroundColor: T.surface }}>
+              <div className="flex items-center gap-2 mb-2">
+                <select value={row.item} onChange={e => updateRow(i, { item: e.target.value })}
+                  className="flex-1 min-w-0 px-2.5 py-2 rounded border text-sm"
+                  style={{ fontFamily: F_BODY, borderColor: T.line, color: T.ink }}>
+                  {rates.map(r => <option key={rateKey(r)} value={rateKey(r)}>{rateLabel(r)}</option>)}
                 </select>
-                <input type="number" placeholder="0" value={row.qty} onChange={e => updateRow(i, { qty: e.target.value })} className="px-2 py-1.5 rounded border text-xs text-right" style={{ fontFamily: F_MONO, borderColor: T.line }} />
-                <span className="text-xs text-right" style={{ fontFamily: F_MONO, color: T.brand }}>{peso(dR)}</span>
-                <span className="text-xs text-right" style={{ fontFamily: F_MONO, color: T.warn }}>{peso(hR)}</span>
-                <span className="text-xs text-right font-semibold" style={{ fontFamily: F_MONO, color: T.green }}>{peso(dR * q)}</span>
-                {lineRows.length > 1 ? <button onClick={() => removeRow(i)} className="justify-self-end"><Trash2 size={13} color={T.red} /></button> : <span />}
+                {lineRows.length > 1 && (
+                  <button onClick={() => removeRow(i)} className="shrink-0 p-1.5" title="Remove this item">
+                    <Trash2 size={14} color={T.red} />
+                  </button>
+                )}
               </div>
-            );
-          })}
-        </div>
+
+              <div className="flex items-end gap-3 flex-wrap">
+                <div style={{ width: 110 }}>
+                  <div className="text-xs mb-1" style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.04em' }}>QTY</div>
+                  <input type="number" min="0" placeholder="0" value={row.qty}
+                    onChange={e => updateRow(i, { qty: e.target.value })}
+                    className="w-full px-2.5 py-2 rounded border text-sm text-right"
+                    style={{ fontFamily: F_MONO, borderColor: T.line, color: T.ink }} />
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs mb-1" style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.04em' }}>
+                    RATE PER {rate.unit ? rate.unit.toUpperCase() : 'UNIT'}
+                  </div>
+                  <div className="text-sm py-2" style={{ fontFamily: F_MONO }}>
+                    <span style={{ color: T.brand }}>{peso(dR)}</span>
+                    <span style={{ color: T.soft }}> driver · </span>
+                    <span style={{ color: T.warn }}>{peso(hR)}</span>
+                    <span style={{ color: T.soft }}> pahinante</span>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <div className="text-xs mb-1" style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.04em' }}>THIS ITEM</div>
+                  <div className="text-sm py-2" style={{ fontFamily: F_MONO }}>
+                    <span style={{ color: T.green, fontWeight: 600 }}>{peso(dR * q)}</span>
+                    <span style={{ color: T.soft }}> / </span>
+                    <span style={{ color: T.green }}>{peso(hR * q)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Mark as Double + trip total + save */}
@@ -176,7 +232,7 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
         </button>
         <div className="text-sm" style={{ fontFamily: F_MONO, color: T.soft }}>Trip total: <span style={{ color: T.green, fontWeight: 600 }}>{peso(totalD)} / {peso(totalH)}</span></div>
       </div>
-      <Btn onClick={submit} icon={Check} disabled={!address || !driver} full>Save delivery</Btn>
+      <Btn onClick={submit} icon={Check} disabled={!address || !driverId} full>Save delivery</Btn>
     </div>
   );
 };

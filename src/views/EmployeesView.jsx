@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Search, Edit2, Save, UserPlus, Truck } from 'lucide-react';
+import { Search, Edit2, Save, UserPlus, Truck, Clock } from 'lucide-react';
 import { Av, Badge, Btn, Confirm, Eyebrow, Field, H1, Modal, Money, Panel, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { CREWS, POSITIONS } from '../data/seed';
 import { isCrewPosition } from '../lib/payroll';
+import { WEEKDAYS, describeEarlyShift } from '../lib/attendance';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
 // Registration fields required by the client spec: ID number, name, position,
@@ -16,10 +17,12 @@ const BLANK_EMP = {
   id: '', name: '', position: 'Administrative Staff', rate: '', declaredSalary: '',
   status: 'Active', sssOn: false, phOn: false, piOn: false, mp2: 0,
   address: '', contact: '', birthdate: '', dateHired: '',
+  earlyShiftDays: [], earlyShiftTime: '06:00',
 };
 
 export const EmployeesView = ({ staff, setStaff, toast }) => {
   const [q, setQ] = useState('');
+  const [statusFilter, setStatusFilter] = useState('active');
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(BLANK_EMP);
@@ -31,7 +34,28 @@ export const EmployeesView = ({ staff, setStaff, toast }) => {
     ...CREWS.flatMap(c => c.helpers.filter(h => h !== '—').map((h, j) => ({ id: c.id + '-H' + j, name: h, position: 'Pahinante (Helper)', rate: 240, status: 'Active', crew: true }))),
   ], []);
 
-  const rows = useMemo(() => [...staff, ...crewRows].filter(r => r.name.toLowerCase().includes(q.toLowerCase())), [staff, crewRows, q]);
+  const rows = useMemo(() => [...staff, ...crewRows]
+    .filter(r => r.name.toLowerCase().includes(q.toLowerCase()))
+    .filter(r => statusFilter === 'all'
+      || (statusFilter === 'active' && r.status !== 'Inactive')
+      || (statusFilter === 'inactive' && r.status === 'Inactive')),
+    [staff, crewRows, q, statusFilter]);
+
+  const counts = useMemo(() => {
+    const all = [...staff, ...crewRows];
+    return {
+      all: all.length,
+      active: all.filter(r => r.status !== 'Inactive').length,
+      inactive: all.filter(r => r.status === 'Inactive').length,
+    };
+  }, [staff, crewRows]);
+
+  const toggleShiftDay = (key) => setForm(f => ({
+    ...f,
+    earlyShiftDays: f.earlyShiftDays.includes(key)
+      ? f.earlyShiftDays.filter(d => d !== key)
+      : [...f.earlyShiftDays, key],
+  }));
 
   // Next free EMP-### — offered as a starting point so the admin isn't forced to
   // invent one, but the field stays editable because the ID has to match the
@@ -73,6 +97,25 @@ export const EmployeesView = ({ staff, setStaff, toast }) => {
         <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search employees…"
           className={`${inputCls} pl-8`} style={inputStyle} />
       </div>
+
+      {/* Active by default: the everyday question is "who is on payroll now",
+          not "who has ever worked here". Resigned staff stay one click away
+          rather than cluttering the list they are no longer part of. */}
+      <div className="flex gap-1.5 mb-3 flex-wrap">
+        {[['active', 'Active', counts.active], ['inactive', 'Resigned', counts.inactive], ['all', 'All', counts.all]].map(([k, label, n]) => (
+          <button key={k} onClick={() => setStatusFilter(k)}
+            className="px-3 py-1.5 rounded text-xs font-semibold"
+            style={{
+              fontFamily: F_HEAD,
+              backgroundColor: statusFilter === k ? T.brandBg : T.surface,
+              color: statusFilter === k ? T.brandDark : T.soft,
+              border: `1px solid ${statusFilter === k ? T.brand : T.line}`,
+            }}>
+            {label} <span style={{ fontFamily: F_MONO, opacity: 0.75 }}>{n}</span>
+          </button>
+        ))}
+      </div>
+
       <Panel className="overflow-hidden">
         <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 520 }}>
           <table className="w-full">
@@ -91,7 +134,15 @@ export const EmployeesView = ({ staff, setStaff, toast }) => {
                       </div>
                     </div>
                   </Td>
-                  <Td>{r.position}</Td>
+                  <Td>
+                    {r.position}
+                    {describeEarlyShift(r) && (
+                      <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs"
+                        style={{ fontFamily: F_BODY, backgroundColor: T.warnBg, color: T.warn }}>
+                        <Clock size={10} />{describeEarlyShift(r)}
+                      </span>
+                    )}
+                  </Td>
                   <Td right mono><Money value={r.rate} /></Td>
                   <Td><Badge tone={r.status === 'Active' ? 'green' : 'neutral'}>{r.status}</Badge></Td>
                   <Td>
@@ -144,6 +195,54 @@ export const EmployeesView = ({ staff, setStaff, toast }) => {
             <input type="number" value={form.declaredSalary} onChange={e => ff('declaredSalary', e.target.value)} placeholder="e.g. daily rate × 26" className={inputCls} style={inputStyle} />
           </Field>
           <div className="text-xs -mt-1.5" style={{ fontFamily: F_BODY, color: T.soft }}>Basis for SSS, PhilHealth, and Pag-IBIG lookups — see Settings → Statutory Deductions for the actual bracket tables.</div>
+
+          {/* Early shift. Modelled here, on the person, rather than as a job
+              title — the same staff member can be early on Saturdays and
+              normal the rest of the week. Left blank means no early
+              requirement at all. */}
+          <div className="p-3 rounded" style={{ backgroundColor: T.bg }}>
+            <Eyebrow>Early Shift</Eyebrow>
+            <div className="text-xs mb-2.5" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
+              Days this employee must report earlier than the usual {isCrewPosition(form.position) ? '6:30' : '6:40'} AM.
+              Leave all unticked if none are required.
+            </div>
+            <div className="flex flex-wrap gap-1.5 mb-2.5">
+              {WEEKDAYS.map(w => {
+                const on = form.earlyShiftDays.includes(w.key);
+                return (
+                  <button key={w.key} onClick={() => toggleShiftDay(w.key)}
+                    className="px-2.5 py-1.5 rounded text-xs font-semibold"
+                    style={{
+                      fontFamily: F_HEAD,
+                      backgroundColor: on ? T.brand : T.surface,
+                      color: on ? '#fff' : T.soft,
+                      border: `1px solid ${on ? T.brand : T.line}`,
+                    }}>{w.label}</button>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button onClick={() => ff('earlyShiftDays', form.earlyShiftDays.length === 7 ? [] : WEEKDAYS.map(w => w.key))}
+                className="text-xs font-semibold underline" style={{ fontFamily: F_HEAD, color: T.brand }}>
+                {form.earlyShiftDays.length === 7 ? 'Clear all' : 'Every day'}
+              </button>
+              {form.earlyShiftDays.length > 0 && (
+                <div className="flex items-center gap-2 ml-auto">
+                  <span className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Report at</span>
+                  <input type="time" value={form.earlyShiftTime || '06:00'}
+                    onChange={e => ff('earlyShiftTime', e.target.value)}
+                    className="px-2 py-1 rounded border text-xs"
+                    style={{ borderColor: T.line, fontFamily: F_MONO, color: T.ink }} />
+                </div>
+              )}
+            </div>
+            {form.earlyShiftDays.length > 0 && (
+              <div className="text-xs mt-2.5 flex items-start gap-1.5" style={{ fontFamily: F_BODY, color: T.warn }}>
+                <Clock size={12} className="mt-0.5 shrink-0" />
+                <span>On those days, arriving after {form.earlyShiftTime || '06:00'} counts as late.</span>
+              </div>
+            )}
+          </div>
 
           <div className="p-3 rounded" style={{ backgroundColor: T.bg }}>
             <Eyebrow>Personal Information</Eyebrow>

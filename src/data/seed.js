@@ -14,7 +14,7 @@ export const STAFF_INIT = [
   { id: 'EMP-010', name: 'Romelyn Villanueva', position: 'Administrative Staff', rate: 600, declaredSalary: 15600, status: 'Active', sssOn: true, phOn: true, piOn: true, mp2: 0 },
   { id: 'EMP-011', name: 'Jessa Pintor', position: 'Administrative Staff', rate: 600, declaredSalary: 15600, status: 'Active', sssOn: true, phOn: true, piOn: true, mp2: 0 },
   { id: 'EMP-012', name: 'Yesha Espinosa', position: 'Administrative Staff', rate: 600, declaredSalary: 15600, status: 'Active', sssOn: true, phOn: true, piOn: true, mp2: 0 },
-  { id: 'EMP-013', name: 'Krine', position: 'Secretary — Special 6:00 AM Shift', rate: 650, declaredSalary: 16900, status: 'Active', sssOn: true, phOn: true, piOn: true, mp2: 0 },
+  { id: 'EMP-013', name: 'Krine', position: 'Administrative Staff', rate: 650, declaredSalary: 16900, status: 'Active', sssOn: true, phOn: true, piOn: true, mp2: 0, earlyShiftDays: ['SAT'], earlyShiftTime: '06:00' },
   { id: 'EMP-014', name: 'Jerome Ylagan', position: 'Administrative Staff', rate: 550, declaredSalary: 14300, status: 'Active', sssOn: false, phOn: false, piOn: false, mp2: 0 },
 ];
 
@@ -49,10 +49,14 @@ export const ALL_DRIVERS = [...new Set(CREWS.map(c => c.driver))].sort();
 // payroll module an employee belongs to — see isCrewPosition() in lib/payroll.
 // There is deliberately no separate "employee type" field: two fields that mean
 // the same thing can disagree, and then nobody knows which one to trust.
+//
+// "Secretary — Special 6:00 AM Shift" used to sit in this list. It was never a
+// job: it was one administrative staff member reporting early on certain days.
+// That now lives on the employee record as an early-shift schedule, so one
+// person is one person regardless of what time they start.
 export const POSITIONS = [
   'Operations Head',
   'Administrative Staff',
-  'Secretary — Special 6:00 AM Shift',
   'Checker',
   'Driver',
   'Pahinante',
@@ -168,7 +172,11 @@ export const DELIVERIES_INIT = {
     { seq: null, address: '', customer: '', item: 'Steel / Wood / Plywood / Pipe / Roofing', qty: 40, unit: 'piece', d: 20, h: 20, dbl: false },
   ], kaltas: [] },
 };
-export const DRIVER_DAILY = 280, HELPER_DAILY = 480, BONUS_HEAD = 100, BONUS_TRIPS = 5;
+// Daily rates are PER PERSON. The ₱480 figure in the client's workbook covers
+// two pahinante, so one pahinante is ₱240 — and a lone helper is still ₱240,
+// not the whole ₱480. Storing the per-person number removes the need to
+// remember that division anywhere else.
+export const DRIVER_DAILY = 280, HELPER_DAILY = 240, BONUS_HEAD = 100, BONUS_TRIPS = 5;
 
 // ---- Daily Time Record data (cutoff: May 1–15, 2026) ----------------------
 // Real biometric figures for the 5 employees captured in the client's actual

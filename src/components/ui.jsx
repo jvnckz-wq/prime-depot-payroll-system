@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { X, Check } from 'lucide-react';
+// Package is the fallback icon for EmptyState when a caller doesn't pass one.
+import { X, Check, Package } from 'lucide-react';
 import { peso } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 

@@ -53,9 +53,10 @@ const STAFF = [
   ['EMP-014', 'Jerome Ylagan',        'ADMINISTRATIVE_STAFF',    550, 14300, false, false, false,  0],
 ];
 
-// Fleet. `helpers` is the crew usually seen on that truck — a prefill hint for
-// the delivery form, never an assignment. Driver and helpers are both chosen
-// per delivery.
+// Fleet, as recorded in the client's workbook. The driver and helper names in
+// each row are who happened to work that truck during the period the workbook
+// covers — they seed the employee roster, and are NOT attached to the truck.
+// Crew is chosen per delivery.
 const FLEET = [
   ['TRK-01', 'Andro',     ['Echo', 'Joven'],        'White DT6',        'NKJ3476'],
   ['TRK-02', 'Arnold',    ['Elmer', 'Perlas'],      'Blue MD',          'CBS3797'],
@@ -73,7 +74,8 @@ const FLEET = [
 ];
 
 const DRIVER_DAILY = 280;
-const HELPER_DAILY = 480;
+// Per person. The workbook's ₱480 is the figure for two pahinante.
+const HELPER_DAILY = 240;
 
 // VALUES sheet — [item, unit, driver, helper, driverDoble, helperDoble]
 const RATES = [
@@ -205,14 +207,16 @@ async function seedEmployees() {
 }
 
 async function seedFleet() {
-  for (const [id, driverName, helpers, vehicle, plate] of FLEET) {
-    const driver = await prisma.employee.findFirst({
-      where: { name: driverName, position: 'DRIVER' },
-    });
+  // Only the vehicle is seeded. The driver and helpers listed in FLEET come
+  // from the client's workbook, where each sheet happened to be named after
+  // whoever drove that truck during that period — that is a record of what
+  // happened, not an assignment, so it is used to seed the employee roster and
+  // then deliberately not attached to the truck.
+  for (const [id, , , vehicle, plate] of FLEET) {
     await prisma.truck.upsert({
       where: { id },
-      update: { vehicle, plateNumber: plate, usualDriverId: driver?.id ?? null, usualHelper1: helpers[0] ?? null, usualHelper2: helpers[1] ?? null },
-      create: { id, vehicle, plateNumber: plate, usualDriverId: driver?.id ?? null, usualHelper1: helpers[0] ?? null, usualHelper2: helpers[1] ?? null },
+      update: { vehicle, plateNumber: plate },
+      create: { id, vehicle, plateNumber: plate },
     });
   }
   console.log(`  trucks: ${FLEET.length}`);

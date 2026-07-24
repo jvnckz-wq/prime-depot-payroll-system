@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Plus, Check, Edit2, Save, Trash2 } from 'lucide-react';
+import { Plus, Check, Edit2, Save, Trash2, Copy, KeyRound, UserX, UserCheck, ShieldCheck } from 'lucide-react';
 import { Badge, Btn, Eyebrow, Field, H1, Money, Panel, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { computePagIBIG, computePhilHealth, computeSSS } from '../lib/payroll';
 import { peso } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
+import { FleetPanel } from './FleetPanel.jsx';
 
-export const SettingsView = ({ checkers, setCheckers, sssTable, setSssTable, philhealthRates, setPhilhealthRates, pagibigRates, setPagibigRates, birTable, setBirTable, toast }) => {
+export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers, setCheckers, sssTable, setSssTable, philhealthRates, setPhilhealthRates, pagibigRates, setPagibigRates, birTable, setBirTable, toast }) => {
   const [tab, setTab] = useState('statutory');
   const [editSss, setEditSss] = useState(false);
   const [sssDraft, setSssDraft] = useState(sssTable);
@@ -28,7 +29,12 @@ export const SettingsView = ({ checkers, setCheckers, sssTable, setSssTable, phi
     <div className="p-6">
       <H1 sub="Admin-editable rates. Editing these changes real payslip numbers going forward — past payslips already computed are unaffected.">Settings</H1>
       <div className="flex gap-1 mb-4 rounded-md p-0.5" style={{ backgroundColor: T.lineSoft, width: 'fit-content' }}>
-        {[['statutory', 'Statutory Deductions'], ['accounts', 'Account Access']].map(([k, l]) => (
+        {(currentUser?.role === 'ADMIN'
+          // Configuration only. Anything about a person now lives on the
+          // Account page, reached from your own name in the sidebar.
+          ? [['statutory', 'Statutory Deductions'], ['fleet', 'Fleet & Areas']]
+          : []
+        ).map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)} className="px-3 py-1.5 rounded text-xs font-semibold"
             style={{ fontFamily: F_HEAD, backgroundColor: tab === k ? T.surface : 'transparent', color: tab === k ? T.ink : T.soft }}>{l}</button>
         ))}
@@ -173,23 +179,10 @@ export const SettingsView = ({ checkers, setCheckers, sssTable, setSssTable, phi
         </div>
       )}
 
-      {tab === 'accounts' && (
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <Eyebrow>Checker Accounts</Eyebrow>
-            <Btn size="sm" icon={Plus} onClick={() => setCheckers(c => [...c, { id: 'CHK-0' + (c.length + 1), name: 'New checker', user: 'checker.new' }])}>Create Checker Account</Btn>
-          </div>
-          <Panel className="overflow-hidden">
-            <table className="w-full">
-              <thead><tr><Th>ID</Th><Th>Assignment</Th><Th>Username</Th><Th>Access</Th></tr></thead>
-              <tbody>{checkers.map(c => <tr key={c.id}><Td mono>{c.id}</Td><Td>{c.name}</Td><Td mono>{c.user}</Td><Td><Badge tone="amber">Delivery entry only</Badge></Td></tr>)}</tbody>
-            </table>
-          </Panel>
-          <p className="text-xs mt-3" style={{ fontFamily: F_BODY, color: T.soft }}>
-            Checkers cannot view salaries, personal details, or other admin pages — the backend enforces this with route-level 403s, not just hidden UI. They can log a delivery for any truck.
-          </p>
-        </div>
+      {tab === 'fleet' && currentUser?.role === 'ADMIN' && (
+        <FleetPanel toast={toast} />
       )}
+
     </div>
   );
 };

@@ -40,10 +40,25 @@ enum Role {
 enum Position {
   OPERATIONS_HEAD
   ADMINISTRATIVE_STAFF
-  SECRETARY_SPECIAL_SHIFT // 6:00 AM call time
+  /// DEPRECATED — kept only so existing rows stay valid. The early call time
+  /// turned out not to be a separate job at all: it is the same administrative
+  /// staff member reporting early on certain days. That belongs on the person
+  /// (see earlyShiftDays below), not in their job title. Not offered when
+  /// registering a new employee.
+  SECRETARY_SPECIAL_SHIFT
   CHECKER
   DRIVER
   PAHINANTE
+}
+
+enum Weekday {
+  MON
+  TUE
+  WED
+  THU
+  FRI
+  SAT
+  SUN
 }
 
 enum EmployeeStatus {
@@ -85,15 +100,53 @@ model User {
   username     String   @unique
   passwordHash String
   displayName  String
+  /// Profile picture, stored as a base64 data URL rather than a file.
+  ///
+  /// With a handful of accounts this is the pragmatic choice: no storage
+  /// service to sign up for, no extra credential to protect, no broken links
+  /// if that service goes away. The image is resized to 128px in the browser
+  /// before upload and capped server-side, so a row stays small. This would
+  /// be the wrong choice for thousands of users; it is the right one for
+  /// three.
+  avatar       String?
   role         Role     @default(CHECKER)
+  /// Disabled rather than deleted when someone leaves. Deleting the account
+  /// would orphan the record of who logged each delivery; disabling keeps the
+  /// history intact while blocking any further sign-in.
   isActive     Boolean  @default(true)
+  /// Set when an account is created or its password is reset by the admin.
+  /// The user is forced to choose their own password before doing anything
+  /// else, so a temporary password handed over verbally never stays in use.
+  mustChangePassword Boolean @default(true)
   lastLoginAt  DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   loggedDeliveries Delivery[] @relation("DeliveryLoggedBy")
+  voidedDeliveries Delivery[] @relation("DeliveryVoidedBy")
+  sessions         Session[]
 
   @@map("users")
+}
+
+/// Server-side sessions.
+///
+/// The cookie holds a random token; this table stores only its SHA-256 hash,
+/// so a database leak does not hand over usable sessions. Sessions live in the
+/// database rather than in a signed token because they must be revocable — when
+/// the admin disables an account, that person has to lose access immediately,
+/// not whenever their token happens to expire.
+model Session {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  userId     String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
 }
 
 // ============================================================================
@@ -131,6 +184,18 @@ model Employee {
   /// Needed to prorate 13th-month pay for anyone who did not work the full year.
   dateHired       DateTime?      @db.Date
 
+  /// Days this person is required to report early. Empty means no early
+  /// requirement at all; one day, several days, or all seven are equally
+  /// valid. Modelled per-person rather than as a job title because the same
+  /// administrative staff member may be early on Saturdays and normal the
+  /// rest of the week.
+  earlyShiftDays  Weekday[]
+  /// The early call time for those days, as "HH:MM" on a 24-hour clock.
+  /// Stored as text on purpose: a time of day has no date, and forcing it into
+  /// a timestamp drags a date and a timezone along with it, which is a
+  /// reliable source of off-by-one-hour bugs. Null falls back to 06:00.
+  earlyShiftTime  String?
+
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
@@ -140,7 +205,6 @@ model Employee {
   drivenDeliveries  Delivery[]   @relation("DeliveryDriver")
   helper1Deliveries Delivery[]   @relation("DeliveryHelper1")
   helper2Deliveries Delivery[]   @relation("DeliveryHelper2")
-  usualDriverOf     Truck[]      @relation("TruckUsualDriver")
 
   @@index([position])
   @@index([status])
@@ -235,20 +299,19 @@ model UnmappedLog {
 // FLEET & DELIVERIES (PAKYAWAN)
 // ============================================================================
 
-/// The fleet. `usualDriverId` and the usual helpers are only a convenience
-/// for pre-filling the delivery form — they are NOT an assignment. Nothing in
-/// the client interview says a driver is permanently tied to one truck, so
-/// the system never enforces it.
+/// The fleet — vehicles only.
+///
+/// A truck deliberately carries NO crew. Nothing in the client interview says
+/// a driver belongs to a particular truck, so the system does not record one:
+/// modelling a "usual driver" would invent a relationship the business never
+/// described, and the column alone would teach everyone the wrong idea. Who
+/// drove what is a fact of each delivery, and lives on that record.
 model Truck {
   id             String     @id // e.g. "TRK-01"
   vehicle        String // e.g. "Blue MD"
   plateNumber    String
-  usualDriverId  String?
-  usualHelper1   String?
-  usualHelper2   String?
   isActive       Boolean    @default(true)
 
-  usualDriver    Employee?  @relation("TruckUsualDriver", fields: [usualDriverId], references: [id], onDelete: SetNull)
   deliveries     Delivery[]
 
   @@map("trucks")
@@ -278,6 +341,16 @@ model Delivery {
   matchedArea  String?
 
   loggedById   String?
+
+  /// Corrections are voids, not deletions. A mistyped quantity stays visible
+  /// with the person and reason attached, so the Operations Head can see that
+  /// something was corrected and by whom — the same append-only principle the
+  /// loan ledger uses. A voided trip is excluded from earnings but never
+  /// disappears from the record.
+  voidedAt     DateTime?
+  voidedById   String?
+  voidReason   String?
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -286,11 +359,13 @@ model Delivery {
   helper1      Employee?      @relation("DeliveryHelper1", fields: [helper1Id], references: [id], onDelete: SetNull)
   helper2      Employee?      @relation("DeliveryHelper2", fields: [helper2Id], references: [id], onDelete: SetNull)
   loggedBy     User?          @relation("DeliveryLoggedBy", fields: [loggedById], references: [id], onDelete: SetNull)
+  voidedBy     User?          @relation("DeliveryVoidedBy", fields: [voidedById], references: [id], onDelete: SetNull)
   items        DeliveryItem[]
 
   @@unique([truckId, date, sequenceNo])
   @@index([date])
   @@index([driverId])
+  @@index([voidedAt])
   @@map("deliveries")
 }
 
