@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Sidebar, TopBar } from './components/Nav.jsx';
 import { Toasts } from './components/ui.jsx';
-import { ADMIN_NAV, BIR_TABLE_INIT, CHECKERS_INIT, DELIVERIES_INIT, LOANS_INIT, PAGIBIG_INIT, PHILHEALTH_INIT, RATES_INIT, SSS_TABLE_INIT, STAFF_INIT } from './data/seed';
+import { ADMIN_NAV, BIR_TABLE_INIT, CHECKERS_INIT, DELIVERIES_INIT, PAGIBIG_INIT, PHILHEALTH_INIT, RATES_INIT, SSS_TABLE_INIT, STAFF_INIT } from './data/seed';
 import { deliveriesToLog } from './lib/payroll';
 import { uid } from './lib/utils';
 import { FONTS, F_BODY, T } from './theme';
@@ -122,7 +122,26 @@ export default function PrimeDepotPayroll() {
     return () => { cancelled = true; };
   }, [user]);
 
-  const [loans, setLoans] = useState(LOANS_INIT);
+  const [loans, setLoans] = useState([]);
+  // Loans and their ledgers live in the database. Admin-only, so nothing loads
+  // until an admin is signed in; reloadLoans is reused after every grant, pause,
+  // settle, or deduction run so the ledgers always reflect the stored truth.
+  const reloadLoans = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/loans');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      setLoans(data.loans);
+    } catch (err) {
+      console.error('Could not load loans:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user || user.role !== 'ADMIN') return;
+    reloadLoans();
+  }, [user, reloadLoans]);
+
   const [checkers, setCheckers] = useState(CHECKERS_INIT);
   const [sssTable, setSssTable] = useState(SSS_TABLE_INIT);
   const [philhealthRates, setPhilhealthRates] = useState(PHILHEALTH_INIT);
@@ -142,6 +161,7 @@ export default function PrimeDepotPayroll() {
     setUser(null);
     setTab('dashboard');
     setAllStaff([]);
+    setLoans([]);
   };
 
   // Terms and Privacy are readable without signing in — someone should be able
@@ -197,9 +217,9 @@ export default function PrimeDepotPayroll() {
           {tab === 'dashboard' && <DashboardView deliveries={deliveries} staff={staff} totalEmployees={allStaff.filter(e => e.status !== 'Inactive').length} loans={loans} statutory={statutory} setTab={setTab} />}
           {tab === 'employees' && <EmployeesView staff={allStaff} reloadStaff={reloadStaff} toast={toast} />}
           {tab === 'attendance' && <AttendanceView staff={staff} toast={toast} />}
-          {tab === 'truck' && <TruckPayrollView deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} loans={loans} setLoans={setLoans} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} toast={toast} />}
-          {tab === 'staff' && <StaffPayrollView staff={staff} loans={loans} setLoans={setLoans} statutory={statutory} toast={toast} />}
-          {tab === 'loans' && <LoansView staff={allStaff} loans={loans} setLoans={setLoans} toast={toast} />}
+          {tab === 'truck' && <TruckPayrollView deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} loans={loans} reloadLoans={reloadLoans} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} toast={toast} />}
+          {tab === 'staff' && <StaffPayrollView staff={staff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} toast={toast} />}
+          {tab === 'loans' && <LoansView staff={allStaff} loans={loans} reloadLoans={reloadLoans} toast={toast} />}
           {tab === 'reports' && <ReportsView staff={staff} deliveries={deliveries} loans={loans} statutory={statutory} />}
           {tab === 'account' && (
             <AccountPage

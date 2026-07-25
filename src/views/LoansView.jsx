@@ -4,34 +4,58 @@ import React, { useState, useMemo } from 'react';
 import { Plus, Pause, Play, Check, Save } from 'lucide-react';
 import { Av, Badge, Btn, Eyebrow, Field, H1, Modal, Money, Panel, ProgressBar, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { loanBalance, loanLedger } from '../lib/payroll';
-import { peso, todayLabel, uid } from '../lib/utils';
+import { peso } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
-const BLANK_LOAN = { person: '', role: '', type: 'Cash Advance (Bali)', principal: '', perCutoff: '', date: '' };
+const BLANK_LOAN = { person: '', type: 'Cash Advance (Bali)', principal: '', perCutoff: '', date: '' };
 
-export const LoansView = ({ staff, loans, setLoans, toast }) => {
+export const LoansView = ({ staff, loans, reloadLoans, toast }) => {
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(BLANK_LOAN);
+  const [busy, setBusy] = useState(false);
   const ff = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const people = useMemo(() => staff.map(s => s.name), [staff]);
 
-  const addLoan = () => {
+  const addLoan = async () => {
     if (!form.person || !form.principal) { toast('Person and amount are required.', 'error'); return; }
-    const principal = parseFloat(form.principal) || 0;
-    const grantDate = form.date ? new Date(form.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : todayLabel();
-    setLoans(l => [...l, { id: 'LN-' + uid(), person: form.person, role: form.role || '—', type: form.type, principal, perCutoff: parseFloat(form.perCutoff) || principal, paused: false, entries: [{ date: grantDate, type: 'grant', amount: principal, remark: 'Granted' }] }]);
-    toast('Loan / advance added.');
-    setModal(false); setForm(BLANK_LOAN);
+    setBusy(true);
+    try {
+      const res = await fetch('/api/loans', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ person: form.person, type: form.type, principal: form.principal, perCutoff: form.perCutoff, date: form.date }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast(data.error || 'Could not add the loan.', 'error'); return; }
+      toast('Loan / advance added.');
+      setModal(false); setForm(BLANK_LOAN);
+      await reloadLoans();
+    } catch { toast('Could not reach the server.', 'error'); }
+    finally { setBusy(false); }
   };
-  const togglePause = (id) => setLoans(l => l.map(x => x.id === id ? { ...x, paused: !x.paused } : x));
-  const markPaid = (id) => {
-    setLoans(l => l.map(x => {
-      if (x.id !== id) return x;
-      const remaining = loanBalance(x);
-      if (remaining <= 0) return x;
-      return { ...x, entries: [...x.entries, { date: todayLabel(), type: 'deduction', amount: remaining, remark: 'Marked fully paid — remaining balance cleared' }] };
-    }));
-    toast('Loan marked as fully paid.');
+
+  const togglePause = async (l) => {
+    try {
+      const res = await fetch(`/api/loans/${l.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPaused: !l.paused }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast(data.error || 'Could not update the loan.', 'error'); return; }
+      await reloadLoans();
+    } catch { toast('Could not reach the server.', 'error'); }
+  };
+
+  const markPaid = async (l) => {
+    try {
+      const res = await fetch(`/api/loans/${l.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settle: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast(data.error || 'Could not update the loan.', 'error'); return; }
+      toast('Loan marked as fully paid.');
+      await reloadLoans();
+    } catch { toast('Could not reach the server.', 'error'); }
   };
 
   return (
@@ -65,11 +89,11 @@ export const LoansView = ({ staff, loans, setLoans, toast }) => {
                   </div>
                   {!paid && (
                     <div className="flex gap-2">
-                      <button onClick={() => togglePause(l.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold"
+                      <button onClick={() => togglePause(l)} className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold"
                         style={{ fontFamily: F_HEAD, backgroundColor: l.paused ? T.greenBg : T.amberBg, color: l.paused ? T.green : T.amber }}>
                         {l.paused ? <Play size={12} /> : <Pause size={12} />} {l.paused ? 'Resume' : 'Pause'}
                       </button>
-                      <button onClick={() => markPaid(l.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold" style={{ fontFamily: F_HEAD, backgroundColor: T.lineSoft, color: T.ink }}>
+                      <button onClick={() => markPaid(l)} className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold" style={{ fontFamily: F_HEAD, backgroundColor: T.lineSoft, color: T.ink }}>
                         <Check size={12} /> Mark Paid
                       </button>
                     </div>
@@ -100,7 +124,6 @@ export const LoansView = ({ staff, loans, setLoans, toast }) => {
             <input list="people-list" value={form.person} onChange={e => ff('person', e.target.value)} placeholder="Start typing a name…" className={inputCls} style={inputStyle} />
             <datalist id="people-list">{people.map((p, i) => <option key={p + '-' + i} value={p} />)}</datalist>
           </Field>
-          <Field label="Role / Assignment"><input value={form.role} onChange={e => ff('role', e.target.value)} placeholder="e.g. Driver · TRK-04" className={inputCls} style={inputStyle} /></Field>
           <Field label="Type">
             <select value={form.type} onChange={e => ff('type', e.target.value)} className={inputCls} style={inputStyle}>
               {['Cash Advance (Bali)', 'Cash Advance', 'School Allowance', 'SSS Salary Loan', 'Pag-IBIG Multi-Purpose Loan', 'Company Cash Advance'].map(t => <option key={t}>{t}</option>)}
@@ -112,8 +135,8 @@ export const LoansView = ({ staff, loans, setLoans, toast }) => {
           </div>
           <Field label="Date granted"><input type="date" value={form.date} onChange={e => ff('date', e.target.value)} className={inputCls} style={inputStyle} /></Field>
           <div className="flex justify-end gap-2 pt-1">
-            <Btn variant="outline" onClick={() => setModal(false)}>Cancel</Btn>
-            <Btn icon={Save} onClick={addLoan}>Add</Btn>
+            <Btn variant="outline" onClick={() => setModal(false)} disabled={busy}>Cancel</Btn>
+            <Btn icon={Save} onClick={addLoan} disabled={busy}>{busy ? 'Saving…' : 'Add'}</Btn>
           </div>
         </div>
       </Modal>

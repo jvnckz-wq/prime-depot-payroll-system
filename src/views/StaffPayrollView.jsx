@@ -5,10 +5,10 @@ import { Users, Wallet, ArrowLeft, Printer, Eye } from 'lucide-react';
 import { Av, Badge, Btn, Confirm, Eyebrow, H1, Money, Panel, StatCard, Td, Th } from '../components/ui.jsx';
 import { CUTOFF_LABEL } from '../data/seed';
 import { computePagIBIG, computeStaffPayroll, loanBalance } from '../lib/payroll';
-import { peso, todayLabel } from '../lib/utils';
+import { peso } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
-export const StaffPayrollView = ({ staff, loans, setLoans, statutory, toast }) => {
+export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast }) => {
   const [view, setView] = useState('list');
   const [selectedId, setSelectedId] = useState(null);
   const [subTab, setSubTab] = useState('current');
@@ -23,15 +23,26 @@ export const StaffPayrollView = ({ staff, loans, setLoans, statutory, toast }) =
   // these are the ones "Apply Cutoff Deductions" will actually touch.
   const dueLoans = loans.filter(l => staff.some(s => s.name === l.person) && !l.paused && loanBalance(l) > 0);
   const dueTotal = dueLoans.reduce((s, l) => s + Math.min(l.perCutoff, loanBalance(l)), 0);
-  const applyDeductions = () => {
-    setLoans(prev => prev.map(l => {
-      if (!dueLoans.some(d => d.id === l.id)) return l;
-      const amt = Math.min(l.perCutoff, loanBalance(l));
-      if (amt <= 0) return l;
-      return { ...l, entries: [...l.entries, { date: todayLabel(), type: 'deduction', amount: amt, remark: `Payroll deduction — ${CUTOFF_LABEL} cutoff` }] };
-    }));
-    toast(`Applied ${peso(dueTotal)} in loan deductions across ${dueLoans.length} loan(s).`);
+  const applyDeductions = async () => {
     setConfirmApply(false);
+    // Per-cutoff run key: applying the same cutoff again is a no-op server-side.
+    const runKey = `staff-${CUTOFF_LABEL}`;
+    try {
+      const res = await fetch('/api/loans/apply-deductions', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scope: 'staff', runKey }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast(data.error || 'Could not apply deductions.', 'error'); return; }
+      if (data.applied === 0) {
+        toast(data.skipped ? `Deductions were already applied for the ${CUTOFF_LABEL} cutoff.` : 'No staff loans were due.');
+      } else {
+        toast(`Applied ${peso(data.total)} across ${data.applied} loan(s).`);
+      }
+      await reloadLoans();
+    } catch {
+      toast('Could not reach the server.', 'error');
+    }
   };
 
   if (view === 'slip' && selectedId) {
