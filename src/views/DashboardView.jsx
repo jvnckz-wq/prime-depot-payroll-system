@@ -4,13 +4,13 @@ import React, { useMemo } from 'react';
 import { Users, Truck, Wallet, FileText, AlertTriangle, TrendingUp } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Av, Eyebrow, H1, Panel, StatCard, Td, Th } from '../components/ui.jsx';
-import { CREWS, CUTOFF_LABEL, PAYROLL_TREND } from '../data/seed';
+import { CUTOFF_LABEL, PAYROLL_TREND } from '../data/seed';
 import { genAttendanceHistory } from '../lib/attendance';
 import { computeStaffPayroll, flattenDeliveries, loanBalance } from '../lib/payroll';
 import { peso } from '../lib/utils';
 import { F_BODY, T } from '../theme';
 
-export const DashboardView = ({ deliveries, staff = [], loans = [], statutory, setTab }) => {
+export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loans = [], statutory, setTab }) => {
   const loggedToday = Object.keys(deliveries).length;
   const deliveriesLogged = useMemo(() => flattenDeliveries(deliveries).length, [deliveries]);
 
@@ -53,7 +53,7 @@ export const DashboardView = ({ deliveries, staff = [], loans = [], statutory, s
       {/* Top row: 4 stat cards + Attention Needed, mirroring the approved layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <div className="lg:col-span-2 grid grid-cols-2 gap-4">
-          <StatCard label="Total Employees" value={staff.length + CREWS.length * 3} icon={Users} />
+          <StatCard label="Total Employees" value={totalEmployees} icon={Users} />
           <StatCard label="Net Pay This Cutoff" value={peso(netThisCutoff)} tone="amber" icon={Wallet} />
           <StatCard label="Deliveries Logged" value={deliveriesLogged} tone="green" icon={Truck} />
           <StatCard label="Active Loans & Advances" value={peso(activeLoans)} tone="amber" icon={FileText} />

@@ -25,6 +25,13 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
     return () => { cancelled = true; };
   }, []);
 
+  // Trucks may arrive from the database a moment after this form mounts — the
+  // Checker page renders it inline, not in a modal. Once they land, select the
+  // first truck so the dropdown is never left blank.
+  useEffect(() => {
+    if (!fixedCrewId && !crewId && crews.length) setCrewId(crews[0].id);
+  }, [crews, fixedCrewId, crewId]);
+
   const [address, setAddress] = useState('');
   const [customer, setCustomer] = useState('');
   const [dbl, setDbl] = useState(false);

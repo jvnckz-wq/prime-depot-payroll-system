@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Truck, LogOut, ShieldCheck, Save, Star } from 'lucide-react';
 import { DeliveryForm } from '../components/DeliveryForm.jsx';
 import { Av, Badge, BigStat, Btn, EmptyState, Eyebrow, Field, Panel, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
-import { BONUS_TRIPS, CREWS } from '../data/seed';
+import { BONUS_TRIPS } from '../data/seed';
 import { flattenDeliveries } from '../lib/payroll';
 import { peso } from '../lib/utils';
 import { FONTS, F_BODY, F_HEAD, T } from '../theme';
@@ -12,6 +12,19 @@ import { AccountPage } from './AccountPage.jsx';
 
 export const CheckerView = ({ currentUser, onUserChange, onSignedOut, deliveries, setDeliveries, reloadDeliveries, rates, onLogout, toast }) => {
   const [page, setPage] = useState('log');
+
+  // The delivery form needs the fleet list to pick which truck a delivery is
+  // for. Crew (driver/pahinante) are chosen inside the form from /api/crew, per
+  // delivery — nothing here ties a person to a truck.
+  const [trucks, setTrucks] = useState([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/trucks')
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+      .then(data => { if (!cancelled) setTrucks(data.trucks.filter(t => t.isActive)); })
+      .catch(err => console.error('Could not load trucks:', err));
+    return () => { cancelled = true; };
+  }, []);
 
   // Logging writes straight to the database. The trip number, the frozen peso
   // amounts, and the record of who entered it are all decided server-side —
@@ -34,9 +47,8 @@ export const CheckerView = ({ currentUser, onUserChange, onSignedOut, deliveries
 
   const allTrips = useMemo(() => flattenDeliveries(deliveries), [deliveries]);
   const trucksActive = new Set(allTrips.map(t => t.crewId)).size;
-  const bonusTrucks = CREWS.filter(c => {
-    const log = deliveries[c.id];
-    const tc = log ? new Set(log.items.map(i => i.seq).filter(Boolean)).size : 0;
+  const bonusTrucks = Object.values(deliveries).filter(log => {
+    const tc = new Set((log.items || []).map(i => i.seq).filter(Boolean)).size;
     return tc >= BONUS_TRIPS;
   }).length;
 
@@ -82,7 +94,7 @@ export const CheckerView = ({ currentUser, onUserChange, onSignedOut, deliveries
             <Panel className="p-4 mb-4">
               <Eyebrow>New Delivery</Eyebrow>
               <div className="text-xs mb-3" style={{ fontFamily: F_BODY, color: T.soft }}>Pick the truck this delivery is for — you can log for any crew, and swap a helper if needed.</div>
-              <DeliveryForm crews={CREWS} rates={rates} onSubmit={logDelivery} />
+              <DeliveryForm crews={trucks} rates={rates} onSubmit={logDelivery} />
             </Panel>
 
             <Panel className="overflow-hidden">
@@ -96,13 +108,12 @@ export const CheckerView = ({ currentUser, onUserChange, onSignedOut, deliveries
                   <table className="w-full">
                     <thead><tr><Th>Date</Th><Th>Truck</Th><Th>Driver</Th><Th>Pahinante</Th><Th>Address</Th><Th right>Driver Earn</Th><Th>Trip</Th></tr></thead>
                     <tbody>{allTrips.slice().reverse().map((t, i) => {
-                      const crew = CREWS.find(c => c.id === t.crewId);
                       const isBonusTrip = t.seq >= BONUS_TRIPS;
                       return (
                         <tr key={i} style={{ backgroundColor: isBonusTrip ? '#FBF0DE' : 'transparent' }}>
                           <Td mono>{t.date}</Td>
                           <Td mono>{t.crewId}</Td>
-                          <Td>{crew?.driver || '—'}</Td>
+                          <Td>{t.driver || '—'}</Td>
                           <Td>{t.helpers?.length ? <span className="flex items-center gap-1.5">{t.helpers.join(' & ')}{t.swap && <Badge tone="amber">SUB</Badge>}</span> : '—'}</Td>
                           <Td>{t.address}</Td>
                           <Td right mono>{peso(t.d)}</Td>

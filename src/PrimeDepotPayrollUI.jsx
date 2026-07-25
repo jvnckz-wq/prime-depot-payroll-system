@@ -33,8 +33,14 @@ export default function PrimeDepotPayroll() {
   // seed list is kept only as a fallback so the UI still renders if the API is
   // unreachable — a payroll screen that silently shows nothing is worse than
   // one that shows stale reference data with an error toast.
-  const [staff, setStaff] = useState([]);
+  // The full roster from the database — office staff AND crew. Kept whole here;
+  // the payroll-facing views take the office subset below.
+  const [allStaff, setAllStaff] = useState([]);
   const [staffLoading, setStaffLoading] = useState(true);
+  // Office staff only. Crew are paid through Truck Payroll (pakyawan), so Staff
+  // Payroll, Attendance, Loans, and the dashboard's payroll math must exclude
+  // them. The Employees module and the headcount use the full roster instead.
+  const staff = React.useMemo(() => allStaff.filter((e) => !e.crew), [allStaff]);
 
   // Restore the session on load, so a refresh doesn't sign anyone out.
   useEffect(() => {
@@ -46,26 +52,29 @@ export default function PrimeDepotPayroll() {
     return () => { cancelled = true; };
   }, []);
 
+  // Employee data is admin-only, so there is nothing to fetch until an admin is
+  // signed in. Extracted into a callback so a register or edit can refresh the
+  // list the same way — one source of truth, straight from the database.
+  const reloadStaff = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/employees');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      setAllStaff(data.employees);
+    } catch (err) {
+      console.error('Could not load employees:', err);
+      // Keep whatever is already on screen; only fall back to the seed if the
+      // very first load failed and the list would otherwise be empty.
+      setAllStaff((prev) => (prev.length ? prev : STAFF_INIT));
+    } finally {
+      setStaffLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    // Employee data is admin-only, so there is nothing to fetch until an admin
-    // is actually signed in.
     if (!user || user.role !== 'ADMIN') return;
-    let cancelled = false;
-    fetch('/api/employees')
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
-      .then((data) => {
-        if (cancelled) return;
-        setStaff(data.employees.filter((e) => !e.crew));
-        setStaffLoading(false);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        console.error('Could not load employees:', err);
-        setStaff(STAFF_INIT);
-        setStaffLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, [user]);
+    reloadStaff();
+  }, [user, reloadStaff]);
 
   // Deliveries come from the database. The seed stays as a fallback for the
   // same reason the employee list does: a payroll screen showing nothing is
@@ -74,7 +83,12 @@ export default function PrimeDepotPayroll() {
 
   const reloadDeliveries = React.useCallback(async () => {
     try {
-      const res = await fetch('/api/deliveries');
+      // Live views show today only. "Today" is the server's date — the same
+      // basis a freshly logged delivery is stored under — so a delivery logged
+      // now always appears, and a brand-new day starts empty until the first
+      // trip is logged. Past days live in Truck Payroll's History.
+      const today = new Date().toISOString().slice(0, 10);
+      const res = await fetch(`/api/deliveries?from=${today}&to=${today}`);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       setDeliveries(deliveriesToLog(data.deliveries));
@@ -127,7 +141,7 @@ export default function PrimeDepotPayroll() {
     try { await fetch('/api/auth/logout', { method: 'POST' }); } catch { /* sign out locally regardless */ }
     setUser(null);
     setTab('dashboard');
-    setStaff([]);
+    setAllStaff([]);
   };
 
   // Terms and Privacy are readable without signing in — someone should be able
@@ -180,12 +194,12 @@ export default function PrimeDepotPayroll() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <TopBar title={titles[tab]} role={user.displayName} cutoff="May 01–15" />
         <div className="flex-1 overflow-y-auto">
-          {tab === 'dashboard' && <DashboardView deliveries={deliveries} staff={staff} loans={loans} statutory={statutory} setTab={setTab} />}
-          {tab === 'employees' && <EmployeesView staff={staff} setStaff={setStaff} toast={toast} />}
+          {tab === 'dashboard' && <DashboardView deliveries={deliveries} staff={staff} totalEmployees={allStaff.filter(e => e.status !== 'Inactive').length} loans={loans} statutory={statutory} setTab={setTab} />}
+          {tab === 'employees' && <EmployeesView staff={allStaff} reloadStaff={reloadStaff} toast={toast} />}
           {tab === 'attendance' && <AttendanceView staff={staff} toast={toast} />}
-          {tab === 'truck' && <TruckPayrollView deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} loans={loans} setLoans={setLoans} toast={toast} />}
+          {tab === 'truck' && <TruckPayrollView deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} loans={loans} setLoans={setLoans} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} toast={toast} />}
           {tab === 'staff' && <StaffPayrollView staff={staff} loans={loans} setLoans={setLoans} statutory={statutory} toast={toast} />}
-          {tab === 'loans' && <LoansView staff={staff} loans={loans} setLoans={setLoans} toast={toast} />}
+          {tab === 'loans' && <LoansView staff={allStaff} loans={loans} setLoans={setLoans} toast={toast} />}
           {tab === 'reports' && <ReportsView staff={staff} deliveries={deliveries} loans={loans} statutory={statutory} />}
           {tab === 'account' && (
             <AccountPage

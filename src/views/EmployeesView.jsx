@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { Search, Edit2, Save, UserPlus, Truck, Clock } from 'lucide-react';
 import { Av, Badge, Btn, Confirm, Eyebrow, Field, H1, Modal, Money, Panel, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
-import { CREWS, POSITIONS } from '../data/seed';
+import { POSITIONS } from '../data/seed';
 import { isCrewPosition } from '../lib/payroll';
 import { WEEKDAYS, describeEarlyShift } from '../lib/attendance';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
@@ -20,35 +20,31 @@ const BLANK_EMP = {
   earlyShiftDays: [], earlyShiftTime: '06:00',
 };
 
-export const EmployeesView = ({ staff, setStaff, toast }) => {
+export const EmployeesView = ({ staff, reloadStaff, toast }) => {
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState('active');
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(BLANK_EMP);
   const [confirm, setConfirm] = useState(null);
+  const [busy, setBusy] = useState(false);
   const ff = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  const crewRows = useMemo(() => [
-    ...CREWS.map(c => ({ id: c.id + '-D', name: c.driver, position: 'Driver', rate: 800, status: 'Active', crew: true })),
-    ...CREWS.flatMap(c => c.helpers.filter(h => h !== '—').map((h, j) => ({ id: c.id + '-H' + j, name: h, position: 'Pahinante (Helper)', rate: 240, status: 'Active', crew: true }))),
-  ], []);
-
-  const rows = useMemo(() => [...staff, ...crewRows]
+  // Every row comes from the database now — office staff and crew alike. The old
+  // hardcoded crew rows are gone: crew are real employee records, registered and
+  // edited right here. Their pay is still computed in Truck Payroll (pakyawan).
+  const rows = useMemo(() => staff
     .filter(r => r.name.toLowerCase().includes(q.toLowerCase()))
     .filter(r => statusFilter === 'all'
       || (statusFilter === 'active' && r.status !== 'Inactive')
       || (statusFilter === 'inactive' && r.status === 'Inactive')),
-    [staff, crewRows, q, statusFilter]);
+    [staff, q, statusFilter]);
 
-  const counts = useMemo(() => {
-    const all = [...staff, ...crewRows];
-    return {
-      all: all.length,
-      active: all.filter(r => r.status !== 'Inactive').length,
-      inactive: all.filter(r => r.status === 'Inactive').length,
-    };
-  }, [staff, crewRows]);
+  const counts = useMemo(() => ({
+    all: staff.length,
+    active: staff.filter(r => r.status !== 'Inactive').length,
+    inactive: staff.filter(r => r.status === 'Inactive').length,
+  }), [staff]);
 
   const toggleShiftDay = (key) => setForm(f => ({
     ...f,
@@ -61,31 +57,69 @@ export const EmployeesView = ({ staff, setStaff, toast }) => {
   // invent one, but the field stays editable because the ID has to match the
   // number the biometric scanner exports for that employee.
   const suggestId = () => {
-    const nums = staff.map(s => parseInt(String(s.id).replace(/\D/g, ''), 10)).filter(n => !isNaN(n));
+    const nums = staff
+      .filter(s => /^EMP/i.test(String(s.id)))
+      .map(s => parseInt(String(s.id).replace(/\D/g, ''), 10))
+      .filter(n => !isNaN(n));
     return 'EMP-' + String((nums.length ? Math.max(...nums) : 0) + 1).padStart(3, '0');
   };
 
   const openAdd = () => { setEditing(null); setForm({ ...BLANK_EMP, id: suggestId() }); setModal(true); };
   const openEdit = (r) => { setEditing(r); setForm({ ...BLANK_EMP, ...r, rate: String(r.rate), declaredSalary: String(r.declaredSalary || '') }); setModal(true); };
-  const save = () => {
+  const save = async () => {
+    // Instant, friendly checks. The server validates authoritatively too — this
+    // just saves a round-trip on the obvious mistakes.
     if (!form.id.trim()) { toast('ID number is required — it links this employee to the biometric logs.', 'error'); return; }
     if (!form.name.trim()) { toast('Name is required.', 'error'); return; }
     const dupe = staff.some(s => String(s.id).toLowerCase() === form.id.trim().toLowerCase() && (!editing || s.id !== editing.id));
     if (dupe) { toast(`ID ${form.id.trim()} is already used by another employee.`, 'error'); return; }
-    const data = { ...form, id: form.id.trim(), rate: parseFloat(form.rate) || 0, declaredSalary: parseFloat(form.declaredSalary) || 0, mp2: parseFloat(form.mp2) || 0 };
-    if (editing) {
-      setStaff(list => list.map(s => s.id === editing.id ? { ...s, ...data } : s));
-      toast('Employee updated.');
-    } else {
-      setStaff(list => [...list, data]);
-      toast('Employee registered.');
+
+    // Hand the server named fields only — never the whole form object.
+    const payload = {
+      id: form.id.trim(), name: form.name.trim(), position: form.position,
+      rate: parseFloat(form.rate) || 0, declaredSalary: parseFloat(form.declaredSalary) || 0,
+      mp2: parseFloat(form.mp2) || 0, status: form.status,
+      sssOn: form.sssOn, phOn: form.phOn, piOn: form.piOn,
+      address: form.address, contact: form.contact,
+      birthdate: form.birthdate, dateHired: form.dateHired,
+      earlyShiftDays: form.earlyShiftDays, earlyShiftTime: form.earlyShiftTime,
+    };
+
+    setBusy(true);
+    try {
+      // Edit targets the existing ID in the URL; the ID is fixed once set, so it
+      // is never renamed through the body.
+      const res = await fetch(editing ? `/api/employees/${encodeURIComponent(editing.id)}` : '/api/employees', {
+        method: editing ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast(data.error || 'Could not save the employee.', 'error'); return; }
+      setModal(false);
+      toast(editing ? 'Employee updated.' : 'Employee registered.');
+      await reloadStaff();
+    } catch {
+      toast('Could not reach the server.', 'error');
+    } finally {
+      setBusy(false);
     }
-    setModal(false);
   };
-  const toggleStatus = (r) => {
-    setStaff(list => list.map(s => s.id === r.id ? { ...s, status: s.status === 'Active' ? 'Inactive' : 'Active' } : s));
-    toast(`${r.name} marked ${r.status === 'Active' ? 'inactive' : 'active'}.`);
+  const toggleStatus = async (r) => {
     setConfirm(null);
+    try {
+      const res = await fetch(`/api/employees/${encodeURIComponent(r.id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: r.status === 'Active' ? 'Inactive' : 'Active' }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast(data.error || 'Could not update the employee.', 'error'); return; }
+      toast(`${r.name} marked ${r.status === 'Active' ? 'inactive' : 'active'}.`);
+      await reloadStaff();
+    } catch {
+      toast('Could not reach the server.', 'error');
+    }
   };
 
   return (
@@ -146,12 +180,10 @@ export const EmployeesView = ({ staff, setStaff, toast }) => {
                   <Td right mono><Money value={r.rate} /></Td>
                   <Td><Badge tone={r.status === 'Active' ? 'green' : 'neutral'}>{r.status}</Badge></Td>
                   <Td>
-                    {r.crew ? <span className="text-xs" style={{ color: T.soft, fontFamily: F_BODY }}>Managed via Truck Payroll</span> : (
-                      <div className="flex gap-3">
-                        <button onClick={() => openEdit(r)} className="text-xs font-semibold flex items-center gap-1" style={{ fontFamily: F_HEAD, color: T.brand }}><Edit2 size={11} /> Edit</button>
-                        <button onClick={() => setConfirm(r)} className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.soft }}>{r.status === 'Active' ? 'Deactivate' : 'Activate'}</button>
-                      </div>
-                    )}
+                    <div className="flex gap-3">
+                      <button onClick={() => openEdit(r)} className="text-xs font-semibold flex items-center gap-1" style={{ fontFamily: F_HEAD, color: T.brand }}><Edit2 size={11} /> Edit</button>
+                      <button onClick={() => setConfirm(r)} className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.soft }}>{r.status === 'Active' ? 'Deactivate' : 'Activate'}</button>
+                    </div>
                   </Td>
                 </tr>
               ))}
@@ -271,8 +303,8 @@ export const EmployeesView = ({ staff, setStaff, toast }) => {
             <Field label="Pag-IBIG MP2 (₱/cutoff)"><input type="number" value={form.mp2} onChange={e => ff('mp2', e.target.value)} className={inputCls} style={inputStyle} /></Field>
           </div>
           <div className="flex justify-end gap-2 pt-1">
-            <Btn variant="outline" onClick={() => setModal(false)}>Cancel</Btn>
-            <Btn icon={Save} onClick={save}>{editing ? 'Save changes' : 'Register'}</Btn>
+            <Btn variant="outline" onClick={() => setModal(false)} disabled={busy}>Cancel</Btn>
+            <Btn icon={Save} onClick={save} disabled={busy}>{busy ? 'Saving…' : editing ? 'Save changes' : 'Register'}</Btn>
           </div>
         </div>
       </Modal>

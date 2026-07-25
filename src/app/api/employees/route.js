@@ -1,23 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../lib/prisma';
 import { requireAdmin } from '../../../lib/auth';
-
-// Database enum -> the label the UI already displays. Keeping the mapping here
-// means the views don't need to know the database uses enums at all.
-const POSITION_LABEL = {
-  OPERATIONS_HEAD: 'Operations Head',
-  ADMINISTRATIVE_STAFF: 'Administrative Staff',
-  // Deprecated: shown as ordinary administrative staff. The early call time is
-  // now recorded per person on earlyShiftDays rather than in the job title.
-  SECRETARY_SPECIAL_SHIFT: 'Administrative Staff',
-  CHECKER: 'Checker',
-  DRIVER: 'Driver',
-  PAHINANTE: 'Pahinante',
-};
-
-// Prisma returns Decimal objects, which don't survive JSON.stringify as
-// numbers. Everything crossing this boundary is converted once, here.
-const num = (d) => (d == null ? 0 : Number(d));
+import { buildEmployeeData, shapeEmployee } from '../../../lib/employees';
 
 export async function GET() {
   // Employee records — including addresses, contact numbers, and birthdates —
@@ -27,40 +11,43 @@ export async function GET() {
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   try {
-    const rows = await prisma.employee.findMany({
-      orderBy: { id: 'asc' },
-    });
-
-    const employees = rows.map((e) => ({
-      id: e.id,
-      name: e.name,
-      position: POSITION_LABEL[e.position] ?? e.position,
-      rate: num(e.dailyRate),
-      declaredSalary: num(e.declaredSalary),
-      status: e.status === 'ACTIVE' ? 'Active' : 'Inactive',
-      sssOn: e.sssEnrolled,
-      phOn: e.philhealthEnrolled,
-      piOn: e.pagibigEnrolled,
-      mp2: num(e.mp2Amount),
-      address: e.address ?? '',
-      contact: e.contactNumber ?? '',
-      birthdate: e.birthdate ? e.birthdate.toISOString().slice(0, 10) : '',
-      dateHired: e.dateHired ? e.dateHired.toISOString().slice(0, 10) : '',
-      // Which days this person reports early, and at what time. Empty means no
-      // early requirement — see callTimeFor() for how this drives tardiness.
-      earlyShiftDays: e.earlyShiftDays ?? [],
-      earlyShiftTime: e.earlyShiftTime ?? '06:00',
-      // Crew are paid through Truck Payroll, so the Employees table shows them
-      // as reference rows rather than editable staff-payroll records.
-      crew: e.position === 'DRIVER' || e.position === 'PAHINANTE',
-    }));
-
-    return NextResponse.json({ employees });
+    const rows = await prisma.employee.findMany({ orderBy: { id: 'asc' } });
+    return NextResponse.json({ employees: rows.map(shapeEmployee) });
   } catch (err) {
     console.error('GET /api/employees failed:', err);
-    return NextResponse.json(
-      { error: 'Could not load employees.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Could not load employees.' }, { status: 500 });
+  }
+}
+
+// Registering an employee is an Operations Head action.
+export async function POST(request) {
+  const auth = await requireAdmin();
+  if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
+  try {
+    const body = await request.json();
+
+    // The ID is the link to the biometric scanner: required, and set once here.
+    // It is never changed afterward (see the PATCH route).
+    const id = typeof body.id === 'string' ? body.id.trim() : '';
+    if (!id) {
+      return NextResponse.json(
+        { error: 'ID number is required — it links this employee to the biometric logs.' },
+        { status: 400 }
+      );
+    }
+
+    const built = buildEmployeeData(body, { partial: false });
+    if (built.error) return NextResponse.json({ error: built.error }, { status: 400 });
+
+    if (await prisma.employee.findUnique({ where: { id } })) {
+      return NextResponse.json({ error: `ID ${id} is already used by another employee.` }, { status: 409 });
+    }
+
+    const employee = await prisma.employee.create({ data: { id, ...built.data } });
+    return NextResponse.json({ employee: shapeEmployee(employee) });
+  } catch (err) {
+    console.error('POST /api/employees failed:', err);
+    return NextResponse.json({ error: 'Could not register the employee.' }, { status: 500 });
   }
 }

@@ -1,15 +1,60 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AlertTriangle, Check, Download } from 'lucide-react';
 import { Badge, Btn, EmptyState, Eyebrow, H1, Panel, Td, Th } from '../components/ui.jsx';
 import { BONUS_HEAD, BONUS_TRIPS, DRIVER_DAILY, HELPER_DAILY } from '../data/seed';
-import { computePagIBIG, computePhilHealth, computeSSS, crewEarnings } from '../lib/payroll';
+import { computePagIBIG, computePhilHealth, computeSSS, crewEarnings, deliveriesToLog } from '../lib/payroll';
 import { exportXLSX, peso } from '../lib/utils';
-import { F_BODY, F_HEAD, T } from '../theme';
+import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
+
+// Crew earnings over a date range. crewEarnings is built for a single day (one
+// date per truck), so a range is handled the safe way: split the raw rows by
+// date, run the shared per-day function on each, then merge the per-person
+// results. Reusing crewEarnings unchanged keeps this in step with the truck
+// payslips and the manifest.
+function crewEarningsRange(apiDeliveries) {
+  const byDate = {};
+  for (const d of apiDeliveries) (byDate[d.date] ||= []).push(d);
+  const merged = new Map();
+  for (const rows of Object.values(byDate)) {
+    const day = crewEarnings(deliveriesToLog(rows), {
+      driverDaily: DRIVER_DAILY, helperDaily: HELPER_DAILY,
+      bonusHead: BONUS_HEAD, bonusTrips: BONUS_TRIPS,
+    });
+    for (const p of day) {
+      if (!merged.has(p.name)) merged.set(p.name, { name: p.name, role: p.role, trips: 0, days: 0, trucks: new Set(), pieceRate: 0, dailyRate: 0, bonus: 0, total: 0 });
+      const m = merged.get(p.name);
+      m.trips += p.trips; m.days += p.days; m.pieceRate += p.pieceRate;
+      m.dailyRate += p.dailyRate; m.bonus += p.bonus; m.total += p.total;
+      p.trucks.forEach(t => m.trucks.add(t));
+    }
+  }
+  return [...merged.values()]
+    .map(m => ({ ...m, trucks: [...m.trucks].sort(), pieceRate: +m.pieceRate.toFixed(2), total: +m.total.toFixed(2) }))
+    .sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === 'Driver' ? -1 : 1));
+}
 
 export const ReportsView = ({ staff, deliveries, loans, statutory }) => {
   const [tab, setTab] = useState('register');
+
+  // Crew Earnings has its own date range — a day, a week, or any span — fetched
+  // independently of the "today only" live feed the rest of the app uses.
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const [from, setFrom] = useState(todayStr);
+  const [to, setTo] = useState(todayStr);
+  const [rangeApi, setRangeApi] = useState([]);
+  const [loadingRange, setLoadingRange] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingRange(true);
+    fetch(`/api/deliveries?from=${from}&to=${to}`)
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+      .then(data => { if (!cancelled) setRangeApi(data.deliveries || []); })
+      .catch(err => console.error('Could not load crew earnings range:', err))
+      .finally(() => { if (!cancelled) setLoadingRange(false); });
+    return () => { cancelled = true; };
+  }, [from, to]);
 
   const registerRows = staff.map(e => {
     const gross = e.rate * 11;
@@ -19,13 +64,9 @@ export const ReportsView = ({ staff, deliveries, loans, statutory }) => {
     return { emp: e, gross, sss, ph, hdmf, net: gross - sss - ph - hdmf };
   });
   const T13 = staff.map(e => ({ name: e.name, months: 12, basic: e.rate * 22 * 12, pay: Math.round(e.rate * 22 * 12 / 12 * 100) / 100 }));
-  // Earnings are reported per PERSON, not per truck. A pahinante can ride with
-  // two different drivers in one day, so a per-truck total cannot answer what
-  // any one of them is owed. Voided trips are already excluded upstream.
-  const crewRows = crewEarnings(deliveries, {
-    driverDaily: DRIVER_DAILY, helperDaily: HELPER_DAILY,
-    bonusHead: BONUS_HEAD, bonusTrips: BONUS_TRIPS,
-  });
+  // Earnings are reported per PERSON across the chosen range. Voided trips are
+  // already excluded upstream.
+  const crewRows = useMemo(() => crewEarningsRange(rangeApi), [rangeApi]);
 
   const exportRegister = () => exportXLSX('Payroll-Register.xlsx', [{ name: 'Register', rows: registerRows.map(r => ({ Employee: r.emp.name, Gross: r.gross, SSS: r.sss, PhilHealth: r.ph, 'Pag-IBIG': r.hdmf, Net: r.net })) }]);
   const exportRemit = () => exportXLSX('Gov-Remittance.xlsx', [{ name: 'Remittance', rows: registerRows.map(r => ({ Employee: r.emp.name, SSS: r.sss, PhilHealth: r.ph, 'Pag-IBIG': r.hdmf, Total: r.sss + r.ph + r.hdmf })) }]);
@@ -86,8 +127,14 @@ export const ReportsView = ({ staff, deliveries, loans, statutory }) => {
       )}
       {tab === 'drivers' && (
         <Panel className="overflow-hidden">
-          <div className="px-4 py-2.5 flex justify-between items-center" style={{ borderBottom: `1px solid ${T.line}` }}>
-            <Eyebrow>Crew Earnings — per person</Eyebrow>
+          <div className="px-4 py-2.5 flex justify-between items-center flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Eyebrow>Crew Earnings — per person</Eyebrow>
+              <input type="date" max={todayStr} value={from} onChange={e => setFrom(e.target.value)} className="px-2 py-1 rounded border text-xs" style={{ borderColor: T.line, fontFamily: F_MONO }} />
+              <span className="text-xs" style={{ color: T.soft, fontFamily: F_BODY }}>to</span>
+              <input type="date" max={todayStr} value={to} onChange={e => setTo(e.target.value)} className="px-2 py-1 rounded border text-xs" style={{ borderColor: T.line, fontFamily: F_MONO }} />
+              {loadingRange && <span className="text-xs" style={{ color: T.soft, fontFamily: F_BODY }}>Loading…</span>}
+            </div>
             <Btn size="sm" variant="outline" icon={Download} onClick={exportDriver}>Export Excel</Btn>
           </div>
           <p className="text-xs px-4 pb-3" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>

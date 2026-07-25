@@ -3,7 +3,6 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, Pause, Play, Check, Save } from 'lucide-react';
 import { Av, Badge, Btn, Eyebrow, Field, H1, Modal, Money, Panel, ProgressBar, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
-import { CREWS } from '../data/seed';
 import { loanBalance, loanLedger } from '../lib/payroll';
 import { peso, todayLabel, uid } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
@@ -14,7 +13,7 @@ export const LoansView = ({ staff, loans, setLoans, toast }) => {
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(BLANK_LOAN);
   const ff = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  const people = useMemo(() => [...staff.map(s => s.name), ...CREWS.map(c => c.driver), ...CREWS.flatMap(c => c.helpers.filter(h => h !== '—'))], [staff]);
+  const people = useMemo(() => staff.map(s => s.name), [staff]);
 
   const addLoan = () => {
     if (!form.person || !form.principal) { toast('Person and amount are required.', 'error'); return; }
