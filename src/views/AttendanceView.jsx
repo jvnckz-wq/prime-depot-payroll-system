@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, ClipboardList, ArrowLeft, Check, Eye, Upload } from 'lucide-react';
-import { Av, Badge, BigStat, Btn, EmptyState, Eyebrow, H1, Panel, Td, Th } from '../components/ui.jsx';
+import { AlertTriangle, ClipboardList, ArrowLeft, Check, Eye, Pencil, Upload } from 'lucide-react';
+import { Av, Badge, BigStat, Btn, EmptyState, Eyebrow, Field, H1, Modal, Panel, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
 const CREW = new Set(['Driver', 'Pahinante', 'Checker']);
@@ -27,6 +27,9 @@ export const AttendanceView = ({ staff, toast }) => {
   const [unmapped, setUnmapped] = useState([]);
   const [unmappedLoading, setUnmappedLoading] = useState(false);
   const [resolvingId, setResolvingId] = useState(null);
+  const [editDay, setEditDay] = useState(null);
+  const [editForm, setEditForm] = useState({ absent: false, timeIn: '', timeOut: '', note: '' });
+  const [savingEdit, setSavingEdit] = useState(false);
   const fileRef = useRef(null);
 
   const load = async () => {
@@ -39,6 +42,16 @@ export const AttendanceView = ({ staff, toast }) => {
     finally { setLoading(false); }
   };
   useEffect(() => { load(); }, []);
+
+  const loadDtr = async (id) => {
+    setDtrLoading(true);
+    try {
+      const res = await fetch(`/api/attendance?employeeId=${encodeURIComponent(id)}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      setDtr(await res.json());
+    } catch (err) { console.error('Could not load DTR:', err); }
+    finally { setDtrLoading(false); }
+  };
 
   const loadUnmapped = async () => {
     setUnmappedLoading(true);
@@ -71,16 +84,37 @@ export const AttendanceView = ({ staff, toast }) => {
   };
 
   useEffect(() => {
-    if (view !== 'dtr' || !selectedId) return;
-    let cancelled = false;
-    setDtrLoading(true);
-    fetch(`/api/attendance?employeeId=${encodeURIComponent(selectedId)}`)
-      .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
-      .then(d => { if (!cancelled) setDtr(d); })
-      .catch(err => console.error('Could not load DTR:', err))
-      .finally(() => { if (!cancelled) setDtrLoading(false); });
-    return () => { cancelled = true; };
+    if (view === 'dtr' && selectedId) loadDtr(selectedId);
   }, [view, selectedId]);
+
+  const openEdit = (a) => {
+    setEditForm({ absent: a.absent, timeIn: a.in || '', timeOut: a.out || '', note: '' });
+    setEditDay(a);
+  };
+  const saveEdit = async () => {
+    if (!editDay) return;
+    setSavingEdit(true);
+    try {
+      const res = await fetch('/api/attendance', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId: selectedId, date: editDay.date, isAbsent: editForm.absent,
+          timeIn: editForm.absent ? null : editForm.timeIn,
+          timeOut: editForm.absent ? null : editForm.timeOut,
+          editNote: editForm.note,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) { toast(result.error || 'Could not save the correction.', 'error'); return; }
+      toast('Attendance corrected.');
+      setEditDay(null);
+      await Promise.all([loadDtr(selectedId), load()]);
+    } catch {
+      toast('Could not reach the server.', 'error');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   const onFile = async (e) => {
     const file = e.target.files?.[0];
@@ -144,18 +178,19 @@ export const AttendanceView = ({ staff, toast }) => {
         <Panel className="overflow-hidden">
           <div className="px-4 py-3 flex items-center justify-between flex-wrap gap-1" style={{ borderBottom: `1px solid ${T.line}` }}>
             <div className="text-sm font-semibold" style={{ fontFamily: F_HEAD, color: T.ink }}>Daily Time Record — {fmtPeriod(dtr.period)}</div>
+            <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Tap a day to correct it.</div>
           </div>
           {dtrLoading ? <div className="p-6 text-sm" style={{ color: T.soft, fontFamily: F_BODY }}>Loading…</div>
             : rows.length === 0 ? <EmptyState icon={ClipboardList} title="No attendance yet" desc="Import a biometric .xls file to populate this employee's record." />
             : (
             <table className="w-full">
-              <thead><tr><Th>Date</Th><Th>Time In</Th><Th>Time Out</Th><Th right>Late (mins)</Th><Th right>OT (mins)</Th></tr></thead>
+              <thead><tr><Th>Date</Th><Th>Time In</Th><Th>Time Out</Th><Th right>Late (mins)</Th><Th right>OT (mins)</Th><Th></Th></tr></thead>
               <tbody>
                 {rows.map((a) => {
                   const isLate = a.late > 0, isOt = a.ot > 0;
                   const rowBg = isLate ? T.redBg : a.absent ? T.amberBg : 'transparent';
                   return (
-                    <tr key={a.date} style={{ backgroundColor: rowBg }}>
+                    <tr key={a.date} onClick={() => openEdit(a)} style={{ backgroundColor: rowBg, cursor: 'pointer' }}>
                       <Td>
                         <span className="font-bold mr-2" style={{ fontFamily: F_MONO, color: T.ink }}>{a.date.slice(8)}</span>
                         <span className="text-xs" style={{ fontFamily: F_BODY, color: isLate ? T.red : a.absent ? T.amber : T.soft }}>{a.weekday}</span>
@@ -168,6 +203,7 @@ export const AttendanceView = ({ staff, toast }) => {
                       <Td mono>{a.out || '—'}</Td>
                       <Td right mono><span style={{ fontWeight: isLate ? 700 : 400, color: isLate ? T.red : T.soft }}>{isLate ? a.late : '--'}</span></Td>
                       <Td right mono><span style={{ fontWeight: isOt ? 700 : 400, color: isOt ? T.green : T.soft }}>{isOt ? a.ot : '--'}</span></Td>
+                      <Td right><Pencil size={13} style={{ color: T.soft }} /></Td>
                     </tr>
                   );
                 })}
@@ -177,11 +213,38 @@ export const AttendanceView = ({ staff, toast }) => {
                   <Td colSpan={3}><b style={{ color: T.red, fontFamily: F_HEAD, letterSpacing: '0.03em' }}>TOTAL</b></Td>
                   <Td right mono><b style={{ color: T.red }}>{lateMins}m</b></Td>
                   <Td right mono><b style={{ color: T.green }}>{otMins}m</b></Td>
+                  <Td></Td>
                 </tr>
               </tfoot>
             </table>
           )}
         </Panel>
+
+        {/* Per-day correction — recomputes tardiness and flags the row EDITED */}
+        <Modal open={!!editDay} onClose={() => setEditDay(null)} title={`Correct ${editDay ? `${name} — ${editDay.date}` : ''}`} width={440}>
+          {editDay && (
+            <div className="space-y-3">
+              <label className="flex items-center gap-2 text-sm" style={{ fontFamily: F_BODY, color: T.ink }}>
+                <input type="checkbox" checked={editForm.absent} onChange={(e) => setEditForm((f) => ({ ...f, absent: e.target.checked }))} />
+                Mark as absent (walang pasok)
+              </label>
+              {!editForm.absent && (
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Time In"><input type="time" value={editForm.timeIn} onChange={(e) => setEditForm((f) => ({ ...f, timeIn: e.target.value }))} className={inputCls} style={inputStyle} /></Field>
+                  <Field label="Time Out"><input type="time" value={editForm.timeOut} onChange={(e) => setEditForm((f) => ({ ...f, timeOut: e.target.value }))} className={inputCls} style={inputStyle} /></Field>
+                </div>
+              )}
+              <Field label="Reason / note (optional)"><input value={editForm.note} onChange={(e) => setEditForm((f) => ({ ...f, note: e.target.value }))} placeholder="e.g. brownout, scanner down" className={inputCls} style={inputStyle} /></Field>
+              <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
+                Tardiness is recomputed automatically from the times. Blank time-in = missing scan (30-min penalty); blank time-out = assumed 5:00 PM. This day will be marked EDITED and won't be overwritten by future imports.
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <Btn variant="outline" onClick={() => setEditDay(null)} disabled={savingEdit}>Cancel</Btn>
+                <Btn icon={Check} onClick={saveEdit} disabled={savingEdit}>{savingEdit ? 'Saving…' : 'Save correction'}</Btn>
+              </div>
+            </div>
+          )}
+        </Modal>
       </div>
     );
   }

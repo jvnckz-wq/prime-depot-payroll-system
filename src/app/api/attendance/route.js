@@ -1,10 +1,79 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../lib/prisma';
 import { requireAdmin } from '../../../lib/auth';
+import { minutesLate } from '../../../lib/attendance';
 
 const hhmm = (d) => (d ? new Date(d).toISOString().slice(11, 16) : null);
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
+const toMin = (t) => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
 const WD = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+/// PATCH /api/attendance — a manual correction to one employee's one day.
+/// Body: { employeeId, date, isAbsent, timeIn, timeOut, editNote }
+///
+/// Tardiness and overtime are recomputed from the corrected times using the
+/// same call-time rules as the import, so a hand-fixed row stays consistent with
+/// the rest. The row is flagged isManualEdit, which the importer then refuses to
+/// overwrite — a correction survives every future re-import.
+export async function PATCH(request) {
+  const auth = await requireAdmin();
+  if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
+  try {
+    const body = await request.json();
+    const employeeId = String(body.employeeId || '').trim();
+    const dateStr = String(body.date || '').trim();
+    if (!employeeId || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return NextResponse.json({ error: 'employeeId and a valid date are required.' }, { status: 400 });
+    }
+
+    const emp = await prisma.employee.findUnique({ where: { id: employeeId } });
+    if (!emp) return NextResponse.json({ error: 'Employee not found.' }, { status: 404 });
+
+    const date = new Date(`${dateStr}T00:00:00.000Z`);
+    const editNote = (body.editNote || '').toString().trim() || null;
+    const clean = (t) => (/^\d{2}:\d{2}$/.test(String(t || '')) ? String(t) : null);
+
+    let fields;
+    if (body.isAbsent) {
+      fields = { timeIn: null, timeOut: null, tardinessMins: 0, overtimeMins: 0, isAbsent: true, isAssumedIn: false, isAssumedOut: false };
+    } else {
+      const inT = clean(body.timeIn);
+      const outT = clean(body.timeOut);
+      const assumedOut = !outT;
+      const effectiveOut = outT || '17:00';
+      fields = {
+        timeIn: inT ? new Date(`${dateStr}T${inT}:00.000Z`) : null,
+        timeOut: new Date(`${dateStr}T${effectiveOut}:00.000Z`),
+        tardinessMins: minutesLate(emp, date, inT),
+        overtimeMins: assumedOut ? 0 : Math.max(0, toMin(effectiveOut) - 17 * 60),
+        isAbsent: false,
+        isAssumedIn: !inT,
+        isAssumedOut: assumedOut,
+      };
+    }
+
+    const data = { ...fields, isManualEdit: true, editNote };
+    const row = await prisma.attendance.upsert({
+      where: { employeeId_date: { employeeId, date } },
+      update: data,
+      create: { employeeId, date, ...data },
+    });
+
+    return NextResponse.json({
+      ok: true,
+      row: {
+        date: ymd(row.date), weekday: WD[new Date(row.date).getUTCDay()],
+        in: hhmm(row.timeIn), out: hhmm(row.timeOut),
+        late: row.tardinessMins, ot: row.overtimeMins,
+        absent: row.isAbsent, assumedIn: row.isAssumedIn, assumedOut: row.isAssumedOut, manual: row.isManualEdit,
+      },
+    });
+  } catch (err) {
+    console.error('PATCH /api/attendance failed:', err);
+    return NextResponse.json({ error: 'Could not save the correction: ' + (err?.message || 'unknown error') }, { status: 500 });
+  }
+}
 
 /// GET /api/attendance
 ///   - no params      → per-employee summaries for the current period, the
@@ -67,6 +136,7 @@ export async function GET(request) {
           byEmp.set(a.employeeId, {
             id: a.employeeId, name: a.employee?.name || a.employeeId,
             present: 0, absent: 0, daysLate: 0, lateMins: 0, otMins: 0,
+            otWeekdayMins: 0, otWeekendMins: 0,
           });
         }
         const s = byEmp.get(a.employeeId);
@@ -74,6 +144,10 @@ export async function GET(request) {
         if (a.tardinessMins > 0) s.daysLate++;
         s.lateMins += a.tardinessMins;
         s.otMins += a.overtimeMins;
+        // Weekend OT (Sat/Sun) is paid at a higher multiplier than weekday OT.
+        const dow = new Date(a.date).getUTCDay();
+        if (dow === 0 || dow === 6) s.otWeekendMins += a.overtimeMins;
+        else s.otWeekdayMins += a.overtimeMins;
       }
       summaries = [...byEmp.values()].sort((a, b) => a.name.localeCompare(b.name));
     }

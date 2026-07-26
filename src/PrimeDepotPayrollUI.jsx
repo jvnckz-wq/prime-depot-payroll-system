@@ -148,6 +148,27 @@ export default function PrimeDepotPayroll() {
   const [pagibigRates, setPagibigRates] = useState(PAGIBIG_INIT);
   const [birTable, setBirTable] = useState(BIR_TABLE_INIT);
   const statutory = { sss: sssTable, philhealth: philhealthRates, pagibig: pagibigRates, bir: birTable };
+
+  // Statutory tables live in the database (admin-editable). Seed values above
+  // are only a fallback if the load fails.
+  const reloadStatutory = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/statutory');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const d = await res.json();
+      if (d.sss?.length) setSssTable(d.sss);
+      if (d.philhealth) setPhilhealthRates(d.philhealth);
+      if (d.pagibig?.brackets?.length) setPagibigRates(d.pagibig);
+      if (d.bir?.length) setBirTable(d.bir);
+    } catch (err) {
+      console.error('Could not load statutory tables:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user || user.role !== 'ADMIN') return;
+    reloadStatutory();
+  }, [user, reloadStatutory]);
   const [toasts, setToasts] = useState([]);
 
   const toast = (msg, type = 'success') => {

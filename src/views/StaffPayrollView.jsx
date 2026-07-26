@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, Wallet, ArrowLeft, Printer, Eye } from 'lucide-react';
 import { Av, Badge, Btn, Confirm, Eyebrow, H1, Money, Panel, StatCard, Td, Th } from '../components/ui.jsx';
 import { CUTOFF_LABEL } from '../data/seed';
@@ -14,8 +14,26 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast }
   const [subTab, setSubTab] = useState('current');
   const [confirmApply, setConfirmApply] = useState(false);
 
+  // Days Present, Tardiness, and Overtime come from the latest imported
+  // attendance. Keyed by employee id (= biometric User ID).
+  const [attById, setAttById] = useState({});
+  const [attPeriod, setAttPeriod] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/attendance')
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+      .then(d => {
+        if (cancelled) return;
+        const map = {};
+        for (const s of d.summaries || []) map[s.id] = s;
+        setAttById(map);
+        setAttPeriod(d.period || null);
+      })
+      .catch(err => console.error('Could not load attendance for payroll:', err));
+    return () => { cancelled = true; };
+  }, []);
 
-  const rows = staff.map(e => ({ emp: e, calc: computeStaffPayroll(e, loans, statutory) }));
+  const rows = staff.map(e => ({ emp: e, calc: computeStaffPayroll(e, loans, statutory, attById[e.id]) }));
   const totalGross = rows.reduce((s, r) => s + r.calc.totalEarnings, 0);
   const totalNet = rows.reduce((s, r) => s + r.calc.net, 0);
 
@@ -47,7 +65,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast }
 
   if (view === 'slip' && selectedId) {
     const e = staff.find(s => s.id === selectedId);
-    const calc = computeStaffPayroll(e, loans, statutory);
+    const calc = computeStaffPayroll(e, loans, statutory, attById[selectedId]);
     return (
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
@@ -86,6 +104,11 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast }
 
           {/* Basic rate / days present / gross */}
           <div className="px-6 py-4" style={{ borderBottom: `1px solid ${T.line}` }}>
+            <div className="mb-2 text-xs" style={{ fontFamily: F_BODY }}>
+              {calc.hasAttendance
+                ? <span style={{ color: T.green }}>Days present, tardiness, and OT from imported attendance{attPeriod ? ` (${attPeriod.start} → ${attPeriod.end})` : ''}.</span>
+                : <span style={{ color: T.amber }}>⚠ No attendance imported for this person — figures are an estimate ({calc.days} days assumed).</span>}
+            </div>
             {[['Basic Rate (Daily):', peso(e.rate)], ['Days Present:', String(calc.days)], ['Gross Salary:', peso(calc.gross)]].map(([l, v], i) => (
               <div key={i} className="flex justify-between text-sm py-1" style={{ fontFamily: F_BODY }}>
                 <span style={{ color: T.ink }}>{l}</span>
@@ -165,7 +188,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast }
             <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
               <Eyebrow>Payslips — {CUTOFF_LABEL}</Eyebrow>
               <div className="flex items-center gap-2">
-                <Badge tone="green">Computed from DTR</Badge>
+                <Badge tone={attPeriod ? 'green' : 'amber'}>{attPeriod ? `DTR ${attPeriod.start} → ${attPeriod.end}` : 'No attendance imported'}</Badge>
                 <Btn size="sm" variant="outline" icon={Wallet} disabled={dueLoans.length === 0} onClick={() => setConfirmApply(true)}>Apply Cutoff Deductions</Btn>
               </div>
             </div>
@@ -178,6 +201,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast }
                       <div className="flex items-center gap-2.5">
                         <Av name={emp.name} size={28} />
                         <span className="font-semibold" style={{ fontFamily: F_BODY }}>{emp.name}</span>
+                        {!calc.hasAttendance && <Badge tone="amber">no attendance</Badge>}
                       </div>
                     </Td>
                     <Td right mono>{calc.days}</Td>

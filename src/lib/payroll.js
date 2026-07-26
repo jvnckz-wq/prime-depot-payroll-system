@@ -65,24 +65,50 @@ export function deliveriesToLog(apiDeliveries) {
 }
 
 // shared payroll math so the Payslip list, the individual slip, and Reports always agree
-export function computeStaffPayroll(e, loans = [], statutory) {
-  const days = 11;
+// Semi-monthly staff pay. When an attendance summary for the cutoff is passed
+// in, Days Present, Tardiness, and Overtime all come from the biometric record;
+// otherwise the row falls back to a plain estimate (flagged hasAttendance:false)
+// so views that don't load attendance — like the dashboard KPIs — still work.
+//
+// The money rules mirror the client's payroll sheet exactly:
+//   Gross        = daily rate × Days Present
+//   Hourly rate  = daily rate ÷ 8
+//   OT (weekday) = hourly × (OT minutes ÷ 60) × 1.25
+//   OT (weekend) = hourly × (OT minutes ÷ 60) × 1.30   (Sat/Sun)
+//   Tardiness    = hourly × (late minutes ÷ 60) × 2     = rate × late ÷ 240
+const DEFAULT_CUTOFF_DAYS = 11;
+
+export function computeStaffPayroll(e, loans = [], statutory, attendance = null) {
+  const hasAttendance = !!attendance;
+  const days = hasAttendance ? attendance.present : DEFAULT_CUTOFF_DAYS;
   const gross = e.rate * days;
-  const otWeekday = 472.14, otWeekend = 113.75, allowance = 4400;
+
+  const hourly = e.rate / 8;
+  const otWeekdayMins = hasAttendance ? (attendance.otWeekdayMins || 0) : 0;
+  const otWeekendMins = hasAttendance ? (attendance.otWeekendMins || 0) : 0;
+  const otWeekday = hourly * (otWeekdayMins / 60) * 1.25;
+  const otWeekend = hourly * (otWeekendMins / 60) * 1.3;
   const ot = otWeekday + otWeekend;
+
+  const allowance = 4400;
+
   const sss = e.sssOn ? computeSSS(e.declaredSalary, statutory.sss) : 0;
   const phic = e.phOn ? computePhilHealth(e.declaredSalary, statutory.philhealth) : 0;
   const hdmf = e.piOn ? (computePagIBIG(e.declaredSalary, statutory.pagibig) + (e.mp2 || 0)) : 0;
+
   // What THIS cutoff would deduct across this employee's active, unpaused loans — a live
   // preview, same as the rest of this payslip. The actual ledger entry only gets written
   // when "Apply Cutoff Deductions" is clicked on the Staff Payroll page.
   const advance = loans.filter(l => l.person === e.name && !l.paused && loanBalance(l) > 0)
     .reduce((s, l) => s + Math.min(l.perCutoff, loanBalance(l)), 0);
-  const tardiness = 0;
+
+  const lateMins = hasAttendance ? (attendance.lateMins || 0) : 0;
+  const tardiness = Math.round((e.rate * lateMins / 240) * 100) / 100;
+
   const totalEarnings = gross + ot + allowance;
   const totalDeductions = sss + phic + hdmf + advance + tardiness;
   const net = totalEarnings - totalDeductions;
-  return { days, gross, otWeekday, otWeekend, ot, allowance, sss, phic, hdmf, advance, tardiness, totalEarnings, totalDeductions, net };
+  return { hasAttendance, days, lateMins, gross, otWeekday, otWeekend, ot, allowance, sss, phic, hdmf, advance, tardiness, totalEarnings, totalDeductions, net };
 }
 
 // deterministic pseudo-random per employee, so charts are stable across renders

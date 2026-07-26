@@ -20,6 +20,23 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
   const [birDraft, setBirDraft] = useState(birTable);
   const [testSalary, setTestSalary] = useState('16900');
 
+  // Persist one table to the database; only update the on-screen values on success.
+  const saveTable = async (table, data, label) => {
+    try {
+      const res = await fetch('/api/statutory', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ table, data }),
+      });
+      const result = await res.json();
+      if (!res.ok) { toast(result.error || 'Could not save.', 'error'); return false; }
+      toast(`${label} saved.`);
+      return true;
+    } catch {
+      toast('Could not reach the server.', 'error');
+      return false;
+    }
+  };
+
   const testResult = useMemo(() => {
     const sal = parseFloat(testSalary) || 0;
     return { sss: computeSSS(sal, sssTable), ph: computePhilHealth(sal, philhealthRates), pi: computePagIBIG(sal, pagibigRates) };
@@ -60,20 +77,30 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
               <Eyebrow>SSS Contribution Table — employee share by declared monthly salary</Eyebrow>
               {editSss ? (
                 <div className="flex gap-2">
-                  <Btn size="sm" icon={Save} onClick={() => { setSssTable(sssDraft); setEditSss(false); toast('SSS table saved.'); }}>Save</Btn>
+                  <Btn size="sm" icon={Save} onClick={async () => { if (await saveTable('sss', sssDraft, 'SSS table')) { setSssTable(sssDraft); setEditSss(false); } }}>Save</Btn>
                   <Btn size="sm" variant="outline" onClick={() => { setSssDraft(sssTable); setEditSss(false); }}>Cancel</Btn>
                 </div>
               ) : <Btn size="sm" variant="outline" icon={Edit2} onClick={() => { setSssDraft(sssTable); setEditSss(true); }}>Edit</Btn>}
             </div>
             <div className="overflow-y-auto" style={{ maxHeight: 340 }}>
               <table className="w-full">
-                <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}><tr><Th>Salary below (₱)</Th><Th right>Employee share / month (₱)</Th><Th right>Per cutoff (₱)</Th>{editSss && <Th></Th>}</tr></thead>
-                <tbody>{(editSss ? sssDraft : sssTable).map((r, i) => (
+                <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}><tr><Th>Salary Range (₱)</Th><Th right>Employee share / month (₱)</Th><Th right>Per cutoff (₱)</Th>{editSss && <Th></Th>}</tr></thead>
+                <tbody>{(editSss ? sssDraft : sssTable).map((r, i, arr) => (
                   <tr key={i}>
-                    <Td>{editSss
-                      ? (r.ceiling === null ? <span className="text-xs" style={{ color: T.soft, fontFamily: F_BODY }}>and up</span>
-                        : <input type="number" value={r.ceiling} onChange={e => setSssDraft(p => p.map((x, j) => j === i ? { ...x, ceiling: parseFloat(e.target.value) || 0 } : x))} className="px-2 py-1 rounded border text-xs w-24" style={{ borderColor: T.line, fontFamily: F_MONO }} />)
-                      : (r.ceiling === null ? 'and up' : peso(r.ceiling))}
+                    <Td>{(() => {
+                      const from = r.from != null ? r.from : (i > 0 ? arr[i - 1].ceiling : 0);
+                      const fromLabel = from ? peso(from) : '₱0';
+                      if (editSss) {
+                        return r.ceiling === null
+                          ? <span className="text-xs" style={{ color: T.soft, fontFamily: F_MONO }}>{fromLabel} and up</span>
+                          : <span className="flex items-center gap-1.5 text-xs" style={{ fontFamily: F_MONO, color: T.soft }}>{fromLabel} –
+                              <input type="number" value={r.ceiling} onChange={e => setSssDraft(p => p.map((x, j) => j === i ? { ...x, ceiling: parseFloat(e.target.value) || 0 } : x))} className="px-2 py-1 rounded border w-24" style={{ borderColor: T.line, fontFamily: F_MONO, color: T.ink }} />
+                            </span>;
+                      }
+                      if (r.ceiling === null) return <span style={{ fontFamily: F_MONO }}>{fromLabel} and up</span>;
+                      if (!from) return <span style={{ fontFamily: F_MONO }}>Below {peso(r.ceiling)}</span>;
+                      return <span style={{ fontFamily: F_MONO }}>{peso(from)} – {peso(r.ceiling)}</span>;
+                    })()}
                     </Td>
                     <Td right mono>{editSss
                       ? <input type="number" value={r.share} onChange={e => setSssDraft(p => p.map((x, j) => j === i ? { ...x, share: parseFloat(e.target.value) || 0 } : x))} className="px-2 py-1 rounded border text-xs w-24 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} />
@@ -95,7 +122,7 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
               <Eyebrow>PhilHealth — % of declared salary, split 50/50 employer/employee</Eyebrow>
               {editPh ? (
                 <div className="flex gap-2">
-                  <Btn size="sm" icon={Save} onClick={() => { setPhilhealthRates(phDraft); setEditPh(false); toast('PhilHealth rate saved.'); }}>Save</Btn>
+                  <Btn size="sm" icon={Save} onClick={async () => { if (await saveTable('philhealth', phDraft, 'PhilHealth rate')) { setPhilhealthRates(phDraft); setEditPh(false); } }}>Save</Btn>
                   <Btn size="sm" variant="outline" onClick={() => { setPhDraft(philhealthRates); setEditPh(false); }}>Cancel</Btn>
                 </div>
               ) : <Btn size="sm" variant="outline" icon={Edit2} onClick={() => { setPhDraft(philhealthRates); setEditPh(true); }}>Edit</Btn>}
@@ -116,7 +143,7 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
                 <Eyebrow>Pag-IBIG (HDMF)</Eyebrow>
                 {editPi ? (
                   <div className="flex gap-2">
-                    <Btn size="sm" icon={Save} onClick={() => { setPagibigRates(piDraft); setEditPi(false); toast('Pag-IBIG rates saved.'); }}>Save</Btn>
+                    <Btn size="sm" icon={Save} onClick={async () => { if (await saveTable('pagibig', piDraft, 'Pag-IBIG rates')) { setPagibigRates(piDraft); setEditPi(false); } }}>Save</Btn>
                     <Btn size="sm" variant="outline" onClick={() => { setPiDraft(pagibigRates); setEditPi(false); }}>Cancel</Btn>
                   </div>
                 ) : <Btn size="sm" variant="outline" icon={Edit2} onClick={() => { setPiDraft(pagibigRates); setEditPi(true); }}>Edit</Btn>}
@@ -148,7 +175,7 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
                 <Eyebrow>BIR Withholding Tax Brackets</Eyebrow>
                 {editBir ? (
                   <div className="flex gap-2">
-                    <Btn size="sm" icon={Save} onClick={() => { setBirTable(birDraft); setEditBir(false); toast('BIR table saved.'); }}>Save</Btn>
+                    <Btn size="sm" icon={Save} onClick={async () => { if (await saveTable('bir', birDraft, 'BIR table')) { setBirTable(birDraft); setEditBir(false); } }}>Save</Btn>
                     <Btn size="sm" variant="outline" onClick={() => { setBirDraft(birTable); setEditBir(false); }}>Cancel</Btn>
                   </div>
                 ) : <Btn size="sm" variant="outline" icon={Edit2} onClick={() => { setBirDraft(birTable); setEditBir(true); }}>Edit</Btn>}
