@@ -283,6 +283,7 @@ model UnmappedLog {
   id            String      @id @default(cuid())
   importBatchId String
   biometricId   String
+  biometricName String?
   date          DateTime    @db.Date
   timeIn        DateTime?
   timeOut       DateTime?
