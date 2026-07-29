@@ -13,6 +13,11 @@ export const POSITION_LABEL = {
   CHECKER: 'Checker',
   DRIVER: 'Driver',
   PAHINANTE: 'Pahinante',
+  ADMINISTRATIVE_ASSISTANT: 'Administrative Assistant',
+  COMMUNICATIONS_OFFICER_II: 'Communications Officer II',
+  JUNIOR_SECRETARY: 'Junior Secretary',
+  JOB_ORDER: 'Job Order',
+  TRAINEE: 'Trainee',
 };
 
 // The reverse: the label the form submits -> the database enum. Only positions
@@ -25,6 +30,11 @@ const POSITION_ENUM = {
   Checker: 'CHECKER',
   Driver: 'DRIVER',
   Pahinante: 'PAHINANTE',
+  'Administrative Assistant': 'ADMINISTRATIVE_ASSISTANT',
+  'Communications Officer II': 'COMMUNICATIONS_OFFICER_II',
+  'Junior Secretary': 'JUNIOR_SECRETARY',
+  'Job Order': 'JOB_ORDER',
+  Trainee: 'TRAINEE',
 };
 
 const VALID_WEEKDAYS = new Set(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']);

@@ -49,6 +49,15 @@ enum Position {
   CHECKER
   DRIVER
   PAHINANTE
+  /// Added Jul 2026 — office-staff positions taken from the client's actual
+  /// payroll sheet. All run through Staff Payroll (none are crew), so no
+  /// crew-detection or call-time logic changes. Appended at the end to match
+  /// Postgres ALTER TYPE ADD VALUE ordering.
+  ADMINISTRATIVE_ASSISTANT
+  COMMUNICATIONS_OFFICER_II
+  JUNIOR_SECRETARY
+  JOB_ORDER
+  TRAINEE
 }
 
 enum Weekday {

@@ -57,6 +57,11 @@ export const ALL_DRIVERS = [...new Set(CREWS.map(c => c.driver))].sort();
 export const POSITIONS = [
   'Operations Head',
   'Administrative Staff',
+  'Administrative Assistant',
+  'Communications Officer II',
+  'Junior Secretary',
+  'Job Order',
+  'Trainee',
   'Checker',
   'Driver',
   'Pahinante',
