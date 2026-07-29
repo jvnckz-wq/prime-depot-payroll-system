@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Search, Edit2, Save, UserPlus, Truck, Clock } from 'lucide-react';
 import { Av, Badge, Btn, Confirm, Eyebrow, Field, H1, Modal, Money, Panel, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { POSITIONS } from '../data/seed';
@@ -20,9 +20,10 @@ const BLANK_EMP = {
   earlyShiftDays: [], earlyShiftTime: '06:00',
 };
 
-export const EmployeesView = ({ staff, reloadStaff, toast }) => {
+export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillConsumed }) => {
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState('active');
+  const [typeFilter, setTypeFilter] = useState('all'); // all | staff | crew — a separate axis from status
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(BLANK_EMP);
@@ -37,14 +38,25 @@ export const EmployeesView = ({ staff, reloadStaff, toast }) => {
     .filter(r => r.name.toLowerCase().includes(q.toLowerCase()))
     .filter(r => statusFilter === 'all'
       || (statusFilter === 'active' && r.status !== 'Inactive')
-      || (statusFilter === 'inactive' && r.status === 'Inactive')),
-    [staff, q, statusFilter]);
+      || (statusFilter === 'inactive' && r.status === 'Inactive'))
+    .filter(r => {
+      if (typeFilter === 'all') return true;
+      const crew = typeof r.crew === 'boolean' ? r.crew : isCrewPosition(r.position);
+      return typeFilter === 'crew' ? crew : !crew;
+    })
+    .sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true, sensitivity: 'base' })),
+    [staff, q, statusFilter, typeFilter]);
 
-  const counts = useMemo(() => ({
-    all: staff.length,
-    active: staff.filter(r => r.status !== 'Inactive').length,
-    inactive: staff.filter(r => r.status === 'Inactive').length,
-  }), [staff]);
+  const counts = useMemo(() => {
+    const crewOf = (r) => (typeof r.crew === 'boolean' ? r.crew : isCrewPosition(r.position));
+    return {
+      all: staff.length,
+      active: staff.filter(r => r.status !== 'Inactive').length,
+      inactive: staff.filter(r => r.status === 'Inactive').length,
+      staff: staff.filter(r => !crewOf(r)).length,
+      crew: staff.filter(r => crewOf(r)).length,
+    };
+  }, [staff]);
 
   const toggleShiftDay = (key) => setForm(f => ({
     ...f,
@@ -53,19 +65,22 @@ export const EmployeesView = ({ staff, reloadStaff, toast }) => {
       : [...f.earlyShiftDays, key],
   }));
 
-  // Next free EMP-### — offered as a starting point so the admin isn't forced to
-  // invent one, but the field stays editable because the ID has to match the
-  // number the biometric scanner exports for that employee.
-  const suggestId = () => {
-    const nums = staff
-      .filter(s => /^EMP/i.test(String(s.id)))
-      .map(s => parseInt(String(s.id).replace(/\D/g, ''), 10))
-      .filter(n => !isNaN(n));
-    return 'EMP-' + String((nums.length ? Math.max(...nums) : 0) + 1).padStart(3, '0');
-  };
-
-  const openAdd = () => { setEditing(null); setForm({ ...BLANK_EMP, id: suggestId() }); setModal(true); };
+  // The ID is the biometric scanner's User ID (a plain number like 7), entered
+  // by hand — it is what links attendance logs to this record. Not generated,
+  // so the Add form starts blank rather than pre-filling a made-up code.
+  const openAdd = () => { setEditing(null); setForm({ ...BLANK_EMP }); setModal(true); };
   const openEdit = (r) => { setEditing(r); setForm({ ...BLANK_EMP, ...r, rate: String(r.rate), declaredSalary: String(r.declaredSalary || '') }); setModal(true); };
+
+  // Arriving from "Register" on an unmapped biometric ID: open the Add form with
+  // that ID (and the name read from the file) already filled in, then clear the
+  // hand-off so re-opening Employees later doesn't pop the form again.
+  useEffect(() => {
+    if (!prefill) return;
+    setEditing(null);
+    setForm({ ...BLANK_EMP, id: prefill.id != null ? String(prefill.id) : '', name: prefill.name || '' });
+    setModal(true);
+    if (onPrefillConsumed) onPrefillConsumed();
+  }, [prefill]); // eslint-disable-line react-hooks/exhaustive-deps
   const save = async () => {
     // Instant, friendly checks. The server validates authoritatively too — this
     // just saves a round-trip on the obvious mistakes.
@@ -150,6 +165,24 @@ export const EmployeesView = ({ staff, reloadStaff, toast }) => {
         ))}
       </div>
 
+      {/* Job type is a separate axis from status — kept on its own row (dark
+          accent) so it never gets confused with Active / Resigned. */}
+      <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+        <span className="text-xs font-semibold uppercase mr-1" style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.04em' }}>Type</span>
+        {[['all', 'All', counts.all], ['staff', 'Staff', counts.staff], ['crew', 'Crew', counts.crew]].map(([k, label, n]) => (
+          <button key={k} onClick={() => setTypeFilter(k)}
+            className="px-3 py-1.5 rounded text-xs font-semibold"
+            style={{
+              fontFamily: F_HEAD,
+              backgroundColor: typeFilter === k ? T.ink : T.surface,
+              color: typeFilter === k ? '#fff' : T.soft,
+              border: `1px solid ${typeFilter === k ? T.ink : T.line}`,
+            }}>
+            {label} <span style={{ fontFamily: F_MONO, opacity: 0.75 }}>{n}</span>
+          </button>
+        ))}
+      </div>
+
       <Panel className="overflow-hidden">
         <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 520 }}>
           <table className="w-full">
@@ -196,7 +229,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast }) => {
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <Field label="ID number*">
-              <input value={form.id} onChange={e => ff('id', e.target.value)} placeholder="EMP-015" className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
+              <input value={form.id} onChange={e => ff('id', e.target.value)} placeholder="e.g. 7 (biometric ID)" className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
             </Field>
             <Field label="Date hired">
               <input type="date" value={form.dateHired} onChange={e => ff('dateHired', e.target.value)} className={inputCls} style={inputStyle} />

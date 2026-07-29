@@ -5,7 +5,7 @@ import { Sidebar, TopBar } from './components/Nav.jsx';
 import { Toasts } from './components/ui.jsx';
 import { ADMIN_NAV, BIR_TABLE_INIT, CHECKERS_INIT, DELIVERIES_INIT, PAGIBIG_INIT, PHILHEALTH_INIT, RATES_INIT, SSS_TABLE_INIT, STAFF_INIT } from './data/seed';
 import { deliveriesToLog } from './lib/payroll';
-import { uid } from './lib/utils';
+import { uid, cutoffLabel } from './lib/utils';
 import { FONTS, F_BODY, T } from './theme';
 import { AttendanceView } from './views/AttendanceView.jsx';
 import { CheckerView } from './views/CheckerView.jsx';
@@ -29,6 +29,9 @@ export default function PrimeDepotPayroll() {
   const [authChecking, setAuthChecking] = useState(true);
   const [legalPage, setLegalPage] = useState(null); // 'terms' | 'privacy' | null
   const [tab, setTab] = useState('dashboard');
+  // Hand-off from Attendance's "Register" on an unmapped biometric ID: carries
+  // the id + name into the Employees Add form, consumed once on arrival.
+  const [employeePrefill, setEmployeePrefill] = useState(null);
   // Employees now come from the database instead of the in-memory seed. The
   // seed list is kept only as a fallback so the UI still renders if the API is
   // unreachable — a payroll screen that silently shows nothing is worse than
@@ -169,6 +172,29 @@ export default function PrimeDepotPayroll() {
     if (!user || user.role !== 'ADMIN') return;
     reloadStatutory();
   }, [user, reloadStatutory]);
+
+  // The current cutoff comes from the most recent imported attendance period,
+  // so every screen's label matches the data actually being paid. Falls back to
+  // the calendar cutoff (1–15 / 16–end) when nothing has been imported yet.
+  const [cutoffPeriod, setCutoffPeriod] = useState(null);
+  const [attSummaries, setAttSummaries] = useState([]);
+  const [unmappedCount, setUnmappedCount] = useState(0);
+  useEffect(() => {
+    if (!user || user.role !== 'ADMIN') return;
+    let cancelled = false;
+    fetch('/api/attendance')
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+      .then(d => {
+        if (cancelled) return;
+        setCutoffPeriod(d.period || null);
+        setAttSummaries(d.summaries || []);
+        setUnmappedCount(d.unmappedCount || 0);
+      })
+      .catch(err => console.error('Could not load current cutoff:', err));
+    return () => { cancelled = true; };
+  }, [user]);
+  const cutoffText = cutoffLabel(cutoffPeriod);
+
   const [toasts, setToasts] = useState([]);
 
   const toast = (msg, type = 'success') => {
@@ -233,13 +259,13 @@ export default function PrimeDepotPayroll() {
       <Toasts toasts={toasts} />
       <Sidebar tab={tab} setTab={setTab} onLogout={logout} user={user} onOpenAccount={() => setTab('account')} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <TopBar title={titles[tab]} role={user.displayName} cutoff="May 01–15" />
+        <TopBar title={titles[tab]} role={user.role === 'ADMIN' ? 'admin' : 'checker'} cutoff={cutoffText} />
         <div className="flex-1 overflow-y-auto">
-          {tab === 'dashboard' && <DashboardView deliveries={deliveries} staff={staff} totalEmployees={allStaff.filter(e => e.status !== 'Inactive').length} loans={loans} statutory={statutory} setTab={setTab} />}
-          {tab === 'employees' && <EmployeesView staff={allStaff} reloadStaff={reloadStaff} toast={toast} />}
-          {tab === 'attendance' && <AttendanceView staff={allStaff} toast={toast} />}
+          {tab === 'dashboard' && <DashboardView deliveries={deliveries} staff={staff} totalEmployees={allStaff.filter(e => e.status !== 'Inactive').length} loans={loans} statutory={statutory} setTab={setTab} cutoffLabel={cutoffText} attendanceSummaries={attSummaries} unmappedCount={unmappedCount} />}
+          {tab === 'employees' && <EmployeesView staff={allStaff} reloadStaff={reloadStaff} toast={toast} prefill={employeePrefill} onPrefillConsumed={() => setEmployeePrefill(null)} />}
+          {tab === 'attendance' && <AttendanceView staff={allStaff} toast={toast} onRegister={(id, name) => { setEmployeePrefill({ id, name }); setTab('employees'); }} />}
           {tab === 'truck' && <TruckPayrollView deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} loans={loans} reloadLoans={reloadLoans} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} toast={toast} />}
-          {tab === 'staff' && <StaffPayrollView staff={staff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} toast={toast} />}
+          {tab === 'staff' && <StaffPayrollView staff={staff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} toast={toast} cutoffLabel={cutoffText} />}
           {tab === 'loans' && <LoansView staff={allStaff} loans={loans} reloadLoans={reloadLoans} toast={toast} />}
           {tab === 'reports' && <ReportsView staff={staff} deliveries={deliveries} loans={loans} statutory={statutory} />}
           {tab === 'account' && (

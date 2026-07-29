@@ -710,7 +710,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
       <Panel className="overflow-hidden">
         <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
           <Eyebrow>All Deliveries ({allTrips.length})</Eyebrow>
-          <select value={filterCrew} onChange={e => setFilterCrew(e.target.value)} className="px-2 py-1.5 rounded border text-xs" style={{ borderColor: T.line, fontFamily: F_BODY }}>
+          <select value={filterCrew} onChange={e => setFilterCrew(e.target.value)} className="px-2 py-1.5 rounded border text-xs" style={{ borderColor: T.line, fontFamily: F_BODY, color: T.ink, backgroundColor: T.surface }}>
             <option value="">All crews</option>
             {trucks.map(c => <option key={c.id} value={c.id}>{c.id} — {c.vehicle}</option>)}
           </select>

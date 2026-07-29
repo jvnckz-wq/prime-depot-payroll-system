@@ -3,12 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Wallet, ArrowLeft, Printer, Eye } from 'lucide-react';
 import { Av, Badge, Btn, Confirm, Eyebrow, H1, Money, Panel, StatCard, Td, Th } from '../components/ui.jsx';
-import { CUTOFF_LABEL } from '../data/seed';
 import { computePagIBIG, computeStaffPayroll, loanBalance } from '../lib/payroll';
 import { peso } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
-export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast }) => {
+export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, cutoffLabel = '' }) => {
   const [view, setView] = useState('list');
   const [selectedId, setSelectedId] = useState(null);
   const [subTab, setSubTab] = useState('current');
@@ -44,7 +43,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast }
   const applyDeductions = async () => {
     setConfirmApply(false);
     // Per-cutoff run key: applying the same cutoff again is a no-op server-side.
-    const runKey = `staff-${CUTOFF_LABEL}`;
+    const runKey = `staff-${cutoffLabel}`;
     try {
       const res = await fetch('/api/loans/apply-deductions', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -53,7 +52,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast }
       const data = await res.json();
       if (!res.ok) { toast(data.error || 'Could not apply deductions.', 'error'); return; }
       if (data.applied === 0) {
-        toast(data.skipped ? `Deductions were already applied for the ${CUTOFF_LABEL} cutoff.` : 'No staff loans were due.');
+        toast(data.skipped ? `Deductions were already applied for the ${cutoffLabel} cutoff.` : 'No staff loans were due.');
       } else {
         toast(`Applied ${peso(data.total)} across ${data.applied} loan(s).`);
       }
@@ -94,7 +93,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast }
 
           {/* Cut-off / Name / Position */}
           <div className="px-6 py-4" style={{ borderBottom: `1px solid ${T.line}` }}>
-            {[['Salary Cut-Off:', CUTOFF_LABEL], ["Employee's Name:", e.name], ['Position:', e.position]].map(([l, v], i) => (
+            {[['Salary Cut-Off:', cutoffLabel], ["Employee's Name:", e.name], ['Position:', e.position]].map(([l, v], i) => (
               <div key={i} className="flex gap-2 text-sm py-0.5" style={{ fontFamily: F_BODY }}>
                 <span style={{ color: T.soft }}>{l}</span>
                 <span className="font-bold" style={{ color: T.ink }}>{v}</span>
@@ -186,7 +185,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast }
           </div>
           <Panel className="overflow-hidden">
             <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
-              <Eyebrow>Payslips — {CUTOFF_LABEL}</Eyebrow>
+              <Eyebrow>Payslips — {cutoffLabel}</Eyebrow>
               <div className="flex items-center gap-2">
                 <Badge tone={attPeriod ? 'green' : 'amber'}>{attPeriod ? `DTR ${attPeriod.start} → ${attPeriod.end}` : 'No attendance imported'}</Badge>
                 <Btn size="sm" variant="outline" icon={Wallet} disabled={dueLoans.length === 0} onClick={() => setConfirmApply(true)}>Apply Cutoff Deductions</Btn>
@@ -245,7 +244,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast }
 
       <Confirm open={confirmApply} onCancel={() => setConfirmApply(false)} onConfirm={applyDeductions}
         title="Apply cutoff deductions?"
-        message={`This will deduct ${peso(dueTotal)} total across ${dueLoans.length} active loan(s) for the ${CUTOFF_LABEL} cutoff, each logged with today's date on the Loans & Advances page. This can't be undone from here.`}
+        message={`This will deduct ${peso(dueTotal)} total across ${dueLoans.length} active loan(s) for the ${cutoffLabel} cutoff, each logged with today's date on the Loans & Advances page. This can't be undone from here.`}
         confirmLabel="Apply Deductions" />
     </div>
   );

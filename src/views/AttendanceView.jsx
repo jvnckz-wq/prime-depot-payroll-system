@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, ClipboardList, ArrowLeft, Check, Eye, Pencil, Upload } from 'lucide-react';
+import { AlertTriangle, ClipboardList, ArrowLeft, Check, Eye, Pencil, Upload, UserPlus } from 'lucide-react';
 import { Av, Badge, BigStat, Btn, EmptyState, Eyebrow, Field, H1, Modal, Panel, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
@@ -15,7 +15,7 @@ const asUTC = (iso) => new Date(iso + 'T00:00:00Z');
 const fmtDay = (iso) => asUTC(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 const fmtPeriod = (p) => (p ? `${fmtDay(p.start)} – ${asUTC(p.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}` : '—');
 
-export const AttendanceView = ({ staff, toast }) => {
+export const AttendanceView = ({ staff, toast, onRegister }) => {
   const [view, setView] = useState('list');
   const [selectedId, setSelectedId] = useState(null);
   const [subTab, setSubTab] = useState('dtr');
@@ -31,6 +31,10 @@ export const AttendanceView = ({ staff, toast }) => {
   const [editForm, setEditForm] = useState({ absent: false, timeIn: '', timeOut: '', note: '' });
   const [savingEdit, setSavingEdit] = useState(false);
   const fileRef = useRef(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [viewBatch, setViewBatch] = useState(null);
+  const [batchRows, setBatchRows] = useState([]);
+  const [batchLoading, setBatchLoading] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -116,10 +120,9 @@ export const AttendanceView = ({ staff, toast }) => {
     }
   };
 
-  const onFile = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
+  const importFile = async (file) => {
     if (!file) return;
+    if (!/\.(xls|xlsx)$/i.test(file.name)) { toast('Please choose a .xls or .xlsx biometric export.', 'error'); return; }
     setImporting(true);
     try {
       const dataBase64 = await new Promise((resolve, reject) => {
@@ -140,6 +143,38 @@ export const AttendanceView = ({ staff, toast }) => {
       toast(err.message || 'Could not import the file.', 'error');
     } finally {
       setImporting(false);
+    }
+  };
+
+  const onFile = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    importFile(file);
+  };
+
+  const onDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    importFile(e.dataTransfer?.files?.[0]);
+  };
+
+  // Read-only look-back at a past import: fetch that batch's period summaries.
+  // Nothing here can be edited — corrections still happen on the live DTR.
+  const openBatch = async (b) => {
+    if (!b.periodStart || !b.periodEnd) { toast('This import has no date range to view.', 'error'); return; }
+    setViewBatch(b);
+    setBatchLoading(true);
+    setBatchRows([]);
+    try {
+      const res = await fetch(`/api/attendance?from=${b.periodStart}&to=${b.periodEnd}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const d = await res.json();
+      setBatchRows(d.summaries || []);
+    } catch (err) {
+      console.error('Could not load batch records:', err);
+      toast('Could not load those records.', 'error');
+    } finally {
+      setBatchLoading(false);
     }
   };
 
@@ -253,10 +288,21 @@ export const AttendanceView = ({ staff, toast }) => {
   return (
     <div className="p-6">
       <input ref={fileRef} type="file" accept=".xls,.xlsx" onChange={onFile} style={{ display: 'none' }} />
-      <H1 sub="Imported from the biometric .xls export. Matched to employees by their biometric User ID."
-        action={<Btn variant="outline" icon={Upload} onClick={() => fileRef.current?.click()} disabled={importing}>{importing ? 'Importing…' : 'Import Biometric .xls'}</Btn>}>Attendance</H1>
+      <H1 sub="Imported from the biometric .xls export. Matched to employees by their biometric User ID.">Attendance</H1>
 
-      {importing && <div className="mb-4 flex items-center gap-2 p-3 rounded text-sm" style={{ backgroundColor: T.blueBg, color: T.blue, fontFamily: F_BODY }}><ClipboardList size={14} /> Reading and matching the attendance file…</div>}
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={onDrop}
+        className="mb-4 rounded-md border-2 border-dashed flex flex-col items-center justify-center text-center gap-2 px-4 py-6 transition-colors"
+        style={{ borderColor: dragOver ? T.brand : T.line, backgroundColor: dragOver ? T.brandBg : T.surface }}>
+        <Upload size={22} color={dragOver ? T.brand : T.soft} />
+        <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>
+          {importing ? 'Reading and matching the attendance file…' : 'Drag & drop the biometric .xls here'}
+        </div>
+        <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Exported from the biometric scanner — .xls or .xlsx</div>
+        <Btn variant="outline" icon={Upload} onClick={() => fileRef.current?.click()} disabled={importing}>{importing ? 'Importing…' : 'Browse for a file'}</Btn>
+      </div>
 
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         <Badge tone="blue">{data.period ? fmtPeriod(data.period) : 'No imports yet'}</Badge>
@@ -341,7 +387,7 @@ export const AttendanceView = ({ staff, toast }) => {
                           {resolvingId === g.biometricId ? 'Resolving…' : 'Resolve'}
                         </Btn>
                       ) : (
-                        <span className="text-xs" style={{ fontFamily: F_BODY, color: T.amber }}>Register ID {g.biometricId} first</span>
+                        <Btn size="sm" variant="outline" icon={UserPlus} onClick={() => onRegister && onRegister(g.biometricId, g.biometricName)}>Register</Btn>
                       )}
                     </Td>
                   </tr>
@@ -356,7 +402,7 @@ export const AttendanceView = ({ staff, toast }) => {
         <Panel className="overflow-hidden">
           {data.batches.length === 0 ? <EmptyState icon={ClipboardList} title="No imports yet" desc="Upload an attendance .xls file to get started." /> : (
             <table className="w-full">
-              <thead><tr><Th>Imported</Th><Th>Filename</Th><Th>Period</Th><Th right>Mapped</Th><Th right>Unmapped</Th><Th>Status</Th></tr></thead>
+              <thead><tr><Th>Imported</Th><Th>Filename</Th><Th>Period</Th><Th right>Mapped</Th><Th right>Unmapped</Th><Th>Status</Th><Th></Th></tr></thead>
               <tbody>{data.batches.map((b) => (
                 <tr key={b.id}>
                   <Td mono>{new Date(b.importedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</Td>
@@ -365,12 +411,50 @@ export const AttendanceView = ({ staff, toast }) => {
                   <Td right mono>{b.mappedRows}</Td>
                   <Td right mono><span style={{ color: b.unmappedRows > 0 ? T.amber : T.soft }}>{b.unmappedRows}</span></Td>
                   <Td><Badge tone={b.status === 'COMPLETED' ? 'green' : b.status === 'FAILED' ? 'red' : 'amber'}>{b.status}</Badge></Td>
+                  <Td>{b.periodStart ? <Btn size="sm" variant="outline" icon={Eye} onClick={() => openBatch(b)}>View</Btn> : null}</Td>
                 </tr>
               ))}</tbody>
             </table>
           )}
         </Panel>
       )}
+
+      {/* Read-only look-back at a past import. Locked — corrections happen on the
+          live DTR, never here, so historical figures stay exactly as recorded. */}
+      <Modal open={!!viewBatch} onClose={() => setViewBatch(null)} title={viewBatch ? `Import — ${viewBatch.filename}` : ''} width={680}>
+        {viewBatch && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 flex-wrap text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
+              <Badge tone="blue">{viewBatch.periodStart} → {viewBatch.periodEnd}</Badge>
+              <span>Imported {new Date(viewBatch.importedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+              <Badge tone="amber">Locked — viewing only</Badge>
+            </div>
+            {batchLoading ? <div className="p-4 text-sm" style={{ color: T.soft, fontFamily: F_BODY }}>Loading…</div>
+              : batchRows.length === 0 ? <EmptyState icon={ClipboardList} title="No records" desc="No attendance rows fall in this import's date range." />
+              : (
+              <div className="overflow-x-auto" style={{ maxHeight: 380 }}>
+                <table className="w-full">
+                  <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}>
+                    <tr><Th>Employee</Th><Th right>Present</Th><Th right>Days Late</Th><Th right>Late (mins)</Th><Th right>OT (mins)</Th><Th right>Absences</Th></tr>
+                  </thead>
+                  <tbody>
+                    {batchRows.map((s) => (
+                      <tr key={s.id}>
+                        <Td><div className="flex items-center gap-2.5"><Av name={s.name} size={26} /><span className="font-semibold text-sm" style={{ fontFamily: F_BODY }}>{s.name}</span></div></Td>
+                        <Td right mono>{s.present}</Td>
+                        <Td right mono>{s.daysLate || '—'}</Td>
+                        <Td right mono>{s.lateMins > 0 ? `${s.lateMins}m` : '—'}</Td>
+                        <Td right mono>{s.otMins > 0 ? `${s.otMins}m` : '—'}</Td>
+                        <Td right mono>{s.absent || '—'}</Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

@@ -88,6 +88,14 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const employeeId = searchParams.get('employeeId');
+    // Optional explicit range — powers the read-only "view a past import" panel.
+    // Absent this, everything behaves exactly as before (current period only).
+    const validYmd = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
+    const fromStr = searchParams.get('from');
+    const toStr = searchParams.get('to');
+    const explicitRange = validYmd(fromStr) && validYmd(toStr)
+      ? { start: new Date(`${fromStr}T00:00:00.000Z`), end: new Date(`${toStr}T00:00:00.000Z`) }
+      : null;
 
     const latest = await prisma.importBatch.findFirst({
       where: { status: 'COMPLETED' },
@@ -123,11 +131,14 @@ export async function GET(request) {
       });
     }
 
-    // --- Per-employee summaries for the current period ---
+    // --- Per-employee summaries (current period, or an explicit range when the
+    // admin opens a past import read-only) ---
+    const range = explicitRange || period;
+    const rangeOut = range ? { start: ymd(range.start), end: ymd(range.end) } : periodOut;
     let summaries = [];
-    if (period) {
+    if (range) {
       const rows = await prisma.attendance.findMany({
-        where: { date: { gte: period.start, lte: period.end } },
+        where: { date: { gte: range.start, lte: range.end } },
         include: { employee: { select: { name: true, position: true } } },
       });
       const byEmp = new Map();
@@ -156,7 +167,7 @@ export async function GET(request) {
     const unmappedCount = await prisma.unmappedLog.count({ where: { isResolved: false } });
 
     return NextResponse.json({
-      period: periodOut,
+      period: rangeOut,
       summaries,
       unmappedCount,
       batches: batches.map((b) => ({

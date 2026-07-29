@@ -27,8 +27,8 @@ export const Money = ({ value, size = 'text-sm', bold = false, tone }) => (
   </span>
 );
 
-export const Panel = ({ children, className = '', style = {} }) => (
-  <div className={`rounded-md border ${className}`} style={{ backgroundColor: T.surface, borderColor: T.line, ...style }}>
+export const Panel = ({ children, className = '', style = {}, ...rest }) => (
+  <div className={`rounded-md border ${className}`} style={{ backgroundColor: T.surface, borderColor: T.line, ...style }} {...rest}>
     {children}
   </div>
 );
@@ -62,10 +62,17 @@ export const Td = ({ children, right = false, mono = false, colSpan, style = {} 
   </td>
 );
 
-export const StatCard = ({ label, value, tone = 'neutral', icon: Icon }) => {
+export const StatCard = ({ label, value, tone = 'neutral', icon: Icon, onClick }) => {
   const fg = { green: T.green, amber: T.amber, red: T.red, blue: T.blue, neutral: T.ink }[tone];
+  const clickable = typeof onClick === 'function';
   return (
-    <Panel className="p-4">
+    <Panel
+      className={`p-4${clickable ? ' cursor-pointer transition-shadow hover:shadow-md' : ''}`}
+      onClick={onClick}
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onKeyDown={clickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
+    >
       <div className="flex items-center justify-between mb-2">
         <Eyebrow>{label}</Eyebrow>
         {Icon && <Icon size={16} color={T.soft} />}
