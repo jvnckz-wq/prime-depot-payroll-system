@@ -4,14 +4,17 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Truck, LogOut, ShieldCheck, Save, Star } from 'lucide-react';
 import { DeliveryForm } from '../components/DeliveryForm.jsx';
 import { Av, Badge, BigStat, Btn, EmptyState, Eyebrow, Field, Panel, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
-import { BONUS_TRIPS } from '../data/seed';
-import { flattenDeliveries } from '../lib/payroll';
+import { BONUS_HEAD, BONUS_TRIPS, DRIVER_DAILY, HELPER_DAILY } from '../data/seed';
+import { crewEarnings, deliveriesToLog, flattenDeliveries } from '../lib/payroll';
 import { peso } from '../lib/utils';
 import { FONTS, F_BODY, F_HEAD, T } from '../theme';
-import { AccountPage } from './AccountPage.jsx';
 
 export const CheckerView = ({ currentUser, onUserChange, onSignedOut, deliveries, setDeliveries, reloadDeliveries, rates, onLogout, toast }) => {
   const [page, setPage] = useState('log');
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const [histDate, setHistDate] = useState(todayStr);
+  const [histLog, setHistLog] = useState({});
+  const [histLoading, setHistLoading] = useState(false);
 
   // The delivery form needs the fleet list to pick which truck a delivery is
   // for. Crew (driver/pahinante) are chosen inside the form from /api/crew, per
@@ -46,6 +49,30 @@ export const CheckerView = ({ currentUser, onUserChange, onSignedOut, deliveries
   };
 
   const allTrips = useMemo(() => flattenDeliveries(deliveries), [deliveries]);
+
+  // Read-only look-back at any past day's crew earnings — the SAME crewEarnings
+  // used on the admin's Truck Payroll. Fetches by date only, so every delivery
+  // logged by any checker or the admin is included and visible to all of them.
+  const loadHist = async (date) => {
+    setHistDate(date);
+    setHistLoading(true);
+    try {
+      const res = await fetch(`/api/deliveries?from=${date}&to=${date}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      setHistLog(deliveriesToLog(data.deliveries));
+    } catch (err) {
+      console.error('Could not load history:', err);
+      toast('Could not load that day.', 'error');
+    } finally {
+      setHistLoading(false);
+    }
+  };
+  useEffect(() => { if (page === 'history') loadHist(histDate); }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const histPeople = useMemo(() => crewEarnings(histLog, {
+    driverDaily: DRIVER_DAILY, helperDaily: HELPER_DAILY, bonusHead: BONUS_HEAD, bonusTrips: BONUS_TRIPS,
+  }), [histLog]);
   const trucksActive = new Set(allTrips.map(t => t.crewId)).size;
   const bonusTrucks = Object.values(deliveries).filter(log => {
     const tc = new Set((log.items || []).map(i => i.seq).filter(Boolean)).size;
@@ -64,7 +91,7 @@ export const CheckerView = ({ currentUser, onUserChange, onSignedOut, deliveries
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {[['log', 'Delivery Log'], ['account', 'Account']].map(([k, l]) => (
+          {[['log', 'Delivery Log'], ['history', 'Crew Earnings']].map(([k, l]) => (
             <button key={k} onClick={() => setPage(k)} className="px-3 py-1.5 rounded text-xs font-semibold"
               style={{ fontFamily: F_HEAD, backgroundColor: page === k ? 'rgba(255,255,255,0.1)' : 'transparent', color: page === k ? '#fff' : T.sidebarSoft }}>{l}</button>
           ))}
@@ -133,8 +160,48 @@ export const CheckerView = ({ currentUser, onUserChange, onSignedOut, deliveries
             </Panel>
           </>
         )}
-        {page === 'account' && currentUser && (
-          <AccountPage user={currentUser} toast={toast} onUserChange={onUserChange} onSignedOut={onSignedOut} />
+        {page === 'history' && (
+          <>
+            <div className="mb-4 flex items-center flex-wrap gap-2">
+              <span className="text-xs" style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.04em' }}>VIEWING</span>
+              <Badge tone={histDate === todayStr ? 'green' : 'amber'}>{histDate === todayStr ? `Today · ${todayStr}` : `History · ${histDate}`}</Badge>
+              <input type="date" max={todayStr} value={histDate} onChange={e => loadHist(e.target.value)}
+                className="px-3 py-2 rounded border text-sm" style={{ borderColor: T.line, fontFamily: F_BODY, minWidth: 168, colorScheme: 'light' }} />
+              {histLoading && <span className="text-xs" style={{ color: T.soft, fontFamily: F_BODY }}>Loading…</span>}
+              <span className="text-xs w-full sm:w-auto" style={{ fontFamily: F_BODY, color: T.soft }}>Read-only · shared across all checkers and admin.</span>
+            </div>
+
+            <Panel className="overflow-hidden">
+              <div className="px-4 py-2.5" style={{ borderBottom: `1px solid ${T.line}` }}>
+                <Eyebrow>Crew Earnings · {histDate}</Eyebrow>
+              </div>
+              {histPeople.length === 0 ? (
+                <EmptyState icon={Truck} title="No deliveries" desc="No deliveries were logged on this day." />
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead><tr><Th>Name</Th><Th>Role</Th><Th right>Trips</Th><Th right>Piece Rate</Th><Th right>Daily</Th><Th right>Bonus</Th><Th right>Total</Th></tr></thead>
+                    <tbody>
+                      {histPeople.map((p, i) => (
+                        <tr key={i}>
+                          <Td><div className="flex items-center gap-2.5"><Av name={p.name} size={26} tone={p.role === 'Driver' ? T.blue : T.amber} /><span className="font-semibold text-sm" style={{ fontFamily: F_BODY }}>{p.name}</span></div></Td>
+                          <Td><Badge tone={p.role === 'Driver' ? 'blue' : 'amber'}>{p.role}</Badge></Td>
+                          <Td right mono>{p.trips}</Td>
+                          <Td right mono>{peso(p.pieceRate)}</Td>
+                          <Td right mono>{peso(p.dailyRate)}</Td>
+                          <Td right mono>{p.bonus > 0 ? peso(p.bonus) : '—'}</Td>
+                          <Td right mono style={{ fontWeight: 700 }}>{peso(p.total)}</Td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot style={{ position: 'sticky', bottom: 0, backgroundColor: T.surface }}>
+                      <tr><Td colSpan={6}><b>Total payout</b></Td><Td right mono><b>{peso(histPeople.reduce((s, p) => s + p.total, 0))}</b></Td></tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+            </Panel>
+          </>
         )}
       </div>
     </div>
