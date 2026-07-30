@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Users, Wallet, ArrowLeft, Printer, Eye } from 'lucide-react';
+import { Users, Wallet, ArrowLeft, Printer, Eye, Lock } from 'lucide-react';
 import { Av, Badge, Btn, Confirm, Eyebrow, H1, Money, Panel, StatCard, Td, Th } from '../components/ui.jsx';
 import { computePagIBIG, computeStaffPayroll, loanBalance } from '../lib/payroll';
 import { peso } from '../lib/utils';
@@ -12,6 +12,16 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
   const [selectedId, setSelectedId] = useState(null);
   const [subTab, setSubTab] = useState('current');
   const [confirmApply, setConfirmApply] = useState(false);
+  const [confirmFinalize, setConfirmFinalize] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [confirmUnfinalize, setConfirmUnfinalize] = useState(null);
+  // Per-cutoff allowance overrides (employeeId -> amount). The employee's saved
+  // default is the starting point; an override adjusts this cutoff only and is
+  // frozen into the snapshot on Finalize. Lives in memory until then.
+  const [allowanceOverrides, setAllowanceOverrides] = useState({});
+  const withAllowance = (e) => (allowanceOverrides[e.id] !== undefined ? { ...e, allowance: allowanceOverrides[e.id] } : e);
 
   // Days Present, Tardiness, and Overtime come from the latest imported
   // attendance. Keyed by employee id (= biometric User ID).
@@ -32,7 +42,41 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
     return () => { cancelled = true; };
   }, []);
 
-  const rows = staff.map(e => ({ emp: e, calc: computeStaffPayroll(e, loans, statutory, attById[e.id]) }));
+  // Released cut-offs for the History tab — real stored snapshots, not estimates.
+  const loadHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      const res = await fetch('/api/payroll/history');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const d = await res.json();
+      setHistory(d.periods || []);
+    } catch (err) {
+      console.error('Could not load payroll history:', err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+  useEffect(() => { loadHistory(); }, []);
+
+  const unfinalize = async (p) => {
+    setConfirmUnfinalize(null);
+    if (!p) return;
+    try {
+      const res = await fetch('/api/payroll/finalize', {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ start: p.start, end: p.end }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast(data.error || 'Could not un-finalize.', 'error'); return; }
+      toast(`Un-finalized ${p.label}` + (data.loanEntriesReversed ? ` — ${data.loanEntriesReversed} loan deduction(s) reversed.` : '.'));
+      await loadHistory();
+      await reloadLoans();
+    } catch {
+      toast('Could not reach the server.', 'error');
+    }
+  };
+
+  const rows = staff.map(e => ({ emp: e, calc: computeStaffPayroll(withAllowance(e), loans, statutory, attById[e.id]) }));
   const totalGross = rows.reduce((s, r) => s + r.calc.totalEarnings, 0);
   const totalNet = rows.reduce((s, r) => s + r.calc.net, 0);
 
@@ -62,9 +106,57 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
     }
   };
 
+  // Finalize / Release: freeze every staff payslip for this cutoff as a snapshot
+  // and apply the loan deductions in one step. What's on screen is exactly what
+  // gets stored — the figures never move afterward, even if rates change later.
+  const finalize = async () => {
+    setConfirmFinalize(false);
+    if (!attPeriod) { toast("Import this cutoff's attendance before finalizing.", 'error'); return; }
+    setFinalizing(true);
+    const payslips = rows.map(({ emp: e, calc }) => {
+      const mp2Ded = e.piOn ? (Number(e.mp2) || 0) : 0;
+      return {
+        employeeId: e.id,
+        daysPresent: calc.days,
+        basicPay: calc.gross,
+        overtimeWeekday: calc.otWeekday,
+        overtimeWeekend: calc.otWeekend,
+        allowances: calc.allowance,
+        grossPay: calc.totalEarnings,
+        sssDeduction: calc.sss,
+        philhealthDeduction: calc.phic,
+        pagibigDeduction: Math.max(0, calc.hdmf - mp2Ded),
+        mp2Deduction: mp2Ded,
+        tardinessDeduction: calc.tardiness,
+        loanDeduction: calc.advance,
+        totalDeductions: calc.totalDeductions,
+        netPay: calc.net,
+      };
+    });
+    try {
+      const res = await fetch('/api/payroll/finalize', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ start: attPeriod.start, end: attPeriod.end, label: cutoffLabel, payslips }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast(data.error || 'Could not finalize the cutoff.', 'error'); return; }
+      toast(`Released ${cutoffLabel} — ${data.payslips} payslip(s) snapshotted` + (data.loans?.total ? `, ${peso(data.loans.total)} in loans deducted.` : '.'));
+      await reloadLoans();
+      await loadHistory();
+      setAllowanceOverrides({});
+    } catch {
+      toast('Could not reach the server.', 'error');
+    } finally {
+      setFinalizing(false);
+    }
+  };
+
   if (view === 'slip' && selectedId) {
     const e = staff.find(s => s.id === selectedId);
-    const calc = computeStaffPayroll(e, loans, statutory, attById[selectedId]);
+    const calc = computeStaffPayroll(withAllowance(e), loans, statutory, attById[selectedId]);
+    const defaultAllow = Number(e.allowance) || 0;
+    const effAllow = allowanceOverrides[e.id] !== undefined ? allowanceOverrides[e.id] : defaultAllow;
+    const allowOverridden = allowanceOverrides[e.id] !== undefined && Number(allowanceOverrides[e.id]) !== defaultAllow;
     return (
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
@@ -72,6 +164,21 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
             <ArrowLeft size={14} /> Back to Payroll
           </button>
           <Btn variant="outline" icon={Printer} onClick={() => window.print()}>Print</Btn>
+        </div>
+
+        <div className="no-print mb-4 flex items-center flex-wrap gap-3 p-3 rounded" style={{ backgroundColor: T.bg, border: `1px solid ${T.line}` }}>
+          <span className="text-xs font-semibold uppercase" style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.04em' }}>Other allowances · this cutoff</span>
+          <div className="flex items-center gap-1">
+            <span className="text-sm" style={{ fontFamily: F_MONO, color: T.soft }}>₱</span>
+            <input type="number" value={effAllow}
+              onChange={ev => setAllowanceOverrides(o => ({ ...o, [e.id]: parseFloat(ev.target.value) || 0 }))}
+              className="px-2 py-1.5 rounded border text-sm w-32" style={{ borderColor: T.line, fontFamily: F_MONO, color: T.ink, backgroundColor: T.surface }} />
+          </div>
+          {allowOverridden && (
+            <button onClick={() => setAllowanceOverrides(o => { const n = { ...o }; delete n[e.id]; return n; })}
+              className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.brand }}>Reset to default ({peso(defaultAllow)})</button>
+          )}
+          <span className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Adjusts this cutoff only — the employee&apos;s saved default stays unchanged. Frozen into the payslip when you Finalize.</span>
         </div>
 
         <style>{`
@@ -189,6 +296,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
               <div className="flex items-center gap-2">
                 <Badge tone={attPeriod ? 'green' : 'amber'}>{attPeriod ? `DTR ${attPeriod.start} → ${attPeriod.end}` : 'No attendance imported'}</Badge>
                 <Btn size="sm" variant="outline" icon={Wallet} disabled={dueLoans.length === 0} onClick={() => setConfirmApply(true)}>Apply Cutoff Deductions</Btn>
+                <Btn size="sm" icon={Lock} disabled={!attPeriod || finalizing} onClick={() => setConfirmFinalize(true)}>{finalizing ? 'Finalizing…' : 'Finalize / Release'}</Btn>
               </div>
             </div>
             <table className="w-full">
@@ -228,17 +336,30 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
 
       {subTab === 'history' && (
         <Panel className="overflow-hidden">
-          <table className="w-full">
-            <thead><tr><Th>Cut-off Period</Th><Th right>Employees</Th><Th right>Total Gross</Th><Th right>Total Net</Th><Th>Status</Th></tr></thead>
-            <tbody>
-              {[['May 1–15, 2026', staff.length, totalGross, totalNet], ['Apr 16–30, 2026', staff.length, totalGross * 0.97, totalNet * 0.97], ['Apr 1–15, 2026', staff.length - 1, totalGross * 0.9, totalNet * 0.9]].map(([period, count, g, n], i) => (
-                <tr key={i}>
-                  <Td><b>{period}</b></Td><Td right mono>{count}</Td><Td right mono>{peso(g)}</Td><Td right mono>{peso(n)}</Td>
-                  <Td><Badge tone="green">Finalized</Badge></Td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="px-4 py-2.5" style={{ borderBottom: `1px solid ${T.line}` }}>
+            <Eyebrow>Released cut-offs</Eyebrow>
+          </div>
+          {historyLoading ? (
+            <div className="p-4 text-sm" style={{ color: T.soft, fontFamily: F_BODY }}>Loading…</div>
+          ) : history.length === 0 ? (
+            <div className="p-8 text-center text-sm" style={{ color: T.soft, fontFamily: F_BODY }}>No cut-offs have been finalized yet. Release one from the Current Cutoff tab.</div>
+          ) : (
+            <table className="w-full">
+              <thead><tr><Th>Cut-off Period</Th><Th right>Employees</Th><Th right>Total Gross</Th><Th right>Total Net</Th><Th>Status</Th><Th></Th></tr></thead>
+              <tbody>
+                {history.map((p) => (
+                  <tr key={p.id}>
+                    <Td><b>{p.label}</b></Td>
+                    <Td right mono>{p.employees}</Td>
+                    <Td right mono>{peso(p.totalGross)}</Td>
+                    <Td right mono>{peso(p.totalNet)}</Td>
+                    <Td><Badge tone="green">Released</Badge></Td>
+                    <Td><Btn size="sm" variant="outline" onClick={() => setConfirmUnfinalize(p)}>Un-finalize</Btn></Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </Panel>
       )}
 
@@ -246,6 +367,16 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
         title="Apply cutoff deductions?"
         message={`This will deduct ${peso(dueTotal)} total across ${dueLoans.length} active loan(s) for the ${cutoffLabel} cutoff, each logged with today's date on the Loans & Advances page. This can't be undone from here.`}
         confirmLabel="Apply Deductions" />
+
+      <Confirm open={confirmFinalize} onCancel={() => setConfirmFinalize(false)} onConfirm={finalize}
+        title={`Finalize and release ${cutoffLabel}?`}
+        message={`This snapshots all ${rows.length} staff payslip(s) for this cutoff (total net ${peso(totalNet)}) and applies their loan deductions. The figures are frozen once released — they won't change even if rates or records change later. You can un-finalize this cutoff from History if a correction is needed.`}
+        confirmLabel="Finalize / Release" />
+
+      <Confirm open={!!confirmUnfinalize} onCancel={() => setConfirmUnfinalize(null)} onConfirm={() => unfinalize(confirmUnfinalize)}
+        title={confirmUnfinalize ? `Un-finalize ${confirmUnfinalize.label}?` : ''}
+        message="This removes the released snapshot and reverses this cut-off's loan deductions, restoring the balances, so it can be recomputed and released again. Only do this to correct a mistake."
+        confirmLabel="Un-finalize" />
     </div>
   );
 };
