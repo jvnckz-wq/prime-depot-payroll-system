@@ -183,6 +183,10 @@ model Employee {
   pagibigEnrolled Boolean        @default(false)
   /// Voluntary Pag-IBIG MP2 savings, on top of the mandatory contribution.
   mp2Amount       Decimal        @default(0) @db.Decimal(12, 2)
+  /// Per-employee default "Other Allowances" for staff payroll. Varies per
+  /// person (transport, meal, etc.), so it lives on the employee rather than
+  /// hardcoded. A per-cutoff override lands with the Finalize feature.
+  otherAllowance  Decimal        @default(0) @db.Decimal(12, 2)
 
   // Personal information — required by the client spec for company records.
   // Deliberately never printed on payslips; the client asked to keep those

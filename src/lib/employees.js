@@ -56,6 +56,7 @@ export function shapeEmployee(e) {
     phOn: e.philhealthEnrolled,
     piOn: e.pagibigEnrolled,
     mp2: num(e.mp2Amount),
+    allowance: num(e.otherAllowance),
     address: e.address ?? '',
     contact: e.contactNumber ?? '',
     birthdate: e.birthdate ? e.birthdate.toISOString().slice(0, 10) : '',
@@ -69,7 +70,7 @@ export function shapeEmployee(e) {
 }
 
 // A friendlier label for the money-field error messages.
-const MONEY_LABEL = { rate: 'Daily rate', declaredSalary: 'Declared salary', mp2: 'MP2 amount' };
+const MONEY_LABEL = { rate: 'Daily rate', declaredSalary: 'Declared salary', mp2: 'MP2 amount', allowance: 'Other allowances' };
 
 // Turn the form's fields into a validated row of database columns. Never build
 // the row by spreading the request body: that lets any caller set a column we
@@ -100,6 +101,7 @@ export function buildEmployeeData(body, { partial = false } = {}) {
     ['rate', 'dailyRate'],
     ['declaredSalary', 'declaredSalary'],
     ['mp2', 'mp2Amount'],
+    ['allowance', 'otherAllowance'],
   ]) {
     if (!partial || has(field)) {
       const n = Number(body[field]);

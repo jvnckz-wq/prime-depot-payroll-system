@@ -90,7 +90,7 @@ export function computeStaffPayroll(e, loans = [], statutory, attendance = null)
   const otWeekend = hourly * (otWeekendMins / 60) * 1.3;
   const ot = otWeekday + otWeekend;
 
-  const allowance = 4400;
+  const allowance = Number(e.allowance) || 0;
 
   const sss = e.sssOn ? computeSSS(e.declaredSalary, statutory.sss) : 0;
   const phic = e.phOn ? computePhilHealth(e.declaredSalary, statutory.philhealth) : 0;
