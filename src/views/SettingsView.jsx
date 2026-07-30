@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Plus, Check, Edit2, Save, Trash2, Copy, KeyRound, UserX, UserCheck, ShieldCheck } from 'lucide-react';
+import { Plus, Check, Edit2, Save, Trash2, Copy, KeyRound, UserX, UserCheck, ShieldCheck, Download, FileSpreadsheet } from 'lucide-react';
 import { Badge, Btn, Eyebrow, Field, H1, Money, Panel, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { computePagIBIG, computePhilHealth, computeSSS } from '../lib/payroll';
-import { peso } from '../lib/utils';
+import { exportXLSX, peso } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 import { FleetPanel } from './FleetPanel.jsx';
 
@@ -18,6 +18,52 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
   const [piDraft, setPiDraft] = useState(pagibigRates);
   const [editBir, setEditBir] = useState(false);
   const [birDraft, setBirDraft] = useState(birTable);
+
+  // --- Data & Backup ---
+  const [exporting, setExporting] = useState(false);
+  const [lastExport, setLastExport] = useState('');
+  const fetchAll = async () => {
+    const res = await fetch('/api/export');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  };
+  const downloadBlob = (blob, filename) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+  };
+  const stamp = () => new Date().toISOString().slice(0, 10);
+  const exportJSON = async () => {
+    setExporting(true);
+    try {
+      const data = await fetchAll();
+      downloadBlob(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }), `prime-depot-backup-${stamp()}.json`);
+      setLastExport(new Date().toLocaleString());
+      toast('Full backup downloaded.');
+    } catch (err) { console.error('Backup failed:', err); toast('Could not build the backup.', 'error'); }
+    finally { setExporting(false); }
+  };
+  const exportExcel = async () => {
+    setExporting(true);
+    try {
+      const d = await fetchAll();
+      exportXLSX(`prime-depot-data-${stamp()}.xlsx`, [
+        { name: 'Employees', rows: d.employees || [] },
+        { name: 'Payroll Periods', rows: d.payrollPeriods || [] },
+        { name: 'Payslips', rows: d.payslips || [] },
+        { name: 'Loans', rows: d.loans || [] },
+        { name: 'Loan Entries', rows: d.loanEntries || [] },
+        { name: 'Deliveries', rows: d.deliveries || [] },
+        { name: 'Delivery Items', rows: d.deliveryItems || [] },
+        { name: 'Attendance', rows: d.attendance || [] },
+      ]);
+      setLastExport(new Date().toLocaleString());
+      toast('Excel workbook downloaded.');
+    } catch (err) { console.error('Excel export failed:', err); toast('Could not build the workbook.', 'error'); }
+    finally { setExporting(false); }
+  };
   const [testSalary, setTestSalary] = useState('16900');
 
   // Persist one table to the database; only update the on-screen values on success.
@@ -49,7 +95,7 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
         {(currentUser?.role === 'ADMIN'
           // Configuration only. Anything about a person now lives on the
           // Account page, reached from your own name in the sidebar.
-          ? [['statutory', 'Statutory Deductions'], ['fleet', 'Fleet & Areas']]
+          ? [['statutory', 'Statutory Deductions'], ['fleet', 'Fleet & Areas'], ['backup', 'Backup']]
           : []
         ).map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)} className="px-3 py-1.5 rounded text-xs font-semibold"
@@ -208,6 +254,20 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
 
       {tab === 'fleet' && currentUser?.role === 'ADMIN' && (
         <FleetPanel toast={toast} />
+      )}
+
+      {tab === 'backup' && currentUser?.role === 'ADMIN' && (
+        <Panel className="p-4">
+          <Eyebrow>Data &amp; Backup</Eyebrow>
+          <div className="text-xs mt-1 mb-3 max-w-2xl" style={{ fontFamily: F_BODY, color: T.soft }}>
+            Neon&apos;s free tier keeps no automatic backups, so download a copy regularly — especially before your defense. The <b>.json</b> file is a complete, restorable snapshot of every record (passwords and login sessions are never included). The <b>.xlsx</b> workbook is a readable copy of the main tables for review.
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Btn icon={Download} disabled={exporting} onClick={exportJSON}>{exporting ? 'Preparing…' : 'Download full backup (.json)'}</Btn>
+            <Btn variant="outline" icon={FileSpreadsheet} disabled={exporting} onClick={exportExcel}>{exporting ? 'Preparing…' : 'Download Excel workbook (.xlsx)'}</Btn>
+          </div>
+          {lastExport && <div className="text-xs mt-3" style={{ fontFamily: F_BODY, color: T.soft }}>Last export: {lastExport}</div>}
+        </Panel>
       )}
 
     </div>

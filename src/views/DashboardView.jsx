@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Users, Truck, Wallet, FileText, AlertTriangle, TrendingUp, Check } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Av, Eyebrow, H1, Panel, StatCard, Td, Th } from '../components/ui.jsx';
-import { PAYROLL_TREND } from '../data/seed';
 import { computeStaffPayroll, flattenDeliveries, loanBalance } from '../lib/payroll';
 import { peso } from '../lib/utils';
 import { F_BODY, T } from '../theme';
@@ -13,11 +12,22 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
   const loggedToday = Object.keys(deliveries).length;
   const deliveriesLogged = useMemo(() => flattenDeliveries(deliveries).length, [deliveries]);
 
+  // Index the imported attendance so the dashboard uses the SAME real days the
+  // Staff Payroll page does — otherwise the headline net would be an estimate
+  // and wouldn't match the payslips.
+  const attById = useMemo(() => {
+    const m = {};
+    for (const s of attendanceSummaries) m[s.id] = s;
+    return m;
+  }, [attendanceSummaries]);
+  const cutoffKey = `staff-${cutoffLabel}`;
+
   // Net pay this cutoff — sum of every staff payslip's net, using the same shared math the
-  // Staff Payroll page uses, so the headline number always agrees with the payslips.
+  // Staff Payroll page uses (same attendance AND same cutoff key), so the headline number
+  // always agrees with the payslips down to the loan deductions.
   const netThisCutoff = useMemo(
-    () => staff.reduce((s, e) => s + computeStaffPayroll(e, loans, statutory).net, 0),
-    [staff, loans, statutory]
+    () => staff.reduce((s, e) => s + computeStaffPayroll(e, loans, statutory, attById[e.id], cutoffKey).net, 0),
+    [staff, loans, statutory, attById, cutoffKey]
   );
   // Active loans & advances — total outstanding balance across every unpaid ledger.
   const activeLoans = useMemo(() => loans.reduce((s, l) => s + Math.max(0, loanBalance(l)), 0), [loans]);
@@ -38,8 +48,24 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
 
   // Payslip snapshot — first rows of the current staff payroll, matching the mockup table.
   const snapshot = useMemo(
-    () => staff.map(e => { const c = computeStaffPayroll(e, loans, statutory); return { name: e.name, gross: c.gross, net: c.net }; }),
-    [staff, loans, statutory]
+    () => staff.map(e => { const c = computeStaffPayroll(e, loans, statutory, attById[e.id], cutoffKey); return { name: e.name, gross: c.gross, net: c.net }; }),
+    [staff, loans, statutory, attById, cutoffKey]
+  );
+
+  // Real payroll trend: net released per released cut-off, oldest → newest.
+  // Replaces the old seed series, so the chart only shows what's actually been paid.
+  const [releases, setReleases] = useState([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/payroll/history')
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+      .then(d => { if (!cancelled) setReleases(d.periods || []); })
+      .catch(err => console.error('Could not load payroll trend:', err));
+    return () => { cancelled = true; };
+  }, []);
+  const trendData = useMemo(
+    () => releases.slice(0, 6).reverse().map(p => ({ mo: (p.label || '').replace(/,\s*\d{4}$/, ''), payroll: p.totalNet })),
+    [releases]
   );
 
   const go = (t) => setTab && setTab(t);
@@ -145,8 +171,13 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
               <TrendingUp size={14} color={T.soft} />
             </div>
             <div className="text-xs mb-3" style={{ fontFamily: F_BODY, color: T.soft }}>Net salary released · last 6 cutoffs</div>
+            {trendData.length === 0 ? (
+              <div className="flex items-center justify-center text-center text-xs px-4" style={{ height: 150, color: T.soft, fontFamily: F_BODY }}>
+                No released cut-offs yet — finalize a cutoff on Staff Payroll to build this trend.
+              </div>
+            ) : (
             <ResponsiveContainer width="100%" height={150}>
-              <LineChart data={PAYROLL_TREND} margin={{ left: -20, right: 5, top: 5, bottom: 0 }}>
+              <LineChart data={trendData} margin={{ left: -20, right: 5, top: 5, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={T.lineSoft} vertical={false} />
                 <XAxis dataKey="mo" tick={{ fontSize: 11, fill: T.soft }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: T.soft }} axisLine={false} tickLine={false} tickFormatter={v => `₱${v / 1000}k`} />
@@ -154,6 +185,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
                 <Line type="monotone" dataKey="payroll" stroke={T.brand} strokeWidth={2.5} dot={{ r: 3, fill: T.brand }} activeDot={{ r: 5 }} />
               </LineChart>
             </ResponsiveContainer>
+            )}
           </Panel>
         </div>
       </div>

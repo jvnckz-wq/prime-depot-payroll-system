@@ -15,7 +15,7 @@ import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 // deliberately never printed on a payslip.
 const BLANK_EMP = {
   id: '', name: '', position: 'Administrative Staff', rate: '', declaredSalary: '',
-  status: 'Active', sssOn: false, phOn: false, piOn: false, mp2: 0, allowance: 0,
+  status: 'Active', sssOn: false, phOn: false, piOn: false, mp2: 0,
   address: '', contact: '', birthdate: '', dateHired: '',
   earlyShiftDays: [], earlyShiftTime: '06:00',
 };
@@ -93,7 +93,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
     const payload = {
       id: form.id.trim(), name: form.name.trim(), position: form.position,
       rate: parseFloat(form.rate) || 0, declaredSalary: parseFloat(form.declaredSalary) || 0,
-      mp2: parseFloat(form.mp2) || 0, allowance: parseFloat(form.allowance) || 0, status: form.status,
+      mp2: parseFloat(form.mp2) || 0, status: form.status,
       sssOn: form.sssOn, phOn: form.phOn, piOn: form.piOn,
       address: form.address, contact: form.contact,
       birthdate: form.birthdate, dateHired: form.dateHired,
@@ -260,11 +260,6 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
             <input type="number" value={form.declaredSalary} onChange={e => ff('declaredSalary', e.target.value)} placeholder="e.g. daily rate × 26" className={inputCls} style={inputStyle} />
           </Field>
           <div className="text-xs -mt-1.5" style={{ fontFamily: F_BODY, color: T.soft }}>Basis for SSS, PhilHealth, and Pag-IBIG lookups — see Settings → Statutory Deductions for the actual bracket tables.</div>
-
-          <Field label="Other allowances (₱ / cutoff)">
-            <input type="number" value={form.allowance} onChange={e => ff('allowance', e.target.value)} placeholder="e.g. 4400" className={inputCls} style={inputStyle} />
-          </Field>
-          <div className="text-xs -mt-1.5" style={{ fontFamily: F_BODY, color: T.soft }}>This employee's default allowance, added to gross on every staff payslip. Varies per person — leave 0 if none.</div>
 
           {/* Early shift. Modelled here, on the person, rather than as a job
               title — the same staff member can be early on Saturdays and

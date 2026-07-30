@@ -78,36 +78,49 @@ export function deliveriesToLog(apiDeliveries) {
 //   Tardiness    = hourly × (late minutes ÷ 60) × 2     = rate × late ÷ 240
 const DEFAULT_CUTOFF_DAYS = 11;
 
-export function computeStaffPayroll(e, loans = [], statutory, attendance = null) {
+// Round to centavos. Applied to every money line so the amounts a payslip shows
+// always add up to the totals it shows — no floating-point drift, no ₱0.01 gaps.
+const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+
+export function computeStaffPayroll(e, loans = [], statutory, attendance = null, runKey = null) {
   const hasAttendance = !!attendance;
   const days = hasAttendance ? attendance.present : DEFAULT_CUTOFF_DAYS;
-  const gross = e.rate * days;
+  const gross = round2(e.rate * days);
 
   const hourly = e.rate / 8;
   const otWeekdayMins = hasAttendance ? (attendance.otWeekdayMins || 0) : 0;
   const otWeekendMins = hasAttendance ? (attendance.otWeekendMins || 0) : 0;
-  const otWeekday = hourly * (otWeekdayMins / 60) * 1.25;
-  const otWeekend = hourly * (otWeekendMins / 60) * 1.3;
-  const ot = otWeekday + otWeekend;
+  const otWeekday = round2(hourly * (otWeekdayMins / 60) * 1.25);
+  const otWeekend = round2(hourly * (otWeekendMins / 60) * 1.3);
+  const ot = round2(otWeekday + otWeekend);
 
-  const allowance = Number(e.allowance) || 0;
+  const allowance = round2(Number(e.allowance) || 0);
 
-  const sss = e.sssOn ? computeSSS(e.declaredSalary, statutory.sss) : 0;
-  const phic = e.phOn ? computePhilHealth(e.declaredSalary, statutory.philhealth) : 0;
-  const hdmf = e.piOn ? (computePagIBIG(e.declaredSalary, statutory.pagibig) + (e.mp2 || 0)) : 0;
+  const sss = round2(e.sssOn ? computeSSS(e.declaredSalary, statutory.sss) : 0);
+  const phic = round2(e.phOn ? computePhilHealth(e.declaredSalary, statutory.philhealth) : 0);
+  const hdmf = round2(e.piOn ? (computePagIBIG(e.declaredSalary, statutory.pagibig) + (e.mp2 || 0)) : 0);
 
-  // What THIS cutoff would deduct across this employee's active, unpaused loans — a live
-  // preview, same as the rest of this payslip. The actual ledger entry only gets written
-  // when "Apply Cutoff Deductions" is clicked on the Staff Payroll page.
-  const advance = loans.filter(l => l.person === e.name && !l.paused && loanBalance(l) > 0)
-    .reduce((s, l) => s + Math.min(l.perCutoff, loanBalance(l)), 0);
+  // Loan deduction for THIS cutoff. If it's already applied (a ledger entry
+  // tagged with this cutoff's runKey exists), use that exact amount so it stays
+  // on the payslip after "Apply Deductions"/Finalize. Otherwise preview what
+  // this cutoff would deduct from the running balance.
+  const advance = round2(loans
+    .filter(l => l.person === e.name && !l.paused)
+    .reduce((s, l) => {
+      const appliedThisCutoff = runKey
+        ? l.entries.filter(en => en.type === 'deduction' && en.payslipId === runKey).reduce((a, en) => a + en.amount, 0)
+        : 0;
+      if (appliedThisCutoff > 0) return s + appliedThisCutoff;
+      const bal = loanBalance(l);
+      return bal > 0 ? s + Math.min(l.perCutoff, bal) : s;
+    }, 0));
 
   const lateMins = hasAttendance ? (attendance.lateMins || 0) : 0;
-  const tardiness = Math.round((e.rate * lateMins / 240) * 100) / 100;
+  const tardiness = round2(e.rate * lateMins / 240);
 
-  const totalEarnings = gross + ot + allowance;
-  const totalDeductions = sss + phic + hdmf + advance + tardiness;
-  const net = totalEarnings - totalDeductions;
+  const totalEarnings = round2(gross + ot + allowance);
+  const totalDeductions = round2(sss + phic + hdmf + advance + tardiness);
+  const net = round2(totalEarnings - totalDeductions);
   return { hasAttendance, days, lateMins, gross, otWeekday, otWeekend, ot, allowance, sss, phic, hdmf, advance, tardiness, totalEarnings, totalDeductions, net };
 }
 

@@ -30,6 +30,7 @@ export function shapeLoan(loan) {
       type: e.type === 'GRANT' ? 'grant' : 'deduction',
       amount: num(e.amount),
       remark: e.note || (e.type === 'GRANT' ? 'Granted' : 'Deducted'),
+      payslipId: e.payslipId || null,
     }));
 
   return {

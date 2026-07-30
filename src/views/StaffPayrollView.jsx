@@ -7,7 +7,78 @@ import { computePagIBIG, computeStaffPayroll, loanBalance } from '../lib/payroll
 import { peso } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
-export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, cutoffLabel = '' }) => {
+// One payslip, reused by the single-print view and the batch "Print All" run so
+// the two never drift. Renders the client's exact approved layout.
+const PayslipCard = ({ e, calc, cutoffLabel, attPeriod, statutory, className = 'max-w-md', ...rest }) => (
+  <Panel className={`${className} overflow-hidden`} {...rest}>
+    <div className="px-6 pt-6 pb-4 text-center" style={{ borderBottom: `2px solid ${T.brand}` }}>
+      <div className="font-bold" style={{ fontFamily: F_HEAD, color: T.brand, fontSize: 22, letterSpacing: '0.02em' }}>PRIME DEPOT HARDWARE</div>
+      <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.ink, letterSpacing: '0.04em' }}>TILES, PAINTS &amp; CONSTRUCTION SUPPLY</div>
+      <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft, letterSpacing: '0.08em' }}>BRGY. P. NIOGAN, MABINI, BATANGAS</div>
+    </div>
+    <div className="px-6 py-4" style={{ borderBottom: `1px solid ${T.line}` }}>
+      {[['Salary Cut-Off:', cutoffLabel], ["Employee's Name:", e.name], ['Position:', e.position]].map(([l, v], i) => (
+        <div key={i} className="flex gap-2 text-sm py-0.5" style={{ fontFamily: F_BODY }}>
+          <span style={{ color: T.soft }}>{l}</span>
+          <span className="font-bold" style={{ color: T.ink }}>{v}</span>
+        </div>
+      ))}
+    </div>
+    <div className="px-6 py-4" style={{ borderBottom: `1px solid ${T.line}` }}>
+      <div className="mb-2 text-xs" style={{ fontFamily: F_BODY }}>
+        {calc.hasAttendance
+          ? <span style={{ color: T.green }}>Days present, tardiness, and OT from imported attendance{attPeriod ? ` (${attPeriod.start} → ${attPeriod.end})` : ''}.</span>
+          : <span style={{ color: T.amber }}>⚠ No attendance imported for this person — figures are an estimate ({calc.days} days assumed).</span>}
+      </div>
+      {[['Basic Rate (Daily):', peso(e.rate)], ['Days Present:', String(calc.days)], ['Gross Salary:', peso(calc.gross)]].map(([l, v], i) => (
+        <div key={i} className="flex justify-between text-sm py-1" style={{ fontFamily: F_BODY }}>
+          <span style={{ color: T.ink }}>{l}</span>
+          <span className="tabular-nums" style={{ fontFamily: F_MONO, color: T.ink, fontWeight: i === 2 ? 700 : 400 }}>{v}</span>
+        </div>
+      ))}
+    </div>
+    <div className="px-6 py-4" style={{ borderBottom: `1px solid ${T.line}` }}>
+      <div className="text-sm italic mb-1.5" style={{ fontFamily: F_BODY, color: T.soft }}>Additions</div>
+      {[['Overtime Pay (Weekdays):', calc.otWeekday], ['Overtime Pay (Weekends):', calc.otWeekend], ['Other Allowances:', calc.allowance]].map(([l, v], i) => (
+        <div key={i} className="flex justify-between text-sm py-1" style={{ fontFamily: F_BODY }}>
+          <span style={{ color: T.ink }}>{l}</span>
+          <Money value={v} />
+        </div>
+      ))}
+    </div>
+    <div className="px-6 py-4" style={{ borderBottom: `1px solid ${T.line}` }}>
+      <div className="text-sm italic mb-1.5" style={{ fontFamily: F_BODY, color: T.soft }}>Deductions</div>
+      {[
+        ['HDMF MP1 Contribution:', e.piOn ? computePagIBIG(e.declaredSalary, statutory.pagibig) : 0, false],
+        ['HDMF MP2 Contribution:', e.piOn ? (e.mp2 || 0) : 0, false],
+        ['PHIC Contribution:', calc.phic, false],
+        ['SSS Contribution:', calc.sss, false],
+        ['Loans:', 0, false],
+        ['Adjustments: Advance Payment', calc.advance, false],
+        ['Tardiness:', calc.tardiness, true],
+      ].map(([l, v, danger], i) => (
+        <div key={i} className="flex justify-between text-sm py-1" style={{ fontFamily: F_BODY }}>
+          <span className={danger ? 'font-bold' : ''} style={{ color: danger ? T.brand : T.ink }}>{l}</span>
+          <span className="tabular-nums" style={{ fontFamily: F_MONO, color: danger ? T.brand : T.ink, fontWeight: danger ? 700 : 400 }}>{peso(v)}</span>
+        </div>
+      ))}
+    </div>
+    <div className="flex justify-between items-baseline px-6 py-4" style={{ borderBottom: `1px solid ${T.line}` }}>
+      <span className="font-bold" style={{ fontFamily: F_HEAD, color: T.ink, fontSize: 16 }}>NET SALARY:</span>
+      <span className="font-bold tabular-nums" style={{ fontFamily: F_MONO, color: T.brand, fontSize: 20 }}>{peso(calc.net)}</span>
+    </div>
+    <div className="px-6 py-2.5" style={{ borderBottom: `1px solid ${T.line}` }}>
+      <span className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Remarks: 0 Day/s out 5 Days of Paid Leave used</span>
+    </div>
+    <div className="grid grid-cols-2 gap-8 px-6 py-6">
+      {["Employee's signature / Date", 'Authorized by / Date'].map(l => (
+        <div key={l}><div className="h-px mb-1.5" style={{ backgroundColor: T.line }} /><div className="text-xs text-center" style={{ fontFamily: F_BODY, color: T.soft }}>{l}</div></div>
+      ))}
+    </div>
+  </Panel>
+);
+
+export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, cutoffLabel = '', reloadStaff }) => {
   const [view, setView] = useState('list');
   const [selectedId, setSelectedId] = useState(null);
   const [subTab, setSubTab] = useState('current');
@@ -17,11 +88,21 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [confirmUnfinalize, setConfirmUnfinalize] = useState(null);
-  // Per-cutoff allowance overrides (employeeId -> amount). The employee's saved
-  // default is the starting point; an override adjusts this cutoff only and is
-  // frozen into the snapshot on Finalize. Lives in memory until then.
-  const [allowanceOverrides, setAllowanceOverrides] = useState({});
-  const withAllowance = (e) => (allowanceOverrides[e.id] !== undefined ? { ...e, allowance: allowanceOverrides[e.id] } : e);
+  // Other Allowances is edited on the payslip and SAVED to the employee record,
+  // so it persists across refreshes and shows everywhere (Dashboard, payslip,
+  // snapshot, Finalize). allowanceEdits holds the in-progress text before Save.
+  const [allowanceEdits, setAllowanceEdits] = useState({});
+  const [savingAllowance, setSavingAllowance] = useState(false);
+  // One key per cutoff, used to tag/read this cutoff's loan deductions so the
+  // preview, the payslip, Apply Deductions, and Finalize all agree.
+  const cutoffKey = `staff-${cutoffLabel}`;
+  const [printAll, setPrintAll] = useState(false);
+  useEffect(() => {
+    if (!printAll) return;
+    // Wait for the batch container to render, print, then tear it back down.
+    const t = setTimeout(() => { window.print(); setPrintAll(false); }, 150);
+    return () => clearTimeout(t);
+  }, [printAll]);
 
   // Days Present, Tardiness, and Overtime come from the latest imported
   // attendance. Keyed by employee id (= biometric User ID).
@@ -76,8 +157,31 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
     }
   };
 
-  const rows = staff.map(e => ({ emp: e, calc: computeStaffPayroll(withAllowance(e), loans, statutory, attById[e.id]) }));
-  const totalGross = rows.reduce((s, r) => s + r.calc.totalEarnings, 0);
+  // Persist the payslip's Other Allowances onto the employee record so it sticks
+  // across refreshes and flows into the Dashboard, the snapshot, and Finalize.
+  const saveAllowance = async (e) => {
+    const val = parseFloat(allowanceEdits[e.id]);
+    if (!Number.isFinite(val) || val < 0) { toast('Enter an allowance of zero or more.', 'error'); return; }
+    setSavingAllowance(true);
+    try {
+      const res = await fetch(`/api/employees/${encodeURIComponent(e.id)}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ allowance: val }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast(data.error || 'Could not save the allowance.', 'error'); return; }
+      toast(`Saved ${e.name}'s allowance.`);
+      setAllowanceEdits(o => { const n = { ...o }; delete n[e.id]; return n; });
+      if (reloadStaff) await reloadStaff();
+    } catch {
+      toast('Could not reach the server.', 'error');
+    } finally {
+      setSavingAllowance(false);
+    }
+  };
+
+  const rows = staff.map(e => ({ emp: e, calc: computeStaffPayroll(e, loans, statutory, attById[e.id], cutoffKey) }));
+  const totalGross = rows.reduce((s, r) => s + r.calc.gross, 0);
   const totalNet = rows.reduce((s, r) => s + r.calc.net, 0);
 
   // Loans belonging to staff (matched by name) that still owe something and aren't paused —
@@ -87,7 +191,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
   const applyDeductions = async () => {
     setConfirmApply(false);
     // Per-cutoff run key: applying the same cutoff again is a no-op server-side.
-    const runKey = `staff-${cutoffLabel}`;
+    const runKey = cutoffKey;
     try {
       const res = await fetch('/api/loans/apply-deductions', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -122,7 +226,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
         overtimeWeekday: calc.otWeekday,
         overtimeWeekend: calc.otWeekend,
         allowances: calc.allowance,
-        grossPay: calc.totalEarnings,
+        grossPay: calc.gross,
         sssDeduction: calc.sss,
         philhealthDeduction: calc.phic,
         pagibigDeduction: Math.max(0, calc.hdmf - mp2Ded),
@@ -143,7 +247,6 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
       toast(`Released ${cutoffLabel} — ${data.payslips} payslip(s) snapshotted` + (data.loans?.total ? `, ${peso(data.loans.total)} in loans deducted.` : '.'));
       await reloadLoans();
       await loadHistory();
-      setAllowanceOverrides({});
     } catch {
       toast('Could not reach the server.', 'error');
     } finally {
@@ -153,10 +256,11 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
 
   if (view === 'slip' && selectedId) {
     const e = staff.find(s => s.id === selectedId);
-    const calc = computeStaffPayroll(withAllowance(e), loans, statutory, attById[selectedId]);
-    const defaultAllow = Number(e.allowance) || 0;
-    const effAllow = allowanceOverrides[e.id] !== undefined ? allowanceOverrides[e.id] : defaultAllow;
-    const allowOverridden = allowanceOverrides[e.id] !== undefined && Number(allowanceOverrides[e.id]) !== defaultAllow;
+    const savedAllow = Number(e.allowance) || 0;
+    const allowStr = allowanceEdits[e.id] !== undefined ? allowanceEdits[e.id] : String(savedAllow);
+    const effAllow = parseFloat(allowStr) || 0;
+    const allowDirty = allowanceEdits[e.id] !== undefined && effAllow !== savedAllow;
+    const calc = computeStaffPayroll({ ...e, allowance: effAllow }, loans, statutory, attById[selectedId], cutoffKey);
     return (
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
@@ -167,18 +271,15 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
         </div>
 
         <div className="no-print mb-4 flex items-center flex-wrap gap-3 p-3 rounded" style={{ backgroundColor: T.bg, border: `1px solid ${T.line}` }}>
-          <span className="text-xs font-semibold uppercase" style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.04em' }}>Other allowances · this cutoff</span>
+          <span className="text-xs font-semibold uppercase" style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.04em' }}>Other allowances</span>
           <div className="flex items-center gap-1">
             <span className="text-sm" style={{ fontFamily: F_MONO, color: T.soft }}>₱</span>
-            <input type="number" value={effAllow}
-              onChange={ev => setAllowanceOverrides(o => ({ ...o, [e.id]: parseFloat(ev.target.value) || 0 }))}
+            <input type="number" value={allowStr}
+              onChange={ev => setAllowanceEdits(o => ({ ...o, [e.id]: ev.target.value }))}
               className="px-2 py-1.5 rounded border text-sm w-32" style={{ borderColor: T.line, fontFamily: F_MONO, color: T.ink, backgroundColor: T.surface }} />
           </div>
-          {allowOverridden && (
-            <button onClick={() => setAllowanceOverrides(o => { const n = { ...o }; delete n[e.id]; return n; })}
-              className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.brand }}>Reset to default ({peso(defaultAllow)})</button>
-          )}
-          <span className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Adjusts this cutoff only — the employee&apos;s saved default stays unchanged. Frozen into the payslip when you Finalize.</span>
+          <Btn size="sm" disabled={!allowDirty || savingAllowance} onClick={() => saveAllowance(e)}>{savingAllowance ? 'Saving…' : 'Save'}</Btn>
+          <span className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Saved to this employee and shown on every payslip. Edit here, press Save, then Finalize.</span>
         </div>
 
         <style>{`
@@ -190,84 +291,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
           }
         `}</style>
 
-        <Panel id="staff-payslip" className="max-w-md overflow-hidden">
-          {/* Centered brand letterhead — matches the approved payslip reference */}
-          <div className="px-6 pt-6 pb-4 text-center" style={{ borderBottom: `2px solid ${T.brand}` }}>
-            <div className="font-bold" style={{ fontFamily: F_HEAD, color: T.brand, fontSize: 22, letterSpacing: '0.02em' }}>PRIME DEPOT HARDWARE</div>
-            <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.ink, letterSpacing: '0.04em' }}>TILES, PAINTS &amp; CONSTRUCTION SUPPLY</div>
-            <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft, letterSpacing: '0.08em' }}>BRGY. P. NIOGAN, MABINI, BATANGAS</div>
-          </div>
-
-          {/* Cut-off / Name / Position */}
-          <div className="px-6 py-4" style={{ borderBottom: `1px solid ${T.line}` }}>
-            {[['Salary Cut-Off:', cutoffLabel], ["Employee's Name:", e.name], ['Position:', e.position]].map(([l, v], i) => (
-              <div key={i} className="flex gap-2 text-sm py-0.5" style={{ fontFamily: F_BODY }}>
-                <span style={{ color: T.soft }}>{l}</span>
-                <span className="font-bold" style={{ color: T.ink }}>{v}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Basic rate / days present / gross */}
-          <div className="px-6 py-4" style={{ borderBottom: `1px solid ${T.line}` }}>
-            <div className="mb-2 text-xs" style={{ fontFamily: F_BODY }}>
-              {calc.hasAttendance
-                ? <span style={{ color: T.green }}>Days present, tardiness, and OT from imported attendance{attPeriod ? ` (${attPeriod.start} → ${attPeriod.end})` : ''}.</span>
-                : <span style={{ color: T.amber }}>⚠ No attendance imported for this person — figures are an estimate ({calc.days} days assumed).</span>}
-            </div>
-            {[['Basic Rate (Daily):', peso(e.rate)], ['Days Present:', String(calc.days)], ['Gross Salary:', peso(calc.gross)]].map(([l, v], i) => (
-              <div key={i} className="flex justify-between text-sm py-1" style={{ fontFamily: F_BODY }}>
-                <span style={{ color: T.ink }}>{l}</span>
-                <span className="tabular-nums" style={{ fontFamily: F_MONO, color: T.ink, fontWeight: i === 2 ? 700 : 400 }}>{v}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Additions */}
-          <div className="px-6 py-4" style={{ borderBottom: `1px solid ${T.line}` }}>
-            <div className="text-sm italic mb-1.5" style={{ fontFamily: F_BODY, color: T.soft }}>Additions</div>
-            {[['Overtime Pay (Weekdays):', calc.otWeekday], ['Overtime Pay (Weekends):', calc.otWeekend], ['Other Allowances:', calc.allowance]].map(([l, v], i) => (
-              <div key={i} className="flex justify-between text-sm py-1" style={{ fontFamily: F_BODY }}>
-                <span style={{ color: T.ink }}>{l}</span>
-                <Money value={v} />
-              </div>
-            ))}
-          </div>
-
-          {/* Deductions — labelled exactly as the client's payslip */}
-          <div className="px-6 py-4" style={{ borderBottom: `1px solid ${T.line}` }}>
-            <div className="text-sm italic mb-1.5" style={{ fontFamily: F_BODY, color: T.soft }}>Deductions</div>
-            {[
-              ['HDMF MP1 Contribution:', e.piOn ? computePagIBIG(e.declaredSalary, statutory.pagibig) : 0, false],
-              ['HDMF MP2 Contribution:', e.piOn ? (e.mp2 || 0) : 0, false],
-              ['PHIC Contribution:', calc.phic, false],
-              ['SSS Contribution:', calc.sss, false],
-              ['Loans:', 0, false],
-              ['Adjustments: Advance Payment', calc.advance, false],
-              ['Tardiness:', calc.tardiness, true],
-            ].map(([l, v, danger], i) => (
-              <div key={i} className="flex justify-between text-sm py-1" style={{ fontFamily: F_BODY }}>
-                <span className={danger ? 'font-bold' : ''} style={{ color: danger ? T.brand : T.ink }}>{l}</span>
-                <span className="tabular-nums" style={{ fontFamily: F_MONO, color: danger ? T.brand : T.ink, fontWeight: danger ? 700 : 400 }}>{peso(v)}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Net salary */}
-          <div className="flex justify-between items-baseline px-6 py-4" style={{ borderBottom: `1px solid ${T.line}` }}>
-            <span className="font-bold" style={{ fontFamily: F_HEAD, color: T.ink, fontSize: 16 }}>NET SALARY:</span>
-            <span className="font-bold tabular-nums" style={{ fontFamily: F_MONO, color: T.brand, fontSize: 20 }}>{peso(calc.net)}</span>
-          </div>
-          <div className="px-6 py-2.5" style={{ borderBottom: `1px solid ${T.line}` }}>
-            <span className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Remarks: 0 Day/s out 5 Days of Paid Leave used</span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-8 px-6 py-6 no-print">
-            {["Employee's signature / Date", 'Authorized by / Date'].map(l => (
-              <div key={l}><div className="h-px mb-1.5" style={{ backgroundColor: T.line }} /><div className="text-xs text-center" style={{ fontFamily: F_BODY, color: T.soft }}>{l}</div></div>
-            ))}
-          </div>
-        </Panel>
+        <PayslipCard id="staff-payslip" e={e} calc={calc} cutoffLabel={cutoffLabel} attPeriod={attPeriod} statutory={statutory} />
       </div>
     );
   }
@@ -295,6 +319,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
               <Eyebrow>Payslips — {cutoffLabel}</Eyebrow>
               <div className="flex items-center gap-2">
                 <Badge tone={attPeriod ? 'green' : 'amber'}>{attPeriod ? `DTR ${attPeriod.start} → ${attPeriod.end}` : 'No attendance imported'}</Badge>
+                <Btn size="sm" variant="outline" icon={Printer} disabled={rows.length === 0 || printAll} onClick={() => setPrintAll(true)}>{printAll ? 'Preparing…' : 'Print All Payslips'}</Btn>
                 <Btn size="sm" variant="outline" icon={Wallet} disabled={dueLoans.length === 0} onClick={() => setConfirmApply(true)}>Apply Cutoff Deductions</Btn>
                 <Btn size="sm" icon={Lock} disabled={!attPeriod || finalizing} onClick={() => setConfirmFinalize(true)}>{finalizing ? 'Finalizing…' : 'Finalize / Release'}</Btn>
               </div>
@@ -377,6 +402,27 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
         title={confirmUnfinalize ? `Un-finalize ${confirmUnfinalize.label}?` : ''}
         message="This removes the released snapshot and reverses this cut-off's loan deductions, restoring the balances, so it can be recomputed and released again. Only do this to correct a mistake."
         confirmLabel="Un-finalize" />
+
+      {printAll && (
+        <>
+          <style>{`
+            @media print {
+              body * { visibility: hidden; }
+              #staff-payslip-batch, #staff-payslip-batch * { visibility: visible; }
+              #staff-payslip-batch { position: absolute !important; left: 0 !important; top: 0 !important; width: 100%; }
+              #staff-payslip-batch .payslip-page { page-break-after: always; break-after: page; }
+              #staff-payslip-batch .payslip-page:last-child { page-break-after: auto; break-after: auto; }
+            }
+          `}</style>
+          <div id="staff-payslip-batch" style={{ position: 'absolute', left: '-9999px', top: 0 }} aria-hidden="true">
+            {rows.map(({ emp, calc }) => (
+              <div key={emp.id} className="payslip-page" style={{ display: 'flex', justifyContent: 'center', padding: '12px 0' }}>
+                <PayslipCard e={emp} calc={calc} cutoffLabel={cutoffLabel} attPeriod={attPeriod} statutory={statutory} />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 };
