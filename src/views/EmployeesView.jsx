@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Edit2, Save, UserPlus, Truck, Clock } from 'lucide-react';
+import { Search, Edit2, Save, UserPlus, Truck, Clock, Receipt } from 'lucide-react';
 import { Av, Badge, Btn, Confirm, Eyebrow, Field, H1, Modal, Money, Panel, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { POSITIONS } from '../data/seed';
 import { isCrewPosition } from '../lib/payroll';
 import { WEEKDAYS, describeEarlyShift } from '../lib/attendance';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
+import { FinalPayView } from './FinalPayView.jsx';
 
 // Registration fields required by the client spec: ID number, name, position,
 // daily rate, plus personal information (address, contact number, birthdate).
@@ -26,6 +27,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
   const [typeFilter, setTypeFilter] = useState('all'); // all | staff | crew — a separate axis from status
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [finalPayFor, setFinalPayFor] = useState(null);
   const [form, setForm] = useState(BLANK_EMP);
   const [confirm, setConfirm] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -137,6 +139,8 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
     }
   };
 
+  if (finalPayFor) return <FinalPayView employee={finalPayFor} onBack={() => setFinalPayFor(null)} toast={toast} />;
+
   return (
     <div className="p-6">
       <H1 sub="Core registration fields only. Address, birthday, and contact details are masked from printed payroll sheets."
@@ -215,6 +219,9 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
                   <Td>
                     <div className="flex gap-3">
                       <button onClick={() => openEdit(r)} className="text-xs font-semibold flex items-center gap-1" style={{ fontFamily: F_HEAD, color: T.brand }}><Edit2 size={11} /> Edit</button>
+                      {!(typeof r.crew === 'boolean' ? r.crew : isCrewPosition(r.position)) && (
+                        <button onClick={() => setFinalPayFor(r)} className="text-xs font-semibold flex items-center gap-1" style={{ fontFamily: F_HEAD, color: T.soft }}><Receipt size={11} /> Final Pay</button>
+                      )}
                       <button onClick={() => setConfirm(r)} className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.soft }}>{r.status === 'Active' ? 'Deactivate' : 'Activate'}</button>
                     </div>
                   </Td>

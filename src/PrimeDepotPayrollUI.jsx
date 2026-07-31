@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Sidebar, TopBar } from './components/Nav.jsx';
 import { Toasts } from './components/ui.jsx';
-import { ADMIN_NAV, BIR_TABLE_INIT, CHECKERS_INIT, DELIVERIES_INIT, PAGIBIG_INIT, PHILHEALTH_INIT, RATES_INIT, SSS_TABLE_INIT, STAFF_INIT } from './data/seed';
+import { ADMIN_NAV, BIR_TABLE_INIT, PAGIBIG_INIT, PHILHEALTH_INIT, SSS_TABLE_INIT } from './data/seed';
 import { deliveriesToLog } from './lib/payroll';
 import { uid, cutoffLabel } from './lib/utils';
 import { FONTS, F_BODY, T } from './theme';
@@ -66,9 +66,8 @@ export default function PrimeDepotPayroll() {
       setAllStaff(data.employees);
     } catch (err) {
       console.error('Could not load employees:', err);
-      // Keep whatever is already on screen; only fall back to the seed if the
-      // very first load failed and the list would otherwise be empty.
-      setAllStaff((prev) => (prev.length ? prev : STAFF_INIT));
+      // No seed fallback — an empty list with an error logged is honest; stale
+      // fake employees on a payroll screen are worse than showing nothing.
     } finally {
       setStaffLoading(false);
     }
@@ -82,7 +81,7 @@ export default function PrimeDepotPayroll() {
   // Deliveries come from the database. The seed stays as a fallback for the
   // same reason the employee list does: a payroll screen showing nothing is
   // harder to diagnose than one showing stale data with an error logged.
-  const [deliveries, setDeliveries] = useState(DELIVERIES_INIT);
+  const [deliveries, setDeliveries] = useState({});
 
   const reloadDeliveries = React.useCallback(async () => {
     try {
@@ -109,7 +108,7 @@ export default function PrimeDepotPayroll() {
   // what lets an edit or a retire target the right record. The seed list stays
   // as a fallback: the delivery form cannot function at all without rates, so
   // showing the last known table beats showing an empty dropdown.
-  const [rates, setRates] = useState(RATES_INIT);
+  const [rates, setRates] = useState([]);
 
   useEffect(() => {
     if (!user) return;
@@ -145,7 +144,7 @@ export default function PrimeDepotPayroll() {
     reloadLoans();
   }, [user, reloadLoans]);
 
-  const [checkers, setCheckers] = useState(CHECKERS_INIT);
+  const [checkers, setCheckers] = useState([]);
   const [sssTable, setSssTable] = useState(SSS_TABLE_INIT);
   const [philhealthRates, setPhilhealthRates] = useState(PHILHEALTH_INIT);
   const [pagibigRates, setPagibigRates] = useState(PAGIBIG_INIT);
