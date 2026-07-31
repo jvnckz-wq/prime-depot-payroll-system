@@ -130,9 +130,9 @@ export const ReportsView = ({ staff, deliveries, loans, statutory }) => {
           <div className="px-4 py-2.5 flex justify-between items-center flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
             <div className="flex items-center gap-2 flex-wrap">
               <Eyebrow>Crew Earnings — per person</Eyebrow>
-              <input type="date" max={todayStr} value={from} onChange={e => setFrom(e.target.value)} className="px-3 py-2 rounded border text-sm" style={{ borderColor: T.line, fontFamily: F_MONO, minWidth: 168, colorScheme: 'light' }} />
+              <input type="date" max={todayStr} value={from} onChange={e => setFrom(e.target.value)} className="px-3 py-2 rounded border text-sm" style={{ borderColor: T.line, fontFamily: F_MONO, minWidth: 168, colorScheme: 'light', color: T.ink, backgroundColor: T.surface }} />
               <span className="text-xs" style={{ color: T.soft, fontFamily: F_BODY }}>to</span>
-              <input type="date" max={todayStr} value={to} onChange={e => setTo(e.target.value)} className="px-3 py-2 rounded border text-sm" style={{ borderColor: T.line, fontFamily: F_MONO, minWidth: 168, colorScheme: 'light' }} />
+              <input type="date" max={todayStr} value={to} onChange={e => setTo(e.target.value)} className="px-3 py-2 rounded border text-sm" style={{ borderColor: T.line, fontFamily: F_MONO, minWidth: 168, colorScheme: 'light', color: T.ink, backgroundColor: T.surface }} />
               {loadingRange && <span className="text-xs" style={{ color: T.soft, fontFamily: F_BODY }}>Loading…</span>}
             </div>
             <Btn size="sm" variant="outline" icon={Download} onClick={exportDriver}>Export Excel</Btn>

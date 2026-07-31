@@ -17,12 +17,16 @@
 // by API routes and server components.
 import { PrismaClient } from '../generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { wrapWithRetry } from './db-retry';
 
 const globalForPrisma = globalThis;
 
 function createClient() {
   const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
-  return new PrismaClient({ adapter });
+  // Retry transient Neon cold-start connection drops (see db-retry.js). The
+  // adapter and connection string are unchanged — this only re-attempts a query
+  // when the connection itself drops mid-flight.
+  return wrapWithRetry(new PrismaClient({ adapter }));
 }
 
 export const prisma = globalForPrisma.__primeDepotPrisma ?? createClient();

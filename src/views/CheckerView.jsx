@@ -166,7 +166,7 @@ export const CheckerView = ({ currentUser, onUserChange, onSignedOut, deliveries
               <span className="text-xs" style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.04em' }}>VIEWING</span>
               <Badge tone={histDate === todayStr ? 'green' : 'amber'}>{histDate === todayStr ? `Today · ${todayStr}` : `History · ${histDate}`}</Badge>
               <input type="date" max={todayStr} value={histDate} onChange={e => loadHist(e.target.value)}
-                className="px-3 py-2 rounded border text-sm" style={{ borderColor: T.line, fontFamily: F_BODY, minWidth: 168, colorScheme: 'light' }} />
+                className="px-3 py-2 rounded border text-sm" style={{ borderColor: T.line, fontFamily: F_BODY, minWidth: 168, colorScheme: 'light', color: T.ink, backgroundColor: T.surface }} />
               {histLoading && <span className="text-xs" style={{ color: T.soft, fontFamily: F_BODY }}>Loading…</span>}
               <span className="text-xs w-full sm:w-auto" style={{ fontFamily: F_BODY, color: T.soft }}>Read-only · shared across all checkers and admin.</span>
             </div>

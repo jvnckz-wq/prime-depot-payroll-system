@@ -160,7 +160,7 @@ export async function GET(request) {
         if (dow === 0 || dow === 6) s.otWeekendMins += a.overtimeMins;
         else s.otWeekdayMins += a.overtimeMins;
       }
-      summaries = [...byEmp.values()].sort((a, b) => a.name.localeCompare(b.name));
+      summaries = [...byEmp.values()].sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true, sensitivity: 'base' }));
     }
 
     const batches = await prisma.importBatch.findMany({ orderBy: { importedAt: 'desc' }, take: 30 });

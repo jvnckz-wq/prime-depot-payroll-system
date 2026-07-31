@@ -180,7 +180,9 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
     }
   };
 
-  const rows = staff.map(e => ({ emp: e, calc: computeStaffPayroll(e, loans, statutory, attById[e.id], cutoffKey) }));
+  // A ₱0 daily rate means no salary is set yet, so that person isn't part of
+  // this payroll run — keep them out of the list, the totals, and the snapshot.
+  const rows = staff.filter(e => Number(e.rate) > 0).map(e => ({ emp: e, calc: computeStaffPayroll(e, loans, statutory, attById[e.id], cutoffKey) }));
   const totalGross = rows.reduce((s, r) => s + r.calc.gross, 0);
   const totalNet = rows.reduce((s, r) => s + r.calc.net, 0);
 

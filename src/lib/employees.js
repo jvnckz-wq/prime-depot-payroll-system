@@ -101,7 +101,6 @@ export function buildEmployeeData(body, { partial = false } = {}) {
     ['rate', 'dailyRate'],
     ['declaredSalary', 'declaredSalary'],
     ['mp2', 'mp2Amount'],
-    ['allowance', 'otherAllowance'],
   ]) {
     if (!partial || has(field)) {
       const n = Number(body[field]);
@@ -110,6 +109,19 @@ export function buildEmployeeData(body, { partial = false } = {}) {
       }
       data[column] = n;
     }
+  }
+
+  // Other allowances is set from the payslip (Staff Payroll), not the register
+  // form. Validate it only when it's actually supplied; default a fresh
+  // registration to 0 so leaving it out never blocks creating an employee.
+  if (has('allowance')) {
+    const n = Number(body.allowance);
+    if (!Number.isFinite(n) || n < 0) {
+      return { error: `${MONEY_LABEL.allowance} must be a number that is zero or more.` };
+    }
+    data.otherAllowance = n;
+  } else if (!partial) {
+    data.otherAllowance = 0;
   }
 
   if (!partial || has('status')) {

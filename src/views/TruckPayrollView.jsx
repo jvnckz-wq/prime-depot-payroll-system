@@ -593,7 +593,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
         {readOnly ? <Badge tone="amber">History · {viewDate}</Badge> : <Badge tone="green">Today · {todayStr}</Badge>}
         <input type="date" max={todayStr} value={viewDate || todayStr}
           onChange={e => loadHistory(e.target.value === todayStr ? null : e.target.value)}
-          className="px-3 py-2 rounded border text-sm" style={{ borderColor: T.line, fontFamily: F_MONO, minWidth: 168, colorScheme: 'light' }} />
+          className="px-3 py-2 rounded border text-sm" style={{ borderColor: T.line, fontFamily: F_MONO, minWidth: 168, colorScheme: 'light', color: T.ink, backgroundColor: T.surface }} />
         {readOnly && (
           <button onClick={() => loadHistory(null)} className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.brand }}>Back to Today</button>
         )}

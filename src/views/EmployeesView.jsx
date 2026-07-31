@@ -243,7 +243,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
             </Field>
           </div>
           <div className="text-xs -mt-1.5" style={{ fontFamily: F_BODY, color: T.soft }}>The ID number must match the number this employee's fingerprint is registered under on the biometric scanner — that's what links their attendance logs to this record. Date hired is used to prorate 13th-month pay.</div>
-          <Field label="Full name*"><input value={form.name} onChange={e => ff('name', e.target.value)} placeholder="Dela Cruz, Juan P." className={inputCls} style={inputStyle} /></Field>
+          <Field label="Full name*"><input value={form.name} onChange={e => ff('name', e.target.value)} placeholder="Juan Dela Cruz" className={inputCls} style={inputStyle} /></Field>
           <Field label="Position">
             <select value={form.position} onChange={e => ff('position', e.target.value)} className={inputCls} style={inputStyle}>
               {POSITIONS.map(p => <option key={p}>{p}</option>)}
@@ -256,7 +256,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
             </div>
           )}
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Daily rate (₱)"><input type="number" value={form.rate} onChange={e => ff('rate', e.target.value)} className={inputCls} style={inputStyle} /></Field>
+            <Field label="Daily rate (₱)"><input type="number" value={form.rate} onChange={e => { const v = e.target.value; setForm(f => ({ ...f, rate: v, declaredSalary: v === '' ? '' : String((parseFloat(v) || 0) * 26) })); }} className={inputCls} style={inputStyle} /></Field>
             <Field label="Status">
               <select value={form.status} onChange={e => ff('status', e.target.value)} className={inputCls} style={inputStyle}>
                 <option>Active</option><option>Inactive</option>
