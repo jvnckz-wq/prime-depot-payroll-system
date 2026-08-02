@@ -56,14 +56,16 @@ export const ReportsView = ({ staff, deliveries, loans, statutory }) => {
     return () => { cancelled = true; };
   }, [from, to]);
 
-  const registerRows = staff.map(e => {
+  // Only paid staff (₱0 daily rate = no salary set) appear here, matching the
+  // Staff Payroll page — they aren't part of the register, remittance, or 13th month.
+  const registerRows = staff.filter(e => Number(e.rate) > 0).map(e => {
     const gross = e.rate * 11;
     const sss = e.sssOn ? computeSSS(e.declaredSalary, statutory.sss) : 0;
     const ph = e.phOn ? computePhilHealth(e.declaredSalary, statutory.philhealth) : 0;
     const hdmf = e.piOn ? (computePagIBIG(e.declaredSalary, statutory.pagibig) + (e.mp2 || 0)) : 0;
     return { emp: e, gross, sss, ph, hdmf, net: gross - sss - ph - hdmf };
   });
-  const T13 = staff.map(e => ({ name: e.name, months: 12, basic: e.rate * 22 * 12, pay: Math.round(e.rate * 22 * 12 / 12 * 100) / 100 }));
+  const T13 = staff.filter(e => Number(e.rate) > 0).map(e => ({ name: e.name, months: 12, basic: e.rate * 22 * 12, pay: Math.round(e.rate * 22 * 12 / 12 * 100) / 100 }));
   // Earnings are reported per PERSON across the chosen range. Voided trips are
   // already excluded upstream.
   const crewRows = useMemo(() => crewEarningsRange(rangeApi), [rangeApi]);

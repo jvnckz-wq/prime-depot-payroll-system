@@ -4,15 +4,40 @@ import { requireAdmin } from '../../../../lib/auth';
 
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
 
-/// GET /api/payroll/history
-/// Released cut-offs, newest first, each with its snapshot totals. These figures
-/// come straight from the stored Payslip rows, so history stays fixed even as
-/// current rates or records change.
-export async function GET() {
+/// GET /api/payroll/history           → released cut-offs with snapshot totals.
+/// GET /api/payroll/history?periodId=X → one cut-off's per-employee payslips
+///                                       (locked read-only view). Figures come
+///                                       straight from the stored Payslip rows.
+export async function GET(request) {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   try {
+    const { searchParams } = new URL(request.url);
+    const periodId = searchParams.get('periodId');
+
+    if (periodId) {
+      const period = await prisma.payrollPeriod.findUnique({
+        where: { id: periodId },
+        include: { payslips: { include: { employee: { select: { name: true } } } } },
+      });
+      if (!period) return NextResponse.json({ error: 'That cut-off was not found.' }, { status: 404 });
+      const payslips = period.payslips
+        .map((p) => ({
+          name: p.employee?.name || p.employeeId,
+          daysPresent: p.daysPresent,
+          basicPay: Number(p.basicPay),
+          grossPay: Number(p.grossPay),
+          totalDeductions: Number(p.totalDeductions),
+          netPay: Number(p.netPay),
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      return NextResponse.json({
+        period: { id: period.id, label: period.label, start: ymd(period.startDate), end: ymd(period.endDate) },
+        payslips,
+      });
+    }
+
     const periods = await prisma.payrollPeriod.findMany({
       where: { isReleased: true },
       orderBy: { startDate: 'desc' },

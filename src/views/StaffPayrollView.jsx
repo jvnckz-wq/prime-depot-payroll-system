@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Users, Wallet, ArrowLeft, Printer, Eye, Lock } from 'lucide-react';
-import { Av, Badge, Btn, Confirm, Eyebrow, H1, Money, Panel, StatCard, Td, Th } from '../components/ui.jsx';
+import { Av, Badge, Btn, Confirm, Eyebrow, H1, Modal, Money, Panel, StatCard, Td, Th } from '../components/ui.jsx';
 import { computePagIBIG, computeStaffPayroll, loanBalance } from '../lib/payroll';
 import { peso } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
@@ -88,6 +88,24 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [confirmUnfinalize, setConfirmUnfinalize] = useState(null);
+  const [viewPeriod, setViewPeriod] = useState(null);
+  const [viewPeriodLoading, setViewPeriodLoading] = useState(false);
+  // Locked read-only view of a released cut-off's stored payslips.
+  const openPeriod = async (p) => {
+    setViewPeriod({ period: p, payslips: [] });
+    setViewPeriodLoading(true);
+    try {
+      const res = await fetch(`/api/payroll/history?periodId=${encodeURIComponent(p.id)}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const d = await res.json();
+      setViewPeriod({ period: d.period || p, payslips: d.payslips || [] });
+    } catch (err) {
+      console.error('Could not load cut-off:', err);
+      toast('Could not load that cut-off.', 'error');
+    } finally {
+      setViewPeriodLoading(false);
+    }
+  };
   // Other Allowances is edited on the payslip and SAVED to the employee record,
   // so it persists across refreshes and shows everywhere (Dashboard, payslip,
   // snapshot, Finalize). allowanceEdits holds the in-progress text before Save.
@@ -381,7 +399,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
                     <Td right mono>{peso(p.totalGross)}</Td>
                     <Td right mono>{peso(p.totalNet)}</Td>
                     <Td><Badge tone="green">Released</Badge></Td>
-                    <Td><Btn size="sm" variant="outline" onClick={() => setConfirmUnfinalize(p)}>Un-finalize</Btn></Td>
+                    <Td><div className="flex gap-1.5 justify-end"><Btn size="sm" variant="outline" icon={Eye} onClick={() => openPeriod(p)}>View</Btn><Btn size="sm" variant="outline" onClick={() => setConfirmUnfinalize(p)}>Un-finalize</Btn></div></Td>
                   </tr>
                 ))}
               </tbody>
@@ -404,6 +422,43 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
         title={confirmUnfinalize ? `Un-finalize ${confirmUnfinalize.label}?` : ''}
         message="This removes the released snapshot and reverses this cut-off's loan deductions, restoring the balances, so it can be recomputed and released again. Only do this to correct a mistake."
         confirmLabel="Un-finalize" />
+
+      <Modal open={!!viewPeriod} onClose={() => setViewPeriod(null)} title={viewPeriod ? `Released — ${viewPeriod.period.label}` : ''} width={720}>
+        {viewPeriod && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 flex-wrap text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
+              <Badge tone="green">Released</Badge>
+              <Badge tone="amber">Locked — viewing only</Badge>
+              <span>Snapshot figures — frozen at release.</span>
+            </div>
+            {viewPeriodLoading ? <div className="p-4 text-sm" style={{ color: T.soft, fontFamily: F_BODY }}>Loading…</div>
+              : viewPeriod.payslips.length === 0 ? <div className="p-6 text-center text-sm" style={{ color: T.soft, fontFamily: F_BODY }}>No payslips in this cut-off.</div>
+              : (
+              <div className="overflow-x-auto" style={{ maxHeight: 420 }}>
+                <table className="w-full">
+                  <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}>
+                    <tr><Th>Employee</Th><Th right>Days</Th><Th right>Gross</Th><Th right>Deductions</Th><Th right>Net Pay</Th></tr>
+                  </thead>
+                  <tbody>
+                    {viewPeriod.payslips.map((p, i) => (
+                      <tr key={i}>
+                        <Td><div className="flex items-center gap-2.5"><Av name={p.name} size={26} /><span className="font-semibold text-sm" style={{ fontFamily: F_BODY }}>{p.name}</span></div></Td>
+                        <Td right mono>{p.daysPresent}</Td>
+                        <Td right mono>{peso(p.basicPay)}</Td>
+                        <Td right mono>{p.totalDeductions > 0 ? `−${peso(p.totalDeductions)}` : peso(0)}</Td>
+                        <Td right mono style={{ fontWeight: 700 }}>{peso(p.netPay)}</Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot style={{ position: 'sticky', bottom: 0, backgroundColor: T.surface }}>
+                    <tr><Td><b>Total</b></Td><Td /><Td right mono><b>{peso(viewPeriod.payslips.reduce((s, p) => s + p.basicPay, 0))}</b></Td><Td /><Td right mono><b>{peso(viewPeriod.payslips.reduce((s, p) => s + p.netPay, 0))}</b></Td></tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
 
       {printAll && (
         <>

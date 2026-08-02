@@ -106,13 +106,14 @@ export async function GET(request) {
       : null;
     const periodOut = period ? { start: ymd(period.start), end: ymd(period.end) } : null;
 
-    // --- DTR for one employee ---
+    // --- DTR for one employee (current period, or an explicit past range) ---
     if (employeeId) {
+      const dtrRange = explicitRange || period;
       const where = { employeeId };
-      if (period) where.date = { gte: period.start, lte: period.end };
+      if (dtrRange) where.date = { gte: dtrRange.start, lte: dtrRange.end };
       const rows = await prisma.attendance.findMany({ where, orderBy: { date: 'asc' } });
       return NextResponse.json({
-        period: periodOut,
+        period: dtrRange ? { start: ymd(dtrRange.start), end: ymd(dtrRange.end) } : periodOut,
         rows: rows.map((a) => {
           const d = new Date(a.date);
           return {

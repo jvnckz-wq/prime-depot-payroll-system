@@ -32,7 +32,10 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
   const [savingEdit, setSavingEdit] = useState(false);
   const fileRef = useRef(null);
   const [dragOver, setDragOver] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [viewBatch, setViewBatch] = useState(null);
+  const [histDtr, setHistDtr] = useState(null);
+  const [histDtrLoading, setHistDtrLoading] = useState(false);
   const [batchRows, setBatchRows] = useState([]);
   const [batchLoading, setBatchLoading] = useState(false);
 
@@ -139,6 +142,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
       if (!res.ok) { toast(result.error || 'Import failed.', 'error'); return; }
       toast(`Imported ${result.mappedRows} rows for ${result.matchedEmployees} employee(s)` + (result.unmappedUsers ? ` · ${result.unmappedUsers} unmapped ID(s).` : '.'));
       await load();
+      setShowImport(false);
     } catch (err) {
       toast(err.message || 'Could not import the file.', 'error');
     } finally {
@@ -156,6 +160,26 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
     e.preventDefault();
     setDragOver(false);
     importFile(e.dataTransfer?.files?.[0]);
+  };
+
+  // Locked day-by-day DTR for one employee within a past import's period — the
+  // same DTR the live tab shows, but read-only (corrections happen on the live DTR).
+  const openHistDtr = async (s) => {
+    if (!viewBatch) return;
+    const period = `${viewBatch.periodStart} \u2192 ${viewBatch.periodEnd}`;
+    setHistDtr({ name: s.name, rows: [], period });
+    setHistDtrLoading(true);
+    try {
+      const res = await fetch(`/api/attendance?employeeId=${encodeURIComponent(s.id)}&from=${viewBatch.periodStart}&to=${viewBatch.periodEnd}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const d = await res.json();
+      setHistDtr({ name: s.name, rows: d.rows || [], period });
+    } catch (err) {
+      console.error('Could not load DTR:', err);
+      toast('Could not load that DTR.', 'error');
+    } finally {
+      setHistDtrLoading(false);
+    }
   };
 
   // Read-only look-back at a past import: fetch that batch's period summaries.
@@ -290,19 +314,28 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
       <input ref={fileRef} type="file" accept=".xls,.xlsx" onChange={onFile} style={{ display: 'none' }} />
       <H1 sub="Imported from the biometric .xls export. Matched to employees by their biometric User ID.">Attendance</H1>
 
-      <div
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={onDrop}
-        className="mb-4 rounded-md border-2 border-dashed flex flex-col items-center justify-center text-center gap-2 px-4 py-6 transition-colors"
-        style={{ borderColor: dragOver ? T.brand : T.line, backgroundColor: dragOver ? T.brandBg : T.surface }}>
-        <Upload size={22} color={dragOver ? T.brand : T.soft} />
-        <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>
-          {importing ? 'Reading and matching the attendance file…' : 'Drag & drop the biometric .xls here'}
+      {!showImport ? (
+        <div className="mb-4">
+          <Btn icon={Upload} onClick={() => setShowImport(true)}>Import Biometric .xls</Btn>
         </div>
-        <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Exported from the biometric scanner — .xls or .xlsx</div>
-        <Btn variant="outline" icon={Upload} onClick={() => fileRef.current?.click()} disabled={importing}>{importing ? 'Importing…' : 'Browse for a file'}</Btn>
-      </div>
+      ) : (
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={onDrop}
+          className="mb-4 rounded-md border-2 border-dashed flex flex-col items-center justify-center text-center gap-2 px-4 py-6 transition-colors"
+          style={{ borderColor: dragOver ? T.brand : T.line, backgroundColor: dragOver ? T.brandBg : T.surface }}>
+          <Upload size={22} color={dragOver ? T.brand : T.soft} />
+          <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>
+            {importing ? 'Reading and matching the attendance file…' : 'Drag & drop the biometric .xls here'}
+          </div>
+          <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Exported from the biometric scanner — .xls or .xlsx</div>
+          <div className="flex gap-2">
+            <Btn variant="outline" icon={Upload} onClick={() => fileRef.current?.click()} disabled={importing}>{importing ? 'Importing…' : 'Browse for a file'}</Btn>
+            {!importing && <Btn variant="ghost" onClick={() => setShowImport(false)}>Cancel</Btn>}
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         <Badge tone="blue">{data.period ? fmtPeriod(data.period) : 'No imports yet'}</Badge>
@@ -435,7 +468,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
               <div className="overflow-x-auto" style={{ maxHeight: 380 }}>
                 <table className="w-full">
                   <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}>
-                    <tr><Th>Employee</Th><Th right>Present</Th><Th right>Days Late</Th><Th right>Late (mins)</Th><Th right>OT (mins)</Th><Th right>Absences</Th></tr>
+                    <tr><Th>Employee</Th><Th right>Present</Th><Th right>Days Late</Th><Th right>Late (mins)</Th><Th right>OT (mins)</Th><Th right>Absences</Th><Th></Th></tr>
                   </thead>
                   <tbody>
                     {batchRows.map((s) => (
@@ -446,6 +479,43 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
                         <Td right mono>{s.lateMins > 0 ? `${s.lateMins}m` : '—'}</Td>
                         <Td right mono>{s.otMins > 0 ? `${s.otMins}m` : '—'}</Td>
                         <Td right mono>{s.absent || '—'}</Td>
+                        <Td><Btn size="sm" variant="outline" icon={Eye} onClick={() => openHistDtr(s)}>View DTR</Btn></Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      {/* Locked DTR drill-down — read-only day-by-day for a past import. */}
+      <Modal open={!!histDtr} onClose={() => setHistDtr(null)} title={histDtr ? `DTR — ${histDtr.name}` : ''} width={640}>
+        {histDtr && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 flex-wrap text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
+              <Badge tone="blue">{histDtr.period}</Badge>
+              <Badge tone="amber">Locked — viewing only</Badge>
+            </div>
+            {histDtrLoading ? <div className="p-4 text-sm" style={{ color: T.soft, fontFamily: F_BODY }}>Loading…</div>
+              : histDtr.rows.length === 0 ? <EmptyState icon={ClipboardList} title="No records" desc="No daily records for this employee in this period." />
+              : (
+              <div className="overflow-x-auto" style={{ maxHeight: 400 }}>
+                <table className="w-full">
+                  <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}>
+                    <tr><Th>Date</Th><Th>Day</Th><Th>Time In</Th><Th>Time Out</Th><Th right>Late</Th><Th right>OT</Th><Th>Status</Th></tr>
+                  </thead>
+                  <tbody>
+                    {histDtr.rows.map((r, i) => (
+                      <tr key={i}>
+                        <Td mono>{r.date}</Td>
+                        <Td>{r.weekday}</Td>
+                        <Td mono>{r.absent ? '—' : (r.in || '—')}</Td>
+                        <Td mono>{r.absent ? '—' : (r.out || '—')}</Td>
+                        <Td right mono>{r.late > 0 ? `${r.late}m` : '—'}</Td>
+                        <Td right mono>{r.ot > 0 ? `${r.ot}m` : '—'}</Td>
+                        <Td>{r.absent ? <Badge tone="red">Absent</Badge> : <Badge tone="green">Present</Badge>}</Td>
                       </tr>
                     ))}
                   </tbody>
