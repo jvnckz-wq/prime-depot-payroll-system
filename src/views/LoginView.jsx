@@ -69,6 +69,7 @@ export const LoginView = ({ onSignedIn, onShowLegal }) => {
             value={username}
             onChange={e => setUsername(e.target.value)}
             onKeyDown={onKeyDown}
+            aria-label="Username"
             autoComplete="username"
             autoCapitalize="none"
             spellCheck={false}
@@ -84,6 +85,7 @@ export const LoginView = ({ onSignedIn, onShowLegal }) => {
               value={password}
               onChange={e => setPassword(e.target.value)}
               onKeyDown={onKeyDown}
+              aria-label="Password"
               type="password"
               autoComplete="current-password"
               disabled={busy}

@@ -2,7 +2,13 @@ import { NextResponse } from 'next/server';
 import { prisma } from '../../../../lib/prisma';
 import { createSession, verifyPassword } from '../../../../lib/auth';
 
-// Simple rate limiting: 5 failed attempts per username per 15 minutes.
+// Simple rate limiting: 5 failed attempts per (IP + username) per 15 minutes.
+//
+// Keying on the source IP as well as the username matters: if we throttled by
+// username alone, anyone could lock a known user out for 15 minutes just by
+// spamming wrong passwords for their name. Pairing it with the IP means a
+// guesser only throttles themselves, while the real user (on a different IP)
+// can still sign in.
 //
 // This lives in memory, which is a real limitation worth stating plainly — it
 // resets when the server restarts, and each serverless instance keeps its own
@@ -12,6 +18,15 @@ import { createSession, verifyPassword } from '../../../../lib/auth';
 const attempts = new Map();
 const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000;
+
+// Best-effort client IP behind Vercel's proxy. x-forwarded-for is a list, with
+// the original client first; fall back to x-real-ip, then a constant so the
+// limiter still works (just coarser) if neither header is present.
+function clientIp(request) {
+  const xff = request.headers.get('x-forwarded-for');
+  if (xff) return xff.split(',')[0].trim();
+  return request.headers.get('x-real-ip') || 'unknown';
+}
 
 function tooManyAttempts(key) {
   const record = attempts.get(key);
@@ -42,7 +57,10 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Enter your username and password.' }, { status: 400 });
     }
 
-    if (tooManyAttempts(username)) {
+    // Throttle per source IP and username together, not by username alone.
+    const key = `${clientIp(request)}|${username}`;
+
+    if (tooManyAttempts(key)) {
       return NextResponse.json(
         { error: 'Too many failed attempts. Please wait 15 minutes and try again.' },
         { status: 429 }
@@ -55,7 +73,7 @@ export async function POST(request) {
     // disabled account. Saying "no such user" would let someone probe for
     // valid usernames one guess at a time.
     const reject = () => {
-      recordFailure(username);
+      recordFailure(key);
       return NextResponse.json({ error: 'Incorrect username or password.' }, { status: 401 });
     };
 
@@ -64,7 +82,7 @@ export async function POST(request) {
     const ok = await verifyPassword(password, user.passwordHash);
     if (!ok) return reject();
 
-    attempts.delete(username);
+    attempts.delete(key);
 
     await createSession(user.id);
     await prisma.user.update({

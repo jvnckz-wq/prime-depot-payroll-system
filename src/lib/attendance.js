@@ -27,8 +27,12 @@ export function callTimeFor(employee, date) {
   if (days.length && date) {
     const d = date instanceof Date ? date : new Date(date);
     if (!isNaN(d.getTime())) {
-      // getDay() counts from Sunday; WEEKDAYS starts on Monday.
-      const key = WEEKDAYS[(d.getDay() + 6) % 7].key;
+      // getUTCDay() counts from Sunday; WEEKDAYS starts on Monday. We read the
+      // weekday in UTC because these dates are stored at UTC midnight and every
+      // other attendance path (import, DTR, weekend-OT split) reads them the
+      // same way — using local getDay() here would pick the wrong day on a
+      // server whose timezone is behind UTC.
+      const key = WEEKDAYS[(d.getUTCDay() + 6) % 7].key;
       if (days.includes(key)) return employee.earlyShiftTime || DEFAULT_EARLY;
     }
   }
