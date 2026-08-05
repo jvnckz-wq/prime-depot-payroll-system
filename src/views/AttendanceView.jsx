@@ -48,6 +48,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
     } catch (err) { console.error('Could not load attendance:', err); }
     finally { setLoading(false); }
   };
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
   useEffect(() => { load(); }, []);
 
   const loadDtr = async (id) => {
@@ -70,6 +71,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
     } catch (err) { console.error('Could not load unmapped IDs:', err); }
     finally { setUnmappedLoading(false); }
   };
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
   useEffect(() => { if (subTab === 'unmapped') loadUnmapped(); }, [subTab]);
 
   const resolveId = async (biometricId) => {
@@ -91,6 +93,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     if (view === 'dtr' && selectedId) loadDtr(selectedId);
   }, [view, selectedId]);
 
@@ -295,7 +298,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
               )}
               <Field label="Reason / note (optional)"><input value={editForm.note} onChange={(e) => setEditForm((f) => ({ ...f, note: e.target.value }))} placeholder="e.g. brownout, scanner down" className={inputCls} style={inputStyle} /></Field>
               <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
-                Tardiness is recomputed automatically from the times. Blank time-in = missing scan (30-min penalty); blank time-out = assumed 5:00 PM. This day will be marked EDITED and won't be overwritten by future imports.
+                Tardiness is recomputed automatically from the times. Blank time-in = missing scan (30-min penalty); blank time-out = assumed 5:00 PM. This day will be marked EDITED and won&apos;t be overwritten by future imports.
               </div>
               <div className="flex justify-end gap-2 pt-1">
                 <Btn variant="outline" onClick={() => setEditDay(null)} disabled={savingEdit}>Cancel</Btn>

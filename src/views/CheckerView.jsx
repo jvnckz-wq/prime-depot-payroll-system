@@ -8,6 +8,7 @@ import { BONUS_HEAD, BONUS_TRIPS, DRIVER_DAILY, HELPER_DAILY } from '../data/see
 import { crewEarnings, deliveriesToLog, flattenDeliveries } from '../lib/payroll';
 import { peso } from '../lib/utils';
 import { FONTS, F_BODY, F_HEAD, T } from '../theme';
+/* eslint-disable @next/next/no-img-element -- user avatars are base64 data URIs; next/image adds no value and cannot optimize data URIs */
 
 export const CheckerView = ({ currentUser, onUserChange, onSignedOut, deliveries, setDeliveries, reloadDeliveries, rates, onLogout, toast }) => {
   const [page, setPage] = useState('log');
@@ -68,6 +69,7 @@ export const CheckerView = ({ currentUser, onUserChange, onSignedOut, deliveries
       setHistLoading(false);
     }
   };
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
   useEffect(() => { if (page === 'history') loadHist(histDate); }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const histPeople = useMemo(() => crewEarnings(histLog, {

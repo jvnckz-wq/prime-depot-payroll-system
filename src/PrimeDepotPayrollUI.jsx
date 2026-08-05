@@ -75,6 +75,7 @@ export default function PrimeDepotPayroll() {
 
   useEffect(() => {
     if (!user || user.role !== 'ADMIN') return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     reloadStaff();
   }, [user, reloadStaff]);
 
@@ -101,6 +102,7 @@ export default function PrimeDepotPayroll() {
 
   useEffect(() => {
     if (!user) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     reloadDeliveries();
   }, [user, reloadDeliveries]);
 
@@ -141,6 +143,7 @@ export default function PrimeDepotPayroll() {
 
   useEffect(() => {
     if (!user || user.role !== 'ADMIN') return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     reloadLoans();
   }, [user, reloadLoans]);
 
@@ -169,6 +172,7 @@ export default function PrimeDepotPayroll() {
 
   useEffect(() => {
     if (!user || user.role !== 'ADMIN') return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     reloadStatutory();
   }, [user, reloadStatutory]);
 

@@ -6,6 +6,7 @@ import { Btn, Confirm, Eyebrow, Field, Panel, inputCls, inputStyle } from '../co
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 import { ChangePasswordPanel } from './AccountView.jsx';
 import { AccountsPanel } from './AccountsPanel.jsx';
+/* eslint-disable @next/next/no-img-element -- user avatars are base64 data URIs; next/image adds no value and cannot optimize data URIs */
 
 /// Everything about the person using the system, in one place: their picture
 /// and name, the password protecting the account, and — for the Operations

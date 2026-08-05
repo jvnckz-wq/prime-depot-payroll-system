@@ -47,6 +47,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory }) => {
   const [loadingRange, setLoadingRange] = useState(false);
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     setLoadingRange(true);
     fetch(`/api/deliveries?from=${from}&to=${to}`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))

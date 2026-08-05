@@ -29,6 +29,7 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
   // Checker page renders it inline, not in a modal. Once they land, select the
   // first truck so the dropdown is never left blank.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     if (!fixedCrewId && !crewId && crews.length) setCrewId(crews[0].id);
   }, [crews, fixedCrewId, crewId]);
 
@@ -60,6 +61,7 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
   useEffect(() => {
     if (!rates.length) return;
     const valid = new Set(rates.map(rateKey));
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     setLineRows(rows => rows.every(r => valid.has(r.item))
       ? rows
       : rows.map(r => (valid.has(r.item) ? r : { ...r, item: rateKey(rates[0]) })));
@@ -158,15 +160,15 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
 
       {dobleMatch && !dbl && (
         <div className="mt-2 mb-1 flex items-center justify-between gap-2 px-2.5 py-1.5 rounded text-xs" style={{ backgroundColor: T.warnBg }}>
-          <span className="flex items-center gap-1.5" style={{ color: T.warn, fontFamily: F_BODY }}><MapPin size={12} /> "{dobleMatch}" is a double-rate area.</span>
+          <span className="flex items-center gap-1.5" style={{ color: T.warn, fontFamily: F_BODY }}><MapPin size={12} /> &quot;{dobleMatch}&quot; is a double-rate area.</span>
           <button onClick={() => setDbl(true)} className="font-semibold underline shrink-0" style={{ color: T.warn, fontFamily: F_HEAD }}>Apply double rate</button>
         </div>
       )}
       {dobleMatch && dbl && (
-        <div className="mt-2 mb-1 flex items-center gap-1.5 text-xs" style={{ color: T.green, fontFamily: F_BODY }}><MapPin size={12} /> Double rate applied — matches known area "{dobleMatch}".</div>
+        <div className="mt-2 mb-1 flex items-center gap-1.5 text-xs" style={{ color: T.green, fontFamily: F_BODY }}><MapPin size={12} /> Double rate applied — matches known area &quot;{dobleMatch}&quot;.</div>
       )}
       {!dobleMatch && dbl && address && (
-        <div className="mt-2 mb-1 flex items-center gap-1.5 text-xs" style={{ color: T.soft, fontFamily: F_BODY }}><AlertTriangle size={12} /> "{address}" isn't on the standard double-rate list — double check before saving.</div>
+        <div className="mt-2 mb-1 flex items-center gap-1.5 text-xs" style={{ color: T.soft, fontFamily: F_BODY }}><AlertTriangle size={12} /> &quot;{address}&quot; isn&apos;t on the standard double-rate list — double check before saving.</div>
       )}
 
       {/* Items delivered */}

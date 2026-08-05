@@ -39,6 +39,7 @@ export const FleetPanel = ({ toast }) => {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect -- deps intentionally limited to avoid re-running this load; intentional: load/sync state on mount or when deps change
   useEffect(() => { load(); }, []);
 
   const openAddTruck = () => {

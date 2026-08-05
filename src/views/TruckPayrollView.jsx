@@ -498,7 +498,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                     </tbody>
                   </table>
                   <div className="text-xs mt-2" style={{ fontFamily: F_BODY, color: T.soft }}>
-                    The Pahinante column is the combined total for all helpers — each helper's own share is on their individual payslip.
+                    The Pahinante column is the combined total for all helpers — each helper&apos;s own share is on their individual payslip.
                   </div>
                 </div>
               </Panel>
@@ -522,7 +522,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                 </div>
               </div>
               <div className="text-sm mb-3" style={{ fontFamily: F_BODY, color: T.ink, lineHeight: 1.6 }}>
-                The entry stays on record with your name against it, and stops counting toward anyone's
+                The entry stays on record with your name against it, and stops counting toward anyone&apos;s
                 pay. Log the corrected delivery separately afterwards.
               </div>
               <Field label="Reason">
@@ -583,7 +583,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
     <div className="p-6">
       <H1 sub="Grouped by truck: one driver + two pahinante share the delivery log for the day."
         action={readOnly ? null : <div className="flex items-center gap-2">
-          <Btn variant="outline" icon={Wallet} disabled={dueLoans.length === 0} onClick={() => setConfirmApply(true)}>Apply Today's Deductions</Btn>
+          <Btn variant="outline" icon={Wallet} disabled={dueLoans.length === 0} onClick={() => setConfirmApply(true)}>Apply Today&apos;s Deductions</Btn>
           <Btn icon={Plus} onClick={() => setLogOpen(true)}>Log Delivery</Btn>
         </div>}>Truck Payroll — Pakyawan</H1>
 
@@ -633,7 +633,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
           ))}</tbody>
         </table>
         <div className="px-4 py-2.5 text-xs" style={{ fontFamily: F_BODY, color: T.soft, borderTop: `1px solid ${T.line}` }}>
-          Fixed daily — Driver {peso(DRIVER_DAILY)} · Pahinante (combined) {peso(HELPER_DAILY)} · 5-trip "palima" bonus ₱100/head
+          Fixed daily — Driver {peso(DRIVER_DAILY)} · Pahinante (combined) {peso(HELPER_DAILY)} · 5-trip &quot;palima&quot; bonus ₱100/head
         </div>
       </Panel>
 

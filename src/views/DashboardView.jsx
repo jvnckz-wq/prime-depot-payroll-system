@@ -89,7 +89,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
               <AlertTriangle size={16} color={T.warn} className="mt-0.5 shrink-0" />
               <div>
                 <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>{unmappedCount} biometric ID{unmappedCount > 1 ? 's are' : ' is'} unmapped</div>
-                <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft }}>Scans aren't linked to a registered employee yet — resolve them so their attendance counts.</div>
+                <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft }}>Scans aren&apos;t linked to a registered employee yet — resolve them so their attendance counts.</div>
               </div>
             </button>
           )}
@@ -98,7 +98,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
               <FileText size={16} color={T.brand} className="mt-0.5 shrink-0" />
               <div>
                 <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>{activeLoanCount} loan{activeLoanCount > 1 ? 's' : ''} awaiting cutoff deduction</div>
-                <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft }}>Review balances before releasing this cutoff's payroll.</div>
+                <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft }}>Review balances before releasing this cutoff&apos;s payroll.</div>
               </div>
             </button>
           )}

@@ -5,6 +5,7 @@ import { LogOut } from 'lucide-react';
 import { Badge } from './ui.jsx';
 import { ADMIN_NAV } from '../data/seed';
 import { F_BODY, F_HEAD, T } from '../theme';
+/* eslint-disable @next/next/no-img-element -- user avatars are base64 data URIs; next/image adds no value and cannot optimize data URIs */
 
 export const Sidebar = ({ tab, setTab, onLogout, user, onOpenAccount }) => (
   <div className="hidden md:flex flex-col w-56 shrink-0 h-full" style={{ backgroundColor: T.sidebar }}>

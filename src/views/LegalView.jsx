@@ -202,7 +202,7 @@ export const LegalView = ({ initialTab = 'terms', onBack, embedded = false }) =>
           <div className="mt-6 pt-4 text-xs" style={{ borderTop: `1px solid ${T.lineSoft}`, fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
             This policy accompanies an academic capstone system. Before the system is used to process
             real employee records in production, this text should be reviewed by a qualified person and
-            the company's contact details for privacy concerns should be added.
+            the company&apos;s contact details for privacy concerns should be added.
           </div>
         </div>
       )}

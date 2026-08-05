@@ -10,6 +10,16 @@ const EXIT_TYPES = ['Resignation', 'Termination', 'End of Contract', 'Retirement
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 const nf = (v) => (Number.isFinite(parseFloat(v)) ? parseFloat(v) : 0);
 
+// A labelled amount row on the final-pay slip. Defined at module scope (not
+// inside FinalPayView) so it is a stable component identity across renders —
+// it only depends on its props and the module-level theme tokens.
+const Row = ({ label, value, bold }) => (
+  <div className="flex justify-between text-sm py-1" style={{ fontFamily: F_BODY }}>
+    <span style={{ color: T.ink }}>{label}</span>
+    <span className="tabular-nums" style={{ fontFamily: F_MONO, color: T.ink, fontWeight: bold ? 700 : 400 }}>{value}</span>
+  </div>
+);
+
 // Final pay = (a) unpaid salary + (b) pro-rated 13th month + (c) unused leave
 // credits — matching the client's FINAL PAY sheet exactly (no deductions).
 export const FinalPayView = ({ employee, onBack, toast }) => {
@@ -50,13 +60,6 @@ export const FinalPayView = ({ employee, onBack, toast }) => {
   const numInput = (value, onChange) => (
     <input type="number" value={value} onChange={e => onChange(e.target.value)}
       className="px-2 py-1.5 rounded border text-sm w-32" style={{ borderColor: T.line, fontFamily: F_MONO, color: T.ink, backgroundColor: T.surface }} />
-  );
-
-  const Row = ({ label, value, bold }) => (
-    <div className="flex justify-between text-sm py-1" style={{ fontFamily: F_BODY }}>
-      <span style={{ color: T.ink }}>{label}</span>
-      <span className="tabular-nums" style={{ fontFamily: F_MONO, color: T.ink, fontWeight: bold ? 700 : 400 }}>{value}</span>
-    </div>
   );
 
   return (

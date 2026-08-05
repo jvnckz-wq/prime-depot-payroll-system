@@ -78,6 +78,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
   // hand-off so re-opening Employees later doesn't pop the form again.
   useEffect(() => {
     if (!prefill) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     setEditing(null);
     setForm({ ...BLANK_EMP, id: prefill.id != null ? String(prefill.id) : '', name: prefill.name || '' });
     setModal(true);
@@ -242,7 +243,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
               <input type="date" value={form.dateHired} onChange={e => ff('dateHired', e.target.value)} className={inputCls} style={inputStyle} />
             </Field>
           </div>
-          <div className="text-xs -mt-1.5" style={{ fontFamily: F_BODY, color: T.soft }}>The ID number must match the number this employee's fingerprint is registered under on the biometric scanner — that's what links their attendance logs to this record. Date hired is used to prorate 13th-month pay.</div>
+          <div className="text-xs -mt-1.5" style={{ fontFamily: F_BODY, color: T.soft }}>The ID number must match the number this employee&apos;s fingerprint is registered under on the biometric scanner — that&apos;s what links their attendance logs to this record. Date hired is used to prorate 13th-month pay.</div>
           <Field label="Full name*"><input value={form.name} onChange={e => ff('name', e.target.value)} placeholder="Juan Dela Cruz" className={inputCls} style={inputStyle} /></Field>
           <Field label="Position">
             <select value={form.position} onChange={e => ff('position', e.target.value)} className={inputCls} style={inputStyle}>
