@@ -21,16 +21,27 @@ import { wrapWithRetry } from './db-retry';
 
 const globalForPrisma = globalThis;
 
-function createClient() {
+function createClients() {
   const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
-  // Retry transient Neon cold-start connection drops (see db-retry.js). The
-  // adapter and connection string are unchanged — this only re-attempts a query
-  // when the connection itself drops mid-flight.
-  return wrapWithRetry(new PrismaClient({ adapter }));
+  // One underlying client. `prisma` wraps it to retry transient Neon cold-start
+  // connection drops (see db-retry.js); the adapter and connection string are
+  // unchanged — this only re-attempts a query when the connection drops.
+  const base = new PrismaClient({ adapter });
+  return { base, prisma: wrapWithRetry(base) };
 }
 
-export const prisma = globalForPrisma.__primeDepotPrisma ?? createClient();
+const clients = globalForPrisma.__primeDepotClients ?? createClients();
+
+// Retry-wrapped client — use for normal, single queries. Auto-retries Neon
+// cold-start connection drops.
+export const prisma = clients.prisma;
+
+// Raw, UN-wrapped client. REQUIRED for the array form prisma.$transaction([...]).
+// The wrapped client's model methods return plain Promises, but the array form
+// needs genuine PrismaPromises. So build transaction ops from prismaBase, and
+// wrap the $transaction call itself in withRetry() for connection-retry.
+export const prismaBase = clients.base;
 
 if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.__primeDepotPrisma = prisma;
+  globalForPrisma.__primeDepotClients = clients;
 }

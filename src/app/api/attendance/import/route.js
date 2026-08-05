@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../../lib/prisma';
+import { prisma, prismaBase } from '../../../../lib/prisma';
+import { withRetry } from '../../../../lib/db-retry';
 import { requireAdmin } from '../../../../lib/auth';
 import { parseZktecoXls } from '../../../../lib/attendance-import';
 import { callTimeFor, minutesLate } from '../../../../lib/attendance';
@@ -102,20 +103,20 @@ export async function POST(request) {
     // count keeps climbing on each re-import). Then insert the fresh rows.
     const ops = [];
     if (matchedIds.length) {
-      ops.push(prisma.attendance.deleteMany({
+      ops.push(prismaBase.attendance.deleteMany({
         where: { date: { gte: period.start, lte: period.end }, employeeId: { in: matchedIds }, isManualEdit: false },
       }));
     }
-    ops.push(prisma.unmappedLog.deleteMany({
+    ops.push(prismaBase.unmappedLog.deleteMany({
       where: { date: { gte: period.start, lte: period.end } },
     }));
-    if (attendanceRows.length) ops.push(prisma.attendance.createMany({ data: attendanceRows }));
-    if (unmappedRows.length) ops.push(prisma.unmappedLog.createMany({ data: unmappedRows }));
-    ops.push(prisma.importBatch.update({
+    if (attendanceRows.length) ops.push(prismaBase.attendance.createMany({ data: attendanceRows }));
+    if (unmappedRows.length) ops.push(prismaBase.unmappedLog.createMany({ data: unmappedRows }));
+    ops.push(prismaBase.importBatch.update({
       where: { id: batch.id },
       data: { status: 'COMPLETED', totalRows, mappedRows: attendanceRows.length, unmappedRows: unmappedRows.length },
     }));
-    await prisma.$transaction(ops);
+    await withRetry(() => prismaBase.$transaction(ops));
 
     return NextResponse.json({
       ok: true,

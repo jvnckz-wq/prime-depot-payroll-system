@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../../lib/prisma';
+import { prisma, prismaBase } from '../../../../lib/prisma';
+import { withRetry } from '../../../../lib/db-retry';
 import { requireAdmin } from '../../../../lib/auth';
 import { minutesLate } from '../../../../lib/attendance';
 
@@ -86,16 +87,16 @@ export async function POST(request) {
 
     // Atomic batch (pooler-safe): replace non-manual rows for the period, insert
     // the rebuilt ones, and mark this ID's logs resolved.
-    await prisma.$transaction([
-      prisma.attendance.deleteMany({
+    await withRetry(() => prismaBase.$transaction([
+      prismaBase.attendance.deleteMany({
         where: { employeeId: emp.id, date: { gte: start, lte: end }, isManualEdit: false },
       }),
-      prisma.attendance.createMany({ data: rows }),
-      prisma.unmappedLog.updateMany({
+      prismaBase.attendance.createMany({ data: rows }),
+      prismaBase.unmappedLog.updateMany({
         where: { biometricId, isResolved: false },
         data: { isResolved: true, resolvedAt: new Date() },
       }),
-    ]);
+    ]));
 
     return NextResponse.json({
       ok: true,

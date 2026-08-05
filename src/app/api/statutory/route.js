@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../lib/prisma';
+import { prisma, prismaBase } from '../../../lib/prisma';
+import { withRetry } from '../../../lib/db-retry';
 import { requireAdmin } from '../../../lib/auth';
 import {
   shapeSss, shapePhilhealth, shapePagibig, shapeBir,
@@ -54,26 +55,26 @@ export async function PUT(request) {
 
     if (table === 'sss') {
       if (!Array.isArray(data) || !data.length) return NextResponse.json({ error: 'SSS table cannot be empty.' }, { status: 400 });
-      await prisma.$transaction([
-        prisma.sssBracket.deleteMany({ where: { effectiveYear: year } }),
-        prisma.sssBracket.createMany({ data: sssToDb(data, year) }),
-      ]);
+      await withRetry(() => prismaBase.$transaction([
+        prismaBase.sssBracket.deleteMany({ where: { effectiveYear: year } }),
+        prismaBase.sssBracket.createMany({ data: sssToDb(data, year) }),
+      ]));
     } else if (table === 'philhealth') {
       const d = philhealthToDb(data, year);
       await prisma.philhealthConfig.upsert({ where: { effectiveYear: year }, update: d, create: d });
     } else if (table === 'pagibig') {
       const { config, brackets } = pagibigToDb(data, year);
       const cfg = await prisma.pagibigConfig.upsert({ where: { effectiveYear: year }, update: { monthlyCap: config.monthlyCap }, create: config });
-      await prisma.$transaction([
-        prisma.pagibigBracket.deleteMany({ where: { configId: cfg.id } }),
-        prisma.pagibigBracket.createMany({ data: brackets.map((b) => ({ ...b, configId: cfg.id })) }),
-      ]);
+      await withRetry(() => prismaBase.$transaction([
+        prismaBase.pagibigBracket.deleteMany({ where: { configId: cfg.id } }),
+        prismaBase.pagibigBracket.createMany({ data: brackets.map((b) => ({ ...b, configId: cfg.id })) }),
+      ]));
     } else if (table === 'bir') {
       if (!Array.isArray(data) || !data.length) return NextResponse.json({ error: 'BIR table cannot be empty.' }, { status: 400 });
-      await prisma.$transaction([
-        prisma.birBracket.deleteMany({ where: { effectiveYear: year } }),
-        prisma.birBracket.createMany({ data: birToDb(data, year) }),
-      ]);
+      await withRetry(() => prismaBase.$transaction([
+        prismaBase.birBracket.deleteMany({ where: { effectiveYear: year } }),
+        prismaBase.birBracket.createMany({ data: birToDb(data, year) }),
+      ]));
     } else {
       return NextResponse.json({ error: 'Unknown table.' }, { status: 400 });
     }
