@@ -1,27 +1,123 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #F6F4F3;
+  --foreground: #1B2430;
+
+  /* Prime Depot palette — mirrors theme.js T so CSS interaction rules can reference it */
+  --pd-brand: #C8161D;
+  --pd-brand-dark: #9C1117;
+  --pd-ink: #1B2430;
+  --pd-soft: #5B6472;
+  --pd-line: #DED9D7;
+  --pd-line-soft: #ECE7E5;
+  --pd-surface: #FFFFFF;
+
+  /* Motion tokens (subtle / professional) */
+  --pd-dur-fast: 120ms;
+  --pd-dur-base: 160ms;
+  --pd-dur-slow: 240ms;
+  --pd-ease: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-inter);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+}
+
+/* Tabular figures for numeric columns (payslips, tables, stat cards) */
+.pd-num { font-variant-numeric: tabular-nums; }
+
+/* Focus-visible rings — replaces the removed input outlines (accessibility) */
+:where(a, button, [role="button"], input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--pd-brand);
+  outline-offset: 2px;
+}
+
+/* Buttons — hover + pressed feedback (works over inline colors via filter/transform) */
+.pd-btn {
+  transition: filter var(--pd-dur-base) var(--pd-ease),
+    background-color var(--pd-dur-base) var(--pd-ease),
+    transform var(--pd-dur-fast) var(--pd-ease),
+    box-shadow var(--pd-dur-base) var(--pd-ease);
+}
+.pd-btn:not(:disabled):hover { filter: brightness(1.08); }
+.pd-btn:not(:disabled):active { transform: translateY(0.5px) scale(0.99); }
+.pd-btn[data-variant="outline"]:not(:disabled):hover,
+.pd-btn[data-variant="ghost"]:not(:disabled):hover {
+  filter: none;
+  background-color: var(--pd-line-soft);
+}
+
+/* Cards — subtle lift for clickable ones */
+.pd-card-hover {
+  transition: box-shadow var(--pd-dur-base) var(--pd-ease),
+    transform var(--pd-dur-base) var(--pd-ease),
+    border-color var(--pd-dur-base) var(--pd-ease);
+}
+.pd-card-hover:hover {
+  box-shadow: 0 6px 16px rgba(27, 36, 48, 0.08);
+  transform: translateY(-1px);
+}
+
+/* Sidebar nav items — hover tint (inactive items only; active keeps its inline bg) */
+.pd-nav-item {
+  transition: background-color var(--pd-dur-base) var(--pd-ease),
+    color var(--pd-dur-base) var(--pd-ease),
+    border-color var(--pd-dur-base) var(--pd-ease);
+}
+.pd-nav-item:hover { background-color: rgba(255, 255, 255, 0.08); }
+
+/* Table rows — hover highlight (opt-in via .pd-table; rolled out per view in a later batch) */
+.pd-table tbody tr { transition: background-color var(--pd-dur-fast) var(--pd-ease); }
+.pd-table tbody tr:hover { background-color: var(--pd-line-soft); }
+
+/* Progress bar fill — animated width */
+.pd-progress-fill { transition: width var(--pd-dur-slow) var(--pd-ease); }
+
+/* ---- Entrances (enter-only; exit animations come with the optional Motion path) ---- */
+@keyframes pd-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pd-scale-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes pd-slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pd-view-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.pd-overlay { animation: pd-fade-in var(--pd-dur-base) var(--pd-ease); }
+.pd-modal { animation: pd-scale-in var(--pd-dur-slow) var(--pd-ease); }
+.pd-toast { animation: pd-slide-up var(--pd-dur-slow) var(--pd-ease); }
+.pd-view-in { animation: pd-view-in var(--pd-dur-slow) var(--pd-ease); }
+
+/* Dashboard KPI stagger — translateY-only so it layers cleanly under the view fade */
+@keyframes pd-rise-stagger { from { transform: translateY(8px); } to { transform: translateY(0); } }
+.pd-stagger > * { animation: pd-rise-stagger var(--pd-dur-slow) var(--pd-ease) both; }
+.pd-stagger > *:nth-child(1) { animation-delay: 40ms; }
+.pd-stagger > *:nth-child(2) { animation-delay: 100ms; }
+.pd-stagger > *:nth-child(3) { animation-delay: 160ms; }
+.pd-stagger > *:nth-child(4) { animation-delay: 220ms; }
+
+/* Respect the OS "reduce motion" setting — kills animations + transitions app-wide */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

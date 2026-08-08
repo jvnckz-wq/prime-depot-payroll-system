@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Users, Truck, Wallet, FileText, AlertTriangle, TrendingUp, Check } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Av, Eyebrow, H1, Panel, StatCard, Td, Th } from '../components/ui.jsx';
@@ -8,9 +8,28 @@ import { computeStaffPayroll, flattenDeliveries, loanBalance } from '../lib/payr
 import { peso } from '../lib/utils';
 import { F_BODY, T } from '../theme';
 
+// Measure before paint on the client; fall back to useEffect on the server (no SSR warning).
+const useIsoLayoutEffect = typeof document !== 'undefined' ? useLayoutEffect : useEffect;
+
 export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loans = [], statutory, setTab, cutoffLabel = '', attendanceSummaries = [], unmappedCount = 0 }) => {
   const loggedToday = Object.keys(deliveries).length;
   const deliveriesLogged = useMemo(() => flattenDeliveries(deliveries).length, [deliveries]);
+
+  // Keep the payroll snapshot exactly as tall as the charts column on desktop so the two
+  // panels align and no space is wasted; the table scrolls internally past that height.
+  const chartsColRef = useRef(null);
+  const [snapshotHeight, setSnapshotHeight] = useState(undefined);
+  useIsoLayoutEffect(() => {
+    const el = chartsColRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const sync = () => setSnapshotHeight(mq.matches ? el.offsetHeight : undefined);
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    mq.addEventListener('change', sync);
+    return () => { ro.disconnect(); mq.removeEventListener('change', sync); };
+  }, []);
 
   // Index the imported attendance so the dashboard uses the SAME real days the
   // Staff Payroll page does — otherwise the headline net would be an estimate
@@ -76,7 +95,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
 
       {/* Top row: 4 stat cards + Attention Needed, mirroring the approved layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <div className="lg:col-span-2 grid grid-cols-2 gap-4">
+        <div className="lg:col-span-2 grid grid-cols-2 gap-4 pd-stagger">
           <StatCard label="Total Employees" value={totalEmployees} icon={Users} onClick={() => go('employees')} />
           <StatCard label="Net Pay This Cutoff" value={peso(netThisCutoff)} tone="amber" icon={Wallet} onClick={() => go('staff')} />
           <StatCard label="Deliveries Logged" value={deliveriesLogged} tone="green" icon={Truck} onClick={() => go('truck')} />
@@ -115,10 +134,10 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
       </div>
 
       {/* Payroll snapshot table + two charts */}
-      <div className="grid lg:grid-cols-2 gap-4">
-        <Panel className="overflow-hidden">
-          <div className="px-4 pt-4 pb-2"><Eyebrow>{cutoffLabel} · Payroll Snapshot</Eyebrow></div>
-          <div className="overflow-x-auto" style={{ maxHeight: 360 }}>
+      <div className="grid lg:grid-cols-2 gap-4 items-start">
+        <Panel className="overflow-hidden lg:flex lg:flex-col" style={{ height: snapshotHeight }}>
+          <div className="px-4 pt-4 pb-2 shrink-0"><Eyebrow>{cutoffLabel} · Payroll Snapshot</Eyebrow></div>
+          <div className="overflow-auto lg:flex-1 lg:min-h-0">
             <table className="w-full">
               <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}>
                 <tr><Th>Employee</Th><Th right>Gross</Th><Th right>Net Pay</Th></tr>
@@ -148,7 +167,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
           </div>
         </Panel>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4" ref={chartsColRef}>
           <Panel className="p-4">
             <Eyebrow>Attendance</Eyebrow>
             <div className="text-xs mb-3" style={{ fontFamily: F_BODY, color: T.soft }}>Present / Late / Absent · this cutoff</div>
@@ -159,9 +178,9 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
                 <YAxis tick={{ fontSize: 11, fill: T.soft }} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={{ borderRadius: 8, border: `1px solid ${T.line}`, fontSize: 12, fontFamily: F_BODY }} />
                 <Legend wrapperStyle={{ fontSize: 11, fontFamily: F_BODY }} iconType="circle" iconSize={8} />
-                <Bar dataKey="Present" fill={T.green} radius={[2, 2, 0, 0]} />
-                <Bar dataKey="Late" fill={T.brand} radius={[2, 2, 0, 0]} />
-                <Bar dataKey="Absent" fill={T.warn} radius={[2, 2, 0, 0]} />
+                <Bar dataKey="Present" fill={T.green} radius={[2, 2, 0, 0]} animationDuration={800} />
+                <Bar dataKey="Late" fill={T.brand} radius={[2, 2, 0, 0]} animationDuration={800} />
+                <Bar dataKey="Absent" fill={T.warn} radius={[2, 2, 0, 0]} animationDuration={800} />
               </BarChart>
             </ResponsiveContainer>
           </Panel>
@@ -182,7 +201,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
                 <XAxis dataKey="mo" tick={{ fontSize: 11, fill: T.soft }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: T.soft }} axisLine={false} tickLine={false} tickFormatter={v => `₱${v / 1000}k`} />
                 <Tooltip formatter={v => [peso(v), 'Payroll']} contentStyle={{ borderRadius: 8, border: `1px solid ${T.line}`, fontSize: 12, fontFamily: F_BODY }} />
-                <Line type="monotone" dataKey="payroll" stroke={T.brand} strokeWidth={2.5} dot={{ r: 3, fill: T.brand }} activeDot={{ r: 5 }} />
+                <Line type="monotone" dataKey="payroll" stroke={T.brand} strokeWidth={2.5} dot={{ r: 3, fill: T.brand }} activeDot={{ r: 5 }} animationDuration={800} />
               </LineChart>
             </ResponsiveContainer>
             )}

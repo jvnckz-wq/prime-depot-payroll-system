@@ -5,14 +5,14 @@ import { Users, Wallet, ArrowLeft, Printer, Eye, Lock } from 'lucide-react';
 import { Av, Badge, Btn, Confirm, Eyebrow, H1, Modal, Money, Panel, StatCard, Td, Th } from '../components/ui.jsx';
 import { computePagIBIG, computeStaffPayroll, loanBalance } from '../lib/payroll';
 import { peso } from '../lib/utils';
-import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
+import { F_BODY, F_HEAD, F_MONO, F_SERIF, T } from '../theme';
 
 // One payslip, reused by the single-print view and the batch "Print All" run so
 // the two never drift. Renders the client's exact approved layout.
 const PayslipCard = ({ e, calc, cutoffLabel, attPeriod, statutory, className = 'max-w-md', ...rest }) => (
   <Panel className={`${className} overflow-hidden`} {...rest}>
     <div className="px-6 pt-6 pb-4 text-center" style={{ borderBottom: `2px solid ${T.brand}` }}>
-      <div className="font-bold" style={{ fontFamily: F_HEAD, color: T.brand, fontSize: 22, letterSpacing: '0.02em' }}>PRIME DEPOT HARDWARE</div>
+      <div className="font-bold" style={{ fontFamily: F_SERIF, color: T.brand, fontSize: 22, letterSpacing: '0.02em' }}>PRIME DEPOT HARDWARE</div>
       <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.ink, letterSpacing: '0.04em' }}>TILES, PAINTS &amp; CONSTRUCTION SUPPLY</div>
       <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft, letterSpacing: '0.08em' }}>BRGY. P. NIOGAN, MABINI, BATANGAS</div>
     </div>
@@ -346,7 +346,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
               </div>
             </div>
             <table className="w-full">
-              <thead><tr><Th>Employee</Th><Th right>Days</Th><Th right>Gross</Th><Th right>OT</Th><Th right>Deductions</Th><Th right>Net Pay</Th><Th>Payslip</Th></tr></thead>
+              <thead><tr><Th>Employee</Th><Th center>Days</Th><Th right>Gross</Th><Th right>OT</Th><Th right>Deductions</Th><Th right>Net Pay</Th><Th>Payslip</Th></tr></thead>
               <tbody>
                 {rows.map(({ emp, calc }) => (
                   <tr key={emp.id}>
@@ -357,7 +357,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
                         {!calc.hasAttendance && <Badge tone="amber">no attendance</Badge>}
                       </div>
                     </Td>
-                    <Td right mono>{calc.days}</Td>
+                    <Td center mono>{calc.days}</Td>
                     <Td right mono>{peso(calc.gross)}</Td>
                     <Td right mono><span style={{ color: T.green, fontWeight: 600 }}>+{peso(calc.ot)}</span></Td>
                     <Td right mono><span style={{ color: T.red, fontWeight: 600 }}>-{peso(calc.totalDeductions)}</span></Td>
@@ -391,12 +391,12 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
             <div className="p-8 text-center text-sm" style={{ color: T.soft, fontFamily: F_BODY }}>No cut-offs have been finalized yet. Release one from the Current Cutoff tab.</div>
           ) : (
             <table className="w-full">
-              <thead><tr><Th>Cut-off Period</Th><Th right>Employees</Th><Th right>Total Gross</Th><Th right>Total Net</Th><Th>Status</Th><Th></Th></tr></thead>
+              <thead><tr><Th>Cut-off Period</Th><Th center>Employees</Th><Th right>Total Gross</Th><Th right>Total Net</Th><Th>Status</Th><Th></Th></tr></thead>
               <tbody>
                 {history.map((p) => (
                   <tr key={p.id}>
                     <Td><b>{p.label}</b></Td>
-                    <Td right mono>{p.employees}</Td>
+                    <Td center mono>{p.employees}</Td>
                     <Td right mono>{peso(p.totalGross)}</Td>
                     <Td right mono>{peso(p.totalNet)}</Td>
                     <Td><Badge tone="green">Released</Badge></Td>
@@ -438,13 +438,13 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
               <div className="overflow-x-auto" style={{ maxHeight: 420 }}>
                 <table className="w-full">
                   <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}>
-                    <tr><Th>Employee</Th><Th right>Days</Th><Th right>Gross</Th><Th right>Deductions</Th><Th right>Net Pay</Th></tr>
+                    <tr><Th>Employee</Th><Th center>Days</Th><Th right>Gross</Th><Th right>Deductions</Th><Th right>Net Pay</Th></tr>
                   </thead>
                   <tbody>
                     {viewPeriod.payslips.map((p, i) => (
                       <tr key={i}>
                         <Td><div className="flex items-center gap-2.5"><Av name={p.name} size={26} /><span className="font-semibold text-sm" style={{ fontFamily: F_BODY }}>{p.name}</span></div></Td>
-                        <Td right mono>{p.daysPresent}</Td>
+                        <Td center mono>{p.daysPresent}</Td>
                         <Td right mono>{peso(p.basicPay)}</Td>
                         <Td right mono>{p.totalDeductions > 0 ? `−${peso(p.totalDeductions)}` : peso(0)}</Td>
                         <Td right mono style={{ fontWeight: 700 }}>{peso(p.netPay)}</Td>

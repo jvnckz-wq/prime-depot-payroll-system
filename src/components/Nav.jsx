@@ -19,11 +19,11 @@ export const Sidebar = ({ tab, setTab, onLogout, user, onOpenAccount }) => (
         const Icon = item.icon;
         return (
           <button key={item.key} onClick={() => setTab(item.key)}
-            className="w-full flex items-center gap-3 px-5 py-2.5 text-sm text-left"
+            className="pd-nav-item w-full flex items-center gap-3 px-5 py-2.5 text-sm text-left"
             style={{
               fontFamily: F_BODY, fontWeight: active ? 600 : 400,
               color: active ? '#FFFFFF' : T.sidebarSoft,
-              backgroundColor: active ? 'rgba(0,0,0,0.22)' : 'transparent',
+              ...(active ? { backgroundColor: 'rgba(0,0,0,0.22)' } : {}),
               borderLeft: active ? '3px solid #FFFFFF' : '3px solid transparent',
             }}>
             <Icon size={16} />
@@ -38,8 +38,8 @@ export const Sidebar = ({ tab, setTab, onLogout, user, onOpenAccount }) => (
     <div className="px-3 py-3" style={{ borderTop: `1px solid ${T.sidebarLine}` }}>
       {user && (
         <button onClick={onOpenAccount}
-          className="w-full flex items-center gap-2.5 px-2 py-2 rounded mb-1 text-left"
-          style={{ backgroundColor: tab === 'account' ? 'rgba(0,0,0,0.22)' : 'transparent' }}>
+          className="pd-nav-item w-full flex items-center gap-2.5 px-2 py-2 rounded mb-1 text-left"
+          style={tab === 'account' ? { backgroundColor: 'rgba(0,0,0,0.22)' } : undefined}>
           {user.avatar ? (
             <img src={user.avatar} alt="" className="rounded-full object-cover shrink-0"
               style={{ width: 30, height: 30, border: '1px solid rgba(255,255,255,0.25)' }} />
@@ -57,7 +57,7 @@ export const Sidebar = ({ tab, setTab, onLogout, user, onOpenAccount }) => (
           </span>
         </button>
       )}
-      <button onClick={onLogout} className="w-full flex items-center gap-2 px-2 py-2 text-sm rounded" style={{ fontFamily: F_BODY, color: T.sidebarSoft }}>
+      <button onClick={onLogout} className="pd-nav-item w-full flex items-center gap-2 px-2 py-2 text-sm rounded" style={{ fontFamily: F_BODY, color: T.sidebarSoft }}>
         <LogOut size={15} /> Log out
       </button>
     </div>

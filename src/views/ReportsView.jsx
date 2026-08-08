@@ -123,8 +123,8 @@ export const ReportsView = ({ staff, deliveries, loans, statutory }) => {
             <Btn size="sm" variant="outline" icon={Download} onClick={export13}>Export Excel</Btn>
           </div>
           <table className="w-full">
-            <thead><tr><Th>Employee</Th><Th right>Months Worked</Th><Th right>Total Basic</Th><Th right>13th Month Pay</Th></tr></thead>
-            <tbody>{T13.map((r, i) => <tr key={i}><Td>{r.name}</Td><Td right mono>{r.months}</Td><Td right mono>{peso(r.basic)}</Td><Td right mono>{peso(r.pay)}</Td></tr>)}</tbody>
+            <thead><tr><Th>Employee</Th><Th center>Months Worked</Th><Th right>Total Basic</Th><Th right>13th Month Pay</Th></tr></thead>
+            <tbody>{T13.map((r, i) => <tr key={i}><Td>{r.name}</Td><Td center mono>{r.months}</Td><Td right mono>{peso(r.basic)}</Td><Td right mono>{peso(r.pay)}</Td></tr>)}</tbody>
           </table>
         </Panel>
       )}
@@ -146,14 +146,14 @@ export const ReportsView = ({ staff, deliveries, loans, statutory }) => {
           </p>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead><tr><Th>Name</Th><Th>Role</Th><Th>Trucks</Th><Th right>Days</Th><Th right>Trips</Th><Th right>Daily</Th><Th right>Piece Rate</Th><Th right>Palima</Th><Th right>Total</Th></tr></thead>
+              <thead><tr><Th>Name</Th><Th>Role</Th><Th>Trucks</Th><Th center>Days</Th><Th center>Trips</Th><Th right>Daily</Th><Th right>Piece Rate</Th><Th right>Palima</Th><Th right>Total</Th></tr></thead>
               <tbody>{crewRows.map((r, i) => (
                 <tr key={i}>
                   <Td>{r.name}</Td>
                   <Td><Badge tone={r.role === 'Driver' ? 'amber' : 'neutral'}>{r.role}</Badge></Td>
                   <Td mono><span style={{ color: T.soft }}>{r.trucks.join(', ')}</span></Td>
-                  <Td right mono>{r.days}</Td>
-                  <Td right mono>{r.trips}</Td>
+                  <Td center mono>{r.days}</Td>
+                  <Td center mono>{r.trips}</Td>
                   <Td right mono>{peso(r.dailyRate)}</Td>
                   <Td right mono>{peso(r.pieceRate)}</Td>
                   <Td right mono>{r.bonus ? <span style={{ color: T.green }}>{peso(r.bonus)}</span> : '—'}</Td>

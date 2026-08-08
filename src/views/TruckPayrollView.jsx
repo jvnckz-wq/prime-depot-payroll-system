@@ -337,7 +337,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr><Th>Seq.</Th><Th>Address</Th><Th>Customer</Th><Th>Crew</Th><Th>Item Category</Th><Th right>Qty</Th><Th>Unit</Th><Th right>Driver</Th><Th right>Pahinante</Th><Th>Double</Th><Th right>Correct</Th></tr>
+                  <tr><Th>Seq.</Th><Th>Address</Th><Th>Customer</Th><Th>Crew</Th><Th>Item Category</Th><Th center>Qty</Th><Th>Unit</Th><Th right>Driver</Th><Th right>Pahinante</Th><Th>Double</Th><Th right>Correct</Th></tr>
                 </thead>
                 <tbody>
                   {log.items.map((it, idx) => (
@@ -351,7 +351,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                         </span>
                       ) : ''}</Td>
                       <Td>{it.item}</Td>
-                      <Td right mono>{it.qty}</Td>
+                      <Td center mono>{it.qty}</Td>
                       <Td>{it.unit}</Td>
                       <Td right mono>{peso(it.d)}</Td>
                       <Td right mono>{peso(it.h)}</Td>
@@ -380,7 +380,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                 <table className="w-full" style={{ fontFamily: F_MONO, fontSize: 13 }}>
                   <thead>
                     <tr>
-                      <Th>Name</Th><Th>Role</Th><Th right>Trips</Th>
+                      <Th>Name</Th><Th>Role</Th><Th center>Trips</Th>
                       <Th right>Daily</Th><Th right>Piece rate</Th><Th right>Palima</Th><Th right>Kaltas</Th><Th right>Net</Th>
                     </tr>
                   </thead>
@@ -389,7 +389,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                       <tr key={i}>
                         <Td>{p.name}</Td>
                         <Td><Badge tone={p.role === 'Driver' ? 'amber' : 'neutral'}>{p.role}</Badge></Td>
-                        <Td right mono>{p.trips}</Td>
+                        <Td center mono>{p.trips}</Td>
                         <Td right mono>{peso(p.dailyRate)}</Td>
                         <Td right mono>{peso(p.pieceRate)}</Td>
                         <Td right mono>{p.bonus ? <span style={{ color: T.green }}>+{peso(p.bonus)}</span> : '—'}</Td>
@@ -447,7 +447,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                     <thead>
                       <tr>
                         <Th>Seq</Th><Th>Address</Th><Th>Customer</Th><Th>Item Category</Th>
-                        <Th right>Qty</Th><Th>Unit</Th><Th right>Driver</Th><Th right>Pahinante</Th><Th>Double</Th>
+                        <Th center>Qty</Th><Th>Unit</Th><Th right>Driver</Th><Th right>Pahinante</Th><Th>Double</Th>
                       </tr>
                     </thead>
                     <tbody>
@@ -457,7 +457,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                           <Td>{ii === 0 ? t.address : ''}</Td>
                           <Td>{ii === 0 ? t.customer : ''}</Td>
                           <Td>{it.item}</Td>
-                          <Td right mono>{it.qty}</Td>
+                          <Td center mono>{it.qty}</Td>
                           <Td>{it.unit}</Td>
                           <Td right mono>{peso(it.d)}</Td>
                           <Td right mono>{peso(it.h)}</Td>
@@ -773,14 +773,14 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full" style={{ fontSize: 12 }}>
-                      <thead><tr><Th>Truck</Th><Th>Seq</Th><Th>Item</Th><Th right>Qty</Th><Th>Unit</Th><Th>Double</Th><Th right>Amount</Th></tr></thead>
+                      <thead><tr><Th>Truck</Th><Th>Seq</Th><Th>Item</Th><Th center>Qty</Th><Th>Unit</Th><Th>Double</Th><Th right>Amount</Th></tr></thead>
                       <tbody>
                         {lines.map((l, li) => (
                           <tr key={li}>
                             <Td mono>{l.truckId}</Td>
                             <Td mono>{l.seq}</Td>
                             <Td>{l.item}</Td>
-                            <Td right mono>{l.qty}</Td>
+                            <Td center mono>{l.qty}</Td>
                             <Td>{l.unit}</Td>
                             <Td>{l.dbl && <Badge tone="amber">DOUBLE</Badge>}</Td>
                             <Td right mono>{peso(l.amt)}</Td>

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Printer } from 'lucide-react';
 import { Btn, Field, Panel } from '../components/ui.jsx';
 import { peso } from '../lib/utils';
-import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
+import { F_BODY, F_HEAD, F_MONO, F_SERIF, T } from '../theme';
 
 const EXIT_TYPES = ['Resignation', 'Termination', 'End of Contract', 'Retirement', 'AWOL'];
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
@@ -102,7 +102,7 @@ export const FinalPayView = ({ employee, onBack, toast }) => {
 
       <Panel id="final-pay-slip" className="max-w-lg overflow-hidden">
         <div className="px-6 pt-6 pb-4 text-center" style={{ borderBottom: `2px solid ${T.brand}` }}>
-          <div className="font-bold" style={{ fontFamily: F_HEAD, color: T.brand, fontSize: 22, letterSpacing: '0.02em' }}>PRIME DEPOT HARDWARE</div>
+          <div className="font-bold" style={{ fontFamily: F_SERIF, color: T.brand, fontSize: 22, letterSpacing: '0.02em' }}>PRIME DEPOT HARDWARE</div>
           <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.ink, letterSpacing: '0.04em' }}>TILES, PAINTS &amp; CONSTRUCTION SUPPLY</div>
           <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft, letterSpacing: '0.08em' }}>BRGY. P. NIOGAN, MABINI, BATANGAS</div>
           <div className="text-sm font-bold mt-3" style={{ fontFamily: F_HEAD, color: T.ink, letterSpacing: '0.06em' }}>RECEIVING OF FINAL PAY</div>

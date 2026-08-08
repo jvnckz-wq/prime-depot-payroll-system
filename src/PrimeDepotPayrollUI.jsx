@@ -264,6 +264,7 @@ export default function PrimeDepotPayroll() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <TopBar title={titles[tab]} role={user.role === 'ADMIN' ? 'admin' : 'checker'} cutoff={cutoffText} />
         <div className="flex-1 overflow-y-auto">
+          <div key={tab} className="pd-view-in">
           {tab === 'dashboard' && <DashboardView deliveries={deliveries} staff={staff} totalEmployees={allStaff.filter(e => e.status !== 'Inactive').length} loans={loans} statutory={statutory} setTab={setTab} cutoffLabel={cutoffText} attendanceSummaries={attSummaries} unmappedCount={unmappedCount} />}
           {tab === 'employees' && <EmployeesView staff={allStaff} reloadStaff={reloadStaff} toast={toast} prefill={employeePrefill} onPrefillConsumed={() => setEmployeePrefill(null)} />}
           {tab === 'attendance' && <AttendanceView staff={allStaff} toast={toast} onRegister={(id, name) => { setEmployeePrefill({ id, name }); setTab('employees'); }} />}
@@ -281,6 +282,7 @@ export default function PrimeDepotPayroll() {
             />
           )}
           {tab === 'settings' && <SettingsView currentUser={user} onUserChange={u => setUser(prev => ({ ...prev, ...u }))} onSignedOut={() => { setUser(null); setTab('dashboard'); }} checkers={checkers} setCheckers={setCheckers} sssTable={sssTable} setSssTable={setSssTable} philhealthRates={philhealthRates} setPhilhealthRates={setPhilhealthRates} pagibigRates={pagibigRates} setPagibigRates={setPagibigRates} birTable={birTable} setBirTable={setBirTable} toast={toast} />}
+          </div>
         </div>
       </div>
       <div className="md:hidden fixed bottom-0 left-0 right-0 flex justify-around py-2 z-10" style={{ backgroundColor: T.sidebar }}>

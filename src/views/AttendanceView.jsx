@@ -246,7 +246,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
             : rows.length === 0 ? <EmptyState icon={ClipboardList} title="No attendance yet" desc="Import a biometric .xls file to populate this employee's record." />
             : (
             <table className="w-full">
-              <thead><tr><Th>Date</Th><Th>Time In</Th><Th>Time Out</Th><Th right>Late (mins)</Th><Th right>OT (mins)</Th><Th></Th></tr></thead>
+              <thead><tr><Th>Date</Th><Th>Time In</Th><Th>Time Out</Th><Th center>Late (mins)</Th><Th center>OT (mins)</Th><Th></Th></tr></thead>
               <tbody>
                 {rows.map((a) => {
                   const isLate = a.late > 0, isOt = a.ot > 0;
@@ -263,8 +263,8 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
                       </Td>
                       <Td mono>{a.in || '—'}</Td>
                       <Td mono>{a.out || '—'}</Td>
-                      <Td right mono><span style={{ fontWeight: isLate ? 700 : 400, color: isLate ? T.red : T.soft }}>{isLate ? a.late : '--'}</span></Td>
-                      <Td right mono><span style={{ fontWeight: isOt ? 700 : 400, color: isOt ? T.green : T.soft }}>{isOt ? a.ot : '--'}</span></Td>
+                      <Td center mono><span style={{ fontWeight: isLate ? 700 : 400, color: isLate ? T.red : T.soft }}>{isLate ? a.late : '--'}</span></Td>
+                      <Td center mono><span style={{ fontWeight: isOt ? 700 : 400, color: isOt ? T.green : T.soft }}>{isOt ? a.ot : '--'}</span></Td>
                       <Td right><Pencil size={13} style={{ color: T.soft }} /></Td>
                     </tr>
                   );
@@ -273,8 +273,8 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
               <tfoot>
                 <tr style={{ backgroundColor: T.bg }}>
                   <Td colSpan={3}><b style={{ color: T.red, fontFamily: F_HEAD, letterSpacing: '0.03em' }}>TOTAL</b></Td>
-                  <Td right mono><b style={{ color: T.red }}>{lateMins}m</b></Td>
-                  <Td right mono><b style={{ color: T.green }}>{otMins}m</b></Td>
+                  <Td center mono><b style={{ color: T.red }}>{lateMins}m</b></Td>
+                  <Td center mono><b style={{ color: T.green }}>{otMins}m</b></Td>
                   <Td></Td>
                 </tr>
               </tfoot>
@@ -366,7 +366,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
               : data.summaries.length === 0 ? <EmptyState icon={ClipboardList} title="No attendance yet" desc="Import a biometric .xls file to get started. Employees are matched by their biometric User ID." />
               : (
               <table className="w-full">
-                <thead><tr><Th>Employee</Th><Th right>Present</Th><Th right>Days Late</Th><Th right>Late (mins)</Th><Th right>OT (mins)</Th><Th right>Absences</Th><Th>Action</Th></tr></thead>
+                <thead><tr><Th>Employee</Th><Th center>Present</Th><Th center>Days Late</Th><Th center>Late (mins)</Th><Th center>OT (mins)</Th><Th center>Absences</Th><Th>Action</Th></tr></thead>
                 <tbody>
                   {data.summaries.map(s => (
                     <tr key={s.id}>
@@ -379,11 +379,11 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
                           </div>
                         </div>
                       </Td>
-                      <Td right mono>{s.present}</Td>
-                      <Td right mono><span style={{ color: s.daysLate > 0 ? T.red : T.soft, fontWeight: s.daysLate > 0 ? 700 : 400 }}>{s.daysLate || '—'}</span></Td>
-                      <Td right mono><span style={{ color: s.lateMins > 0 ? T.red : T.soft, fontWeight: s.lateMins > 0 ? 700 : 400 }}>{s.lateMins > 0 ? `${s.lateMins}m` : '—'}</span></Td>
-                      <Td right mono><span style={{ color: s.otMins > 0 ? T.green : T.soft, fontWeight: s.otMins > 0 ? 700 : 400 }}>{s.otMins > 0 ? `${s.otMins}m` : '—'}</span></Td>
-                      <Td right mono><span style={{ color: s.absent > 0 ? T.amber : T.soft, fontWeight: s.absent > 0 ? 700 : 400 }}>{s.absent || '—'}</span></Td>
+                      <Td center mono>{s.present}</Td>
+                      <Td center mono><span style={{ color: s.daysLate > 0 ? T.red : T.soft, fontWeight: s.daysLate > 0 ? 700 : 400 }}>{s.daysLate || '—'}</span></Td>
+                      <Td center mono><span style={{ color: s.lateMins > 0 ? T.red : T.soft, fontWeight: s.lateMins > 0 ? 700 : 400 }}>{s.lateMins > 0 ? `${s.lateMins}m` : '—'}</span></Td>
+                      <Td center mono><span style={{ color: s.otMins > 0 ? T.green : T.soft, fontWeight: s.otMins > 0 ? 700 : 400 }}>{s.otMins > 0 ? `${s.otMins}m` : '—'}</span></Td>
+                      <Td center mono><span style={{ color: s.absent > 0 ? T.amber : T.soft, fontWeight: s.absent > 0 ? 700 : 400 }}>{s.absent || '—'}</span></Td>
                       <Td><Btn size="sm" variant="outline" icon={Eye} onClick={() => { setSelectedId(s.id); setView('dtr'); }}>View DTR</Btn></Td>
                     </tr>
                   ))}
@@ -406,7 +406,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
             : unmapped.length === 0 ? <EmptyState icon={ClipboardList} title="Nothing unmapped" desc="Every imported scan is matched to an employee." />
             : (
             <table className="w-full">
-              <thead><tr><Th>Biometric ID</Th><Th>Name (from file)</Th><Th right>Scans</Th><Th>Dates</Th><Th>Action</Th></tr></thead>
+              <thead><tr><Th>Biometric ID</Th><Th>Name (from file)</Th><Th center>Scans</Th><Th>Dates</Th><Th>Action</Th></tr></thead>
               <tbody>
                 {unmapped.map((g) => (
                   <tr key={g.biometricId}>
@@ -415,7 +415,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
                       <span style={{ fontFamily: F_BODY, color: T.ink }}>{g.biometricName || '—'}</span>
                       {g.hasEmployee && <span className="ml-2"><Badge tone="green">registered</Badge></span>}
                     </Td>
-                    <Td right mono>{g.punchCount}</Td>
+                    <Td center mono>{g.punchCount}</Td>
                     <Td mono><span className="text-xs" style={{ color: T.soft }}>{g.firstDate} → {g.lastDate}</span></Td>
                     <Td>
                       {g.hasEmployee ? (
@@ -438,14 +438,14 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
         <Panel className="overflow-hidden">
           {data.batches.length === 0 ? <EmptyState icon={ClipboardList} title="No imports yet" desc="Upload an attendance .xls file to get started." /> : (
             <table className="w-full">
-              <thead><tr><Th>Imported</Th><Th>Filename</Th><Th>Period</Th><Th right>Mapped</Th><Th right>Unmapped</Th><Th>Status</Th><Th></Th></tr></thead>
+              <thead><tr><Th>Imported</Th><Th>Filename</Th><Th>Period</Th><Th center>Mapped</Th><Th center>Unmapped</Th><Th>Status</Th><Th></Th></tr></thead>
               <tbody>{data.batches.map((b) => (
                 <tr key={b.id}>
                   <Td mono>{new Date(b.importedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</Td>
                   <Td mono>{b.filename}</Td>
                   <Td mono>{b.periodStart ? `${b.periodStart} → ${b.periodEnd}` : '—'}</Td>
-                  <Td right mono>{b.mappedRows}</Td>
-                  <Td right mono><span style={{ color: b.unmappedRows > 0 ? T.amber : T.soft }}>{b.unmappedRows}</span></Td>
+                  <Td center mono>{b.mappedRows}</Td>
+                  <Td center mono><span style={{ color: b.unmappedRows > 0 ? T.amber : T.soft }}>{b.unmappedRows}</span></Td>
                   <Td><Badge tone={b.status === 'COMPLETED' ? 'green' : b.status === 'FAILED' ? 'red' : 'amber'}>{b.status}</Badge></Td>
                   <Td>{b.periodStart ? <Btn size="sm" variant="outline" icon={Eye} onClick={() => openBatch(b)}>View</Btn> : null}</Td>
                 </tr>
@@ -471,17 +471,17 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
               <div className="overflow-x-auto" style={{ maxHeight: 380 }}>
                 <table className="w-full">
                   <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}>
-                    <tr><Th>Employee</Th><Th right>Present</Th><Th right>Days Late</Th><Th right>Late (mins)</Th><Th right>OT (mins)</Th><Th right>Absences</Th><Th></Th></tr>
+                    <tr><Th>Employee</Th><Th center>Present</Th><Th center>Days Late</Th><Th center>Late (mins)</Th><Th center>OT (mins)</Th><Th center>Absences</Th><Th></Th></tr>
                   </thead>
                   <tbody>
                     {batchRows.map((s) => (
                       <tr key={s.id}>
                         <Td><div className="flex items-center gap-2.5"><Av name={s.name} size={26} /><span className="font-semibold text-sm" style={{ fontFamily: F_BODY }}>{s.name}</span></div></Td>
-                        <Td right mono>{s.present}</Td>
-                        <Td right mono>{s.daysLate || '—'}</Td>
-                        <Td right mono>{s.lateMins > 0 ? `${s.lateMins}m` : '—'}</Td>
-                        <Td right mono>{s.otMins > 0 ? `${s.otMins}m` : '—'}</Td>
-                        <Td right mono>{s.absent || '—'}</Td>
+                        <Td center mono>{s.present}</Td>
+                        <Td center mono>{s.daysLate || '—'}</Td>
+                        <Td center mono>{s.lateMins > 0 ? `${s.lateMins}m` : '—'}</Td>
+                        <Td center mono>{s.otMins > 0 ? `${s.otMins}m` : '—'}</Td>
+                        <Td center mono>{s.absent || '—'}</Td>
                         <Td><Btn size="sm" variant="outline" icon={Eye} onClick={() => openHistDtr(s)}>View DTR</Btn></Td>
                       </tr>
                     ))}
@@ -507,7 +507,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
               <div className="overflow-x-auto" style={{ maxHeight: 400 }}>
                 <table className="w-full">
                   <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}>
-                    <tr><Th>Date</Th><Th>Day</Th><Th>Time In</Th><Th>Time Out</Th><Th right>Late</Th><Th right>OT</Th><Th>Status</Th></tr>
+                    <tr><Th>Date</Th><Th>Day</Th><Th>Time In</Th><Th>Time Out</Th><Th center>Late</Th><Th center>OT</Th><Th>Status</Th></tr>
                   </thead>
                   <tbody>
                     {histDtr.rows.map((r, i) => (
@@ -516,8 +516,8 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
                         <Td>{r.weekday}</Td>
                         <Td mono>{r.absent ? '—' : (r.in || '—')}</Td>
                         <Td mono>{r.absent ? '—' : (r.out || '—')}</Td>
-                        <Td right mono>{r.late > 0 ? `${r.late}m` : '—'}</Td>
-                        <Td right mono>{r.ot > 0 ? `${r.ot}m` : '—'}</Td>
+                        <Td center mono>{r.late > 0 ? `${r.late}m` : '—'}</Td>
+                        <Td center mono>{r.ot > 0 ? `${r.ot}m` : '—'}</Td>
                         <Td>{r.absent ? <Badge tone="red">Absent</Badge> : <Badge tone="green">Present</Badge>}</Td>
                       </tr>
                     ))}

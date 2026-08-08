@@ -182,13 +182,13 @@ export const CheckerView = ({ currentUser, onUserChange, onSignedOut, deliveries
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead><tr><Th>Name</Th><Th>Role</Th><Th right>Trips</Th><Th right>Piece Rate</Th><Th right>Daily</Th><Th right>Bonus</Th><Th right>Total</Th></tr></thead>
+                    <thead><tr><Th>Name</Th><Th>Role</Th><Th center>Trips</Th><Th right>Piece Rate</Th><Th right>Daily</Th><Th right>Bonus</Th><Th right>Total</Th></tr></thead>
                     <tbody>
                       {histPeople.map((p, i) => (
                         <tr key={i}>
                           <Td><div className="flex items-center gap-2.5"><Av name={p.name} size={26} tone={p.role === 'Driver' ? T.blue : T.amber} /><span className="font-semibold text-sm" style={{ fontFamily: F_BODY }}>{p.name}</span></div></Td>
                           <Td><Badge tone={p.role === 'Driver' ? 'blue' : 'amber'}>{p.role}</Badge></Td>
-                          <Td right mono>{p.trips}</Td>
+                          <Td center mono>{p.trips}</Td>
                           <Td right mono>{peso(p.pieceRate)}</Td>
                           <Td right mono>{peso(p.dailyRate)}</Td>
                           <Td right mono>{p.bonus > 0 ? peso(p.bonus) : '—'}</Td>
