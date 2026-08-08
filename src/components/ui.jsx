@@ -2,7 +2,7 @@
 
 import React from 'react';
 // Package is the fallback icon for EmptyState when a caller doesn't pass one.
-import { X, Check, Package } from 'lucide-react';
+import { X, Check, Package, Loader2 } from 'lucide-react';
 import { peso } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
@@ -116,7 +116,15 @@ export const ProgressBar = ({ pct, tone = T.green }) => (
   </div>
 );
 
-export const Btn = ({ children, onClick, variant = 'dark', icon: Icon, size = 'md', disabled = false, full = false }) => {
+// Shimmering placeholder used while data loads (see .pd-skeleton in globals.css).
+export const Skeleton = ({ w = '100%', h = 12, r = 6, className = '', style = {} }) => (
+  <span className={`pd-skeleton ${className}`} aria-hidden="true"
+    style={{ display: 'inline-block', width: w, height: h, borderRadius: r, ...style }} />
+);
+
+export const Btn = ({ children, onClick, variant = 'dark', icon: Icon, size = 'md', disabled = false, full = false, loading = false }) => {
+  const isDisabled = disabled || loading;
+  const iconSize = size === 'sm' ? 12 : 14;
   const sizes = { sm: 'px-2.5 py-1.5 text-xs', md: 'px-3 py-2 text-sm' };
   const variants = {
     dark: { backgroundColor: T.ink, color: '#fff' },
@@ -125,10 +133,10 @@ export const Btn = ({ children, onClick, variant = 'dark', icon: Icon, size = 'm
     ghost: { backgroundColor: 'transparent', color: T.soft },
   };
   return (
-    <button onClick={onClick} disabled={disabled} data-variant={variant}
+    <button onClick={onClick} disabled={isDisabled} data-variant={variant}
       className={`pd-btn inline-flex items-center gap-1.5 rounded font-semibold ${sizes[size]} ${full ? 'w-full justify-center' : ''}`}
-      style={{ fontFamily: F_HEAD, opacity: disabled ? 0.5 : 1, cursor: disabled ? 'not-allowed' : 'pointer', ...variants[variant] }}>
-      {Icon && <Icon size={size === 'sm' ? 12 : 14} />}
+      style={{ fontFamily: F_HEAD, opacity: isDisabled ? 0.5 : 1, cursor: isDisabled ? 'not-allowed' : 'pointer', ...variants[variant] }}>
+      {loading ? <Loader2 size={iconSize} className="pd-spin" /> : (Icon && <Icon size={iconSize} />)}
       {children}
     </button>
   );

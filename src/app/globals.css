@@ -12,6 +12,8 @@
   --pd-line: #DED9D7;
   --pd-line-soft: #ECE7E5;
   --pd-surface: #FFFFFF;
+  --pd-skeleton-base: #E9E4E2;
+  --pd-skeleton-hi: #F5F2F0;
 
   /* Motion tokens (subtle / professional) */
   --pd-dur-fast: 120ms;
@@ -109,6 +111,16 @@ body {
 .pd-stagger > *:nth-child(2) { animation-delay: 100ms; }
 .pd-stagger > *:nth-child(3) { animation-delay: 160ms; }
 .pd-stagger > *:nth-child(4) { animation-delay: 220ms; }
+
+/* Loading states — spinner + skeleton shimmer */
+@keyframes pd-spin { to { transform: rotate(360deg); } }
+.pd-spin { animation: pd-spin 0.7s linear infinite; }
+@keyframes pd-shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+.pd-skeleton {
+  background: linear-gradient(90deg, var(--pd-skeleton-base) 25%, var(--pd-skeleton-hi) 37%, var(--pd-skeleton-base) 63%);
+  background-size: 400% 100%;
+  animation: pd-shimmer 1.4s ease infinite;
+}
 
 /* Respect the OS "reduce motion" setting — kills animations + transitions app-wide */
 @media (prefers-reduced-motion: reduce) {

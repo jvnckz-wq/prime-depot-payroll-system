@@ -227,7 +227,7 @@ export default function PrimeDepotPayroll() {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: T.sidebar }}>
         <style>{FONTS}</style>
-        <div className="text-sm" style={{ fontFamily: F_BODY, color: T.sidebarSoft }}>Loading...</div>
+        <div className="pd-spin" aria-label="Loading" role="status" style={{ width: 30, height: 30, borderRadius: '50%', border: '3px solid rgba(255,255,255,0.22)', borderTopColor: '#FFFFFF' }} />
       </div>
     );
   }

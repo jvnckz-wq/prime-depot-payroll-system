@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, ClipboardList, ArrowLeft, Check, Eye, Pencil, Upload, UserPlus } from 'lucide-react';
+import { AlertTriangle, ClipboardList, ArrowLeft, Check, Eye, Pencil, Upload, UserPlus, Loader2 } from 'lucide-react';
 import { Av, Badge, BigStat, Btn, EmptyState, Eyebrow, Field, H1, Modal, Panel, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
@@ -328,7 +328,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
           onDrop={onDrop}
           className="mb-4 rounded-md border-2 border-dashed flex flex-col items-center justify-center text-center gap-2 px-4 py-6 transition-colors"
           style={{ borderColor: dragOver ? T.brand : T.line, backgroundColor: dragOver ? T.brandBg : T.surface }}>
-          <Upload size={22} color={dragOver ? T.brand : T.soft} />
+          {importing ? <Loader2 size={22} color={T.brand} className="pd-spin" /> : <Upload size={22} color={dragOver ? T.brand : T.soft} />}
           <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>
             {importing ? 'Reading and matching the attendance file…' : 'Drag & drop the biometric .xls here'}
           </div>

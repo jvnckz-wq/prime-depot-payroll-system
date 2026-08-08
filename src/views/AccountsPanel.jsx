@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle, Check, Copy, KeyRound, Plus, UserCheck, UserX } from 'lucide-react';
-import { Badge, Btn, Confirm, Eyebrow, Field, Modal, Panel, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
+import { Badge, Btn, Confirm, Eyebrow, Field, Modal, Panel, Skeleton, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
 /// Account management, Operations Head only.
@@ -100,9 +100,16 @@ export const AccountsPanel = ({ currentUser, toast }) => {
               <tr><Th>Username</Th><Th>Name</Th><Th>Role</Th><Th>Status</Th><Th>Last sign-in</Th><Th right>Actions</Th></tr>
             </thead>
             <tbody>
-              {loading && (
-                <tr><Td colSpan={6}><span style={{ color: T.soft }}>Loading accounts...</span></Td></tr>
-              )}
+              {loading && [0, 1, 2].map((i) => (
+                <tr key={`sk-${i}`}>
+                  <Td><Skeleton w={90} /></Td>
+                  <Td><Skeleton w={120} /></Td>
+                  <Td><Skeleton w={54} /></Td>
+                  <Td><Skeleton w={70} /></Td>
+                  <Td><Skeleton w={84} /></Td>
+                  <Td right><Skeleton w={48} /></Td>
+                </tr>
+              ))}
               {!loading && users.map(u => (
                 <tr key={u.id}>
                   <Td mono>{u.username}</Td>
@@ -202,7 +209,7 @@ export const AccountsPanel = ({ currentUser, toast }) => {
         )}
 
         <div className="flex gap-2 mt-4">
-          <Btn onClick={create} icon={Check} disabled={busy}>{busy ? 'Creating...' : 'Create account'}</Btn>
+          <Btn onClick={create} icon={Check} loading={busy} disabled={busy}>{busy ? 'Creating...' : 'Create account'}</Btn>
           <Btn variant="outline" onClick={() => setAddOpen(false)}>Cancel</Btn>
         </div>
       </Modal>
