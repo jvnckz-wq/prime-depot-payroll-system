@@ -76,7 +76,7 @@ export const ChangePasswordPanel = ({ onDone, toast, compact = false }) => {
       )}
 
       <div className={compact ? 'mt-4' : 'mt-4 flex'}>
-        <Btn onClick={submit} icon={Check} disabled={busy} full={compact}>
+        <Btn onClick={submit} icon={Check} loading={busy} disabled={busy} full={compact}>
           {busy ? 'Saving...' : 'Change password'}
         </Btn>
       </div>
@@ -183,7 +183,7 @@ export const AccountView = ({ user, toast, onUserChange, onSignedOut }) => {
           </div>
           {nameChanged && (
             <div className="mt-3 flex gap-2">
-              <Btn size="sm" icon={Check} onClick={saveName} disabled={savingName}>
+              <Btn size="sm" icon={Check} onClick={saveName} loading={savingName} disabled={savingName}>
                 {savingName ? 'Saving...' : 'Save name'}
               </Btn>
               <Btn size="sm" variant="outline" onClick={() => setName(user.displayName)}>Cancel</Btn>

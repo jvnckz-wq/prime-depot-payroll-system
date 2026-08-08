@@ -345,7 +345,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
           </div>
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="outline" onClick={() => setModal(false)} disabled={busy}>Cancel</Btn>
-            <Btn icon={Save} onClick={save} disabled={busy}>{busy ? 'Saving…' : editing ? 'Save changes' : 'Register'}</Btn>
+            <Btn icon={Save} onClick={save} loading={busy} disabled={busy}>{busy ? 'Saving…' : editing ? 'Save changes' : 'Register'}</Btn>
           </div>
         </div>
       </Modal>

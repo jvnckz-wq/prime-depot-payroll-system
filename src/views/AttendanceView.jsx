@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, ClipboardList, ArrowLeft, Check, Eye, Pencil, Upload, UserPlus, Loader2 } from 'lucide-react';
-import { Av, Badge, BigStat, Btn, EmptyState, Eyebrow, Field, H1, Modal, Panel, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
+import { Av, Badge, BigStat, Btn, EmptyState, Eyebrow, Field, H1, Modal, Panel, SkeletonBlock, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
 const CREW = new Set(['Driver', 'Pahinante', 'Checker']);
@@ -242,7 +242,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
             <div className="text-sm font-semibold" style={{ fontFamily: F_HEAD, color: T.ink }}>Daily Time Record — {fmtPeriod(dtr.period)}</div>
             <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Tap a day to correct it.</div>
           </div>
-          {dtrLoading ? <div className="p-6 text-sm" style={{ color: T.soft, fontFamily: F_BODY }}>Loading…</div>
+          {dtrLoading ? <SkeletonBlock avatar={false} />
             : rows.length === 0 ? <EmptyState icon={ClipboardList} title="No attendance yet" desc="Import a biometric .xls file to populate this employee's record." />
             : (
             <table className="w-full">
@@ -302,7 +302,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
               </div>
               <div className="flex justify-end gap-2 pt-1">
                 <Btn variant="outline" onClick={() => setEditDay(null)} disabled={savingEdit}>Cancel</Btn>
-                <Btn icon={Check} onClick={saveEdit} disabled={savingEdit}>{savingEdit ? 'Saving…' : 'Save correction'}</Btn>
+                <Btn icon={Check} onClick={saveEdit} loading={savingEdit} disabled={savingEdit}>{savingEdit ? 'Saving…' : 'Save correction'}</Btn>
               </div>
             </div>
           )}
@@ -334,7 +334,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
           </div>
           <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Exported from the biometric scanner — .xls or .xlsx</div>
           <div className="flex gap-2">
-            <Btn variant="outline" icon={Upload} onClick={() => fileRef.current?.click()} disabled={importing}>{importing ? 'Importing…' : 'Browse for a file'}</Btn>
+            <Btn variant="outline" icon={Upload} onClick={() => fileRef.current?.click()} loading={importing} disabled={importing}>{importing ? 'Importing…' : 'Browse for a file'}</Btn>
             {!importing && <Btn variant="ghost" onClick={() => setShowImport(false)}>Cancel</Btn>}
           </div>
         </div>
@@ -362,7 +362,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
             </div>
           )}
           <Panel className="overflow-hidden">
-            {loading ? <div className="p-6 text-sm" style={{ color: T.soft, fontFamily: F_BODY }}>Loading…</div>
+            {loading ? <SkeletonBlock />
               : data.summaries.length === 0 ? <EmptyState icon={ClipboardList} title="No attendance yet" desc="Import a biometric .xls file to get started. Employees are matched by their biometric User ID." />
               : (
               <table className="w-full">
@@ -402,7 +402,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
               Scans na walang katugmang empleyado. Register the person using this biometric ID, then Resolve to bring their attendance in — no re-import needed.
             </div>
           </div>
-          {unmappedLoading ? <div className="p-6 text-sm" style={{ color: T.soft, fontFamily: F_BODY }}>Loading…</div>
+          {unmappedLoading ? <SkeletonBlock avatar={false} />
             : unmapped.length === 0 ? <EmptyState icon={ClipboardList} title="Nothing unmapped" desc="Every imported scan is matched to an employee." />
             : (
             <table className="w-full">
@@ -465,7 +465,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
               <span>Imported {new Date(viewBatch.importedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
               <Badge tone="amber">Locked — viewing only</Badge>
             </div>
-            {batchLoading ? <div className="p-4 text-sm" style={{ color: T.soft, fontFamily: F_BODY }}>Loading…</div>
+            {batchLoading ? <SkeletonBlock avatar={false} />
               : batchRows.length === 0 ? <EmptyState icon={ClipboardList} title="No records" desc="No attendance rows fall in this import's date range." />
               : (
               <div className="overflow-x-auto" style={{ maxHeight: 380 }}>
@@ -501,7 +501,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
               <Badge tone="blue">{histDtr.period}</Badge>
               <Badge tone="amber">Locked — viewing only</Badge>
             </div>
-            {histDtrLoading ? <div className="p-4 text-sm" style={{ color: T.soft, fontFamily: F_BODY }}>Loading…</div>
+            {histDtrLoading ? <SkeletonBlock avatar={false} />
               : histDtr.rows.length === 0 ? <EmptyState icon={ClipboardList} title="No records" desc="No daily records for this employee in this period." />
               : (
               <div className="overflow-x-auto" style={{ maxHeight: 400 }}>

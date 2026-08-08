@@ -104,7 +104,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
         <Panel className="p-4">
           <Eyebrow>Attention Needed</Eyebrow>
           {unmappedCount > 0 && (
-            <button onClick={() => go('attendance')} className="w-full text-left mt-2 flex items-start gap-3 p-3 rounded" style={{ backgroundColor: T.warnBg }}>
+            <button onClick={() => go('attendance')} className="pd-clickable w-full text-left mt-2 flex items-start gap-3 p-3 rounded" style={{ backgroundColor: T.warnBg }}>
               <AlertTriangle size={16} color={T.warn} className="mt-0.5 shrink-0" />
               <div>
                 <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>{unmappedCount} biometric ID{unmappedCount > 1 ? 's are' : ' is'} unmapped</div>
@@ -113,7 +113,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
             </button>
           )}
           {activeLoanCount > 0 && (
-            <button onClick={() => go('loans')} className="w-full text-left mt-3 flex items-start gap-3 p-3 rounded" style={{ backgroundColor: T.brandBg }}>
+            <button onClick={() => go('loans')} className="pd-clickable w-full text-left mt-3 flex items-start gap-3 p-3 rounded" style={{ backgroundColor: T.brandBg }}>
               <FileText size={16} color={T.brand} className="mt-0.5 shrink-0" />
               <div>
                 <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>{activeLoanCount} loan{activeLoanCount > 1 ? 's' : ''} awaiting cutoff deduction</div>

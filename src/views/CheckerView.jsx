@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Truck, LogOut, ShieldCheck, Save, Star } from 'lucide-react';
 import { DeliveryForm } from '../components/DeliveryForm.jsx';
-import { Av, Badge, BigStat, Btn, EmptyState, Eyebrow, Field, Panel, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
+import { Av, Badge, BigStat, Btn, EmptyState, Eyebrow, Field, Panel, Skeleton, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { BONUS_HEAD, BONUS_TRIPS, DRIVER_DAILY, HELPER_DAILY } from '../data/seed';
 import { crewEarnings, deliveriesToLog, flattenDeliveries } from '../lib/payroll';
 import { peso } from '../lib/utils';
@@ -169,7 +169,7 @@ export const CheckerView = ({ currentUser, onUserChange, onSignedOut, deliveries
               <Badge tone={histDate === todayStr ? 'green' : 'amber'}>{histDate === todayStr ? `Today · ${todayStr}` : `History · ${histDate}`}</Badge>
               <input type="date" max={todayStr} value={histDate} onChange={e => loadHist(e.target.value)}
                 className="px-3 py-2 rounded border text-sm" style={{ borderColor: T.line, fontFamily: F_BODY, minWidth: 168, colorScheme: 'light', color: T.ink, backgroundColor: T.surface }} />
-              {histLoading && <span className="text-xs" style={{ color: T.soft, fontFamily: F_BODY }}>Loading…</span>}
+              {histLoading && <Skeleton w={72} h={11} />}
               <span className="text-xs w-full sm:w-auto" style={{ fontFamily: F_BODY, color: T.soft }}>Read-only · shared across all checkers and admin.</span>
             </div>
 

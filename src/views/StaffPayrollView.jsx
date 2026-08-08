@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Users, Wallet, ArrowLeft, Printer, Eye, Lock } from 'lucide-react';
-import { Av, Badge, Btn, Confirm, Eyebrow, H1, Modal, Money, Panel, StatCard, Td, Th } from '../components/ui.jsx';
+import { Av, Badge, Btn, Confirm, Eyebrow, H1, Modal, Money, Panel, SkeletonBlock, SkeletonRows, StatCard, Td, Th } from '../components/ui.jsx';
 import { computePagIBIG, computeStaffPayroll, loanBalance } from '../lib/payroll';
 import { peso } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, F_SERIF, T } from '../theme';
@@ -78,7 +78,7 @@ const PayslipCard = ({ e, calc, cutoffLabel, attPeriod, statutory, className = '
   </Panel>
 );
 
-export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, cutoffLabel = '', reloadStaff }) => {
+export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, cutoffLabel = '', reloadStaff, loading = false }) => {
   const [view, setView] = useState('list');
   const [selectedId, setSelectedId] = useState(null);
   const [subTab, setSubTab] = useState('current');
@@ -88,6 +88,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [confirmUnfinalize, setConfirmUnfinalize] = useState(null);
+  const [unfinalizing, setUnfinalizing] = useState(false);
   const [viewPeriod, setViewPeriod] = useState(null);
   const [viewPeriodLoading, setViewPeriodLoading] = useState(false);
   // Locked read-only view of a released cut-off's stored payslips.
@@ -159,8 +160,8 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
   useEffect(() => { loadHistory(); }, []);
 
   const unfinalize = async (p) => {
-    setConfirmUnfinalize(null);
     if (!p) return;
+    setUnfinalizing(true);
     try {
       const res = await fetch('/api/payroll/finalize', {
         method: 'DELETE', headers: { 'Content-Type': 'application/json' },
@@ -173,6 +174,9 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
       await reloadLoans();
     } catch {
       toast('Could not reach the server.', 'error');
+    } finally {
+      setUnfinalizing(false);
+      setConfirmUnfinalize(null);
     }
   };
 
@@ -299,7 +303,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
               onChange={ev => setAllowanceEdits(o => ({ ...o, [e.id]: ev.target.value }))}
               className="px-2 py-1.5 rounded border text-sm w-32" style={{ borderColor: T.line, fontFamily: F_MONO, color: T.ink, backgroundColor: T.surface }} />
           </div>
-          <Btn size="sm" disabled={!allowDirty || savingAllowance} onClick={() => saveAllowance(e)}>{savingAllowance ? 'Saving…' : 'Save'}</Btn>
+          <Btn size="sm" loading={savingAllowance} disabled={!allowDirty || savingAllowance} onClick={() => saveAllowance(e)}>{savingAllowance ? 'Saving…' : 'Save'}</Btn>
           <span className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Saved to this employee and shown on every payslip. Edit here, press Save, then Finalize.</span>
         </div>
 
@@ -348,7 +352,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
             <table className="w-full">
               <thead><tr><Th>Employee</Th><Th center>Days</Th><Th right>Gross</Th><Th right>OT</Th><Th right>Deductions</Th><Th right>Net Pay</Th><Th>Payslip</Th></tr></thead>
               <tbody>
-                {rows.map(({ emp, calc }) => (
+                {loading ? <SkeletonRows cols={7} rows={5} /> : rows.map(({ emp, calc }) => (
                   <tr key={emp.id}>
                     <Td>
                       <div className="flex items-center gap-2.5">
@@ -386,7 +390,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
             <Eyebrow>Released cut-offs</Eyebrow>
           </div>
           {historyLoading ? (
-            <div className="p-4 text-sm" style={{ color: T.soft, fontFamily: F_BODY }}>Loading…</div>
+            <SkeletonBlock avatar={false} />
           ) : history.length === 0 ? (
             <div className="p-8 text-center text-sm" style={{ color: T.soft, fontFamily: F_BODY }}>No cut-offs have been finalized yet. Release one from the Current Cutoff tab.</div>
           ) : (
@@ -419,7 +423,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
         message={`This snapshots all ${rows.length} staff payslip(s) for this cutoff (total net ${peso(totalNet)}) and applies their loan deductions. The figures are frozen once released — they won't change even if rates or records change later. You can un-finalize this cutoff from History if a correction is needed.`}
         confirmLabel="Finalize / Release" />
 
-      <Confirm open={!!confirmUnfinalize} onCancel={() => setConfirmUnfinalize(null)} onConfirm={() => unfinalize(confirmUnfinalize)}
+      <Confirm open={!!confirmUnfinalize} onCancel={() => setConfirmUnfinalize(null)} onConfirm={() => unfinalize(confirmUnfinalize)} busy={unfinalizing}
         title={confirmUnfinalize ? `Un-finalize ${confirmUnfinalize.label}?` : ''}
         message="This removes the released snapshot and reverses this cut-off's loan deductions, restoring the balances, so it can be recomputed and released again. Only do this to correct a mistake."
         confirmLabel="Un-finalize" />
@@ -432,7 +436,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
               <Badge tone="amber">Locked — viewing only</Badge>
               <span>Snapshot figures — frozen at release.</span>
             </div>
-            {viewPeriodLoading ? <div className="p-4 text-sm" style={{ color: T.soft, fontFamily: F_BODY }}>Loading…</div>
+            {viewPeriodLoading ? <SkeletonBlock avatar={false} />
               : viewPeriod.payslips.length === 0 ? <div className="p-6 text-center text-sm" style={{ color: T.soft, fontFamily: F_BODY }}>No payslips in this cut-off.</div>
               : (
               <div className="overflow-x-auto" style={{ maxHeight: 420 }}>

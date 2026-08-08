@@ -122,6 +122,29 @@ export const Skeleton = ({ w = '100%', h = 12, r = 6, className = '', style = {}
     style={{ display: 'inline-block', width: w, height: h, borderRadius: r, ...style }} />
 );
 
+// Skeleton placeholders for tables (rows of cells) and panels (stacked lines).
+export const SkeletonRows = ({ cols = 4, rows = 3 }) =>
+  Array.from({ length: rows }).map((_, r) => (
+    <tr key={`skr-${r}`}>
+      {Array.from({ length: cols }).map((_, c) => (
+        <Td key={c}><Skeleton w={c === 0 ? 110 : 64} /></Td>
+      ))}
+    </tr>
+  ));
+
+export const SkeletonBlock = ({ lines = 4, avatar = true }) => (
+  <div className="p-4 flex flex-col gap-3" aria-hidden="true">
+    {Array.from({ length: lines }).map((_, i) => (
+      <div key={i} className="flex items-center gap-3">
+        {avatar && <Skeleton w={30} h={30} r="50%" />}
+        <Skeleton w={140} />
+        <div style={{ flex: 1 }} />
+        <Skeleton w={70} />
+      </div>
+    ))}
+  </div>
+);
+
 export const Btn = ({ children, onClick, variant = 'dark', icon: Icon, size = 'md', disabled = false, full = false, loading = false }) => {
   const isDisabled = disabled || loading;
   const iconSize = size === 'sm' ? 12 : 14;
@@ -166,7 +189,7 @@ export const Modal = ({ open, onClose, title, children, width = 520 }) => {
   );
 };
 
-export const Confirm = ({ open, onConfirm, onCancel, title, message, confirmLabel = 'Confirm', danger = false }) => {
+export const Confirm = ({ open, onConfirm, onCancel, title, message, confirmLabel = 'Confirm', danger = false, busy = false }) => {
   if (!open) return null;
   return (
     <div className="pd-overlay fixed inset-0 flex items-center justify-center p-5 z-50" style={{ backgroundColor: 'rgba(27,36,48,0.55)' }}>
@@ -174,8 +197,8 @@ export const Confirm = ({ open, onConfirm, onCancel, title, message, confirmLabe
         <div className="text-base font-bold mb-2" style={{ fontFamily: F_HEAD, color: T.ink }}>{title}</div>
         <div className="text-sm mb-5" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>{message}</div>
         <div className="flex justify-end gap-2">
-          <Btn variant="outline" onClick={onCancel}>Cancel</Btn>
-          <Btn variant={danger ? 'amber' : 'dark'} onClick={onConfirm}>{confirmLabel}</Btn>
+          <Btn variant="outline" onClick={onCancel} disabled={busy}>Cancel</Btn>
+          <Btn variant={danger ? 'amber' : 'dark'} onClick={onConfirm} loading={busy}>{confirmLabel}</Btn>
         </div>
       </div>
     </div>

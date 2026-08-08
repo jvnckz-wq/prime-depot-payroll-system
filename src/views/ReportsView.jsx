@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { AlertTriangle, Check, Download } from 'lucide-react';
-import { Badge, Btn, EmptyState, Eyebrow, H1, Panel, Td, Th } from '../components/ui.jsx';
+import { Badge, Btn, EmptyState, Eyebrow, H1, Panel, Skeleton, Td, Th } from '../components/ui.jsx';
 import { BONUS_HEAD, BONUS_TRIPS, DRIVER_DAILY, HELPER_DAILY } from '../data/seed';
 import { computePagIBIG, computePhilHealth, computeSSS, crewEarnings, deliveriesToLog } from '../lib/payroll';
 import { exportXLSX, peso } from '../lib/utils';
@@ -136,7 +136,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory }) => {
               <input type="date" max={todayStr} value={from} onChange={e => setFrom(e.target.value)} className="px-3 py-2 rounded border text-sm" style={{ borderColor: T.line, fontFamily: F_MONO, minWidth: 168, colorScheme: 'light', color: T.ink, backgroundColor: T.surface }} />
               <span className="text-xs" style={{ color: T.soft, fontFamily: F_BODY }}>to</span>
               <input type="date" max={todayStr} value={to} onChange={e => setTo(e.target.value)} className="px-3 py-2 rounded border text-sm" style={{ borderColor: T.line, fontFamily: F_MONO, minWidth: 168, colorScheme: 'light', color: T.ink, backgroundColor: T.surface }} />
-              {loadingRange && <span className="text-xs" style={{ color: T.soft, fontFamily: F_BODY }}>Loading…</span>}
+              {loadingRange && <Skeleton w={72} h={11} />}
             </div>
             <Btn size="sm" variant="outline" icon={Download} onClick={exportDriver}>Export Excel</Btn>
           </div>

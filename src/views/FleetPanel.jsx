@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle, Check, MapPin, Plus, Truck as TruckIcon } from 'lucide-react';
-import { Badge, Btn, Confirm, Eyebrow, Field, Modal, Panel, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
+import { Badge, Btn, Confirm, Eyebrow, Field, Modal, Panel, Skeleton, SkeletonRows, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
 /// Fleet and double-rate areas, Operations Head only.
@@ -144,7 +144,7 @@ export const FleetPanel = ({ toast }) => {
           <table className="w-full">
             <thead><tr><Th>Truck</Th><Th>Vehicle</Th><Th>Plate</Th><Th>Status</Th><Th right>Actions</Th></tr></thead>
             <tbody>
-              {loading && <tr><Td colSpan={5}><span style={{ color: T.soft }}>Loading fleet...</span></Td></tr>}
+              {loading && <SkeletonRows cols={5} rows={3} />}
               {!loading && trucks.map(t => (
                 <tr key={t.id} style={{ opacity: t.isActive ? 1 : 0.55 }}>
                   <Td mono>{t.id}</Td>
@@ -196,7 +196,7 @@ export const FleetPanel = ({ toast }) => {
                 placeholder="e.g. SITIO MALAKING PULO" className={inputCls} style={inputStyle} />
             </Field>
           </div>
-          <Btn icon={Plus} onClick={addArea} disabled={busy}>Add</Btn>
+          <Btn icon={Plus} onClick={addArea} loading={busy} disabled={busy}>Add</Btn>
         </div>
         {areaError && (
           <div className="flex items-start gap-2 mt-3 px-3 py-2.5 rounded text-xs"
@@ -208,7 +208,7 @@ export const FleetPanel = ({ toast }) => {
 
       <Panel className="p-4">
         <div className="flex flex-wrap gap-2">
-          {loading && <span className="text-sm" style={{ color: T.soft }}>Loading areas...</span>}
+          {loading && <Skeleton w={90} h={11} />}
           {!loading && areas.map(a => (
             <span key={a.id}
               className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded text-xs font-semibold"
@@ -266,7 +266,7 @@ export const FleetPanel = ({ toast }) => {
         )}
 
         <div className="flex gap-2 mt-4">
-          <Btn onClick={saveTruck} icon={Check} disabled={busy}>{busy ? 'Saving...' : editingTruck ? 'Save changes' : 'Add truck'}</Btn>
+          <Btn onClick={saveTruck} icon={Check} loading={busy} disabled={busy}>{busy ? 'Saving...' : editingTruck ? 'Save changes' : 'Add truck'}</Btn>
           <Btn variant="outline" onClick={() => setTruckModal(false)}>Cancel</Btn>
         </div>
       </Modal>

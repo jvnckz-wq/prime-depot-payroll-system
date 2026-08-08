@@ -136,7 +136,7 @@ export const LoansView = ({ staff, loans, reloadLoans, toast }) => {
           <Field label="Date granted"><input type="date" value={form.date} onChange={e => ff('date', e.target.value)} className={inputCls} style={inputStyle} /></Field>
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="outline" onClick={() => setModal(false)} disabled={busy}>Cancel</Btn>
-            <Btn icon={Save} onClick={addLoan} disabled={busy}>{busy ? 'Saving…' : 'Add'}</Btn>
+            <Btn icon={Save} onClick={addLoan} loading={busy} disabled={busy}>{busy ? 'Saving…' : 'Add'}</Btn>
           </div>
         </div>
       </Modal>

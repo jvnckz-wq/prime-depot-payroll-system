@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { AlertTriangle, Fingerprint, Lock } from 'lucide-react';
+import { AlertTriangle, Fingerprint, Lock, Loader2 } from 'lucide-react';
 import { Eyebrow, Panel } from '../components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
@@ -106,9 +106,11 @@ export const LoginView = ({ onSignedIn, onShowLegal }) => {
           <button
             onClick={submit}
             disabled={busy}
-            className="w-full py-2.5 rounded text-sm font-semibold"
+            data-variant="amber"
+            className="pd-btn w-full py-2.5 rounded text-sm font-semibold inline-flex items-center justify-center gap-1.5"
             style={{ fontFamily: F_HEAD, backgroundColor: T.brand, color: '#fff', opacity: busy ? 0.6 : 1 }}
           >
+            {busy && <Loader2 size={14} className="pd-spin" />}
             {busy ? 'Signing in...' : 'Sign In'}
           </button>
 

@@ -44,6 +44,13 @@ body {
   outline-offset: 2px;
 }
 
+/* Clickable affordance — native <button> defaults to the arrow cursor; make every
+   clickable thing obviously clickable (pointer + hover); disabled ones show not-allowed. */
+button:not(:disabled) { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+.pd-clickable { cursor: pointer; transition: filter var(--pd-dur-base) var(--pd-ease); }
+.pd-clickable:hover { filter: brightness(0.97); }
+
 /* Buttons — hover + pressed feedback (works over inline colors via filter/transform) */
 .pd-btn {
   transition: filter var(--pd-dur-base) var(--pd-ease),

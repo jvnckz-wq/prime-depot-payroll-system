@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Wallet, Plus, Package, ArrowLeft, Printer, Edit2, Save, Trash2, Check, AlertTriangle } from 'lucide-react';
 import { DeliveryForm } from '../components/DeliveryForm.jsx';
-import { Av, Badge, Btn, Confirm, EmptyState, Eyebrow, Field, H1, Modal, Panel, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
+import { Av, Badge, Btn, Confirm, EmptyState, Eyebrow, Field, H1, Modal, Panel, Skeleton, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { BONUS_HEAD, BONUS_TRIPS, DRIVER_DAILY, HELPER_DAILY } from '../data/seed';
 import { crewEarnings, deliveriesToLog, flattenDeliveries, loanBalance } from '../lib/payroll';
 import { peso } from '../lib/utils';
@@ -530,7 +530,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                   placeholder="e.g. wrong quantity, wrong truck" className={inputCls} style={inputStyle} />
               </Field>
               <div className="flex gap-2 mt-4">
-                <Btn onClick={submitVoid} icon={Check} disabled={voiding || voidReason.trim().length < 3}>
+                <Btn onClick={submitVoid} icon={Check} loading={voiding} disabled={voiding || voidReason.trim().length < 3}>
                   {voiding ? 'Voiding...' : 'Void delivery'}
                 </Btn>
                 <Btn variant="outline" onClick={() => setVoidTarget(null)}>Cancel</Btn>
@@ -597,7 +597,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
         {readOnly && (
           <button onClick={() => loadHistory(null)} className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.brand }}>Back to Today</button>
         )}
-        {histLoading && <span className="text-xs" style={{ color: T.soft, fontFamily: F_BODY }}>Loading…</span>}
+        {histLoading && <Skeleton w={72} h={11} />}
         <span className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
           {readOnly ? 'Read-only — logging and corrections are disabled for past days.' : 'Live day. A new day starts empty.'}
         </span>
