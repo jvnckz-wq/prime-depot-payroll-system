@@ -39,11 +39,10 @@ export const Eyebrow = ({ children }) => (
   </div>
 );
 
-export const H1 = ({ children, sub, action }) => (
+export const H1 = ({ children, action }) => (
   <div className="mb-5 flex items-start justify-between gap-4 flex-wrap">
     <div>
       <h1 className="text-2xl font-bold" style={{ fontFamily: F_HEAD, color: T.ink }}>{children}</h1>
-      {sub && <p className="text-sm mt-1" style={{ fontFamily: F_BODY, color: T.soft }}>{sub}</p>}
     </div>
     {action}
   </div>

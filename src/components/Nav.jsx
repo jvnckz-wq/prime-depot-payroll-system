@@ -62,7 +62,7 @@ const NavItem = ({ item, active, onSelect }) => {
 
 // Shared by the desktop rail and the mobile drawer so the two can never drift.
 const NavList = ({ tab, onSelect }) => (
-  <nav aria-label="Main" className="flex-1 py-3 overflow-y-auto">
+  <nav aria-label="Main" className="pd-no-scrollbar flex-1 py-3 overflow-y-auto">
     {ADMIN_NAV_GROUPS.map(({ group, items }) => (
       <div key={group || 'root'} className={group ? 'mt-5' : ''}>
         {/* Same colour as the nav labels, deliberately: #EBB9BB is only 4.88:1 on

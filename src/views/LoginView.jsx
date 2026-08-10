@@ -1,9 +1,21 @@
 'use client';
 
 import React, { useState } from 'react';
-import { AlertTriangle, Fingerprint, Lock, Loader2 } from 'lucide-react';
-import { Eyebrow, Panel } from '../components/ui.jsx';
-import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
+import { AlertTriangle, Loader2 } from 'lucide-react';
+import { F_BODY, F_HEAD, T } from '../theme';
+
+// Decorative Canva line-art for the crimson half (files live in /public/login).
+// Positions are percentages of the panel: the worker sits centre, tools scatter around it.
+const ART = [
+  { src: 'saw',         left: '30%',  top: '-16%', w: '45%', rot: 20, op: 0.5 },
+  { src: 'hammer',      left: '66%',  top: '3%',  w: '45%', rot: 0,  op: 0.5 },
+  { src: 'screw',       left: '-16%',  top: '-10%',  w: '45%', rot: 0,  op: 0.5 },
+  { src: 'level',       left: '-20%',  top: '33%', w: '45%', rot: 0,  op: 0.5 },
+  { src: 'wrench',      left: '3%',  top: '69%', w: '47%', rot: 0, op: 0.5 },
+  { src: 'drill',       left: '50%',  top: '69%', w: '45%', rot: 0,   op: 0.5 },
+  { src: 'screwdriver', left: '73%',  top: '45%', w: '47%', rot: 0,  op: 0.5 },
+  { src: 'worker',      left: '27%',  top: '25%', w: '45%', rot: 0,   op: 0.9 },
+];
 
 export const LoginView = ({ onSignedIn, onShowLegal }) => {
   const [username, setUsername] = useState('');
@@ -14,12 +26,10 @@ export const LoginView = ({ onSignedIn, onShowLegal }) => {
   const submit = async () => {
     if (busy) return;
     setError('');
-
     if (!username.trim() || !password) {
       setError('Enter your username and password.');
       return;
     }
-
     setBusy(true);
     try {
       const res = await fetch('/api/auth/login', {
@@ -28,7 +38,6 @@ export const LoginView = ({ onSignedIn, onShowLegal }) => {
         body: JSON.stringify({ username, password }),
       });
       const data = await res.json();
-
       if (!res.ok) {
         setError(data.error || 'Could not sign in.');
         setPassword('');
@@ -45,26 +54,26 @@ export const LoginView = ({ onSignedIn, onShowLegal }) => {
   // Enter submits, which is what anyone typing a password expects.
   const onKeyDown = (e) => { if (e.key === 'Enter') submit(); };
 
-  const field = {
-    fontFamily: F_BODY, backgroundColor: T.surface,
-    borderColor: error ? T.brand : T.line, color: T.ink,
+  const fieldStyle = {
+    fontFamily: F_BODY, backgroundColor: '#F4F5F7', color: T.ink,
+    border: `1px solid ${error ? T.brand : 'transparent'}`,
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-10" style={{ backgroundColor: T.sidebar }}>
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-4" style={{ backgroundColor: '#fff' }}>
-            <Fingerprint size={24} color={T.brand} />
-          </div>
-          <div className="text-xs font-semibold uppercase" style={{ fontFamily: F_HEAD, color: T.sidebarSoft, letterSpacing: '0.1em' }}>
-            Prime Depot Hardware &amp; Construction Supply
-          </div>
-          <div className="text-2xl font-bold text-white mt-1" style={{ fontFamily: F_HEAD }}>Payroll System</div>
-        </div>
+    <div className="min-h-screen flex bg-white" style={{ fontFamily: F_BODY }}>
+      {/* ---------- Form half (centered) ---------- */}
+      <div className="w-full lg:w-1/2 relative flex items-center justify-center px-6">
+        <span
+          className="absolute top-8 left-8"
+          style={{ fontFamily: F_HEAD, fontWeight: 800, fontSize: 30, letterSpacing: '-0.015em', color: T.brand }}
+        >
+          Prime Depot
+        </span>
 
-        <Panel className="p-6" style={{ backgroundColor: T.surface, borderColor: T.line }}>
-          <Eyebrow>Username</Eyebrow>
+        <div className="w-full max-w-sm">
+          <h1 className="text-2xl font-bold mb-6" style={{ fontFamily: F_HEAD, color: T.ink }}>Sign In</h1>
+
+          <label className="block text-sm mb-1.5" style={{ color: T.soft }}>Username</label>
           <input
             value={username}
             onChange={e => setUsername(e.target.value)}
@@ -74,30 +83,28 @@ export const LoginView = ({ onSignedIn, onShowLegal }) => {
             autoCapitalize="none"
             spellCheck={false}
             disabled={busy}
-            placeholder="e.g. admin"
-            className="w-full mb-4 px-3 py-2 rounded text-sm outline-none border"
-            style={{ ...field, fontFamily: F_MONO }}
+            className="w-full px-4 py-2.5 rounded-lg text-sm outline-none"
+            style={fieldStyle}
           />
 
-          <Eyebrow>Password</Eyebrow>
-          <div className="relative mb-4">
-            <input
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              onKeyDown={onKeyDown}
-              aria-label="Password"
-              type="password"
-              autoComplete="current-password"
-              disabled={busy}
-              placeholder="********"
-              className="w-full px-3 py-2 pr-9 rounded text-sm outline-none border"
-              style={field}
-            />
-            <Lock size={14} className="absolute right-3 top-3" color={T.soft} />
-          </div>
+          <label className="block text-sm mb-1.5 mt-4" style={{ color: T.soft }}>Password</label>
+          <input
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            onKeyDown={onKeyDown}
+            aria-label="Password"
+            type="password"
+            autoComplete="current-password"
+            disabled={busy}
+            className="w-full px-4 py-2.5 rounded-lg text-sm outline-none"
+            style={fieldStyle}
+          />
 
           {error && (
-            <div className="flex items-start gap-2 mb-4 px-3 py-2.5 rounded text-xs" style={{ backgroundColor: T.brandBg, fontFamily: F_BODY, color: T.brandDark }}>
+            <div
+              className="flex items-start gap-2 mt-4 px-3 py-2.5 rounded-lg text-xs"
+              style={{ backgroundColor: T.brandBg, fontFamily: F_BODY, color: T.brandDark }}
+            >
               <AlertTriangle size={13} className="mt-0.5 shrink-0" />
               <span>{error}</span>
             </div>
@@ -107,25 +114,39 @@ export const LoginView = ({ onSignedIn, onShowLegal }) => {
             onClick={submit}
             disabled={busy}
             data-variant="amber"
-            className="pd-btn w-full py-2.5 rounded text-sm font-semibold inline-flex items-center justify-center gap-1.5"
+            className="pd-btn w-full py-3 rounded-lg text-sm font-semibold inline-flex items-center justify-center gap-1.5 mt-6"
             style={{ fontFamily: F_HEAD, backgroundColor: T.brand, color: '#fff', opacity: busy ? 0.6 : 1 }}
           >
             {busy && <Loader2 size={14} className="pd-spin" />}
             {busy ? 'Signing in...' : 'Sign In'}
           </button>
 
-          <p className="text-xs mt-4" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
-            No public sign-up. Accounts are issued only by the Operations Head. If you have forgotten your
-            password, ask the Operations Head to reset it.
+          <p className="text-center text-xs mt-5" style={{ fontFamily: F_BODY, color: T.soft }}>
+            By signing in you agree to the{' '}
+            <button onClick={() => onShowLegal('terms')} className="underline" style={{ color: T.brand }}>Terms and Conditions</button>
+            {' '}and{' '}
+            <button onClick={() => onShowLegal('privacy')} className="underline" style={{ color: T.brand }}>Privacy Policy</button>.
           </p>
-        </Panel>
+        </div>
+      </div>
 
-        <p className="text-center text-xs mt-5" style={{ fontFamily: F_BODY, color: T.sidebarSoft }}>
-          By signing in you agree to the{' '}
-          <button onClick={() => onShowLegal('terms')} className="underline" style={{ color: '#fff' }}>Terms and Conditions</button>
-          {' '}and{' '}
-          <button onClick={() => onShowLegal('privacy')} className="underline" style={{ color: '#fff' }}>Privacy Policy</button>.
-        </p>
+      {/* ---------- Crimson half (full-bleed, no white) ---------- */}
+      <div className="hidden lg:block lg:w-1/2">
+        <div className="relative w-full h-full overflow-hidden" style={{ backgroundColor: T.brand }}>
+          {ART.map((t) => (
+            <div
+              key={t.src}
+              aria-hidden="true"
+              className="absolute select-none"
+              style={{
+                left: t.left, top: t.top, width: t.w, aspectRatio: '1',
+                backgroundImage: `url(/login/${t.src}.svg)`,
+                backgroundSize: 'contain', backgroundRepeat: 'no-repeat',
+                transform: `rotate(${t.rot}deg)`, opacity: t.op,
+              }}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

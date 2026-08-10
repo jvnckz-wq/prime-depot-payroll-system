@@ -51,6 +51,11 @@ button:disabled { cursor: not-allowed; }
 .pd-clickable { cursor: pointer; transition: filter var(--pd-dur-base) var(--pd-ease); }
 .pd-clickable:hover { filter: brightness(0.97); }
 
+/* Hide a scrollbar while keeping the element scrollable — drops the ugly always-on white
+   bar on the crimson sidebar (mouse-wheel / trackpad still scroll). */
+.pd-no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.pd-no-scrollbar::-webkit-scrollbar { width: 0; height: 0; }
+
 /* Buttons — hover + pressed feedback (works over inline colors via filter/transform) */
 .pd-btn {
   transition: filter var(--pd-dur-base) var(--pd-ease),
