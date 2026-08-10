@@ -106,6 +106,11 @@ button:disabled { cursor: not-allowed; }
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
+@keyframes pd-slide-in-left {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+.pd-drawer { animation: pd-slide-in-left var(--pd-dur-slow) var(--pd-ease); }
 .pd-overlay { animation: pd-fade-in var(--pd-dur-base) var(--pd-ease); }
 .pd-modal { animation: pd-scale-in var(--pd-dur-slow) var(--pd-ease); }
 .pd-toast { animation: pd-slide-up var(--pd-dur-slow) var(--pd-ease); }

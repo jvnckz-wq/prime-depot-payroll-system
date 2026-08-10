@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Sidebar, TopBar } from './components/Nav.jsx';
 import { Toasts } from './components/ui.jsx';
-import { ADMIN_NAV, BIR_TABLE_INIT, PAGIBIG_INIT, PHILHEALTH_INIT, SSS_TABLE_INIT } from './data/seed';
+import { BIR_TABLE_INIT, PAGIBIG_INIT, PHILHEALTH_INIT, SSS_TABLE_INIT } from './data/seed';
 import { deliveriesToLog } from './lib/payroll';
 import { uid, cutoffLabel } from './lib/utils';
 import { FONTS, F_BODY, T } from './theme';
@@ -29,6 +29,10 @@ export default function PrimeDepotPayroll() {
   const [authChecking, setAuthChecking] = useState(true);
   const [legalPage, setLegalPage] = useState(null); // 'terms' | 'privacy' | null
   const [tab, setTab] = useState('dashboard');
+  // Mobile navigation drawer. Below `md` the sidebar is off-canvas, so this is
+  // the only way to reach the other sections.
+  const [navOpen, setNavOpen] = useState(false);
+  const closeNav = React.useCallback(() => setNavOpen(false), []);
   // Hand-off from Attendance's "Register" on an unmapped biometric ID: carries
   // the id + name into the Employees Add form, consumed once on arrival.
   const [employeePrefill, setEmployeePrefill] = useState(null);
@@ -260,10 +264,18 @@ export default function PrimeDepotPayroll() {
     <div className="flex h-screen w-full overflow-hidden" style={{ backgroundColor: T.bg, fontFamily: F_BODY }}>
       <style>{FONTS}</style>
       <Toasts toasts={toasts} />
-      <Sidebar tab={tab} setTab={setTab} onLogout={logout} user={user} onOpenAccount={() => setTab('account')} />
+      <Sidebar
+        tab={tab}
+        setTab={setTab}
+        onLogout={logout}
+        user={user}
+        onOpenAccount={() => setTab('account')}
+        open={navOpen}
+        onClose={closeNav}
+      />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <TopBar title={titles[tab]} role={user.role === 'ADMIN' ? 'admin' : 'checker'} cutoff={cutoffText} />
-        <div className="flex-1 overflow-y-auto">
+        <TopBar tab={tab} title={titles[tab]} cutoff={cutoffText} onOpenNav={() => setNavOpen(true)} />
+        <main className="flex-1 overflow-y-auto">
           <div key={tab} className="pd-view-in">
           {tab === 'dashboard' && <DashboardView deliveries={deliveries} staff={staff} totalEmployees={allStaff.filter(e => e.status !== 'Inactive').length} loans={loans} statutory={statutory} setTab={setTab} cutoffLabel={cutoffText} attendanceSummaries={attSummaries} unmappedCount={unmappedCount} />}
           {tab === 'employees' && <EmployeesView staff={allStaff} reloadStaff={reloadStaff} toast={toast} prefill={employeePrefill} onPrefillConsumed={() => setEmployeePrefill(null)} />}
@@ -283,13 +295,7 @@ export default function PrimeDepotPayroll() {
           )}
           {tab === 'settings' && <SettingsView currentUser={user} onUserChange={u => setUser(prev => ({ ...prev, ...u }))} onSignedOut={() => { setUser(null); setTab('dashboard'); }} checkers={checkers} setCheckers={setCheckers} sssTable={sssTable} setSssTable={setSssTable} philhealthRates={philhealthRates} setPhilhealthRates={setPhilhealthRates} pagibigRates={pagibigRates} setPagibigRates={setPagibigRates} birTable={birTable} setBirTable={setBirTable} toast={toast} />}
           </div>
-        </div>
-      </div>
-      <div className="md:hidden fixed bottom-0 left-0 right-0 flex justify-around py-2 z-10" style={{ backgroundColor: T.sidebar }}>
-        {ADMIN_NAV.slice(0, 5).map(item => {
-          const Icon = item.icon;
-          return <button key={item.key} onClick={() => setTab(item.key)} className="p-2"><Icon size={18} color={tab === item.key ? '#fff' : T.sidebarSoft} /></button>;
-        })}
+        </main>
       </div>
     </div>
   );

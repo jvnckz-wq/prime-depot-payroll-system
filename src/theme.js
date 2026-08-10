@@ -16,6 +16,14 @@ export const T = {
   blue: '#5B6472', blueBg: '#EEEBE9',
   red: '#A6402F', redBg: '#F6E7E4',
   sidebar: '#9C1117', sidebarLine: 'rgba(255,255,255,0.14)', sidebarSoft: '#EBB9BB',
+  // Active nav row. Darkened rather than lightened — a white tint over saturated
+  // red turns pink. At 26% black over the sidebar, a white label reads 11.7:1.
+  // Idle-item hover lives in the .pd-nav-item rule in globals.css, not here, so
+  // the two can't drift apart.
+  sidebarActiveBg: 'rgba(0,0,0,0.26)',
+  // Active marker + active icon. White, because no tint of the brand crimson is
+  // legible against the crimson sidebar itself.
+  sidebarAccent: '#FFFFFF',
 };
 // Single-family Inter across the whole app; weight carries the hierarchy (400 body,
 // 500 medium, 600 semibold, 700 headings). Numbers render in Inter with tabular figures

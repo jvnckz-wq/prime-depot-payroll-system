@@ -434,7 +434,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                   <div className="w-10 h-10 rounded flex items-center justify-center font-bold text-white shrink-0" style={{ backgroundColor: T.amber, fontFamily: F_HEAD }}>PD</div>
                   <div>
                     <div className="text-white font-bold text-sm" style={{ fontFamily: F_HEAD }}>PRIME DEPOT HARDWARE AND CONSTRUCTION SUPPLY</div>
-                    <div className="text-xs" style={{ color: T.sidebarSoft, fontFamily: F_BODY }}>Mabini, Batangas City</div>
+                    <div className="text-xs" style={{ color: T.soft, fontFamily: F_BODY }}>Mabini, Batangas City</div>
                   </div>
                 </div>
                 <div className="grid grid-cols-3" style={{ borderBottom: `1px solid ${T.line}` }}>
@@ -763,11 +763,11 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                       <div className="w-9 h-9 rounded flex items-center justify-center font-bold text-white shrink-0" style={{ backgroundColor: T.amber, fontFamily: F_HEAD }}>PD</div>
                       <div>
                         <div className="text-white font-bold text-sm" style={{ fontFamily: F_HEAD }}>{p.name}</div>
-                        <div className="text-xs" style={{ color: T.sidebarSoft, fontFamily: F_BODY }}>{p.role} · {dayDate} · {p.trucks.join(', ')}</div>
+                        <div className="text-xs" style={{ color: T.soft, fontFamily: F_BODY }}>{p.role} · {dayDate} · {p.trucks.join(', ')}</div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-xs" style={{ color: T.sidebarSoft, fontFamily: F_HEAD }}>NET SALARY</div>
+                      <div className="text-xs" style={{ color: T.soft, fontFamily: F_HEAD }}>NET SALARY</div>
                       <div className="text-white font-bold" style={{ fontFamily: F_MONO, fontSize: 18 }}>{peso(p.net)}</div>
                     </div>
                   </div>
