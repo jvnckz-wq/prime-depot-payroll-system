@@ -49,12 +49,15 @@ export const ReportsView = ({ staff, deliveries, loans, statutory }) => {
     let cancelled = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     setLoadingRange(true);
-    fetch(`/api/deliveries?from=${from}&to=${to}`)
-      .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
-      .then(data => { if (!cancelled) setRangeApi(data.deliveries || []); })
-      .catch(err => console.error('Could not load crew earnings range:', err))
-      .finally(() => { if (!cancelled) setLoadingRange(false); });
-    return () => { cancelled = true; };
+    // Debounce: coalesce rapid from/to edits into a single request (~400ms after the last change).
+    const t = setTimeout(() => {
+      fetch(`/api/deliveries?from=${from}&to=${to}`)
+        .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+        .then(data => { if (!cancelled) setRangeApi(data.deliveries || []); })
+        .catch(err => console.error('Could not load crew earnings range:', err))
+        .finally(() => { if (!cancelled) setLoadingRange(false); });
+    }, 400);
+    return () => { cancelled = true; clearTimeout(t); };
   }, [from, to]);
 
   // Only paid staff (₱0 daily rate = no salary set) appear here, matching the

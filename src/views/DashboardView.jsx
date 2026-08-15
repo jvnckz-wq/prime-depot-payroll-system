@@ -23,12 +23,19 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
     const el = chartsColRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return undefined;
     const mq = window.matchMedia('(min-width: 1024px)');
-    const sync = () => setSnapshotHeight(mq.matches ? el.offsetHeight : undefined);
-    sync();
+    const measure = () => setSnapshotHeight(mq.matches ? el.offsetHeight : undefined);
+    // rAF-throttle: a drag-resize fires the observer many times per second; coalesce
+    // those into at most one measurement per frame so we don't thrash re-renders.
+    let raf = 0;
+    const sync = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => { raf = 0; measure(); });
+    };
+    measure(); // initial measurement stays synchronous (before paint) to avoid a flash
     const ro = new ResizeObserver(sync);
     ro.observe(el);
     mq.addEventListener('change', sync);
-    return () => { ro.disconnect(); mq.removeEventListener('change', sync); };
+    return () => { if (raf) cancelAnimationFrame(raf); ro.disconnect(); mq.removeEventListener('change', sync); };
   }, []);
 
   // Index the imported attendance so the dashboard uses the SAME real days the
