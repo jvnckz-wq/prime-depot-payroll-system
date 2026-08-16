@@ -28,7 +28,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
   const [unmappedLoading, setUnmappedLoading] = useState(false);
   const [resolvingId, setResolvingId] = useState(null);
   const [editDay, setEditDay] = useState(null);
-  const [editForm, setEditForm] = useState({ absent: false, timeIn: '', timeOut: '', note: '' });
+  const [editForm, setEditForm] = useState({ status: 'present', timeIn: '', timeOut: '', note: '' });
   const [savingEdit, setSavingEdit] = useState(false);
   const fileRef = useRef(null);
   const [dragOver, setDragOver] = useState(false);
@@ -98,7 +98,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
   }, [view, selectedId]);
 
   const openEdit = (a) => {
-    setEditForm({ absent: a.absent, timeIn: a.in || '', timeOut: a.out || '', note: '' });
+    setEditForm({ status: a.leave ? 'leave' : (a.absent ? 'absent' : 'present'), timeIn: a.in || '', timeOut: a.out || '', note: '' });
     setEditDay(a);
   };
   const saveEdit = async () => {
@@ -108,9 +108,11 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
       const res = await fetch('/api/attendance', {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          employeeId: selectedId, date: editDay.date, isAbsent: editForm.absent,
-          timeIn: editForm.absent ? null : editForm.timeIn,
-          timeOut: editForm.absent ? null : editForm.timeOut,
+          employeeId: selectedId, date: editDay.date,
+          isLeave: editForm.status === 'leave',
+          isAbsent: editForm.status === 'absent',
+          timeIn: editForm.status === 'present' ? editForm.timeIn : null,
+          timeOut: editForm.status === 'present' ? editForm.timeOut : null,
           editNote: editForm.note,
         }),
       });
@@ -215,6 +217,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
     const lateMins = rows.reduce((s, r) => s + r.late, 0);
     const otMins = rows.reduce((s, r) => s + r.ot, 0);
     const absent = rows.filter(r => r.absent).length;
+    const leave = rows.filter(r => r.leave).length;
 
     return (
       <div className="p-6">
@@ -233,6 +236,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
               <BigStat value={`${lateMins}m`} label="Total Late" tone={T.red} />
               <BigStat value={`${otMins}m`} label="Overtime" tone={T.green} />
               <BigStat value={absent} label="Absences" tone={T.amber} />
+              <BigStat value={leave} label="On Leave" tone={T.brand} />
             </div>
           </div>
         </Panel>
@@ -257,6 +261,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
                         <span className="font-bold mr-2" style={{ fontFamily: F_MONO, color: T.ink }}>{a.date.slice(8)}</span>
                         <span className="text-xs" style={{ fontFamily: F_BODY, color: isLate ? T.red : a.absent ? T.amber : T.soft }}>{a.weekday}</span>
                         {a.absent && <span className="ml-2"><Badge tone="amber">ABSENT</Badge></span>}
+                        {a.leave && <span className="ml-2"><Badge tone="blue">ON LEAVE</Badge></span>}
                         {a.assumedIn && !a.absent && <span className="ml-2"><Badge tone="red">NO IN-SCAN</Badge></span>}
                         {a.assumedOut && !a.absent && <span className="ml-2"><Badge tone="blue">ASSUMED OUT</Badge></span>}
                         {a.manual && <span className="ml-2"><Badge tone="blue">EDITED</Badge></span>}
@@ -286,11 +291,21 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
         <Modal open={!!editDay} onClose={() => setEditDay(null)} title={`Correct ${editDay ? `${name} — ${editDay.date}` : ''}`} width={440}>
           {editDay && (
             <div className="space-y-3">
-              <label className="flex items-center gap-2 text-sm" style={{ fontFamily: F_BODY, color: T.ink }}>
-                <input type="checkbox" checked={editForm.absent} onChange={(e) => setEditForm((f) => ({ ...f, absent: e.target.checked }))} />
-                Mark as absent (walang pasok)
-              </label>
-              {!editForm.absent && (
+              <Field label="Status">
+                <div className="flex gap-2">
+                  {[['present', 'Present'], ['leave', 'On Leave'], ['absent', 'Absent']].map(([val, lbl]) => (
+                    <button key={val} type="button" onClick={() => setEditForm((f) => ({ ...f, status: val }))}
+                      className="flex-1 px-2 py-2 rounded border text-sm font-semibold transition-colors"
+                      style={{ borderColor: editForm.status === val ? T.brand : T.line, backgroundColor: editForm.status === val ? T.brandBg : T.surface, color: editForm.status === val ? T.brand : T.soft, fontFamily: F_HEAD }}>
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+              {editForm.status === 'leave' && (
+                <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Paid leave — counted toward pay like a present day, tracked against the employee's leave credits.</div>
+              )}
+              {editForm.status === 'present' && (
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Time In"><input type="time" value={editForm.timeIn} onChange={(e) => setEditForm((f) => ({ ...f, timeIn: e.target.value }))} className={inputCls} style={inputStyle} /></Field>
                   <Field label="Time Out"><input type="time" value={editForm.timeOut} onChange={(e) => setEditForm((f) => ({ ...f, timeOut: e.target.value }))} className={inputCls} style={inputStyle} /></Field>
@@ -366,7 +381,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
               : data.summaries.length === 0 ? <EmptyState icon={ClipboardList} title="No attendance yet" desc="Import a biometric .xls file to get started. Employees are matched by their biometric User ID." />
               : (
               <table className="w-full">
-                <thead><tr><Th>Employee</Th><Th center>Present</Th><Th center>Days Late</Th><Th center>Late (mins)</Th><Th center>OT (mins)</Th><Th center>Absences</Th><Th>Action</Th></tr></thead>
+                <thead><tr><Th>Employee</Th><Th center>Present</Th><Th center>Days Late</Th><Th center>Late (mins)</Th><Th center>OT (mins)</Th><Th center>Absences</Th><Th center>Leave</Th><Th>Action</Th></tr></thead>
                 <tbody>
                   {data.summaries.map(s => (
                     <tr key={s.id}>
@@ -384,6 +399,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
                       <Td center mono><span style={{ color: s.lateMins > 0 ? T.red : T.soft, fontWeight: s.lateMins > 0 ? 700 : 400 }}>{s.lateMins > 0 ? `${s.lateMins}m` : '—'}</span></Td>
                       <Td center mono><span style={{ color: s.otMins > 0 ? T.green : T.soft, fontWeight: s.otMins > 0 ? 700 : 400 }}>{s.otMins > 0 ? `${s.otMins}m` : '—'}</span></Td>
                       <Td center mono><span style={{ color: s.absent > 0 ? T.amber : T.soft, fontWeight: s.absent > 0 ? 700 : 400 }}>{s.absent || '—'}</span></Td>
+                      <Td center mono>{s.leave || '—'}</Td>
                       <Td><Btn size="sm" variant="outline" icon={Eye} onClick={() => { setSelectedId(s.id); setView('dtr'); }}>View DTR</Btn></Td>
                     </tr>
                   ))}
@@ -471,7 +487,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
               <div className="overflow-x-auto" style={{ maxHeight: 380 }}>
                 <table className="w-full">
                   <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}>
-                    <tr><Th>Employee</Th><Th center>Present</Th><Th center>Days Late</Th><Th center>Late (mins)</Th><Th center>OT (mins)</Th><Th center>Absences</Th><Th></Th></tr>
+                    <tr><Th>Employee</Th><Th center>Present</Th><Th center>Days Late</Th><Th center>Late (mins)</Th><Th center>OT (mins)</Th><Th center>Absences</Th><Th center>Leave</Th><Th></Th></tr>
                   </thead>
                   <tbody>
                     {batchRows.map((s) => (
@@ -482,6 +498,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
                         <Td center mono>{s.lateMins > 0 ? `${s.lateMins}m` : '—'}</Td>
                         <Td center mono>{s.otMins > 0 ? `${s.otMins}m` : '—'}</Td>
                         <Td center mono>{s.absent || '—'}</Td>
+                        <Td center mono>{s.leave || '—'}</Td>
                         <Td><Btn size="sm" variant="outline" icon={Eye} onClick={() => openHistDtr(s)}>View DTR</Btn></Td>
                       </tr>
                     ))}
@@ -514,11 +531,11 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
                       <tr key={i}>
                         <Td mono>{r.date}</Td>
                         <Td>{r.weekday}</Td>
-                        <Td mono>{r.absent ? '—' : (r.in || '—')}</Td>
-                        <Td mono>{r.absent ? '—' : (r.out || '—')}</Td>
+                        <Td mono>{r.absent || r.leave ? '—' : (r.in || '—')}</Td>
+                        <Td mono>{r.absent || r.leave ? '—' : (r.out || '—')}</Td>
                         <Td center mono>{r.late > 0 ? `${r.late}m` : '—'}</Td>
                         <Td center mono>{r.ot > 0 ? `${r.ot}m` : '—'}</Td>
-                        <Td>{r.absent ? <Badge tone="red">Absent</Badge> : <Badge tone="green">Present</Badge>}</Td>
+                        <Td>{r.leave ? <Badge tone="blue">On Leave</Badge> : r.absent ? <Badge tone="red">Absent</Badge> : <Badge tone="green">Present</Badge>}</Td>
                       </tr>
                     ))}
                   </tbody>

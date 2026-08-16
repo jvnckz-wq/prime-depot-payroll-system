@@ -35,8 +35,11 @@ export async function PATCH(request) {
     const clean = (t) => (/^\d{2}:\d{2}$/.test(String(t || '')) ? String(t) : null);
 
     let fields;
-    if (body.isAbsent) {
-      fields = { timeIn: null, timeOut: null, tardinessMins: 0, overtimeMins: 0, isAbsent: true, isAssumedIn: false, isAssumedOut: false };
+    if (body.isLeave) {
+      // Paid leave: no times, no tardiness/overtime, and explicitly not absent.
+      fields = { timeIn: null, timeOut: null, tardinessMins: 0, overtimeMins: 0, isLeave: true, isAbsent: false, isAssumedIn: false, isAssumedOut: false };
+    } else if (body.isAbsent) {
+      fields = { timeIn: null, timeOut: null, tardinessMins: 0, overtimeMins: 0, isLeave: false, isAbsent: true, isAssumedIn: false, isAssumedOut: false };
     } else {
       const inT = clean(body.timeIn);
       const outT = clean(body.timeOut);
@@ -47,6 +50,7 @@ export async function PATCH(request) {
         timeOut: new Date(`${dateStr}T${effectiveOut}:00.000Z`),
         tardinessMins: minutesLate(emp, date, inT),
         overtimeMins: assumedOut ? 0 : Math.max(0, toMin(effectiveOut) - 17 * 60),
+        isLeave: false,
         isAbsent: false,
         isAssumedIn: !inT,
         isAssumedOut: assumedOut,
@@ -66,7 +70,7 @@ export async function PATCH(request) {
         date: ymd(row.date), weekday: WD[new Date(row.date).getUTCDay()],
         in: hhmm(row.timeIn), out: hhmm(row.timeOut),
         late: row.tardinessMins, ot: row.overtimeMins,
-        absent: row.isAbsent, assumedIn: row.isAssumedIn, assumedOut: row.isAssumedOut, manual: row.isManualEdit,
+        absent: row.isAbsent, leave: row.isLeave, assumedIn: row.isAssumedIn, assumedOut: row.isAssumedOut, manual: row.isManualEdit,
       },
     });
   } catch (err) {
@@ -124,6 +128,7 @@ export async function GET(request) {
             late: a.tardinessMins,
             ot: a.overtimeMins,
             absent: a.isAbsent,
+            leave: a.isLeave,
             assumedIn: a.isAssumedIn,
             assumedOut: a.isAssumedOut,
             manual: a.isManualEdit,
@@ -147,12 +152,12 @@ export async function GET(request) {
         if (!byEmp.has(a.employeeId)) {
           byEmp.set(a.employeeId, {
             id: a.employeeId, name: a.employee?.name || a.employeeId,
-            present: 0, absent: 0, daysLate: 0, lateMins: 0, otMins: 0,
+            present: 0, absent: 0, leave: 0, daysLate: 0, lateMins: 0, otMins: 0,
             otWeekdayMins: 0, otWeekendMins: 0,
           });
         }
         const s = byEmp.get(a.employeeId);
-        if (a.isAbsent) s.absent++; else s.present++;
+        if (a.isLeave) s.leave++; else if (a.isAbsent) s.absent++; else s.present++;
         if (a.tardinessMins > 0) s.daysLate++;
         s.lateMins += a.tardinessMins;
         s.otMins += a.overtimeMins;

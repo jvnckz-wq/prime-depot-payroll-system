@@ -63,6 +63,14 @@ export async function GET(request) {
     });
     const yearBasic = round2(yslips.reduce((s, p) => s + Number(p.basicPay), 0));
 
+    // Unused leave for the year, monetised in the final pay. Days taken are the
+    // attendance rows flagged as leave; the balance is credits minus those.
+    const leaveUsed = await prisma.attendance.count({
+      where: { employeeId, isLeave: true, date: { gte: yearStart } },
+    });
+    const leaveCredits = shaped.leaveCredits ?? 5;
+    const leaveRemaining = Math.max(0, leaveCredits - leaveUsed);
+
     return NextResponse.json({
       employee: { id: shaped.id, name: shaped.name, position: shaped.position, rate: shaped.rate },
       period: period ? { start: ymd(period.start), end: ymd(period.end) } : null,
@@ -70,6 +78,9 @@ export async function GET(request) {
       otAndAllowances,
       yearBasic,
       yearPayslips: yslips.length,
+      leaveCredits,
+      leaveUsed,
+      leaveRemaining,
     });
   } catch (err) {
     console.error('GET /api/payroll/final-pay failed:', err);

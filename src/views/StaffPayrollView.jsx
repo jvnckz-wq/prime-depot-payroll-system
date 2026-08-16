@@ -68,7 +68,7 @@ const PayslipCard = ({ e, calc, cutoffLabel, attPeriod, statutory, className = '
       <span className="font-bold tabular-nums" style={{ fontFamily: F_MONO, color: T.brand, fontSize: 20 }}>{peso(calc.net)}</span>
     </div>
     <div className="px-6 py-2.5" style={{ borderBottom: `1px solid ${T.line}` }}>
-      <span className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Remarks: 0 Day/s out 5 Days of Paid Leave used</span>
+      <span className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Remarks: {calc.leaveDays || 0} day/s of Paid Leave this cut-off · {e.leaveCredits ?? 5} credit/s per year</span>
     </div>
     <div className="grid grid-cols-2 gap-8 px-6 py-6">
       {["Employee's signature / Date", 'Authorized by / Date'].map(l => (

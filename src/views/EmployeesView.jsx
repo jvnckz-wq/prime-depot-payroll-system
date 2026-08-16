@@ -16,7 +16,7 @@ import { FinalPayView } from './FinalPayView.jsx';
 // deliberately never printed on a payslip.
 const BLANK_EMP = {
   id: '', name: '', position: 'Administrative Staff', rate: '', declaredSalary: '',
-  status: 'Active', sssOn: false, phOn: false, piOn: false, mp2: 0,
+  status: 'Active', sssOn: false, phOn: false, piOn: false, mp2: 0, leaveCredits: 5,
   address: '', contact: '', birthdate: '', dateHired: '',
   earlyShiftDays: [], earlyShiftTime: '06:00',
 };
@@ -97,6 +97,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
       id: form.id.trim(), name: form.name.trim(), position: form.position,
       rate: parseFloat(form.rate) || 0, declaredSalary: parseFloat(form.declaredSalary) || 0,
       mp2: parseFloat(form.mp2) || 0, status: form.status,
+      leaveCredits: parseInt(form.leaveCredits, 10) || 0,
       sssOn: form.sssOn, phOn: form.phOn, piOn: form.piOn,
       address: form.address, contact: form.contact,
       birthdate: form.birthdate, dateHired: form.dateHired,
@@ -264,9 +265,14 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
               </select>
             </Field>
           </div>
-          <Field label="Declared monthly salary (₱)">
-            <input type="number" value={form.declaredSalary} onChange={e => ff('declaredSalary', e.target.value)} placeholder="e.g. daily rate × 26" className={inputCls} style={inputStyle} />
-          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Declared monthly salary (₱)">
+              <input type="number" value={form.declaredSalary} onChange={e => ff('declaredSalary', e.target.value)} placeholder="e.g. daily rate × 26" className={inputCls} style={inputStyle} />
+            </Field>
+            <Field label="Leave credits (days/year)">
+              <input type="number" min="0" value={form.leaveCredits} onChange={e => ff('leaveCredits', e.target.value)} className={inputCls} style={inputStyle} />
+            </Field>
+          </div>
           <div className="text-xs -mt-1.5" style={{ fontFamily: F_BODY, color: T.soft }}>Basis for SSS, PhilHealth, and Pag-IBIG lookups — see Settings → Statutory Deductions for the actual bracket tables.</div>
 
           {/* Early shift. Modelled here, on the person, rather than as a job

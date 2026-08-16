@@ -44,6 +44,7 @@ export const FinalPayView = ({ employee, onBack, toast }) => {
         setDays(d.days ?? 0);
         setOtAllow(d.otAndAllowances ?? 0);
         setYearBasic(d.yearBasic ?? 0);
+        setLeaveDays(d.leaveRemaining ?? 0);
         if (d.period) { setPeriodLabel(`${d.period.start} \u2192 ${d.period.end}`); setLastService(d.period.end); setExitDate(d.period.end); }
       })
       .catch(err => { console.error('Final pay load failed:', err); if (toast) toast('Could not load final-pay details.', 'error'); })

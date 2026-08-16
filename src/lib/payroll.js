@@ -84,7 +84,9 @@ const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 
 export function computeStaffPayroll(e, loans = [], statutory, attendance = null, runKey = null) {
   const hasAttendance = !!attendance;
-  const days = hasAttendance ? attendance.present : DEFAULT_CUTOFF_DAYS;
+  // Paid leave is paid like a present day, so it counts toward the paid days.
+  const leaveDays = hasAttendance ? (attendance.leave || 0) : 0;
+  const days = hasAttendance ? (attendance.present + leaveDays) : DEFAULT_CUTOFF_DAYS;
   const gross = round2(e.rate * days);
 
   const hourly = e.rate / 8;
@@ -121,7 +123,7 @@ export function computeStaffPayroll(e, loans = [], statutory, attendance = null,
   const totalEarnings = round2(gross + ot + allowance);
   const totalDeductions = round2(sss + phic + hdmf + advance + tardiness);
   const net = round2(totalEarnings - totalDeductions);
-  return { hasAttendance, days, lateMins, gross, otWeekday, otWeekend, ot, allowance, sss, phic, hdmf, advance, tardiness, totalEarnings, totalDeductions, net };
+  return { hasAttendance, days, present: hasAttendance ? attendance.present : days, leaveDays, lateMins, gross, otWeekday, otWeekend, ot, allowance, sss, phic, hdmf, advance, tardiness, totalEarnings, totalDeductions, net };
 }
 
 // deterministic pseudo-random per employee, so charts are stable across renders

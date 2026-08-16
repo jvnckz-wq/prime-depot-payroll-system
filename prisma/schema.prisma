@@ -187,6 +187,10 @@ model Employee {
   /// person (transport, meal, etc.), so it lives on the employee rather than
   /// hardcoded. A per-cutoff override lands with the Finalize feature.
   otherAllowance  Decimal        @default(0) @db.Decimal(12, 2)
+  /// Annual paid-leave allotment (Service Incentive Leave). Days taken are
+  /// marked on attendance as "On Leave"; unused credits are monetised in the
+  /// employee's final pay. Defaults to 5, the statutory minimum, per person.
+  leaveCredits    Int            @default(5)
 
   // Personal information — required by the client spec for company records.
   // Deliberately never printed on payslips; the client asked to keep those
@@ -247,6 +251,9 @@ model Attendance {
   tardinessMins Int      @default(0)
   overtimeMins  Int      @default(0)
   isAbsent      Boolean  @default(false)
+  /// A paid day off. Counts toward the employee's pay like a present day, but
+  /// is tracked separately from worked days and from absences.
+  isLeave       Boolean  @default(false)
 
   /// A missing time-in is penalised 30 minutes; a missing time-out is assumed
   /// to be 5:00 PM so no accidental overtime is credited. Flagged so the

@@ -57,6 +57,7 @@ export function shapeEmployee(e) {
     piOn: e.pagibigEnrolled,
     mp2: num(e.mp2Amount),
     allowance: num(e.otherAllowance),
+    leaveCredits: Number.isFinite(Number(e.leaveCredits)) ? Number(e.leaveCredits) : 5,
     address: e.address ?? '',
     contact: e.contactNumber ?? '',
     birthdate: e.birthdate ? e.birthdate.toISOString().slice(0, 10) : '',
@@ -122,6 +123,17 @@ export function buildEmployeeData(body, { partial = false } = {}) {
     data.otherAllowance = n;
   } else if (!partial) {
     data.otherAllowance = 0;
+  }
+
+  // Annual paid-leave allotment. Whole days, zero or more; defaults to 5.
+  if (has('leaveCredits')) {
+    const n = Math.trunc(Number(body.leaveCredits));
+    if (!Number.isFinite(n) || n < 0) {
+      return { error: 'Leave credits must be a whole number that is zero or more.' };
+    }
+    data.leaveCredits = n;
+  } else if (!partial) {
+    data.leaveCredits = 5;
   }
 
   if (!partial || has('status')) {
