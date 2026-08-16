@@ -101,6 +101,40 @@ export async function GET(request) {
       ? { start: new Date(`${fromStr}T00:00:00.000Z`), end: new Date(`${toStr}T00:00:00.000Z`) }
       : null;
 
+    // Multi-cutoff attendance trend for the dashboard: Present / Late / Absent
+    // totals per recent import, oldest to newest (up to the last 6 cutoffs).
+    if (searchParams.get('trend')) {
+      const batches = await prisma.importBatch.findMany({
+        where: { status: 'COMPLETED' },
+        orderBy: { importedAt: 'desc' },
+        take: 6,
+      });
+      const ids = batches.map((b) => b.id);
+      const rows = ids.length
+        ? await prisma.attendance.findMany({
+            where: { importBatchId: { in: ids } },
+            select: { importBatchId: true, isAbsent: true, isLeave: true, tardinessMins: true },
+          })
+        : [];
+      const agg = {};
+      for (const b of batches) agg[b.id] = { present: 0, late: 0, absent: 0 };
+      for (const r of rows) {
+        const a = agg[r.importBatchId];
+        if (!a) continue;
+        if (r.isAbsent) a.absent++;
+        else if (r.isLeave) { /* leave is paid but neither worked, late, nor absent */ }
+        else { a.present++; if (r.tardinessMins > 0) a.late++; }
+      }
+      const MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const label = (b) => {
+        if (!b.periodStart || !b.periodEnd) return b.filename || 'Cutoff';
+        const s = new Date(b.periodStart), e = new Date(b.periodEnd);
+        return `${MO[s.getUTCMonth()]} ${s.getUTCDate()}\u2013${e.getUTCDate()}`;
+      };
+      const trend = batches.slice().reverse().map((b) => ({ label: label(b), ...agg[b.id] }));
+      return NextResponse.json({ trend });
+    }
+
     const latest = await prisma.importBatch.findFirst({
       where: { status: 'COMPLETED' },
       orderBy: { importedAt: 'desc' },

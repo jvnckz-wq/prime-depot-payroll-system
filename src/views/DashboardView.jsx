@@ -23,19 +23,12 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
     const el = chartsColRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return undefined;
     const mq = window.matchMedia('(min-width: 1024px)');
-    const measure = () => setSnapshotHeight(mq.matches ? el.offsetHeight : undefined);
-    // rAF-throttle: a drag-resize fires the observer many times per second; coalesce
-    // those into at most one measurement per frame so we don't thrash re-renders.
-    let raf = 0;
-    const sync = () => {
-      if (raf) return;
-      raf = requestAnimationFrame(() => { raf = 0; measure(); });
-    };
-    measure(); // initial measurement stays synchronous (before paint) to avoid a flash
+    const sync = () => setSnapshotHeight(mq.matches ? el.offsetHeight : undefined);
+    sync();
     const ro = new ResizeObserver(sync);
     ro.observe(el);
     mq.addEventListener('change', sync);
-    return () => { if (raf) cancelAnimationFrame(raf); ro.disconnect(); mq.removeEventListener('change', sync); };
+    return () => { ro.disconnect(); mq.removeEventListener('change', sync); };
   }, []);
 
   // Index the imported attendance so the dashboard uses the SAME real days the
@@ -59,10 +52,23 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
   const activeLoans = useMemo(() => loans.reduce((s, l) => s + Math.max(0, loanBalance(l)), 0), [loans]);
   const activeLoanCount = loans.filter(l => loanBalance(l) > 0).length;
 
-  // This cutoff's attendance mix (Present / Late / Absent), aggregated across
-  // every staff member from the imported biometric data. A real multi-cutoff
-  // trend needs stored payroll history, which lands with the Finalize feature.
+  // Present / Late / Absent per recent cutoff, so imports can be compared
+  // side by side. Fetched on mount (the dashboard remounts on tab switch, so a
+  // new import shows up once you return here). Falls back to the current cutoff
+  // if the trend hasn't loaded yet.
+  const [attTrend, setAttTrend] = useState([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/attendance?trend=1')
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+      .then(d => { if (!cancelled) setAttTrend(d.trend || []); })
+      .catch(err => console.error('Could not load attendance trend:', err));
+    return () => { cancelled = true; };
+  }, []);
   const attendanceData = useMemo(() => {
+    if (attTrend.length) {
+      return attTrend.map(t => ({ label: t.label, Present: t.present || 0, Late: t.late || 0, Absent: t.absent || 0 }));
+    }
     let present = 0, late = 0, absent = 0;
     for (const s of attendanceSummaries) {
       present += s.present || 0;
@@ -70,7 +76,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
       absent += s.absent || 0;
     }
     return [{ label: cutoffLabel || 'This cutoff', Present: present, Late: late, Absent: absent }];
-  }, [attendanceSummaries, cutoffLabel]);
+  }, [attTrend, attendanceSummaries, cutoffLabel]);
 
   // Payslip snapshot — first rows of the current staff payroll, matching the mockup table.
   const snapshot = useMemo(
@@ -177,7 +183,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
         <div className="flex flex-col gap-4" ref={chartsColRef}>
           <Panel className="p-4">
             <Eyebrow>Attendance</Eyebrow>
-            <div className="text-xs mb-3" style={{ fontFamily: F_BODY, color: T.soft }}>Present / Late / Absent · this cutoff</div>
+            <div className="text-xs mb-3" style={{ fontFamily: F_BODY, color: T.soft }}>Present / Late / Absent · recent cutoffs</div>
             <ResponsiveContainer width="100%" height={170}>
               <BarChart data={attendanceData} margin={{ left: -20, right: 5, top: 5, bottom: 0 }} barGap={2} barCategoryGap="22%">
                 <CartesianGrid strokeDasharray="3 3" stroke={T.lineSoft} vertical={false} />
