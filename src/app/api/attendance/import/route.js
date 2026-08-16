@@ -116,6 +116,13 @@ export async function POST(request) {
       where: { id: batch.id },
       data: { status: 'COMPLETED', totalRows, mappedRows: attendanceRows.length, unmappedRows: unmappedRows.length },
     }));
+    // Replace-on-reimport: a fresh import of a period is authoritative, so drop
+    // any earlier completed batch for the SAME period. The history then keeps one
+    // entry per cutoff. Attendance rows are preserved (the FK is SET NULL); only
+    // the now-redundant batch record and its stale unmapped logs (cascade) go.
+    ops.push(prismaBase.importBatch.deleteMany({
+      where: { periodStart: period.start, periodEnd: period.end, status: 'COMPLETED', id: { not: batch.id } },
+    }));
     await withRetry(() => prismaBase.$transaction(ops));
 
     return NextResponse.json({
