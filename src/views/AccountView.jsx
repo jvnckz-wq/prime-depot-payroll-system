@@ -1,9 +1,89 @@
 'use client';
 
 import React, { useState } from 'react';
-import { AlertTriangle, Check, KeyRound, LogOut, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, Check, CheckCircle2, Circle, Eye, EyeOff, KeyRound, LogOut, ShieldCheck } from 'lucide-react';
 import { Btn, Confirm, Eyebrow, Field, Panel, inputCls, inputStyle } from '../components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
+
+// Password strength rules shown live as the user types. These MUST stay in step
+// with validatePassword() on the server (lib/auth.js) — the server is the real
+// gate, so if these drift the meter would say "Strong" on a password the API
+// rejects. A show/hide toggle and a strength bar round out the reference design.
+const PASSWORD_RULES = [
+  { key: 'len', label: 'Minimum of 8 characters', test: (p) => p.length >= 8 },
+  { key: 'upper', label: 'At least one Upper case character', test: (p) => /[A-Z]/.test(p) },
+  { key: 'lower', label: 'At least one Lower case character', test: (p) => /[a-z]/.test(p) },
+  { key: 'number', label: 'At least one number [0-9]', test: (p) => /[0-9]/.test(p) },
+  { key: 'symbol', label: 'At least one of these symbols: ! # @ ? ^ *', test: (p) => /[^A-Za-z0-9]/.test(p) },
+];
+
+// True only when every rule passes — used as the submit gate and "Strong" state.
+const passwordMeetsAll = (p) => PASSWORD_RULES.every((r) => r.test(p));
+
+// Password field with a show/hide (eye) toggle. Flipping the type keeps the
+// value; the toggle is skipped by Tab so it never steals focus from the form.
+function PasswordInput({ value, onChange, placeholder, autoComplete }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <input
+        type={show ? 'text' : 'password'}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        className={`${inputCls} pr-10`}
+        style={inputStyle}
+      />
+      <button
+        type="button"
+        onClick={() => setShow((s) => !s)}
+        tabIndex={-1}
+        aria-label={show ? 'Hide password' : 'Show password'}
+        className="absolute inset-y-0 right-0 flex items-center px-3"
+        style={{ color: T.soft }}
+      >
+        {show ? <EyeOff size={15} /> : <Eye size={15} />}
+      </button>
+    </div>
+  );
+}
+
+// Live strength bar + requirements checklist, modelled on the reference design.
+// Each rule turns green with a filled check the moment it is satisfied.
+function PasswordStrength({ value }) {
+  const passed = PASSWORD_RULES.filter((r) => r.test(value)).length;
+  const pct = (passed / PASSWORD_RULES.length) * 100;
+  const [barColor, word] =
+    passed === 0 ? [T.line, '']
+    : passed <= 2 ? [T.red, 'Weak']
+    : passed <= 4 ? [T.amber, 'Fair']
+    : [T.green, 'Strong'];
+  return (
+    <div className="mt-3">
+      <div className="flex items-center gap-3 mb-2.5">
+        <div className="h-1.5 rounded-full flex-1 overflow-hidden" style={{ backgroundColor: T.lineSoft }}>
+          <div className="h-full rounded-full pd-progress-fill" style={{ width: `${pct}%`, backgroundColor: barColor }} />
+        </div>
+        {word && <span className="text-xs font-semibold shrink-0" style={{ fontFamily: F_HEAD, color: barColor }}>{word}</span>}
+      </div>
+      <div className="text-xs font-semibold mb-1.5" style={{ fontFamily: F_HEAD, color: T.soft }}>
+        Your password must contain:
+      </div>
+      <ul className="space-y-1">
+        {PASSWORD_RULES.map((r) => {
+          const ok = r.test(value);
+          return (
+            <li key={r.key} className="flex items-center gap-1.5 text-xs" style={{ fontFamily: F_BODY, color: ok ? T.green : T.soft }}>
+              {ok ? <CheckCircle2 size={13} className="shrink-0" /> : <Circle size={13} className="shrink-0" />}
+              <span>{r.label}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
 
 /// The change-password form itself. Used both inside Settings and on the
 /// forced-change screen, so the rules and messages stay identical in both.
@@ -19,10 +99,7 @@ export const ChangePasswordPanel = ({ onDone, toast, compact = false }) => {
     setError('');
 
     if (next !== confirm) { setError('The two new passwords do not match.'); return; }
-    if (next.length < 8) { setError('New password must be at least 8 characters.'); return; }
-    if (!/[a-zA-Z]/.test(next) || !/[0-9]/.test(next)) {
-      setError('New password must contain both letters and numbers.'); return;
-    }
+    if (!passwordMeetsAll(next)) { setError('Your new password does not meet all the requirements below.'); return; }
 
     setBusy(true);
     try {
@@ -47,25 +124,25 @@ export const ChangePasswordPanel = ({ onDone, toast, compact = false }) => {
   return (
     <div>
       <Field label="Current password">
-        <input type="password" value={current} onChange={e => setCurrent(e.target.value)}
-          autoComplete="current-password" className={inputCls} style={inputStyle} />
+        <PasswordInput value={current} onChange={e => setCurrent(e.target.value)} autoComplete="current-password" />
       </Field>
       <div className="mt-3">
         <Field label="New password">
-          <input type="password" value={next} onChange={e => setNext(e.target.value)}
-            autoComplete="new-password" className={inputCls} style={inputStyle} />
+          <PasswordInput value={next} onChange={e => setNext(e.target.value)} autoComplete="new-password" />
         </Field>
+        {next && <PasswordStrength value={next} />}
       </div>
       <div className="mt-3">
         <Field label="Confirm new password">
-          <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)}
-            autoComplete="new-password" className={inputCls} style={inputStyle} />
+          <PasswordInput value={confirm} onChange={e => setConfirm(e.target.value)} autoComplete="new-password" />
         </Field>
+        {confirm && next !== confirm && (
+          <div className="text-xs mt-1.5" style={{ fontFamily: F_BODY, color: T.red }}>Passwords do not match yet.</div>
+        )}
       </div>
 
-      <div className="text-xs mt-2.5" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
-        At least 8 characters, with both letters and numbers. Changing your password signs out every
-        other device using this account.
+      <div className="text-xs mt-3" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
+        Changing your password signs out every other device using this account.
       </div>
 
       {error && (

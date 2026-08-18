@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { AlertTriangle, Check, Download } from 'lucide-react';
 import { Badge, Btn, EmptyState, Eyebrow, H1, Panel, Skeleton, Td, Th } from '../components/ui.jsx';
-import { BONUS_HEAD, BONUS_TRIPS, DRIVER_DAILY, HELPER_DAILY } from '../data/seed';
-import { computePagIBIG, computePhilHealth, computeSSS, crewEarnings, deliveriesToLog } from '../lib/payroll';
+import { BONUS_HEAD, BONUS_TRIPS, DRIVER_DAILY, HELPER_DAILY, positionLabel } from '../data/seed';
+import { computeStaffPayroll, crewEarnings, deliveriesToLog } from '../lib/payroll';
 import { exportXLSX, peso } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
@@ -35,7 +35,7 @@ function crewEarningsRange(apiDeliveries) {
     .sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === 'Driver' ? -1 : 1));
 }
 
-export const ReportsView = ({ staff, deliveries, loans, statutory }) => {
+export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel = '', attendanceSummaries = [] }) => {
   const [tab, setTab] = useState('register');
 
   // Crew Earnings has its own date range — a day, a week, or any span — fetched
@@ -60,25 +60,33 @@ export const ReportsView = ({ staff, deliveries, loans, statutory }) => {
     return () => { cancelled = true; clearTimeout(t); };
   }, [from, to]);
 
+  // Register + remittance now use the SAME real-attendance payslip math as the
+  // Staff Payroll page and the payslips (same cutoff key → same loan deductions),
+  // so a report can never disagree with the payslip it summarises. Falls back to
+  // an 11-day cutoff automatically when no attendance has been imported yet.
+  const attById = useMemo(() => {
+    const m = {};
+    for (const s of attendanceSummaries) m[s.id] = s;
+    return m;
+  }, [attendanceSummaries]);
+  const cutoffKey = `staff-${cutoffLabel}`;
+
   // Only paid staff (₱0 daily rate = no salary set) appear here, matching the
   // Staff Payroll page — they aren't part of the register, remittance, or 13th month.
-  const registerRows = staff.filter(e => Number(e.rate) > 0).map(e => {
-    const gross = e.rate * 11;
-    const sss = e.sssOn ? computeSSS(e.declaredSalary, statutory.sss) : 0;
-    const ph = e.phOn ? computePhilHealth(e.declaredSalary, statutory.philhealth) : 0;
-    const hdmf = e.piOn ? (computePagIBIG(e.declaredSalary, statutory.pagibig) + (e.mp2 || 0)) : 0;
-    return { emp: e, gross, sss, ph, hdmf, net: gross - sss - ph - hdmf };
-  });
+  const payrollRows = useMemo(
+    () => staff.filter(e => Number(e.rate) > 0).map(e => ({ emp: e, calc: computeStaffPayroll(e, loans, statutory, attById[e.id], cutoffKey) })),
+    [staff, loans, statutory, attById, cutoffKey]
+  );
   const T13 = staff.filter(e => Number(e.rate) > 0).map(e => ({ name: e.name, months: 12, basic: e.rate * 22 * 12, pay: Math.round(e.rate * 22 * 12 / 12 * 100) / 100 }));
   // Earnings are reported per PERSON across the chosen range. Voided trips are
   // already excluded upstream.
   const crewRows = useMemo(() => crewEarningsRange(rangeApi), [rangeApi]);
 
-  const exportRegister = () => exportXLSX('Payroll-Register.xlsx', [{ name: 'Register', rows: registerRows.map(r => ({ Employee: r.emp.name, Gross: r.gross, SSS: r.sss, PhilHealth: r.ph, 'Pag-IBIG': r.hdmf, Net: r.net })) }]);
-  const exportRemit = () => exportXLSX('Gov-Remittance.xlsx', [{ name: 'Remittance', rows: registerRows.map(r => ({ Employee: r.emp.name, SSS: r.sss, PhilHealth: r.ph, 'Pag-IBIG': r.hdmf, Total: r.sss + r.ph + r.hdmf })) }]);
+  const exportRegister = () => exportXLSX('Payroll-Register.xlsx', [{ name: 'Register', rows: payrollRows.map(r => ({ Employee: r.emp.name, Days: r.calc.days, Gross: r.calc.gross, OT: r.calc.ot, Deductions: r.calc.totalDeductions, 'Net Pay': r.calc.net })) }]);
+  const exportRemit = () => exportXLSX('Gov-Remittance.xlsx', [{ name: 'Remittance', rows: payrollRows.map(r => ({ Employee: r.emp.name, SSS: r.calc.sss, PhilHealth: r.calc.phic, 'Pag-IBIG': r.calc.hdmf, Total: r.calc.sss + r.calc.phic + r.calc.hdmf })) }]);
   const export13 = () => exportXLSX('13th-Month-Pay.xlsx', [{ name: '13th Month', rows: T13.map(r => ({ Employee: r.name, 'Months Worked': r.months, 'Total Basic': r.basic, '13th Month Pay': r.pay })) }]);
   const exportDriver = () => exportXLSX('Crew-Earnings.xlsx', [{ name: 'Crew', rows: crewRows.map(r => ({
-    Name: r.name, Role: r.role, Trucks: r.trucks.join(', '), Days: r.days, Trips: r.trips,
+    Name: r.name, Role: positionLabel(r.role), Trucks: r.trucks.join(', '), Days: r.days, Trips: r.trips,
     'Daily Rate': r.dailyRate, 'Piece Rate': r.pieceRate, 'Palima Bonus': r.bonus, 'Total Earned': r.total,
   })) }]);
 
@@ -97,13 +105,24 @@ export const ReportsView = ({ staff, deliveries, loans, statutory }) => {
       {tab === 'register' && (
         <Panel className="overflow-hidden">
           <div className="px-4 py-2.5 flex justify-between items-center" style={{ borderBottom: `1px solid ${T.line}` }}>
-            <Eyebrow>Payroll Register — May 16–31, 2026</Eyebrow>
+            <Eyebrow>Payroll Register — {cutoffLabel || 'Current cutoff'}</Eyebrow>
             <Btn size="sm" variant="outline" icon={Download} onClick={exportRegister}>Export Excel</Btn>
           </div>
-          <table className="w-full">
-            <thead><tr><Th>Employee</Th><Th right>Gross</Th><Th right>SSS</Th><Th right>PhilHealth</Th><Th right>Pag-IBIG</Th><Th right>Net Pay</Th></tr></thead>
-            <tbody>{registerRows.map((r, i) => <tr key={i}><Td>{r.emp.name}</Td><Td right mono>{peso(r.gross)}</Td><Td right mono>{peso(r.sss)}</Td><Td right mono>{peso(r.ph)}</Td><Td right mono>{peso(r.hdmf)}</Td><Td right mono>{peso(r.net)}</Td></tr>)}</tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead><tr><Th>Employee</Th><Th center>Days</Th><Th right>Gross</Th><Th right>OT</Th><Th right>Deductions</Th><Th right>Net Pay</Th></tr></thead>
+              <tbody>{payrollRows.map((r, i) => (
+                <tr key={i}>
+                  <Td>{r.emp.name}</Td>
+                  <Td center mono>{r.calc.days}</Td>
+                  <Td right mono>{peso(r.calc.gross)}</Td>
+                  <Td right mono>{r.calc.ot ? peso(r.calc.ot) : '—'}</Td>
+                  <Td right mono>{r.calc.totalDeductions ? <span style={{ color: T.red }}>−{peso(r.calc.totalDeductions)}</span> : peso(0)}</Td>
+                  <Td right mono><span style={{ fontWeight: 600 }}>{peso(r.calc.net)}</span></Td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
         </Panel>
       )}
       {tab === 'remittance' && (
@@ -114,7 +133,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory }) => {
           </div>
           <table className="w-full">
             <thead><tr><Th>Employee</Th><Th right>SSS</Th><Th right>PhilHealth</Th><Th right>Pag-IBIG</Th><Th right>Total Withheld</Th></tr></thead>
-            <tbody>{registerRows.map((r, i) => <tr key={i}><Td>{r.emp.name}</Td><Td right mono>{peso(r.sss)}</Td><Td right mono>{peso(r.ph)}</Td><Td right mono>{peso(r.hdmf)}</Td><Td right mono>{peso(r.sss + r.ph + r.hdmf)}</Td></tr>)}</tbody>
+            <tbody>{payrollRows.map((r, i) => <tr key={i}><Td>{r.emp.name}</Td><Td right mono>{peso(r.calc.sss)}</Td><Td right mono>{peso(r.calc.phic)}</Td><Td right mono>{peso(r.calc.hdmf)}</Td><Td right mono>{peso(r.calc.sss + r.calc.phic + r.calc.hdmf)}</Td></tr>)}</tbody>
           </table>
           <div className="px-4 py-2.5 text-xs flex items-center gap-2" style={{ fontFamily: F_BODY, color: T.soft, borderTop: `1px solid ${T.line}` }}><AlertTriangle size={12} /> Estimated employee-share figures for this prototype. Add employer counterpart before remitting.</div>
         </Panel>
@@ -122,7 +141,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory }) => {
       {tab === '13th' && (
         <Panel className="overflow-hidden">
           <div className="px-4 py-2.5 flex justify-between items-center" style={{ borderBottom: `1px solid ${T.line}` }}>
-            <Eyebrow>13th Month Pay — FY 2026 (Basic ÷ 12)</Eyebrow>
+            <Eyebrow>13th Month Pay — FY {new Date().getFullYear()} (Basic ÷ 12)</Eyebrow>
             <Btn size="sm" variant="outline" icon={Download} onClick={export13}>Export Excel</Btn>
           </div>
           <table className="w-full">
@@ -153,7 +172,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory }) => {
               <tbody>{crewRows.map((r, i) => (
                 <tr key={i}>
                   <Td>{r.name}</Td>
-                  <Td><Badge tone={r.role === 'Driver' ? 'amber' : 'neutral'}>{r.role}</Badge></Td>
+                  <Td><Badge tone={r.role === 'Driver' ? 'amber' : 'neutral'}>{positionLabel(r.role)}</Badge></Td>
                   <Td mono><span style={{ color: T.soft }}>{r.trucks.join(', ')}</span></Td>
                   <Td center mono>{r.days}</Td>
                   <Td center mono>{r.trips}</Td>

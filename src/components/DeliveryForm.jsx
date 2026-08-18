@@ -133,13 +133,13 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
 
       {/* 3. Helpers — the full pahinante pool is available for either slot */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-1">
-        <Field label="Pahinante 1">
+        <Field label="Delivery Helper 1">
           <select value={helper1Id} onChange={e => setHelper1Id(e.target.value)} className={inputCls} style={inputStyle}>
             <option value="">None</option>
             {pool.helpers.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
           </select>
         </Field>
-        <Field label="Pahinante 2">
+        <Field label="Delivery Helper 2">
           <select value={helper2Id} onChange={e => setHelper2Id(e.target.value)} className={inputCls} style={inputStyle}>
             <option value="">None</option>
             {pool.helpers.filter(h => h.id !== helper1Id).map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
@@ -216,7 +216,7 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
                     <span style={{ color: T.brand }}>{peso(dR)}</span>
                     <span style={{ color: T.soft }}> driver · </span>
                     <span style={{ color: T.warn }}>{peso(hR)}</span>
-                    <span style={{ color: T.soft }}> pahinante</span>
+                    <span style={{ color: T.soft }}> delivery helper</span>
                   </div>
                 </div>
 

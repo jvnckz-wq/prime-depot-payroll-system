@@ -590,7 +590,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
       {/* Which day are we looking at — today (live) or a past day from history */}
       <div className="flex items-center flex-wrap gap-2 mb-5">
         <span className="text-xs" style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.04em' }}>VIEWING</span>
-        {readOnly ? <Badge tone="amber">History · {viewDate}</Badge> : <Badge tone="green">Today · {todayStr}</Badge>}
+        {readOnly && <Badge tone="amber">History · {viewDate}</Badge>}
         <input type="date" max={todayStr} value={viewDate || todayStr}
           onChange={e => loadHistory(e.target.value === todayStr ? null : e.target.value)}
           className="px-3 py-2 rounded border text-sm" style={{ borderColor: T.line, fontFamily: F_MONO, minWidth: 168, colorScheme: 'light', color: T.ink, backgroundColor: T.surface }} />
@@ -598,9 +598,11 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
           <button onClick={() => loadHistory(null)} className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.brand }}>Back to Today</button>
         )}
         {histLoading && <Skeleton w={72} h={11} />}
-        <span className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
-          {readOnly ? 'Read-only — logging and corrections are disabled for past days.' : 'Live day. A new day starts empty.'}
-        </span>
+        {readOnly && (
+          <span className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
+            Read-only — logging and corrections are disabled for past days.
+          </span>
+        )}
       </div>
 
       <Panel className="overflow-hidden mb-5">
@@ -632,9 +634,6 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
             </tr>
           ))}</tbody>
         </table>
-        <div className="px-4 py-2.5 text-xs" style={{ fontFamily: F_BODY, color: T.soft, borderTop: `1px solid ${T.line}` }}>
-          Fixed daily — Driver {peso(DRIVER_DAILY)} · Pahinante (combined) {peso(HELPER_DAILY)} · 5-trip &quot;palima&quot; bonus ₱100/head
-        </div>
       </Panel>
 
       <Eyebrow>Crews</Eyebrow>

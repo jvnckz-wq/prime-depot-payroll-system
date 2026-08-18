@@ -8,24 +8,6 @@ import { F_BODY, F_HEAD, T } from '../theme';
 
 const SIDEBAR_W = 236;
 
-/* ============================= LOGO MARK ============================= */
-// A real mark instead of two stacked lines of text. Inverted — white tile,
-// crimson letters — because the brand crimson #C8161D sits almost on top of the
-// sidebar's #9C1117 and would simply disappear against it. Reversed out, the
-// mark is the brightest thing in the column, which is what a logo should be.
-const Mark = ({ size = 32 }) => (
-  <span
-    aria-hidden="true"
-    className="rounded-lg flex items-center justify-center shrink-0"
-    style={{
-      width: size, height: size, backgroundColor: '#FFFFFF', color: T.brand,
-      fontFamily: F_HEAD, fontWeight: 700, fontSize: size * 0.4, letterSpacing: '0.02em',
-    }}
-  >
-    PD
-  </span>
-);
-
 /* ============================= NAV LIST ============================= */
 // py-3 against a 20px line box lands each row at exactly the 44px minimum
 // touch target, which the old py-2.5 rows missed.
@@ -162,7 +144,6 @@ export const Sidebar = ({ tab, setTab, onLogout, user, onOpenAccount, open = fal
 
   const header = (withClose) => (
     <div className="flex items-center gap-2.5 px-4 py-4" style={{ borderBottom: `1px solid ${T.sidebarLine}` }}>
-      <Mark />
       <span className="min-w-0 flex-1 leading-tight">
         <span className="block text-sm font-bold text-white truncate" style={{ fontFamily: F_HEAD }}>Prime Depot</span>
         <span className="block text-xs truncate" style={{ fontFamily: F_BODY, color: T.sidebarSoft }}>Payroll System</span>

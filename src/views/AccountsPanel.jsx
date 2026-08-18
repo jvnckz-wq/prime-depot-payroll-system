@@ -168,12 +168,6 @@ export const AccountsPanel = ({ currentUser, toast }) => {
         </div>
       </Panel>
 
-      <p className="text-xs mt-3" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.65 }}>
-        Checkers can log deliveries for any truck. They cannot open employee records, personal details,
-        attendance, payroll, loans, reports, or these settings — the server checks the role on every
-        request, so the restriction holds even if someone calls the API directly.
-      </p>
-
       {/* Create account */}
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Create Account" width={420}>
         <Field label="Full name">

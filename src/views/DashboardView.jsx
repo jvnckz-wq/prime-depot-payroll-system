@@ -150,7 +150,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
       <div className="grid lg:grid-cols-2 gap-4 items-start">
         <Panel className="overflow-hidden lg:flex lg:flex-col" style={{ height: snapshotHeight }}>
           <div className="px-4 pt-4 pb-2 shrink-0"><Eyebrow>{cutoffLabel} · Payroll Snapshot</Eyebrow></div>
-          <div className="overflow-auto lg:flex-1 lg:min-h-0">
+          <div className="overflow-auto lg:flex-1 lg:min-h-0 pd-no-scrollbar">
             <table className="w-full">
               <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}>
                 <tr><Th>Employee</Th><Th right>Gross</Th><Th right>Net Pay</Th></tr>

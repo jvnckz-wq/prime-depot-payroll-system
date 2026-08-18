@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Edit2, Save, UserPlus, Truck, Clock, Receipt } from 'lucide-react';
+import { Search, Edit2, Save, UserPlus, Clock, Receipt } from 'lucide-react';
 import { Av, Badge, Btn, Confirm, Eyebrow, Field, H1, Modal, Money, Panel, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
-import { POSITIONS } from '../data/seed';
+import { POSITIONS, positionLabel } from '../data/seed';
 import { isCrewPosition } from '../lib/payroll';
 import { WEEKDAYS, describeEarlyShift } from '../lib/attendance';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
@@ -92,12 +92,17 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
     const dupe = staff.some(s => String(s.id).toLowerCase() === form.id.trim().toLowerCase() && (!editing || s.id !== editing.id));
     if (dupe) { toast(`ID ${form.id.trim()} is already used by another employee.`, 'error'); return; }
 
+    // Crew are pakyawan + no-work-no-pay: they carry no declared monthly salary
+    // and no leave credits, so both are forced to 0 regardless of any stale form
+    // value (the fields are hidden for crew in the UI).
+    const crew = isCrewPosition(form.position);
+
     // Hand the server named fields only — never the whole form object.
     const payload = {
       id: form.id.trim(), name: form.name.trim(), position: form.position,
-      rate: parseFloat(form.rate) || 0, declaredSalary: parseFloat(form.declaredSalary) || 0,
+      rate: parseFloat(form.rate) || 0, declaredSalary: crew ? 0 : (parseFloat(form.declaredSalary) || 0),
       mp2: parseFloat(form.mp2) || 0, status: form.status,
-      leaveCredits: parseInt(form.leaveCredits, 10) || 0,
+      leaveCredits: crew ? 0 : (parseInt(form.leaveCredits, 10) || 0),
       sssOn: form.sssOn, phOn: form.phOn, piOn: form.piOn,
       address: form.address, contact: form.contact,
       birthdate: form.birthdate, dateHired: form.dateHired,
@@ -208,7 +213,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
                     </div>
                   </Td>
                   <Td>
-                    {r.position}
+                    {positionLabel(r.position)}
                     {describeEarlyShift(r) && (
                       <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs"
                         style={{ fontFamily: F_BODY, backgroundColor: T.warnBg, color: T.warn }}>
@@ -219,12 +224,12 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
                   <Td right mono><Money value={r.rate} /></Td>
                   <Td><Badge tone={r.status === 'Active' ? 'green' : 'neutral'}>{r.status}</Badge></Td>
                   <Td>
-                    <div className="flex gap-3">
-                      <button onClick={() => openEdit(r)} className="text-xs font-semibold flex items-center gap-1" style={{ fontFamily: F_HEAD, color: T.brand }}><Edit2 size={11} /> Edit</button>
+                    <div className="flex gap-2 flex-wrap">
+                      <Btn size="sm" variant="outline" icon={Edit2} onClick={() => openEdit(r)}>Edit</Btn>
                       {!(typeof r.crew === 'boolean' ? r.crew : isCrewPosition(r.position)) && (
-                        <button onClick={() => setFinalPayFor(r)} className="text-xs font-semibold flex items-center gap-1" style={{ fontFamily: F_HEAD, color: T.soft }}><Receipt size={11} /> Final Pay</button>
+                        <Btn size="sm" variant="outline" icon={Receipt} onClick={() => setFinalPayFor(r)}>Final Pay</Btn>
                       )}
-                      <button onClick={() => setConfirm(r)} className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.soft }}>{r.status === 'Active' ? 'Deactivate' : 'Activate'}</button>
+                      <Btn size="sm" variant="outline" onClick={() => setConfirm(r)}>{r.status === 'Active' ? 'Deactivate' : 'Activate'}</Btn>
                     </div>
                   </Td>
                 </tr>
@@ -244,36 +249,34 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
               <input type="date" value={form.dateHired} onChange={e => ff('dateHired', e.target.value)} className={inputCls} style={inputStyle} />
             </Field>
           </div>
-          <div className="text-xs -mt-1.5" style={{ fontFamily: F_BODY, color: T.soft }}>The ID number must match the number this employee&apos;s fingerprint is registered under on the biometric scanner — that&apos;s what links their attendance logs to this record. Date hired is used to prorate 13th-month pay.</div>
           <Field label="Full name*"><input value={form.name} onChange={e => ff('name', e.target.value)} placeholder="Juan Dela Cruz" className={inputCls} style={inputStyle} /></Field>
           <Field label="Position">
             <select value={form.position} onChange={e => ff('position', e.target.value)} className={inputCls} style={inputStyle}>
-              {POSITIONS.map(p => <option key={p}>{p}</option>)}
+              {POSITIONS.map(p => <option key={p} value={p}>{positionLabel(p)}</option>)}
             </select>
           </Field>
-          {isCrewPosition(form.position) && (
-            <div className="flex items-start gap-2 p-2.5 rounded text-xs -mt-1.5" style={{ backgroundColor: T.warnBg, fontFamily: F_BODY, color: T.ink }}>
-              <Truck size={13} color={T.warn} className="mt-0.5 shrink-0" />
-              <span>Paid through <strong>Truck Payroll (pakyawan)</strong> — fixed daily rate plus per-delivery piece rates. Attendance is still imported for this employee, but only their tardiness affects pay.</span>
-            </div>
-          )}
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Daily rate (₱)"><input type="number" value={form.rate} onChange={e => { const v = e.target.value; setForm(f => ({ ...f, rate: v, declaredSalary: v === '' ? '' : String((parseFloat(v) || 0) * 26) })); }} className={inputCls} style={inputStyle} /></Field>
+            <Field label="Daily rate (₱)"><input type="number" value={form.rate} onChange={e => { const v = e.target.value; setForm(f => ({ ...f, rate: v, declaredSalary: (v === '' || isCrewPosition(f.position)) ? '' : String((parseFloat(v) || 0) * 26) })); }} className={inputCls} style={inputStyle} /></Field>
             <Field label="Status">
               <select value={form.status} onChange={e => ff('status', e.target.value)} className={inputCls} style={inputStyle}>
                 <option>Active</option><option>Inactive</option>
               </select>
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Declared monthly salary (₱)">
-              <input type="number" value={form.declaredSalary} onChange={e => ff('declaredSalary', e.target.value)} placeholder="e.g. daily rate × 26" className={inputCls} style={inputStyle} />
-            </Field>
-            <Field label="Leave credits (days/year)">
-              <input type="number" min="0" value={form.leaveCredits} onChange={e => ff('leaveCredits', e.target.value)} className={inputCls} style={inputStyle} />
-            </Field>
-          </div>
-          <div className="text-xs -mt-1.5" style={{ fontFamily: F_BODY, color: T.soft }}>Basis for SSS, PhilHealth, and Pag-IBIG lookups — see Settings → Statutory Deductions for the actual bracket tables.</div>
+          {/* Crew are pakyawan (piece-rate, no monthly salary) and no-work-no-pay
+              (no leave credits), so these two fields do not apply to them. Shown
+              for office staff only; forced to 0 for crew on save. items-end keeps
+              the two input boxes aligned even though the labels wrap differently. */}
+          {!isCrewPosition(form.position) && (
+            <div className="grid grid-cols-2 gap-3 items-end">
+              <Field label="Declared monthly salary (₱)">
+                <input type="number" value={form.declaredSalary} onChange={e => ff('declaredSalary', e.target.value)} placeholder="e.g. daily rate × 26" className={inputCls} style={inputStyle} />
+              </Field>
+              <Field label="Leave credits (days/year)">
+                <input type="number" min="0" value={form.leaveCredits} onChange={e => ff('leaveCredits', e.target.value)} className={inputCls} style={inputStyle} />
+              </Field>
+            </div>
+          )}
 
           {/* Early shift. Modelled here, on the person, rather than as a job
               title — the same staff member can be early on Saturdays and
@@ -281,11 +284,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
               requirement at all. */}
           <div className="p-3 rounded" style={{ backgroundColor: T.bg }}>
             <Eyebrow>Early Shift</Eyebrow>
-            <div className="text-xs mb-2.5" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
-              Days this employee must report earlier than the usual {isCrewPosition(form.position) ? '6:30' : '6:40'} AM.
-              Leave all unticked if none are required.
-            </div>
-            <div className="flex flex-wrap gap-1.5 mb-2.5">
+            <div className="flex flex-wrap gap-1.5 mb-2.5 mt-2.5">
               {WEEKDAYS.map(w => {
                 const on = form.earlyShiftDays.includes(w.key);
                 return (
@@ -325,8 +324,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
 
           <div className="p-3 rounded" style={{ backgroundColor: T.bg }}>
             <Eyebrow>Personal Information</Eyebrow>
-            <div className="text-xs mb-2.5" style={{ fontFamily: F_BODY, color: T.soft }}>Kept on file for company records only — never printed on payslips.</div>
-            <div className="space-y-2.5">
+            <div className="space-y-2.5 mt-2.5">
               <Field label="Address">
                 <input value={form.address} onChange={e => ff('address', e.target.value)} placeholder="Brgy. Poblacion, Mabini, Batangas" className={inputCls} style={inputStyle} />
               </Field>

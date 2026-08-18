@@ -283,7 +283,7 @@ export default function PrimeDepotPayroll() {
           {tab === 'truck' && <TruckPayrollView deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} loans={loans} reloadLoans={reloadLoans} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} toast={toast} />}
           {tab === 'staff' && <StaffPayrollView staff={staff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} toast={toast} cutoffLabel={cutoffText} reloadStaff={reloadStaff} loading={staffLoading} />}
           {tab === 'loans' && <LoansView staff={allStaff} loans={loans} reloadLoans={reloadLoans} toast={toast} />}
-          {tab === 'reports' && <ReportsView staff={staff} deliveries={deliveries} loans={loans} statutory={statutory} />}
+          {tab === 'reports' && <ReportsView staff={staff} deliveries={deliveries} loans={loans} statutory={statutory} cutoffLabel={cutoffText} attendanceSummaries={attSummaries} />}
           {tab === 'account' && (
             <AccountPage
               user={user}

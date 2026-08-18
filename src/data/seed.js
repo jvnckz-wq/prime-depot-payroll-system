@@ -23,6 +23,13 @@ export const POSITIONS = [
 
 // Positions paid by the piece-rate (pakyawan) module instead of staff payroll.
 export const CREW_POSITIONS = ['Driver', 'Pahinante'];
+
+// Display-only relabelling. The stored/canonical value stays "Pahinante" (that
+// is what CREW_POSITIONS, the crew-earnings math, and every existing employee
+// record use), but the client wants the English term shown in the UI. Map only
+// at render time so no data or payroll logic changes.
+const POSITION_LABELS = { Pahinante: 'Delivery Helper' };
+export const positionLabel = (p) => POSITION_LABELS[p] || p;
 // Named barangays/sitios that qualify for the DOBLE (double) piece-rate, taken
 // directly from the "DOBLE" sheet in the client's real TRUCK_PAYROLL.xlsx.
 export const DOBLE_AREAS = [

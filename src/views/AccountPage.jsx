@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import { AlertTriangle, ArrowLeft, Camera, Check, LogOut, ShieldCheck, Trash2, Users } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Camera, Check, LogOut, ShieldCheck, Trash2 } from 'lucide-react';
 import { Btn, Confirm, Eyebrow, Field, Panel, inputCls, inputStyle } from '../components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 import { ChangePasswordPanel } from './AccountView.jsx';
@@ -182,10 +182,6 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut }) 
                 )}
               </div>
             </div>
-            <div className="text-xs mt-4" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
-              The image is cropped square and shrunk to 128px before it is saved, so a photo straight
-              from a phone is fine.
-            </div>
           </Panel>
 
           <Panel className="p-5">
@@ -204,10 +200,6 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut }) 
                 <input value={user.role === 'ADMIN' ? 'Operations Head' : 'Checker'} readOnly className={inputCls}
                   style={{ ...inputStyle, backgroundColor: T.bg, color: T.soft }} />
               </Field>
-            </div>
-            <div className="text-xs mt-2.5" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
-              Your username and role cannot be changed here. The username is your sign-in identity and is
-              attached to every record this account has created; only the Operations Head can change a role.
             </div>
             {nameChanged && (
               <div className="mt-4 flex gap-2">
@@ -228,10 +220,6 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut }) 
               <ShieldCheck size={15} color={T.brand} />
               <span className="text-base font-bold" style={{ fontFamily: F_HEAD, color: T.ink }}>Change password</span>
             </div>
-            <div className="text-xs mb-4" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
-              Your password is stored as a one-way hash — nobody can read it back, not even the
-              administrator. If you forget it, it has to be reset rather than looked up.
-            </div>
             <ChangePasswordPanel toast={toast} />
           </Panel>
 
@@ -246,23 +234,12 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut }) 
                 Sign out everywhere
               </Btn>
             </div>
-            <div className="text-xs mt-3" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
-              Use this if you signed in on a shared computer and are not sure you signed out. It ends
-              every session for this account, including this one.
-            </div>
           </Panel>
         </div>
       )}
 
       {tab === 'accounts' && user.role === 'ADMIN' && (
         <div>
-          <div className="flex items-start gap-2 mb-4 p-3 rounded" style={{ backgroundColor: T.bg }}>
-            <Users size={15} color={T.soft} className="mt-0.5 shrink-0" />
-            <span className="text-xs" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
-              Accounts for everyone who signs in. There is no public registration — every account is
-              created here by hand, and issued with a temporary password the person replaces on first use.
-            </span>
-          </div>
           <AccountsPanel currentUser={user} toast={toast} />
         </div>
       )}

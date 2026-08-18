@@ -303,7 +303,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
                 </div>
               </Field>
               {editForm.status === 'leave' && (
-                <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Paid leave — counted toward pay like a present day, tracked against the employee's leave credits.</div>
+                <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Paid leave — counted toward pay like a present day, tracked against the employee&apos;s leave credits.</div>
               )}
               {editForm.status === 'present' && (
                 <div className="grid grid-cols-2 gap-3">
@@ -414,9 +414,6 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
         <Panel className="overflow-hidden">
           <div className="px-4 py-3" style={{ borderBottom: `1px solid ${T.line}` }}>
             <div className="text-sm font-semibold" style={{ fontFamily: F_HEAD, color: T.ink }}>Unmapped Biometric IDs</div>
-            <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft }}>
-              Scans na walang katugmang empleyado. Register the person using this biometric ID, then Resolve to bring their attendance in — no re-import needed.
-            </div>
           </div>
           {unmappedLoading ? <SkeletonBlock avatar={false} />
             : unmapped.length === 0 ? <EmptyState icon={ClipboardList} title="Nothing unmapped" desc="Every imported scan is matched to an employee." />

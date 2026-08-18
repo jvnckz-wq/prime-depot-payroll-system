@@ -124,14 +124,27 @@ export async function requireAdmin() {
   return result;
 }
 
-/// Minimum password rules. Kept modest on purpose: rules so strict that people
-/// write passwords on sticky notes make a system less safe, not more.
+/// Password strength rules, enforced authoritatively on the server so the
+/// client-side meter can never be bypassed by calling the API directly. Login
+/// does NOT run through this (existing passwords keep working); it applies only
+/// when a new password is being SET (change-password). Temporary passwords are
+/// machine-generated and force-changed on first sign-in, so they bypass this too.
+/// Keep this list in step with PASSWORD_RULES in views/AccountView.jsx.
 export function validatePassword(password) {
   if (typeof password !== 'string' || password.length < 8) {
     return 'Password must be at least 8 characters.';
   }
-  if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
-    return 'Password must contain both letters and numbers.';
+  if (!/[a-z]/.test(password)) {
+    return 'Password must contain a lowercase letter.';
+  }
+  if (!/[A-Z]/.test(password)) {
+    return 'Password must contain an uppercase letter.';
+  }
+  if (!/[0-9]/.test(password)) {
+    return 'Password must contain a number.';
+  }
+  if (!/[^A-Za-z0-9]/.test(password)) {
+    return 'Password must contain a symbol (e.g. ! # @ ? ^ *).';
   }
   return null;
 }

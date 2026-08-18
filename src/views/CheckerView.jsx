@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Truck, LogOut, ShieldCheck, Save, Star } from 'lucide-react';
+import { Truck, LogOut, Save, Star } from 'lucide-react';
 import { DeliveryForm } from '../components/DeliveryForm.jsx';
 import { Av, Badge, BigStat, Btn, EmptyState, Eyebrow, Field, Panel, Skeleton, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { BONUS_HEAD, BONUS_TRIPS, DRIVER_DAILY, HELPER_DAILY } from '../data/seed';
@@ -107,11 +107,6 @@ export const CheckerView = ({ currentUser, onUserChange, onSignedOut, deliveries
       <div className="max-w-2xl mx-auto p-3.5 sm:p-5">
         {page === 'log' && (
           <>
-            <div className="mb-4 flex items-start gap-3 p-3 rounded" style={{ backgroundColor: T.blueBg }}>
-              <ShieldCheck size={16} color={T.blue} className="mt-0.5 shrink-0" />
-              <div className="text-xs" style={{ fontFamily: F_BODY, color: T.ink }}>You can log a delivery for any truck, and swap in a substitute pahinante for the day if a regular helper is out. Salaries, personal details, and other admin pages are not visible from here.</div>
-            </div>
-
             <Panel className="p-4 mb-4">
               <div className="flex flex-wrap justify-around gap-3">
                 <BigStat value={allTrips.length} label="Deliveries Logged" />
@@ -122,7 +117,7 @@ export const CheckerView = ({ currentUser, onUserChange, onSignedOut, deliveries
 
             <Panel className="p-4 mb-4">
               <Eyebrow>New Delivery</Eyebrow>
-              <div className="text-xs mb-3" style={{ fontFamily: F_BODY, color: T.soft }}>Pick the truck this delivery is for — you can log for any crew, and swap a helper if needed.</div>
+              <div className="mb-3" />
               <DeliveryForm crews={trucks} rates={rates} onSubmit={logDelivery} />
             </Panel>
 
@@ -166,11 +161,10 @@ export const CheckerView = ({ currentUser, onUserChange, onSignedOut, deliveries
           <>
             <div className="mb-4 flex items-center flex-wrap gap-2">
               <span className="text-xs" style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.04em' }}>VIEWING</span>
-              <Badge tone={histDate === todayStr ? 'green' : 'amber'}>{histDate === todayStr ? `Today · ${todayStr}` : `History · ${histDate}`}</Badge>
+              {histDate !== todayStr && <Badge tone="amber">History · {histDate}</Badge>}
               <input type="date" max={todayStr} value={histDate} onChange={e => loadHist(e.target.value)}
                 className="px-3 py-2 rounded border text-sm" style={{ borderColor: T.line, fontFamily: F_BODY, minWidth: 168, colorScheme: 'light', color: T.ink, backgroundColor: T.surface }} />
               {histLoading && <Skeleton w={72} h={11} />}
-              <span className="text-xs w-full sm:w-auto" style={{ fontFamily: F_BODY, color: T.soft }}>Read-only · shared across all checkers and admin.</span>
             </div>
 
             <Panel className="overflow-hidden">
