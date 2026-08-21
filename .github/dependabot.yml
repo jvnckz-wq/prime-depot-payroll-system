@@ -1,0 +1,23 @@
+# Weekly dependency updates, so advisories arrive as pull requests rather than
+# as a surprise during a security review.
+#
+# Reminder: `xlsx` comes from a cdn.sheetjs.com tarball, which Dependabot cannot
+# track. Check https://cdn.sheetjs.com/ by hand when reviewing these.
+
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # One pull request for the routine patch/minor churn; majors still come
+      # through individually, since those are the ones worth reading.
+      minor-and-patch:
+        update-types: ['minor', 'patch']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

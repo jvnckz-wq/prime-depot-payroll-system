@@ -3,10 +3,28 @@ import * as XLSX from 'xlsx';
 export const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 export const uid = () => Math.random().toString(36).slice(2, 9);
 
+// Excel, LibreOffice, and Google Sheets treat a cell whose text begins with
+// =, +, -, or @ as a formula. An employee named `=HYPERLINK("http://evil","x")`
+// is harmless everywhere in this app — React escapes it on screen — but becomes
+// live code the moment somebody opens the exported file. Leading tabs and
+// carriage returns count too, because those spreadsheets strip them and then
+// read the character underneath.
+//
+// Prefixing an apostrophe forces the cell to stay text. Excel does not show the
+// apostrophe, so the export still reads normally.
+const FORMULA_LEAD = /^[=+\-@\t\r]/;
+
+const deFormula = (v) => (typeof v === 'string' && FORMULA_LEAD.test(v) ? `'${v}` : v);
+
+// Numbers, dates, and booleans pass through untouched — only text can carry a
+// formula, so a negative number stays a negative number.
+const safeRow = (row) =>
+  Object.fromEntries(Object.entries(row).map(([key, value]) => [key, deFormula(value)]));
+
 export function exportXLSX(filename, sheets) {
   const wb = XLSX.utils.book_new();
   sheets.forEach(({ name, rows }) => {
-    const ws = XLSX.utils.json_to_sheet(rows);
+    const ws = XLSX.utils.json_to_sheet(rows.map(safeRow));
     XLSX.utils.book_append_sheet(wb, ws, name.slice(0, 31));
   });
   XLSX.writeFile(wb, filename);

@@ -98,6 +98,26 @@ enum PayrollType {
   TRUCK // pakyawan, delivery-based
 }
 
+/// What an AuditLog row records. Kept as an enum rather than free text so a
+/// typo cannot quietly create a category nobody ever queries for.
+enum AuditAction {
+  LOGIN_SUCCESS
+  LOGIN_FAILURE
+  LOGIN_THROTTLED
+  LOGOUT
+  PASSWORD_CHANGED
+  PASSWORD_RESET
+  ACCOUNT_CREATED
+  ACCOUNT_DISABLED
+  ACCOUNT_ENABLED
+  SESSIONS_REVOKED
+  PAYROLL_FINALIZED
+  PAYROLL_UNFINALIZED
+  DELIVERY_VOIDED
+  DELIVERY_UNVOIDED
+  CREW_RATES_UPDATED
+}
+
 // ============================================================================
 // ACCESS
 // ============================================================================
@@ -134,6 +154,7 @@ model User {
   loggedDeliveries Delivery[] @relation("DeliveryLoggedBy")
   voidedDeliveries Delivery[] @relation("DeliveryVoidedBy")
   sessions         Session[]
+  auditLogs        AuditLog[]
 
   @@map("users")
 }
@@ -156,6 +177,68 @@ model Session {
 
   @@index([userId])
   @@map("sessions")
+}
+
+/// Failed sign-in counter, keyed on source IP + username.
+///
+/// This used to be a plain Map in the login route's module scope. That resets
+/// on every cold start, and each serverless instance keeps its own tally, so in
+/// practice an attacker rarely met the same counter twice — it looked like a
+/// throttle without being one. Here it is shared by every instance and survives
+/// redeploys.
+///
+/// Keyed on the PAIR on purpose. Throttling by username alone would let anyone
+/// lock a known user out for fifteen minutes just by spamming wrong passwords
+/// for their name — which, with a single Operations Head account, is a remote
+/// off switch for the whole business. Pairing it with the IP means a guesser
+/// only ever throttles themselves.
+model LoginAttempt {
+  id      String   @id @default(cuid())
+  /// "<ip>|<username>".
+  key     String   @unique
+  count   Int      @default(1)
+  /// Start of the current window. Once this is older than the window length,
+  /// the record is treated as expired and counting restarts from one.
+  firstAt DateTime @default(now())
+  lastAt  DateTime @default(now())
+
+  @@index([firstAt])
+  @@map("login_attempts")
+}
+
+/// Security and money events, append-only.
+///
+/// Some of this was already implicit — Delivery.voidedById, Delivery.loggedById,
+/// User.lastLoginAt — but scattered across tables and impossible to read as a
+/// sequence. A payroll system needs one place that answers "who did what, when",
+/// both for ordinary disputes about a payslip and because RA 10173 expects a
+/// controller to be able to show who touched personal data.
+///
+/// Nothing here cascades on delete: the trail has to outlive the account it
+/// describes, so actorId goes null and actorLabel keeps the name.
+model AuditLog {
+  id         String      @id @default(cuid())
+  action     AuditAction
+  /// Null for a failed sign-in, where there may be no real account behind the
+  /// attempt at all.
+  actorId    String?
+  /// The username as it read at the time. Kept as text so the entry still makes
+  /// sense after a rename, and so a failed login can name what was tried.
+  actorLabel String?
+  /// What was acted on — an account id, a cutoff label, a delivery id.
+  targetType String?
+  targetId   String?
+  /// Short human-readable context: the void reason, the cutoff released.
+  detail     String?
+  ip         String?
+  createdAt  DateTime    @default(now())
+
+  actor      User?       @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([action, createdAt])
+  @@index([actorId])
+  @@map("audit_logs")
 }
 
 // ============================================================================
@@ -424,6 +507,34 @@ model RateItem {
 
   @@unique([itemName, unit])
   @@map("rate_items")
+}
+
+/// Pakyawan pay constants for delivery crew.
+///
+/// These were four hardcoded numbers in src/data/seed.js. That put them in the
+/// browser bundle — so the figures a payslip was built from were whatever the
+/// client had loaded — and it meant changing a rate needed a redeploy. Per-item
+/// rates already lived in RateItem; the daily minimums and the bonus belong in
+/// the database for exactly the same reasons.
+///
+/// One row, with the fixed id "current": there is exactly one live rate card,
+/// and a known id makes reading it a single findUnique with no ordering to get
+/// wrong. Past rates are deliberately not versioned here — a released cutoff is
+/// already frozen in its Payslip snapshot, so history lives there.
+model CrewRate {
+  id          String   @id @default("current")
+  /// Guaranteed daily minimum for a driver, paid when piece-rate falls short.
+  driverDaily Decimal  @default(280) @db.Decimal(12, 2)
+  /// The same, for a pahinante.
+  helperDaily Decimal  @default(240) @db.Decimal(12, 2)
+  /// "Palima" bonus, paid per head once a truck clears the trip threshold.
+  bonusHead   Decimal  @default(100) @db.Decimal(12, 2)
+  /// Trips one truck must finish in a day before the bonus applies.
+  bonusTrips  Int      @default(5)
+
+  updatedAt   DateTime @updatedAt
+
+  @@map("crew_rates")
 }
 
 /// Barangay / sitio names that qualify for double rates.

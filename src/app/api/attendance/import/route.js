@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma, prismaBase } from '../../../../lib/prisma';
 import { withRetry } from '../../../../lib/db-retry';
 import { requireAdmin } from '../../../../lib/auth';
+import { MAX_IMPORT_BYTES, base64TooLarge } from '../../../../lib/uploads';
 import { parseZktecoXls } from '../../../../lib/attendance-import';
 import { callTimeFor, minutesLate } from '../../../../lib/attendance';
 
@@ -26,6 +27,13 @@ export async function POST(request) {
     const body = await request.json();
     const filename = String(body.filename || 'attendance.xls').slice(0, 200);
     if (!body.dataBase64) return NextResponse.json({ error: 'No file was received.' }, { status: 400 });
+
+    // Cap the payload before decoding it. A real ZKTeco export for one cutoff is
+    // well under a megabyte, and parsing a spreadsheet is expensive enough that
+    // an unbounded one is worth refusing outright rather than discovering how
+    // large it was halfway through XLSX.read.
+    const tooLarge = base64TooLarge(body.dataBase64, MAX_IMPORT_BYTES, 'That file');
+    if (tooLarge) return NextResponse.json({ error: tooLarge }, { status: 413 });
 
     const { period, roster, punches } = parseZktecoXls(Buffer.from(body.dataBase64, 'base64'));
 

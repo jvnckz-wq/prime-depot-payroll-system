@@ -10,6 +10,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Prisma writes its client here (see the generator block in schema.prisma).
+    // It is generated, gitignored, and not ours to lint — without this, `npm run
+    // lint` reports dozens of warnings from it and the real findings get lost.
+    "src/generated/**",
   ]),
 ]);
 

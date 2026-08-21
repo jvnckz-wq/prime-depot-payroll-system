@@ -4,13 +4,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Truck, LogOut, Save, Star } from 'lucide-react';
 import { DeliveryForm } from '../components/DeliveryForm.jsx';
 import { Av, Badge, BigStat, Btn, EmptyState, Eyebrow, Field, Panel, Skeleton, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
-import { BONUS_HEAD, BONUS_TRIPS, DRIVER_DAILY, HELPER_DAILY } from '../data/seed';
+import { CREW_RATE_FALLBACK } from '../data/seed';
 import { crewEarnings, deliveriesToLog, flattenDeliveries } from '../lib/payroll';
 import { peso } from '../lib/utils';
 import { FONTS, F_BODY, F_HEAD, T } from '../theme';
 /* eslint-disable @next/next/no-img-element -- user avatars are base64 data URIs; next/image adds no value and cannot optimize data URIs */
 
-export const CheckerView = ({ currentUser, onUserChange, onSignedOut, deliveries, setDeliveries, reloadDeliveries, rates, onLogout, toast }) => {
+export const CheckerView = ({ currentUser, onUserChange, onSignedOut, deliveries, setDeliveries, reloadDeliveries, rates, crewRates = CREW_RATE_FALLBACK, onLogout, toast }) => {
   const [page, setPage] = useState('log');
   const todayStr = new Date().toISOString().slice(0, 10);
   const [histDate, setHistDate] = useState(todayStr);
@@ -72,13 +72,11 @@ export const CheckerView = ({ currentUser, onUserChange, onSignedOut, deliveries
   // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
   useEffect(() => { if (page === 'history') loadHist(histDate); }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const histPeople = useMemo(() => crewEarnings(histLog, {
-    driverDaily: DRIVER_DAILY, helperDaily: HELPER_DAILY, bonusHead: BONUS_HEAD, bonusTrips: BONUS_TRIPS,
-  }), [histLog]);
+  const histPeople = useMemo(() => crewEarnings(histLog, crewRates), [histLog, crewRates]);
   const trucksActive = new Set(allTrips.map(t => t.crewId)).size;
   const bonusTrucks = Object.values(deliveries).filter(log => {
     const tc = new Set((log.items || []).map(i => i.seq).filter(Boolean)).size;
-    return tc >= BONUS_TRIPS;
+    return tc >= crewRates.bonusTrips;
   }).length;
 
   return (
@@ -132,7 +130,7 @@ export const CheckerView = ({ currentUser, onUserChange, onSignedOut, deliveries
                   <table className="w-full">
                     <thead><tr><Th>Date</Th><Th>Truck</Th><Th>Driver</Th><Th>Pahinante</Th><Th>Address</Th><Th right>Driver Earn</Th><Th>Trip</Th></tr></thead>
                     <tbody>{allTrips.slice().reverse().map((t, i) => {
-                      const isBonusTrip = t.seq >= BONUS_TRIPS;
+                      const isBonusTrip = t.seq >= crewRates.bonusTrips;
                       return (
                         <tr key={i} style={{ backgroundColor: isBonusTrip ? '#FBF0DE' : 'transparent' }}>
                           <Td mono>{t.date}</Td>

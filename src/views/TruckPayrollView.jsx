@@ -4,12 +4,12 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Wallet, Plus, Package, ArrowLeft, Printer, Edit2, Save, Trash2, Check, AlertTriangle } from 'lucide-react';
 import { DeliveryForm } from '../components/DeliveryForm.jsx';
 import { Av, Badge, Btn, Confirm, EmptyState, Eyebrow, Field, H1, Modal, Panel, Skeleton, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
-import { BONUS_HEAD, BONUS_TRIPS, DRIVER_DAILY, HELPER_DAILY } from '../data/seed';
+import { CREW_RATE_FALLBACK } from '../data/seed';
 import { crewEarnings, deliveriesToLog, flattenDeliveries, loanBalance } from '../lib/payroll';
 import { peso } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
-export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, rates, setRates, loans, reloadLoans, crewNames = [], toast }) => {
+export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, rates, setRates, crewRates = CREW_RATE_FALLBACK, loans, reloadLoans, crewNames = [], toast }) => {
   const [selected, setSelected] = useState(null);
 
   // Fleet list for the truck cards, the crew-filter dropdown, and the delivery
@@ -238,10 +238,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
     // out separately they disagreed, because a fix applied to one never
     // reached the other. One function means one answer.
     const crewTotals = log
-      ? crewEarnings({ [selected]: log }, {
-          driverDaily: DRIVER_DAILY, helperDaily: HELPER_DAILY,
-          bonusHead: BONUS_HEAD, bonusTrips: BONUS_TRIPS,
-        })
+      ? crewEarnings({ [selected]: log }, crewRates)
       : [];
 
     // Kaltas recorded against this truck, attributed by name where the entry
@@ -255,7 +252,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
     const helpers = people.filter(p => p.role === 'Pahinante');
 
     const tripCount = log ? new Set(log.items.filter(i => !i.voided).map(i => i.seq).filter(Boolean)).size : 0;
-    const bonusEligible = tripCount >= BONUS_TRIPS;
+    const bonusEligible = tripCount >= crewRates.bonusTrips;
     const grandNet = people.reduce((sum, p) => sum + p.net, 0);
 
     // ---- Printable Truck Payslip: itemized ledger, split Driver / Pahinante 1 / Pahinante 2 ----
@@ -548,10 +545,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
   // Per-person totals across ALL trucks for the active day — one row per person,
   // so a pahinante who rode two trucks appears once, not per truck. Kaltas is
   // summed from whichever truck named them; net = total − kaltas.
-  const dayPeople = crewEarnings(D, {
-    driverDaily: DRIVER_DAILY, helperDaily: HELPER_DAILY,
-    bonusHead: BONUS_HEAD, bonusTrips: BONUS_TRIPS,
-  }).map(p => {
+  const dayPeople = crewEarnings(D, crewRates).map(p => {
     const kaltas = Object.values(D).flatMap(l => l.kaltas || [])
       .filter(k => (k.name || k.who) === p.name)
       .reduce((s, k) => s + (k.h ?? k.amount ?? 0), 0);
@@ -642,14 +636,11 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
           const log = D[c.id];
           // Same function as the payslip and the report, so a card can never
           // show a figure the payslip disagrees with.
-          const cardCrew = log ? crewEarnings({ [c.id]: log }, {
-            driverDaily: DRIVER_DAILY, helperDaily: HELPER_DAILY,
-            bonusHead: BONUS_HEAD, bonusTrips: BONUS_TRIPS,
-          }) : [];
+          const cardCrew = log ? crewEarnings({ [c.id]: log }, crewRates) : [];
           const cardTotal = cardCrew.reduce((sum, p) => sum + p.total, 0);
           const cardNames = cardCrew.map(p => p.name);
           const tripCount = log ? new Set(log.items.filter(i => !i.voided).map(i => i.seq).filter(Boolean)).size : 0;
-          const bonusEligible = tripCount >= BONUS_TRIPS;
+          const bonusEligible = tripCount >= crewRates.bonusTrips;
           return (
             <button key={c.id} onClick={() => setSelected(c.id)} className="text-left">
               <Panel className="p-4 h-full" style={{ borderLeftWidth: 3, borderLeftColor: log ? T.brand : T.line }}>

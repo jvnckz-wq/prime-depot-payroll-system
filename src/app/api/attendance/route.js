@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../lib/prisma';
 import { requireAdmin } from '../../../lib/auth';
-import { minutesLate } from '../../../lib/attendance';
+import { minutesLate, summarizeAttendance } from '../../../lib/attendance';
 
 const hhmm = (d) => (d ? new Date(d).toISOString().slice(11, 16) : null);
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
@@ -181,26 +181,7 @@ export async function GET(request) {
         where: { date: { gte: range.start, lte: range.end } },
         include: { employee: { select: { name: true, position: true } } },
       });
-      const byEmp = new Map();
-      for (const a of rows) {
-        if (!byEmp.has(a.employeeId)) {
-          byEmp.set(a.employeeId, {
-            id: a.employeeId, name: a.employee?.name || a.employeeId,
-            present: 0, absent: 0, leave: 0, daysLate: 0, lateMins: 0, otMins: 0,
-            otWeekdayMins: 0, otWeekendMins: 0,
-          });
-        }
-        const s = byEmp.get(a.employeeId);
-        if (a.isLeave) s.leave++; else if (a.isAbsent) s.absent++; else s.present++;
-        if (a.tardinessMins > 0) s.daysLate++;
-        s.lateMins += a.tardinessMins;
-        s.otMins += a.overtimeMins;
-        // Weekend OT (Sat/Sun) is paid at a higher multiplier than weekday OT.
-        const dow = new Date(a.date).getUTCDay();
-        if (dow === 0 || dow === 6) s.otWeekendMins += a.overtimeMins;
-        else s.otWeekdayMins += a.overtimeMins;
-      }
-      summaries = [...byEmp.values()].sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true, sensitivity: 'base' }));
+      summaries = summarizeAttendance(rows);
     }
 
     const batches = await prisma.importBatch.findMany({ orderBy: { importedAt: 'desc' }, take: 30 });

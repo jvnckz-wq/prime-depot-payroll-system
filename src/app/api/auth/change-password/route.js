@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../../lib/prisma';
 import {
-  destroyAllSessions, createSession, hashPassword,
+  destroyAllSessions, createSession, hashPassword, logSecurityEvent,
   requireUser, validatePassword, verifyPassword,
 } from '../../../../lib/auth';
 
@@ -40,6 +40,14 @@ export async function POST(request) {
     // now locked out.
     await destroyAllSessions(record.id);
     await createSession(record.id);
+
+    await logSecurityEvent('PASSWORD_CHANGED', {
+      actorId: record.id,
+      actorLabel: record.username,
+      targetType: 'user',
+      targetId: record.id,
+      detail: 'Changed their own password; all other sessions signed out.',
+    });
 
     return NextResponse.json({ ok: true });
   } catch (err) {

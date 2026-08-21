@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { prisma } from '../../../lib/prisma';
-import { hashPassword, requireAdmin } from '../../../lib/auth';
+import { hashPassword, logSecurityEvent, requireAdmin } from '../../../lib/auth';
 
 // Account management is restricted to the Operations Head. Per the client's
 // requirement there is no public registration anywhere in this system — every
@@ -74,6 +74,14 @@ export async function POST(request) {
         mustChangePassword: true,
       },
       select: { id: true, username: true, displayName: true, role: true, isActive: true },
+    });
+
+    await logSecurityEvent('ACCOUNT_CREATED', {
+      actorId: auth.user.id,
+      actorLabel: auth.user.username,
+      targetType: 'user',
+      targetId: user.id,
+      detail: `Created ${user.role} account "${user.username}".`,
     });
 
     // The temporary password is returned exactly once, here, for the admin to

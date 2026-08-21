@@ -1,0 +1,57 @@
+# Lint, build, and dependency-audit on every push and pull request.
+#
+# The audit step is what makes "scan dependencies" stick. Running it by hand
+# means running it never; running it here means a new advisory shows up in a
+# pull request instead of in an incident.
+
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # `npm ci` runs the postinstall hook, which is `prisma generate`. That
+      # needs a connection string present but never connects — the schema is
+      # read from disk — so a placeholder is enough to build with.
+      - name: Install
+        run: npm ci
+        env:
+          DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+          DATABASE_URL_UNPOOLED: postgresql://placeholder:placeholder@localhost:5432/placeholder
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+        env:
+          DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+          DATABASE_URL_UNPOOLED: postgresql://placeholder:placeholder@localhost:5432/placeholder
+
+      # Reports runtime advisories without failing the build yet: there is a
+      # known backlog (next -> postcss/sharp, prisma -> deepmerge-ts/valibot)
+      # that has to be cleared first. Once `npm audit fix` and the next/prisma
+      # bumps have landed, delete continue-on-error so a new high-severity
+      # advisory actually blocks the merge.
+      #
+      # Note: `xlsx` is installed from a cdn.sheetjs.com tarball rather than
+      # from npm (deliberately — the npm package is abandoned at 0.18.5 with
+      # open prototype-pollution advisories). `npm audit` cannot see a tarball
+      # URL, so that dependency has to be tracked by hand against
+      # https://cdn.sheetjs.com/ when a new version ships.
+      - name: Audit dependencies
+        run: npm audit --omit=dev --audit-level=high
+        continue-on-error: true

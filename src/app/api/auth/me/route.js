@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../../lib/prisma';
-import { destroyAllSessions, getCurrentUser, requireUser } from '../../../../lib/auth';
+import { destroyAllSessions, getCurrentUser, logSecurityEvent, requireUser } from '../../../../lib/auth';
+import { MAX_AVATAR_BYTES, hasImageMagic, maxBase64Length } from '../../../../lib/uploads';
 
 // Called once when the app loads, so a page refresh doesn't sign anyone out.
 // Returns null rather than a 401 — "nobody is signed in" is a normal answer
@@ -52,11 +53,19 @@ export async function PATCH(request) {
         // Only real images, and only small ones. The browser resizes to 128px
         // before sending; this is the backstop for anything that skips that
         // step, since nothing stops a caller posting straight to the endpoint.
-        if (!/^data:image\/(png|jpeg|webp);base64,/.test(avatar)) {
+        const match = /^data:image\/(png|jpeg|webp);base64,(.*)$/s.exec(avatar);
+        if (!match) {
           return NextResponse.json({ error: 'Profile picture must be a PNG, JPEG, or WebP image.' }, { status: 400 });
         }
-        if (avatar.length > 200_000) {
-          return NextResponse.json({ error: 'Profile picture is too large. Choose a smaller image.' }, { status: 400 });
+        if (avatar.length > maxBase64Length(MAX_AVATAR_BYTES)) {
+          return NextResponse.json({ error: 'Profile picture is too large. Choose a smaller image.' }, { status: 413 });
+        }
+        // The declared MIME type is just a string in the data URL — a caller
+        // that skips the browser can label anything `image/png`. Check the
+        // first bytes actually carry that format's signature, so what gets
+        // stored is a real image rather than 150KB of whatever.
+        if (!hasImageMagic(match[1], match[2])) {
+          return NextResponse.json({ error: 'That file is not a valid PNG, JPEG, or WebP image.' }, { status: 400 });
         }
         data.avatar = avatar;
       }
@@ -89,5 +98,14 @@ export async function DELETE() {
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   await destroyAllSessions(auth.user.id);
+
+  await logSecurityEvent('SESSIONS_REVOKED', {
+    actorId: auth.user.id,
+    actorLabel: auth.user.username,
+    targetType: 'user',
+    targetId: auth.user.id,
+    detail: 'Signed out of every device.',
+  });
+
   return NextResponse.json({ ok: true });
 }

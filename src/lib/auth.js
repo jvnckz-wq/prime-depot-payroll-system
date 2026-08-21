@@ -16,7 +16,7 @@
 //  * The cookie carries a random token; the database stores only its SHA-256
 //    hash. Same principle as passwords: a leaked database gives an attacker
 //    hashes, not usable sessions.
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { createHash, randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
 import { prisma } from './prisma';
@@ -34,6 +34,21 @@ export function hashPassword(plain) {
 
 export function verifyPassword(plain, hash) {
   return bcrypt.compare(plain, hash);
+}
+
+// A real bcrypt hash, at the same cost factor, of a value no account uses.
+//
+// It exists to make a failed login take the same time whether or not the
+// username is real. Returning early for an unknown username skips the ~250ms
+// bcrypt comparison, and that gap is easily measurable over the network: an
+// attacker times a few hundred requests and learns exactly which usernames
+// exist, which is the enumeration the single shared error message was written
+// to prevent. Burning the same work on both paths closes it.
+const ABSENT_USER_HASH = '$2b$12$au9eIrtb8olxzU8/t9GBHOdIMc1dgBzsN8Zp67AtsRi8PeYhRfvbC';
+
+/// Spend the same time a real password check would, and discard the result.
+export function burnPasswordComparison(plain) {
+  return bcrypt.compare(typeof plain === 'string' ? plain : '', ABSENT_USER_HASH);
 }
 
 const hashToken = (token) => createHash('sha256').update(token).digest('hex');
@@ -147,4 +162,49 @@ export function validatePassword(password) {
     return 'Password must contain a symbol (e.g. ! # @ ? ^ *).';
   }
   return null;
+}
+
+/// Best-effort client IP behind a proxy. `x-forwarded-for` is a list with the
+/// original client first; fall back to `x-real-ip`, then to a constant so a
+/// caller still gets a usable (if coarser) key when neither header is present.
+///
+/// Worth being honest about: on a request that did NOT pass through a trusted
+/// proxy, this header is attacker-controlled. That is acceptable for the two
+/// jobs it does here — throttling and audit context — because a forged value
+/// only ever gives the attacker a *different* throttle bucket, never someone
+/// else's access. It must never be used for authorization.
+export async function clientIp() {
+  const h = await headers();
+  const xff = h.get('x-forwarded-for');
+  if (xff) return xff.split(',')[0].trim();
+  return h.get('x-real-ip') || 'unknown';
+}
+
+/// Append one row to the audit trail.
+///
+/// Deliberately never throws. An audit write failing must not turn a successful
+/// sign-in or a released cutoff into an error the user sees — losing one log
+/// line is bad, but failing the operation it was describing is worse. Failures
+/// go to the server console so they are still visible in the platform logs.
+///
+/// `actorLabel` is stored as plain text alongside `actorId` on purpose: the
+/// trail has to stay readable after an account is renamed or deleted, and a
+/// failed sign-in may have no real account behind it to point at.
+export async function logSecurityEvent(action, details = {}) {
+  try {
+    const { actorId = null, actorLabel = null, targetType = null, targetId = null, detail = null } = details;
+    await prisma.auditLog.create({
+      data: {
+        action,
+        actorId,
+        actorLabel: actorLabel ? String(actorLabel).slice(0, 200) : null,
+        targetType,
+        targetId: targetId ? String(targetId).slice(0, 200) : null,
+        detail: detail ? String(detail).slice(0, 500) : null,
+        ip: details.ip ?? (await clientIp().catch(() => null)),
+      },
+    });
+  } catch (err) {
+    console.error('Audit log write failed:', action, err);
+  }
 }

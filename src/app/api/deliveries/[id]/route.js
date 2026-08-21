@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../../lib/prisma';
-import { requireUser } from '../../../../lib/auth';
+import { logSecurityEvent, requireUser } from '../../../../lib/auth';
 
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
 
@@ -67,6 +67,15 @@ export async function PATCH(request, { params }) {
         data: { voidedAt: new Date(), voidedById: auth.user.id, voidReason: trimmed },
       });
 
+      await logSecurityEvent('DELIVERY_VOIDED', {
+        actorId: auth.user.id,
+        actorLabel: auth.user.username,
+        targetType: 'delivery',
+        targetId: id,
+        detail: `Trip ${delivery.sequenceNo} on ${delivery.truckId}, ${ymd(delivery.date)}`
+          + `${released ? ' (cutoff already released)' : ''}: ${trimmed}`,
+      });
+
       return NextResponse.json({
         ok: true,
         // Surfaced so the UI can warn rather than silently rewrite history.
@@ -89,6 +98,15 @@ export async function PATCH(request, { params }) {
         where: { id },
         data: { voidedAt: null, voidedById: null, voidReason: null },
       });
+
+      await logSecurityEvent('DELIVERY_UNVOIDED', {
+        actorId: auth.user.id,
+        actorLabel: auth.user.username,
+        targetType: 'delivery',
+        targetId: id,
+        detail: `Restored trip ${delivery.sequenceNo} on ${delivery.truckId}, ${ymd(delivery.date)}.`,
+      });
+
       return NextResponse.json({ ok: true });
     }
 

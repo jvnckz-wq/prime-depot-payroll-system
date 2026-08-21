@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Sidebar, TopBar } from './components/Nav.jsx';
 import { Toasts } from './components/ui.jsx';
-import { BIR_TABLE_INIT, PAGIBIG_INIT, PHILHEALTH_INIT, SSS_TABLE_INIT } from './data/seed';
+import { BIR_TABLE_INIT, CREW_RATE_FALLBACK, PAGIBIG_INIT, PHILHEALTH_INIT, SSS_TABLE_INIT } from './data/seed';
 import { deliveriesToLog } from './lib/payroll';
 import { uid, cutoffLabel } from './lib/utils';
 import { FONTS, F_BODY, T } from './theme';
@@ -115,6 +115,11 @@ export default function PrimeDepotPayroll() {
   // as a fallback: the delivery form cannot function at all without rates, so
   // showing the last known table beats showing an empty dropdown.
   const [rates, setRates] = useState([]);
+  // Crew pakyawan rates (daily minimums + palima bonus). These used to be
+  // constants in the bundle; they now arrive with the piece rates, from the
+  // database. CREW_RATE_FALLBACK covers a failed request so the delivery cards
+  // show plausible figures instead of zeroes.
+  const [crewRates, setCrewRates] = useState(CREW_RATE_FALLBACK);
 
   useEffect(() => {
     if (!user) return;
@@ -125,6 +130,7 @@ export default function PrimeDepotPayroll() {
         if (cancelled) return;
         const active = data.rates.filter(r => r.isActive);
         if (active.length) setRates(active);
+        if (data.crewRates) setCrewRates(data.crewRates);
       })
       .catch(err => console.error('Could not load piece rates:', err));
     return () => { cancelled = true; };
@@ -251,7 +257,7 @@ export default function PrimeDepotPayroll() {
   if (user.role === 'CHECKER') return <>
     <style>{FONTS}</style>
     <Toasts toasts={toasts} />
-    <CheckerView currentUser={user} onUserChange={u => setUser(prev => ({ ...prev, ...u }))} onSignedOut={() => { setUser(null); setTab('dashboard'); }} deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} onLogout={logout} toast={toast} />
+    <CheckerView currentUser={user} onUserChange={u => setUser(prev => ({ ...prev, ...u }))} onSignedOut={() => { setUser(null); setTab('dashboard'); }} deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} crewRates={crewRates} onLogout={logout} toast={toast} />
   </>;
 
   const titles = {
@@ -280,10 +286,10 @@ export default function PrimeDepotPayroll() {
           {tab === 'dashboard' && <DashboardView deliveries={deliveries} staff={staff} totalEmployees={allStaff.filter(e => e.status !== 'Inactive').length} loans={loans} statutory={statutory} setTab={setTab} cutoffLabel={cutoffText} attendanceSummaries={attSummaries} unmappedCount={unmappedCount} />}
           {tab === 'employees' && <EmployeesView staff={allStaff} reloadStaff={reloadStaff} toast={toast} prefill={employeePrefill} onPrefillConsumed={() => setEmployeePrefill(null)} />}
           {tab === 'attendance' && <AttendanceView staff={allStaff} toast={toast} onRegister={(id, name) => { setEmployeePrefill({ id, name }); setTab('employees'); }} />}
-          {tab === 'truck' && <TruckPayrollView deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} loans={loans} reloadLoans={reloadLoans} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} toast={toast} />}
+          {tab === 'truck' && <TruckPayrollView deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} crewRates={crewRates} loans={loans} reloadLoans={reloadLoans} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} toast={toast} />}
           {tab === 'staff' && <StaffPayrollView staff={staff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} toast={toast} cutoffLabel={cutoffText} reloadStaff={reloadStaff} loading={staffLoading} />}
           {tab === 'loans' && <LoansView staff={allStaff} loans={loans} reloadLoans={reloadLoans} toast={toast} />}
-          {tab === 'reports' && <ReportsView staff={staff} deliveries={deliveries} loans={loans} statutory={statutory} cutoffLabel={cutoffText} attendanceSummaries={attSummaries} />}
+          {tab === 'reports' && <ReportsView staff={staff} deliveries={deliveries} loans={loans} statutory={statutory} cutoffLabel={cutoffText} attendanceSummaries={attSummaries} crewRates={crewRates} />}
           {tab === 'account' && (
             <AccountPage
               user={user}

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { prisma } from '../../../../lib/prisma';
-import { destroyAllSessions, hashPassword, requireAdmin } from '../../../../lib/auth';
+import { destroyAllSessions, hashPassword, logSecurityEvent, requireAdmin } from '../../../../lib/auth';
 
 function generateTempPassword() {
   const letters = 'abcdefghjkmnpqrstuvwxyz';
@@ -42,11 +42,29 @@ export async function PATCH(request, { params }) {
       // Disabling has to take effect now, not at the next expiry — so every
       // session this account holds is destroyed immediately.
       await destroyAllSessions(id);
+
+      await logSecurityEvent('ACCOUNT_DISABLED', {
+        actorId: auth.user.id,
+        actorLabel: auth.user.username,
+        targetType: 'user',
+        targetId: id,
+        detail: `Disabled "${target.username}" and revoked its sessions.`,
+      });
+
       return NextResponse.json({ ok: true });
     }
 
     if (action === 'enable') {
       await prisma.user.update({ where: { id }, data: { isActive: true } });
+
+      await logSecurityEvent('ACCOUNT_ENABLED', {
+        actorId: auth.user.id,
+        actorLabel: auth.user.username,
+        targetType: 'user',
+        targetId: id,
+        detail: `Re-enabled "${target.username}".`,
+      });
+
       return NextResponse.json({ ok: true });
     }
 
@@ -58,6 +76,18 @@ export async function PATCH(request, { params }) {
       });
       // Any session opened with the old password stops working.
       await destroyAllSessions(id);
+
+      await logSecurityEvent('PASSWORD_RESET', {
+        actorId: auth.user.id,
+        actorLabel: auth.user.username,
+        targetType: 'user',
+        targetId: id,
+        // The temporary password itself is deliberately NOT recorded. An audit
+        // trail that contains working credentials is a second place to steal
+        // them from.
+        detail: `Issued a temporary password for "${target.username}" and revoked its sessions.`,
+      });
+
       return NextResponse.json({ ok: true, tempPassword });
     }
 

@@ -1,4 +1,3 @@
-import { LayoutDashboard, Users, Clock, Truck, Wallet, Settings as SettingsIcon, FileText, BarChart3 } from 'lucide-react';
 // Job positions available at registration. The position alone decides which
 // payroll module an employee belongs to — see isCrewPosition() in lib/payroll.
 // There is deliberately no separate "employee type" field: two fields that mean
@@ -38,11 +37,25 @@ export const DOBLE_AREAS = [
   'Yong Yong Malimatoc 2', 'Hulo Solo', 'Mainit', 'Kina Piolo Pascual', 'Nagiba',
   'Nangkaan San Teodoro', 'Sta Monica Nagiba', 'Pang Akle', 'Sampalucan',
 ];
+// Crew pakyawan rates — FALLBACK ONLY.
+//
+// The live values live in the database (the CrewRate table) and arrive with
+// GET /api/rates, so the Operations Head can change a rate without a redeploy
+// and so a payslip is never built from numbers that happened to be compiled
+// into somebody's browser bundle. This object is what the views fall back to
+// when that request fails: a delivery card showing stale-but-plausible rates is
+// more useful than one showing ₱0, and it matches the seeded row exactly.
+//
 // Daily rates are PER PERSON. The ₱480 figure in the client's workbook covers
 // two pahinante, so one pahinante is ₱240 — and a lone helper is still ₱240,
 // not the whole ₱480. Storing the per-person number removes the need to
 // remember that division anywhere else.
-export const DRIVER_DAILY = 280, HELPER_DAILY = 240, BONUS_HEAD = 100, BONUS_TRIPS = 5;
+export const CREW_RATE_FALLBACK = {
+  driverDaily: 280,
+  helperDaily: 240,
+  bonusHead: 100,
+  bonusTrips: 5,
+};
 // ---- Statutory deduction tables (admin-editable in Settings → Statutory Deductions) ----
 // These aren't just reference text anymore — computeStaffPayroll actually looks values up
 // from these tables, so editing them here changes real payslip numbers going forward.
@@ -77,28 +90,3 @@ export const BIR_TABLE_INIT = [
   { over: 2000000, notOver: 8000000, base: 402500, rate: 30 },
   { over: 8000000, notOver: null, base: 2202500, rate: 35 },
 ];
-// Sidebar destinations. `group` is presentation only — the Sidebar renders one
-// labelled section per group, in the order the groups first appear here. Eight
-// undifferentiated links made every screen look equally important and forced you
-// to read the whole list to find anything; grouping them by what you are doing
-// (paying people vs. managing people) makes the list scannable at a glance.
-// `null` means the item stands on its own, outside any section.
-export const ADMIN_NAV = [
-  { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, group: null },
-  { key: 'truck', label: 'Truck Payroll', icon: Truck, group: 'Payroll' },
-  { key: 'staff', label: 'Staff Payroll', icon: FileText, group: 'Payroll' },
-  { key: 'loans', label: 'Loans', icon: Wallet, group: 'Payroll' },
-  { key: 'employees', label: 'Employees', icon: Users, group: 'Workforce' },
-  { key: 'attendance', label: 'Attendance', icon: Clock, group: 'Workforce' },
-  { key: 'reports', label: 'Reports', icon: BarChart3, group: 'Administration' },
-  { key: 'settings', label: 'Settings', icon: SettingsIcon, group: 'Administration' },
-];
-
-// ADMIN_NAV in render order, collapsed into [{ group, items }]. Kept next to the
-// data it derives from so a new nav entry only ever needs adding above.
-export const ADMIN_NAV_GROUPS = ADMIN_NAV.reduce((acc, item) => {
-  const last = acc[acc.length - 1];
-  if (last && last.group === item.group) last.items.push(item);
-  else acc.push({ group: item.group, items: [item] });
-  return acc;
-}, []);

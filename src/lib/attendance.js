@@ -70,3 +70,49 @@ export function describeEarlyShift(employee) {
   const labels = WEEKDAYS.filter((w) => days.includes(w.key)).map((w) => w.label);
   return `${time} on ${labels.join(', ')}`;
 }
+
+/* ============================= SUMMARIES ============================= */
+
+/// Roll a period's Attendance rows up into one summary per employee.
+///
+/// Extracted from GET /api/attendance so the payroll finalize route can build
+/// the exact same numbers from the exact same code. That matters more than it
+/// looks: finalize recomputes each payslip server-side, and if it counted days
+/// present or split weekend overtime even slightly differently from the screen
+/// the admin reviewed, every cutoff would end in an argument about which figure
+/// is real. One function, one answer.
+///
+/// `rows` are Attendance records, optionally with `employee: { name }` included.
+/// Returns rows sorted by employee id, numerically where the ids are numbers.
+export function summarizeAttendance(rows) {
+  const byEmp = new Map();
+
+  for (const a of rows) {
+    if (!byEmp.has(a.employeeId)) {
+      byEmp.set(a.employeeId, {
+        id: a.employeeId,
+        name: a.employee?.name || a.employeeId,
+        present: 0, absent: 0, leave: 0, daysLate: 0, lateMins: 0, otMins: 0,
+        otWeekdayMins: 0, otWeekendMins: 0,
+      });
+    }
+    const s = byEmp.get(a.employeeId);
+
+    if (a.isLeave) s.leave++;
+    else if (a.isAbsent) s.absent++;
+    else s.present++;
+
+    if (a.tardinessMins > 0) s.daysLate++;
+    s.lateMins += a.tardinessMins;
+    s.otMins += a.overtimeMins;
+
+    // Weekend OT (Sat/Sun) is paid at a higher multiplier than weekday OT.
+    // Read in UTC, because these dates are stored at UTC midnight.
+    const dow = new Date(a.date).getUTCDay();
+    if (dow === 0 || dow === 6) s.otWeekendMins += a.overtimeMins;
+    else s.otWeekdayMins += a.overtimeMins;
+  }
+
+  return [...byEmp.values()].sort((a, b) =>
+    String(a.id).localeCompare(String(b.id), undefined, { numeric: true, sensitivity: 'base' }));
+}

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { AlertTriangle, Check, Download } from 'lucide-react';
 import { Badge, Btn, EmptyState, Eyebrow, H1, Panel, Skeleton, Td, Th } from '../components/ui.jsx';
-import { BONUS_HEAD, BONUS_TRIPS, DRIVER_DAILY, HELPER_DAILY, positionLabel } from '../data/seed';
+import { CREW_RATE_FALLBACK, positionLabel } from '../data/seed';
 import { computeStaffPayroll, crewEarnings, deliveriesToLog } from '../lib/payroll';
 import { exportXLSX, peso } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
@@ -13,15 +13,12 @@ import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 // date, run the shared per-day function on each, then merge the per-person
 // results. Reusing crewEarnings unchanged keeps this in step with the truck
 // payslips and the manifest.
-function crewEarningsRange(apiDeliveries) {
+function crewEarningsRange(apiDeliveries, crewRates) {
   const byDate = {};
   for (const d of apiDeliveries) (byDate[d.date] ||= []).push(d);
   const merged = new Map();
   for (const rows of Object.values(byDate)) {
-    const day = crewEarnings(deliveriesToLog(rows), {
-      driverDaily: DRIVER_DAILY, helperDaily: HELPER_DAILY,
-      bonusHead: BONUS_HEAD, bonusTrips: BONUS_TRIPS,
-    });
+    const day = crewEarnings(deliveriesToLog(rows), crewRates);
     for (const p of day) {
       if (!merged.has(p.name)) merged.set(p.name, { name: p.name, role: p.role, trips: 0, days: 0, trucks: new Set(), pieceRate: 0, dailyRate: 0, bonus: 0, total: 0 });
       const m = merged.get(p.name);
@@ -35,7 +32,7 @@ function crewEarningsRange(apiDeliveries) {
     .sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === 'Driver' ? -1 : 1));
 }
 
-export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel = '', attendanceSummaries = [] }) => {
+export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel = '', attendanceSummaries = [], crewRates = CREW_RATE_FALLBACK }) => {
   const [tab, setTab] = useState('register');
 
   // Crew Earnings has its own date range — a day, a week, or any span — fetched
@@ -80,7 +77,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
   const T13 = staff.filter(e => Number(e.rate) > 0).map(e => ({ name: e.name, months: 12, basic: e.rate * 22 * 12, pay: Math.round(e.rate * 22 * 12 / 12 * 100) / 100 }));
   // Earnings are reported per PERSON across the chosen range. Voided trips are
   // already excluded upstream.
-  const crewRows = useMemo(() => crewEarningsRange(rangeApi), [rangeApi]);
+  const crewRows = useMemo(() => crewEarningsRange(rangeApi, crewRates), [rangeApi, crewRates]);
 
   const exportRegister = () => exportXLSX('Payroll-Register.xlsx', [{ name: 'Register', rows: payrollRows.map(r => ({ Employee: r.emp.name, Days: r.calc.days, Gross: r.calc.gross, OT: r.calc.ot, Deductions: r.calc.totalDeductions, 'Net Pay': r.calc.net })) }]);
   const exportRemit = () => exportXLSX('Gov-Remittance.xlsx', [{ name: 'Remittance', rows: payrollRows.map(r => ({ Employee: r.emp.name, SSS: r.calc.sss, PhilHealth: r.calc.phic, 'Pag-IBIG': r.calc.hdmf, Total: r.calc.sss + r.calc.phic + r.calc.hdmf })) }]);

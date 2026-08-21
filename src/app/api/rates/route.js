@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../lib/prisma';
-import { requireAdmin, requireUser } from '../../../lib/auth';
+import { logSecurityEvent, requireAdmin, requireUser } from '../../../lib/auth';
 
 const num = (d) => (d == null ? 0 : Number(d));
 const shape = (r) => ({
@@ -10,15 +10,97 @@ const shape = (r) => ({
   isActive: r.isActive,
 });
 
+/// The crew rate card is a single row with a known id. Reading it through this
+/// helper (rather than inlining findUnique everywhere) keeps the "what if the
+/// row is missing" answer in one place — a fresh database that has not run the
+/// seed still has to render something sane rather than paying everybody zero.
+const CREW_RATE_DEFAULTS = { driverDaily: 280, helperDaily: 240, bonusHead: 100, bonusTrips: 5 };
+
+const shapeCrewRates = (r) => (r
+  ? {
+    driverDaily: num(r.driverDaily),
+    helperDaily: num(r.helperDaily),
+    bonusHead: num(r.bonusHead),
+    bonusTrips: r.bonusTrips,
+  }
+  : { ...CREW_RATE_DEFAULTS });
+
 // Checkers need the rate table to log a delivery — the form shows what each
 // trip is worth as it is entered. They can read it; only the Operations Head
-// can change it.
+// can change it. The crew rate card rides along in the same response because
+// every screen that needs one needs the other.
 export async function GET() {
   const auth = await requireUser();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-  const rates = await prisma.rateItem.findMany({ orderBy: { itemName: 'asc' } });
-  return NextResponse.json({ rates: rates.map(shape) });
+  const [rates, crew] = await Promise.all([
+    prisma.rateItem.findMany({ orderBy: { itemName: 'asc' } }),
+    prisma.crewRate.findUnique({ where: { id: 'current' } }),
+  ]);
+
+  return NextResponse.json({ rates: rates.map(shape), crewRates: shapeCrewRates(crew) });
+}
+
+/// PATCH /api/rates — edit the crew rate card (daily minimums and the bonus).
+///
+/// Separate from POST, which adds a piece-rate item. These four numbers used to
+/// be constants compiled into the browser bundle; they are money, so they live
+/// in the database and change through an audited admin action.
+export async function PATCH(request) {
+  const auth = await requireAdmin();
+  if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
+  try {
+    const body = await request.json();
+
+    // Bounded on both ends. A negative daily rate is nonsense, and an
+    // accidental extra zero on a pay rate is the kind of typo worth catching
+    // here rather than discovering on a payslip.
+    const money = (value, label, max) => {
+      const n = Number(value);
+      if (!Number.isFinite(n) || n < 0) return { error: `${label} must be zero or more.` };
+      if (n > max) return { error: `${label} looks wrong — the maximum is ₱${max.toLocaleString('en-PH')}.` };
+      return { value: Math.round(n * 100) / 100 };
+    };
+
+    const driverDaily = money(body.driverDaily, 'Driver daily rate', 10000);
+    const helperDaily = money(body.helperDaily, 'Pahinante daily rate', 10000);
+    const bonusHead = money(body.bonusHead, 'Palima bonus', 10000);
+    const firstError = [driverDaily, helperDaily, bonusHead].find((f) => f.error);
+    if (firstError) return NextResponse.json({ error: firstError.error }, { status: 400 });
+
+    const bonusTrips = parseInt(body.bonusTrips, 10);
+    if (!Number.isFinite(bonusTrips) || bonusTrips < 1 || bonusTrips > 50) {
+      return NextResponse.json({ error: 'Bonus trip threshold must be between 1 and 50.' }, { status: 400 });
+    }
+
+    const data = {
+      driverDaily: driverDaily.value,
+      helperDaily: helperDaily.value,
+      bonusHead: bonusHead.value,
+      bonusTrips,
+    };
+
+    const updated = await prisma.crewRate.upsert({
+      where: { id: 'current' },
+      update: data,
+      create: { id: 'current', ...data },
+    });
+
+    await logSecurityEvent('CREW_RATES_UPDATED', {
+      actorId: auth.user.id,
+      actorLabel: auth.user.username,
+      targetType: 'crewRate',
+      targetId: 'current',
+      detail: `Driver ₱${data.driverDaily}/day, pahinante ₱${data.helperDaily}/day, `
+        + `bonus ₱${data.bonusHead} at ${data.bonusTrips} trips.`,
+    });
+
+    return NextResponse.json({ crewRates: shapeCrewRates(updated) });
+  } catch (err) {
+    console.error('PATCH /api/rates failed:', err);
+    return NextResponse.json({ error: 'Could not save the crew rates.' }, { status: 500 });
+  }
 }
 
 export async function POST(request) {
