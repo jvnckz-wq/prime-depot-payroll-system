@@ -89,7 +89,7 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
   }, [testSalary, sssTable, philhealthRates, pagibigRates]);
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <H1 sub="Admin-editable rates. Editing these changes real payslip numbers going forward — past payslips already computed are unaffected.">Settings</H1>
       <div className="flex gap-1 mb-4 rounded-md p-0.5" style={{ backgroundColor: T.lineSoft, width: 'fit-content' }}>
         {(currentUser?.role === 'ADMIN'
@@ -119,7 +119,7 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
           </Panel>
 
           <Panel className="overflow-hidden">
-            <div className="px-4 py-2.5 flex items-center justify-between" style={{ borderBottom: `1px solid ${T.line}` }}>
+            <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
               <Eyebrow>SSS Contribution Table — employee share by declared monthly salary</Eyebrow>
               {editSss ? (
                 <div className="flex gap-2">
@@ -129,7 +129,7 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
               ) : <Btn size="sm" variant="outline" icon={Edit2} onClick={() => { setSssDraft(sssTable); setEditSss(true); }}>Edit</Btn>}
             </div>
             <div className="overflow-y-auto" style={{ maxHeight: 340 }}>
-              <table className="w-full">
+              <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
                 <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}><tr><Th>Salary Range (₱)</Th><Th right>Employee share / month (₱)</Th><Th right>Per cutoff (₱)</Th>{editSss && <Th></Th>}</tr></thead>
                 <tbody>{(editSss ? sssDraft : sssTable).map((r, i, arr) => (
                   <tr key={i}>
@@ -156,7 +156,7 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
                     {editSss && <Td><button onClick={() => setSssDraft(p => p.filter((_, j) => j !== i))}><Trash2 size={13} color={T.red} /></button></Td>}
                   </tr>
                 ))}</tbody>
-              </table>
+              </table></div>
             </div>
             {editSss && <div className="px-4 py-2.5" style={{ borderTop: `1px solid ${T.line}` }}>
               <button onClick={() => setSssDraft(p => [...p.slice(0, -1), { ceiling: (p[p.length - 2]?.ceiling || 0) + 500, share: p[p.length - 1].share }, p[p.length - 1]])} className="text-xs font-semibold flex items-center gap-1" style={{ fontFamily: F_HEAD, color: T.blue }}><Plus size={12} /> Add bracket</button>
@@ -164,7 +164,7 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
           </Panel>
 
           <Panel className="overflow-hidden">
-            <div className="px-4 py-2.5 flex items-center justify-between" style={{ borderBottom: `1px solid ${T.line}` }}>
+            <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
               <Eyebrow>PhilHealth — % of declared salary, split 50/50 employer/employee</Eyebrow>
               {editPh ? (
                 <div className="flex gap-2">
@@ -173,7 +173,7 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
                 </div>
               ) : <Btn size="sm" variant="outline" icon={Edit2} onClick={() => { setPhDraft(philhealthRates); setEditPh(true); }}>Edit</Btn>}
             </div>
-            <div className="grid grid-cols-3 gap-4 p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4">
               {[['rate', 'Premium rate (%)'], ['floor', 'Salary floor (₱)'], ['ceiling', 'Salary ceiling (₱)']].map(([k, l]) => (
                 <Field key={k} label={l}>
                   {editPh ? <input type="number" value={phDraft[k]} onChange={e => setPhDraft(p => ({ ...p, [k]: parseFloat(e.target.value) || 0 }))} className={inputCls} style={inputStyle} />
@@ -185,7 +185,7 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
 
           <div className="grid md:grid-cols-2 gap-4">
             <Panel className="overflow-hidden">
-              <div className="px-4 py-2.5 flex items-center justify-between" style={{ borderBottom: `1px solid ${T.line}` }}>
+              <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
                 <Eyebrow>Pag-IBIG (HDMF)</Eyebrow>
                 {editPi ? (
                   <div className="flex gap-2">
@@ -194,7 +194,7 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
                   </div>
                 ) : <Btn size="sm" variant="outline" icon={Edit2} onClick={() => { setPiDraft(pagibigRates); setEditPi(true); }}>Edit</Btn>}
               </div>
-              <table className="w-full">
+              <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
                 <thead><tr><Th>Salary up to (₱)</Th><Th right>Employee %</Th></tr></thead>
                 <tbody>{(editPi ? piDraft.brackets : pagibigRates.brackets).map((b, i) => (
                   <tr key={i}>
@@ -209,7 +209,7 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
                     </Td>
                   </tr>
                 ))}</tbody>
-              </table>
+              </table></div>
               <div className="px-4 py-3 flex items-center justify-between" style={{ borderTop: `1px solid ${T.line}` }}>
                 <span className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.soft }}>Monthly cap (₱)</span>
                 {editPi ? <input type="number" value={piDraft.cap} onChange={e => setPiDraft(p => ({ ...p, cap: parseFloat(e.target.value) || 0 }))} className="px-2 py-1 rounded border text-xs w-24 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} />
@@ -217,7 +217,7 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
               </div>
             </Panel>
             <Panel className="overflow-hidden">
-              <div className="px-4 py-2.5 flex items-center justify-between" style={{ borderBottom: `1px solid ${T.line}` }}>
+              <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
                 <Eyebrow>BIR Withholding Tax Brackets</Eyebrow>
                 {editBir ? (
                   <div className="flex gap-2">
@@ -226,7 +226,7 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
                   </div>
                 ) : <Btn size="sm" variant="outline" icon={Edit2} onClick={() => { setBirDraft(birTable); setEditBir(true); }}>Edit</Btn>}
               </div>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto pd-scroll-shadow">
                 <table className="w-full">
                   <thead><tr><Th>Over</Th><Th>Not over</Th><Th right>Base</Th><Th right>Rate %</Th>{editBir && <Th></Th>}</tr></thead>
                   <tbody>{(editBir ? birDraft : birTable).map((r, i) => (

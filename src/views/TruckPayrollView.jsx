@@ -302,7 +302,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
     T2.netP = T2.afterP - T2.kaltasP - noNameKaltas;
 
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <button onClick={() => setSelected(null)} className="flex items-center gap-1.5 text-sm mb-4" style={{ fontFamily: F_BODY, color: T.soft }}>
           <ArrowLeft size={14} /> Back to Truck Payroll
         </button>
@@ -331,7 +331,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
           <Panel><EmptyState icon={Package} title="No deliveries logged" desc={readOnly ? 'No deliveries were logged for this truck on this day.' : 'No Checker has logged a delivery for this truck yet today.'} action={readOnly ? undefined : <Btn icon={Plus} onClick={() => setLogOpen(true)}>Log a delivery</Btn>} /></Panel>
         ) : (
           <Panel className="overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto pd-scroll-shadow">
               <table className="w-full">
                 <thead>
                   <tr><Th>Seq.</Th><Th>Address</Th><Th>Customer</Th><Th>Crew</Th><Th>Item Category</Th><Th center>Qty</Th><Th>Unit</Th><Th right>Driver</Th><Th right>Pahinante</Th><Th>Double</Th><Th right>Correct</Th></tr>
@@ -439,7 +439,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                   <div className="px-5 py-3" style={{ borderRight: `1px solid ${T.line}` }}><Eyebrow>Truck / Plate</Eyebrow><div className="text-sm font-semibold" style={{ fontFamily: F_BODY }}>{crew.id} · {crew.plate}</div></div>
                   <div className="px-5 py-3"><Eyebrow>Crew</Eyebrow><div className="text-sm font-semibold" style={{ fontFamily: F_BODY }}>{people.map(p => p.name).join(', ') || '—'}</div></div>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto pd-scroll-shadow">
                   <table className="w-full" style={{ fontSize: 12 }}>
                     <thead>
                       <tr>
@@ -468,7 +468,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                 {/* Day totals — Driver / Pahinante (combined), like the sheet. The
                     per-helper split is on each pahinante's own slip below. */}
                 <div className="px-6 py-4" style={{ borderTop: `1px dashed ${T.line}`, backgroundColor: T.bg }}>
-                  <table className="w-full" style={{ fontFamily: F_MONO, fontSize: 13 }}>
+                  <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full" style={{ fontFamily: F_MONO, fontSize: 13 }}>
                     <thead>
                       <tr><Th>{' '}</Th><Th right>Driver</Th><Th right>Pahinante (all)</Th></tr>
                     </thead>
@@ -493,7 +493,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                         <Td right mono><b style={{ color: T.brand }}>{peso(T2.netP)}</b></Td>
                       </tr>
                     </tbody>
-                  </table>
+                  </table></div>
                   <div className="text-xs mt-2" style={{ fontFamily: F_BODY, color: T.soft }}>
                     The Pahinante column is the combined total for all helpers — each helper&apos;s own share is on their individual payslip.
                   </div>
@@ -574,7 +574,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
   };
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <H1 sub="Grouped by truck: one driver + two pahinante share the delivery log for the day."
         action={readOnly ? null : <div className="flex items-center gap-2">
           <Btn variant="outline" icon={Wallet} disabled={dueLoans.length === 0} onClick={() => setConfirmApply(true)}>Apply Today&apos;s Deductions</Btn>
@@ -610,7 +610,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
             </div>
           ) : <Btn size="sm" variant="outline" icon={Edit2} onClick={() => { setRatesDraft(rates); setEditingRates(true); }}>Edit</Btn>}
         </div>
-        <table className="w-full">
+        <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
           <thead><tr><Th>Category</Th><Th>Unit</Th><Th right>Single — Drv</Th><Th right>Single — Hlp</Th><Th right>Double — Drv</Th><Th right>Double — Hlp</Th>{editingRates && <Th right>Retire</Th>}</tr></thead>
           <tbody>{(editingRates ? ratesDraft : rates).map((r, i) => (
             <tr key={i}>
@@ -627,7 +627,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
               )}
             </tr>
           ))}</tbody>
-        </table>
+        </table></div>
       </Panel>
 
       <Eyebrow>Crews</Eyebrow>
@@ -706,7 +706,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
           </select>
         </div>
         {allTrips.length === 0 ? <EmptyState title="No trips logged" desc="Deliveries will appear here once a Checker logs them." /> : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto pd-scroll-shadow">
             <table className="w-full">
               <thead><tr><Th>Date</Th><Th>Crew</Th><Th>Pahinante</Th><Th>Address</Th><Th>Customer</Th><Th right>Driver Earn</Th></tr></thead>
               <tbody>{allTrips.map((t, i) => (
@@ -761,7 +761,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                       <div className="text-white font-bold" style={{ fontFamily: F_MONO, fontSize: 18 }}>{peso(p.net)}</div>
                     </div>
                   </div>
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto pd-scroll-shadow">
                     <table className="w-full" style={{ fontSize: 12 }}>
                       <thead><tr><Th>Truck</Th><Th>Seq</Th><Th>Item</Th><Th center>Qty</Th><Th>Unit</Th><Th>Double</Th><Th right>Amount</Th></tr></thead>
                       <tbody>
@@ -781,7 +781,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                     </table>
                   </div>
                   <div className="px-6 py-4" style={{ borderTop: `1px dashed ${T.line}`, backgroundColor: T.bg }}>
-                    <table className="w-full" style={{ fontFamily: F_MONO, fontSize: 13 }}>
+                    <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full" style={{ fontFamily: F_MONO, fontSize: 13 }}>
                       <tbody>
                         <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Daily rate</Td><Td right mono>{peso(p.dailyRate)}</Td></tr>
                         <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Piece rate ({p.trips} trip{p.trips === 1 ? '' : 's'})</Td><Td right mono>{peso(p.pieceRate)}</Td></tr>
@@ -789,7 +789,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                         <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Kaltas</Td><Td right mono style={{ color: p.kaltas ? T.red : undefined }}>{p.kaltas ? `-${peso(p.kaltas)}` : peso(0)}</Td></tr>
                         <tr style={{ borderTop: `1px solid ${T.line}` }}><Td style={{ fontFamily: F_HEAD, color: T.ink }}><b>NET SALARY</b></Td><Td right mono><b style={{ color: T.brand }}>{peso(p.net)}</b></Td></tr>
                       </tbody>
-                    </table>
+                    </table></div>
                   </div>
                   <div className="px-6 py-6">
                     <div className="h-px mb-1.5" style={{ backgroundColor: T.line, maxWidth: 260 }} />
@@ -818,7 +818,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
               placeholder="bag, piece, box, elf" className={inputCls} style={inputStyle} />
           </Field>
         </div>
-        <div className="grid grid-cols-2 gap-3 mt-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
           <Field label="Driver rate (₱)">
             <input type="number" step="0.01" value={newRate.driverRate}
               onChange={e => setNewRate(f => ({ ...f, driverRate: e.target.value }))}

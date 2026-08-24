@@ -103,7 +103,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
   const go = (t) => setTab && setTab(t);
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <H1 sub="Snapshot of headcount, this cutoff's payroll, deliveries, and outstanding advances.">Dashboard Overview</H1>
 
       {/* Top row: 4 stat cards + Attention Needed, mirroring the approved layout */}
@@ -151,7 +151,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
         <Panel className="overflow-hidden lg:flex lg:flex-col" style={{ height: snapshotHeight }}>
           <div className="px-4 pt-4 pb-2 shrink-0"><Eyebrow>{cutoffLabel} · Payroll Snapshot</Eyebrow></div>
           <div className="overflow-auto lg:flex-1 lg:min-h-0 pd-no-scrollbar">
-            <table className="w-full">
+            <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
               <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}>
                 <tr><Th>Employee</Th><Th right>Gross</Th><Th right>Net Pay</Th></tr>
               </thead>
@@ -176,7 +176,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
                   <Td right mono><b>{peso(snapshot.reduce((s, r) => s + r.net, 0))}</b></Td>
                 </tr>
               </tfoot>
-            </table>
+            </table></div>
           </div>
         </Panel>
 

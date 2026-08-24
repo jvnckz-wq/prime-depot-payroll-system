@@ -56,6 +56,21 @@ button:disabled { cursor: not-allowed; }
 .pd-no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .pd-no-scrollbar::-webkit-scrollbar { width: 0; height: 0; }
 
+/* Horizontal-scroll affordance for wide tables on small screens. A subtle inner
+   shadow appears on whichever edge still has content to scroll toward, and
+   vanishes at the ends — so the rightmost column (e.g. Net Pay) is never
+   obscured. Pure CSS, no JS: the white "cover" gradients (background-attachment:
+   local) scroll with the content and mask the shadows at the start/end. When the
+   table already fits (desktop), nothing shows. */
+.pd-scroll-shadow {
+  background:
+    linear-gradient(to right, #FFFFFF 30%, rgba(255, 255, 255, 0)) 0 0 / 32px 100% no-repeat,
+    linear-gradient(to left, #FFFFFF 30%, rgba(255, 255, 255, 0)) 100% 0 / 32px 100% no-repeat,
+    radial-gradient(farthest-side at 0 50%, rgba(27, 36, 48, 0.13), rgba(27, 36, 48, 0)) 0 0 / 16px 100% no-repeat,
+    radial-gradient(farthest-side at 100% 50%, rgba(27, 36, 48, 0.13), rgba(27, 36, 48, 0)) 100% 0 / 16px 100% no-repeat;
+  background-attachment: local, local, scroll, scroll;
+}
+
 /* Buttons — hover + pressed feedback (works over inline colors via filter/transform) */
 .pd-btn {
   transition: filter var(--pd-dur-base) var(--pd-ease),

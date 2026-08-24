@@ -149,10 +149,10 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
   if (finalPayFor) return <FinalPayView employee={finalPayFor} onBack={() => setFinalPayFor(null)} toast={toast} />;
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <H1 sub="Core registration fields only. Address, birthday, and contact details are masked from printed payroll sheets."
         action={<Btn icon={UserPlus} onClick={openAdd}>Register Employee</Btn>}>Employees</H1>
-      <div className="relative w-64 mb-3">
+      <div className="relative w-full sm:w-64 mb-3">
         <Search size={14} className="absolute left-3 top-2.5" color={T.soft} />
         <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search employees…"
           className={`${inputCls} pl-8`} style={inputStyle} />
@@ -194,8 +194,9 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
         ))}
       </div>
 
-      <Panel className="overflow-hidden">
-        <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 520 }}>
+      {/* Desktop: full table */}
+      <Panel className="overflow-hidden hidden md:block">
+        <div className="overflow-x-auto overflow-y-auto pd-scroll-shadow" style={{ maxHeight: 520 }}>
           <table className="w-full">
             <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}>
               <tr><Th>Employee</Th><Th>Position</Th><Th right>Daily Rate</Th><Th>Status</Th><Th>Actions</Th></tr>
@@ -239,9 +240,56 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
         </div>
       </Panel>
 
+      {/* Mobile: cards (same `rows` data, same handlers) */}
+      <div className="md:hidden space-y-2.5">
+        {rows.map(r => {
+          const crew = typeof r.crew === 'boolean' ? r.crew : isCrewPosition(r.position);
+          return (
+            <Panel key={r.id} className="p-3.5">
+              <div className="flex items-center gap-3">
+                <Av name={r.name} size={38} tone={crew ? T.brand : T.ink} />
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold truncate" style={{ fontFamily: F_BODY }}>{r.name}</div>
+                  <div className="text-xs truncate" style={{ color: T.soft }}>{positionLabel(r.position)} · <span style={{ fontFamily: F_MONO }}>{r.id}</span></div>
+                </div>
+                <Badge tone={r.status === 'Active' ? 'green' : 'neutral'}>{r.status}</Badge>
+              </div>
+              {describeEarlyShift(r) && (
+                <div className="mt-2.5">
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs"
+                    style={{ fontFamily: F_BODY, backgroundColor: T.warnBg, color: T.warn }}>
+                    <Clock size={10} />{describeEarlyShift(r)}
+                  </span>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3 mt-3 pt-3" style={{ borderTop: `1px solid ${T.lineSoft}` }}>
+                <div>
+                  <div className="text-xs" style={{ color: T.soft, letterSpacing: '0.05em' }}>DAILY RATE</div>
+                  <div className="font-semibold" style={{ fontFamily: F_MONO }}><Money value={r.rate} /></div>
+                </div>
+                <div>
+                  <div className="text-xs" style={{ color: T.soft, letterSpacing: '0.05em' }}>{crew ? 'TYPE' : 'LEAVE CREDITS'}</div>
+                  <div className="font-semibold text-sm" style={{ fontFamily: F_BODY }}>{crew ? 'Pakyawan' : `${r.leaveCredits ?? 0} days`}</div>
+                </div>
+              </div>
+              <div className="flex gap-2 flex-wrap mt-3">
+                <Btn size="sm" variant="outline" icon={Edit2} onClick={() => openEdit(r)}>Edit</Btn>
+                {!crew && (
+                  <Btn size="sm" variant="outline" icon={Receipt} onClick={() => setFinalPayFor(r)}>Final Pay</Btn>
+                )}
+                <Btn size="sm" variant="outline" onClick={() => setConfirm(r)}>{r.status === 'Active' ? 'Deactivate' : 'Activate'}</Btn>
+              </div>
+            </Panel>
+          );
+        })}
+        {rows.length === 0 && (
+          <Panel className="p-6"><div className="text-sm text-center" style={{ color: T.soft }}>No employees to show.</div></Panel>
+        )}
+      </div>
+
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit Employee' : 'Register Employee'} width={480}>
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="ID number*">
               <input value={form.id} onChange={e => ff('id', e.target.value)} placeholder="e.g. 7 (biometric ID)" className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
             </Field>
@@ -255,7 +303,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
               {POSITIONS.map(p => <option key={p} value={p}>{positionLabel(p)}</option>)}
             </select>
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Daily rate (₱)"><input type="number" value={form.rate} onChange={e => { const v = e.target.value; setForm(f => ({ ...f, rate: v, declaredSalary: (v === '' || isCrewPosition(f.position)) ? '' : String((parseFloat(v) || 0) * 26) })); }} className={inputCls} style={inputStyle} /></Field>
             <Field label="Status">
               <select value={form.status} onChange={e => ff('status', e.target.value)} className={inputCls} style={inputStyle}>
@@ -268,7 +316,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
               for office staff only; forced to 0 for crew on save. items-end keeps
               the two input boxes aligned even though the labels wrap differently. */}
           {!isCrewPosition(form.position) && (
-            <div className="grid grid-cols-2 gap-3 items-end">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
               <Field label="Declared monthly salary (₱)">
                 <input type="number" value={form.declaredSalary} onChange={e => ff('declaredSalary', e.target.value)} placeholder="e.g. daily rate × 26" className={inputCls} style={inputStyle} />
               </Field>
@@ -328,7 +376,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
               <Field label="Address">
                 <input value={form.address} onChange={e => ff('address', e.target.value)} placeholder="Brgy. Poblacion, Mabini, Batangas" className={inputCls} style={inputStyle} />
               </Field>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Field label="Contact number">
                   <input value={form.contact} onChange={e => ff('contact', e.target.value)} placeholder="09XX XXX XXXX" className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
                 </Field>

@@ -126,7 +126,7 @@ export const CheckerView = ({ currentUser, onUserChange, onSignedOut, deliveries
               {allTrips.length === 0 ? (
                 <EmptyState icon={Truck} title="No entries yet" desc="Log the first delivery above for any truck." />
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto pd-scroll-shadow">
                   <table className="w-full">
                     <thead><tr><Th>Date</Th><Th>Truck</Th><Th>Driver</Th><Th>Pahinante</Th><Th>Address</Th><Th right>Driver Earn</Th><Th>Trip</Th></tr></thead>
                     <tbody>{allTrips.slice().reverse().map((t, i) => {
@@ -172,7 +172,7 @@ export const CheckerView = ({ currentUser, onUserChange, onSignedOut, deliveries
               {histPeople.length === 0 ? (
                 <EmptyState icon={Truck} title="No deliveries" desc="No deliveries were logged on this day." />
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto pd-scroll-shadow">
                   <table className="w-full">
                     <thead><tr><Th>Name</Th><Th>Role</Th><Th center>Trips</Th><Th right>Piece Rate</Th><Th right>Daily</Th><Th right>Bonus</Th><Th right>Total</Th></tr></thead>
                     <tbody>

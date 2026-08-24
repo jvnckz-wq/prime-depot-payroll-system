@@ -140,7 +140,7 @@ export const FleetPanel = ({ toast }) => {
       </div>
 
       <Panel className="overflow-hidden mb-2">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto pd-scroll-shadow">
           <table className="w-full">
             <thead><tr><Th>Truck</Th><Th>Vehicle</Th><Th>Plate</Th><Th>Status</Th><Th right>Actions</Th></tr></thead>
             <tbody>

@@ -94,7 +94,7 @@ export const AccountsPanel = ({ currentUser, toast }) => {
       </div>
 
       <Panel className="overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto pd-scroll-shadow">
           <table className="w-full">
             <thead>
               <tr><Th>Username</Th><Th>Name</Th><Th>Role</Th><Th>Status</Th><Th>Last sign-in</Th><Th right>Actions</Th></tr>

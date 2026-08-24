@@ -64,7 +64,7 @@ export const FinalPayView = ({ employee, onBack, toast }) => {
   );
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="flex items-center justify-between mb-4">
         <button onClick={onBack} className="flex items-center gap-1.5 text-sm" style={{ fontFamily: F_BODY, color: T.soft }}>
           <ArrowLeft size={14} /> Back to Employees

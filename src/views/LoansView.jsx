@@ -59,7 +59,7 @@ export const LoansView = ({ staff, loans, reloadLoans, toast }) => {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <H1 sub="Staggered loans and daily advances (bali, allowances) — tracked separately from statutory micro-deductions."
         action={<Btn icon={Plus} onClick={() => setModal(true)}>Add Loan / Advance</Btn>}>Loans & Advances</H1>
       <div className="space-y-4">
@@ -101,18 +101,20 @@ export const LoansView = ({ staff, loans, reloadLoans, toast }) => {
                   {paid && <Badge tone="green">Fully Paid</Badge>}
                 </div>
               </div>
-              <table className="w-full">
-                <thead><tr><Th>Date</Th><Th>Type</Th><Th>Remarks</Th><Th right>Amount</Th><Th right>Balance After</Th></tr></thead>
-                <tbody>{ledger.map((en, i) => (
-                  <tr key={i}>
-                    <Td mono>{en.date}</Td>
-                    <Td><Badge tone={en.type === 'grant' ? 'blue' : 'red'}>{en.type === 'grant' ? 'Given' : 'Deducted'}</Badge></Td>
-                    <Td>{en.remark}</Td>
-                    <Td right mono style={{ color: en.type === 'grant' ? T.blue : T.red, fontWeight: 600 }}>{en.type === 'grant' ? '+' : '-'}{peso(en.amount)}</Td>
-                    <Td right mono>{peso(en.runningBalance)}</Td>
-                  </tr>
-                ))}</tbody>
-              </table>
+              <div className="overflow-x-auto pd-scroll-shadow">
+                <table className="w-full">
+                  <thead><tr><Th>Date</Th><Th>Type</Th><Th>Remarks</Th><Th right>Amount</Th><Th right>Balance After</Th></tr></thead>
+                  <tbody>{ledger.map((en, i) => (
+                    <tr key={i}>
+                      <Td mono>{en.date}</Td>
+                      <Td><Badge tone={en.type === 'grant' ? 'blue' : 'red'}>{en.type === 'grant' ? 'Given' : 'Deducted'}</Badge></Td>
+                      <Td>{en.remark}</Td>
+                      <Td right mono style={{ color: en.type === 'grant' ? T.blue : T.red, fontWeight: 600 }}>{en.type === 'grant' ? '+' : '-'}{peso(en.amount)}</Td>
+                      <Td right mono>{peso(en.runningBalance)}</Td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
             </Panel>
           );
         })}
@@ -129,7 +131,7 @@ export const LoansView = ({ staff, loans, reloadLoans, toast }) => {
               {['Cash Advance (Bali)', 'Cash Advance', 'School Allowance', 'SSS Salary Loan', 'Pag-IBIG Multi-Purpose Loan', 'Company Cash Advance'].map(t => <option key={t}>{t}</option>)}
             </select>
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Principal (₱)*"><input type="number" value={form.principal} onChange={e => ff('principal', e.target.value)} className={inputCls} style={inputStyle} /></Field>
             <Field label="Per-cutoff deduction (₱)"><input type="number" value={form.perCutoff} onChange={e => ff('perCutoff', e.target.value)} placeholder="Blank = full amount" className={inputCls} style={inputStyle} /></Field>
           </div>

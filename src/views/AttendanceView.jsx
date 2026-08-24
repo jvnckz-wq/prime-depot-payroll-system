@@ -220,7 +220,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
     const leave = rows.filter(r => r.leave).length;
 
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <button onClick={() => { setView('list'); setSelectedId(null); }} className="flex items-center gap-1.5 text-sm mb-4" style={{ fontFamily: F_BODY, color: T.soft }}>
           <ArrowLeft size={14} /> Back to Attendance
         </button>
@@ -249,7 +249,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
           {dtrLoading ? <SkeletonBlock avatar={false} />
             : rows.length === 0 ? <EmptyState icon={ClipboardList} title="No attendance yet" desc="Import a biometric .xls file to populate this employee's record." />
             : (
-            <table className="w-full">
+            <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
               <thead><tr><Th>Date</Th><Th>Time In</Th><Th>Time Out</Th><Th center>Late (mins)</Th><Th center>OT (mins)</Th><Th></Th></tr></thead>
               <tbody>
                 {rows.map((a) => {
@@ -283,7 +283,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
                   <Td></Td>
                 </tr>
               </tfoot>
-            </table>
+            </table></div>
           )}
         </Panel>
 
@@ -306,7 +306,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
                 <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Paid leave — counted toward pay like a present day, tracked against the employee&apos;s leave credits.</div>
               )}
               {editForm.status === 'present' && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label="Time In"><input type="time" value={editForm.timeIn} onChange={(e) => setEditForm((f) => ({ ...f, timeIn: e.target.value }))} className={inputCls} style={inputStyle} /></Field>
                   <Field label="Time Out"><input type="time" value={editForm.timeOut} onChange={(e) => setEditForm((f) => ({ ...f, timeOut: e.target.value }))} className={inputCls} style={inputStyle} /></Field>
                 </div>
@@ -328,7 +328,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
 
   // ===== List view =====
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <input ref={fileRef} type="file" accept=".xls,.xlsx" onChange={onFile} style={{ display: 'none' }} />
       <H1 sub="Imported from the biometric .xls export. Matched to employees by their biometric User ID.">Attendance</H1>
 
@@ -380,7 +380,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
             {loading ? <SkeletonBlock />
               : data.summaries.length === 0 ? <EmptyState icon={ClipboardList} title="No attendance yet" desc="Import a biometric .xls file to get started. Employees are matched by their biometric User ID." />
               : (
-              <table className="w-full">
+              <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
                 <thead><tr><Th>Employee</Th><Th center>Present</Th><Th center>Days Late</Th><Th center>Late (mins)</Th><Th center>OT (mins)</Th><Th center>Absences</Th><Th center>Leave</Th><Th>Action</Th></tr></thead>
                 <tbody>
                   {data.summaries.map(s => (
@@ -404,7 +404,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             )}
           </Panel>
         </>
@@ -418,7 +418,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
           {unmappedLoading ? <SkeletonBlock avatar={false} />
             : unmapped.length === 0 ? <EmptyState icon={ClipboardList} title="Nothing unmapped" desc="Every imported scan is matched to an employee." />
             : (
-            <table className="w-full">
+            <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
               <thead><tr><Th>Biometric ID</Th><Th>Name (from file)</Th><Th center>Scans</Th><Th>Dates</Th><Th>Action</Th></tr></thead>
               <tbody>
                 {unmapped.map((g) => (
@@ -442,7 +442,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           )}
         </Panel>
       )}
@@ -450,7 +450,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
       {subTab === 'history' && (
         <Panel className="overflow-hidden">
           {data.batches.length === 0 ? <EmptyState icon={ClipboardList} title="No imports yet" desc="Upload an attendance .xls file to get started." /> : (
-            <table className="w-full">
+            <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
               <thead><tr><Th>Imported</Th><Th>Filename</Th><Th>Period</Th><Th center>Mapped</Th><Th center>Unmapped</Th><Th>Status</Th><Th></Th></tr></thead>
               <tbody>{data.batches.map((b) => (
                 <tr key={b.id}>
@@ -463,7 +463,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
                   <Td>{b.periodStart ? <Btn size="sm" variant="outline" icon={Eye} onClick={() => openBatch(b)}>View</Btn> : null}</Td>
                 </tr>
               ))}</tbody>
-            </table>
+            </table></div>
           )}
         </Panel>
       )}
@@ -481,7 +481,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
             {batchLoading ? <SkeletonBlock avatar={false} />
               : batchRows.length === 0 ? <EmptyState icon={ClipboardList} title="No records" desc="No attendance rows fall in this import's date range." />
               : (
-              <div className="overflow-x-auto" style={{ maxHeight: 380 }}>
+              <div className="overflow-x-auto pd-scroll-shadow" style={{ maxHeight: 380 }}>
                 <table className="w-full">
                   <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}>
                     <tr><Th>Employee</Th><Th center>Present</Th><Th center>Days Late</Th><Th center>Late (mins)</Th><Th center>OT (mins)</Th><Th center>Absences</Th><Th center>Leave</Th><Th></Th></tr>
@@ -518,7 +518,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
             {histDtrLoading ? <SkeletonBlock avatar={false} />
               : histDtr.rows.length === 0 ? <EmptyState icon={ClipboardList} title="No records" desc="No daily records for this employee in this period." />
               : (
-              <div className="overflow-x-auto" style={{ maxHeight: 400 }}>
+              <div className="overflow-x-auto pd-scroll-shadow" style={{ maxHeight: 400 }}>
                 <table className="w-full">
                   <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}>
                     <tr><Th>Date</Th><Th>Day</Th><Th>Time In</Th><Th>Time Out</Th><Th center>Late</Th><Th center>OT</Th><Th>Status</Th></tr>

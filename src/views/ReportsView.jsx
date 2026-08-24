@@ -90,7 +90,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
   const tabs = [['register', 'Payroll Register'], ['remittance', "Gov't Remittance"], ['13th', '13th Month Pay'], ['drivers', 'Crew Earnings'], ['bir', 'BIR Reference']];
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <H1 sub="Payroll, government compliance, and delivery earnings reports.">Reports</H1>
       <div className="flex gap-1 mb-4 flex-wrap rounded-md p-0.5" style={{ backgroundColor: T.lineSoft, width: 'fit-content' }}>
         {tabs.map(([k, l]) => (
@@ -105,7 +105,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
             <Eyebrow>Payroll Register — {cutoffLabel || 'Current cutoff'}</Eyebrow>
             <Btn size="sm" variant="outline" icon={Download} onClick={exportRegister}>Export Excel</Btn>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto pd-scroll-shadow">
             <table className="w-full">
               <thead><tr><Th>Employee</Th><Th center>Days</Th><Th right>Gross</Th><Th right>OT</Th><Th right>Deductions</Th><Th right>Net Pay</Th></tr></thead>
               <tbody>{payrollRows.map((r, i) => (
@@ -128,10 +128,10 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
             <Eyebrow>Government Remittance — Employee Share</Eyebrow>
             <Btn size="sm" variant="outline" icon={Download} onClick={exportRemit}>Export Excel</Btn>
           </div>
-          <table className="w-full">
+          <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
             <thead><tr><Th>Employee</Th><Th right>SSS</Th><Th right>PhilHealth</Th><Th right>Pag-IBIG</Th><Th right>Total Withheld</Th></tr></thead>
             <tbody>{payrollRows.map((r, i) => <tr key={i}><Td>{r.emp.name}</Td><Td right mono>{peso(r.calc.sss)}</Td><Td right mono>{peso(r.calc.phic)}</Td><Td right mono>{peso(r.calc.hdmf)}</Td><Td right mono>{peso(r.calc.sss + r.calc.phic + r.calc.hdmf)}</Td></tr>)}</tbody>
-          </table>
+          </table></div>
           <div className="px-4 py-2.5 text-xs flex items-center gap-2" style={{ fontFamily: F_BODY, color: T.soft, borderTop: `1px solid ${T.line}` }}><AlertTriangle size={12} /> Estimated employee-share figures for this prototype. Add employer counterpart before remitting.</div>
         </Panel>
       )}
@@ -141,10 +141,10 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
             <Eyebrow>13th Month Pay — FY {new Date().getFullYear()} (Basic ÷ 12)</Eyebrow>
             <Btn size="sm" variant="outline" icon={Download} onClick={export13}>Export Excel</Btn>
           </div>
-          <table className="w-full">
+          <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
             <thead><tr><Th>Employee</Th><Th center>Months Worked</Th><Th right>Total Basic</Th><Th right>13th Month Pay</Th></tr></thead>
             <tbody>{T13.map((r, i) => <tr key={i}><Td>{r.name}</Td><Td center mono>{r.months}</Td><Td right mono>{peso(r.basic)}</Td><Td right mono>{peso(r.pay)}</Td></tr>)}</tbody>
-          </table>
+          </table></div>
         </Panel>
       )}
       {tab === 'drivers' && (
@@ -163,7 +163,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
             One row per person, totalled across every truck they rode. A pahinante who worked with two
             different drivers appears once here, not twice.
           </p>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto pd-scroll-shadow">
             <table className="w-full">
               <thead><tr><Th>Name</Th><Th>Role</Th><Th>Trucks</Th><Th center>Days</Th><Th center>Trips</Th><Th right>Daily</Th><Th right>Piece Rate</Th><Th right>Palima</Th><Th right>Total</Th></tr></thead>
               <tbody>{crewRows.map((r, i) => (
@@ -187,10 +187,10 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
       {tab === 'bir' && (
         <Panel className="overflow-hidden">
           <div className="px-4 py-2.5" style={{ borderBottom: `1px solid ${T.line}` }}><Eyebrow>BIR TRAIN Law — Withholding Tax Reference</Eyebrow></div>
-          <table className="w-full">
+          <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
             <thead><tr><Th>Over</Th><Th>Not Over</Th><Th right>Base Tax</Th><Th right>Rate on Excess</Th></tr></thead>
             <tbody>{statutory.bir.map((r, i) => <tr key={i}><Td mono>{peso(r.over)}</Td><Td mono>{r.notOver === null ? 'Above' : peso(r.notOver)}</Td><Td right mono>{peso(r.base)}</Td><Td right mono>{r.rate}%</Td></tr>)}</tbody>
-          </table>
+          </table></div>
           <div className="px-4 py-2.5 text-xs flex items-center gap-2" style={{ fontFamily: F_BODY, color: T.green, borderTop: `1px solid ${T.line}`, backgroundColor: T.greenBg }}><Check size={12} /> All current employees fall below the taxable threshold — ₱0 withholding tax.</div>
         </Panel>
       )}

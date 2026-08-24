@@ -287,7 +287,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
     const allowDirty = allowanceEdits[e.id] !== undefined && effAllow !== savedAllow;
     const calc = computeStaffPayroll({ ...e, allowance: effAllow }, loans, statutory, attById[selectedId], cutoffKey);
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="flex items-center justify-between mb-4">
           <button onClick={() => setView('list')} className="flex items-center gap-1.5 text-sm" style={{ fontFamily: F_BODY, color: T.soft }}>
             <ArrowLeft size={14} /> Back to Payroll
@@ -322,7 +322,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <H1 sub="Bi-monthly payroll, computed for each staff member from their current-cutoff attendance.">Staff Payroll</H1>
 
       <div className="flex gap-1 mb-4 rounded-md p-0.5" style={{ backgroundColor: T.lineSoft, width: 'fit-content' }}>
@@ -334,7 +334,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
 
       {subTab === 'current' && (
         <>
-          <div className="grid grid-cols-3 gap-4 mb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
             <StatCard label="Total Gross" value={peso(totalGross)} tone="blue" icon={Wallet} />
             <StatCard label="Total Net Pay" value={peso(totalNet)} tone="green" icon={Wallet} />
             <StatCard label="Employees Computed" value={staff.length} icon={Users} />
@@ -349,7 +349,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
                 <Btn size="sm" icon={Lock} loading={finalizing} disabled={!attPeriod || finalizing} onClick={() => setConfirmFinalize(true)}>{finalizing ? 'Finalizing…' : 'Finalize / Release'}</Btn>
               </div>
             </div>
-            <table className="w-full">
+            <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
               <thead><tr><Th>Employee</Th><Th center>Days</Th><Th right>Gross</Th><Th right>OT</Th><Th right>Deductions</Th><Th right>Net Pay</Th><Th>Payslip</Th></tr></thead>
               <tbody>
                 {loading ? <SkeletonRows cols={7} rows={5} /> : rows.map(({ emp, calc }) => (
@@ -379,7 +379,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
                   <Td />
                 </tr>
               </tfoot>
-            </table>
+            </table></div>
           </Panel>
         </>
       )}
@@ -394,7 +394,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
           ) : history.length === 0 ? (
             <div className="p-8 text-center text-sm" style={{ color: T.soft, fontFamily: F_BODY }}>No cut-offs have been finalized yet. Release one from the Current Cutoff tab.</div>
           ) : (
-            <table className="w-full">
+            <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
               <thead><tr><Th>Cut-off Period</Th><Th center>Employees</Th><Th right>Total Gross</Th><Th right>Total Net</Th><Th>Status</Th><Th></Th></tr></thead>
               <tbody>
                 {history.map((p) => (
@@ -408,7 +408,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           )}
         </Panel>
       )}
@@ -439,7 +439,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
             {viewPeriodLoading ? <SkeletonBlock avatar={false} />
               : viewPeriod.payslips.length === 0 ? <div className="p-6 text-center text-sm" style={{ color: T.soft, fontFamily: F_BODY }}>No payslips in this cut-off.</div>
               : (
-              <div className="overflow-x-auto" style={{ maxHeight: 420 }}>
+              <div className="overflow-x-auto pd-scroll-shadow" style={{ maxHeight: 420 }}>
                 <table className="w-full">
                   <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}>
                     <tr><Th>Employee</Th><Th center>Days</Th><Th right>Gross</Th><Th right>Deductions</Th><Th right>Net Pay</Th></tr>

@@ -131,7 +131,7 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut }) 
   if (user.role === 'ADMIN') tabs.push(['accounts', 'Account Access']);
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       {onBack && (
         <div className="mb-4">
           <Btn variant="outline" size="sm" icon={ArrowLeft} onClick={onBack}>Back</Btn>
@@ -191,7 +191,7 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut }) 
                 <input value={name} onChange={e => setName(e.target.value)} className={inputCls} style={inputStyle} />
               </Field>
             </div>
-            <div className="grid grid-cols-2 gap-3 mt-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
               <Field label="Username">
                 <input value={user.username} readOnly className={inputCls}
                   style={{ ...inputStyle, fontFamily: F_MONO, backgroundColor: T.bg, color: T.soft }} />
