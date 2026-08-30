@@ -43,7 +43,9 @@ function PasswordInput({ value, onChange, placeholder, autoComplete }) {
         className="absolute inset-y-0 right-0 flex items-center px-3"
         style={{ color: T.soft }}
       >
-        {show ? <EyeOff size={15} /> : <Eye size={15} />}
+        {/* Icon shows the STATE: hidden password → covered eye (EyeOff);
+            visible password → open eye (Eye). */}
+        {show ? <Eye size={15} /> : <EyeOff size={15} />}
       </button>
     </div>
   );

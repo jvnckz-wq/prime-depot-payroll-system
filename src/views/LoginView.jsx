@@ -1,8 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { AlertTriangle, Loader2, Eye, EyeOff } from 'lucide-react';
 import { F_BODY, F_HEAD, T } from '../theme';
+
+// Remembers, on this device, that the person already accepted the Terms — so a
+// returning user finds the box pre-checked instead of ticking it every sign-in.
+const TERMS_KEY = 'pd_terms_agreed';
 
 // Decorative Canva line-art for the crimson half (files live in /public/login).
 // Positions are percentages of the panel: the worker sits centre, tools scatter around it.
@@ -20,14 +24,26 @@ const ART = [
 export const LoginView = ({ onSignedIn, onShowLegal }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPw, setShowPw] = useState(false);
+  const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+
+  // Pre-check the Terms box if this device accepted them on a past sign-in.
+  // Read after mount so server and client render the same first paint.
+  useEffect(() => {
+    try { if (localStorage.getItem(TERMS_KEY) === '1') setAgreed(true); } catch { /* storage blocked — leave unchecked */ }
+  }, []);
 
   const submit = async () => {
     if (busy) return;
     setError('');
     if (!username.trim() || !password) {
       setError('Enter your username and password.');
+      return;
+    }
+    if (!agreed) {
+      setError('Please agree to the Terms and Conditions and Privacy Policy first.');
       return;
     }
     setBusy(true);
@@ -43,6 +59,8 @@ export const LoginView = ({ onSignedIn, onShowLegal }) => {
         setPassword('');
         return;
       }
+      // Remember the acceptance on this device for next time.
+      try { localStorage.setItem(TERMS_KEY, '1'); } catch { /* storage blocked — no memory, box just re-ticks next time */ }
       onSignedIn(data.user);
     } catch {
       setError('Could not reach the server. Check your connection and try again.');
@@ -90,17 +108,30 @@ export const LoginView = ({ onSignedIn, onShowLegal }) => {
           />
 
           <label className="block text-sm mb-1.5 mt-4" style={{ color: T.soft }}>Password</label>
-          <input
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            onKeyDown={onKeyDown}
-            aria-label="Password"
-            type="password"
-            autoComplete="current-password"
-            disabled={busy}
-            className="w-full px-4 py-2.5 rounded-lg text-sm outline-none"
-            style={fieldStyle}
-          />
+          <div className="relative">
+            <input
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              onKeyDown={onKeyDown}
+              aria-label="Password"
+              type={showPw ? 'text' : 'password'}
+              autoComplete="current-password"
+              disabled={busy}
+              className="w-full px-4 py-2.5 pr-11 rounded-lg text-sm outline-none"
+              style={fieldStyle}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPw(s => !s)}
+              tabIndex={-1}
+              aria-label={showPw ? 'Hide password' : 'Show password'}
+              className="absolute inset-y-0 right-0 flex items-center px-3"
+              style={{ color: T.soft }}
+            >
+              {/* Icon shows the STATE: hidden → covered eye; visible → open eye. */}
+              {showPw ? <Eye size={16} /> : <EyeOff size={16} />}
+            </button>
+          </div>
 
           {error && (
             <div
@@ -112,23 +143,37 @@ export const LoginView = ({ onSignedIn, onShowLegal }) => {
             </div>
           )}
 
+          {/* Explicit consent the panel asked for. Ticked automatically on a
+              device that has accepted before, so it is a one-time step per
+              browser rather than a friction on every sign-in. */}
+          <div className="flex items-start gap-2 mt-5 text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
+            <input
+              id="agree-terms"
+              type="checkbox"
+              checked={agreed}
+              onChange={e => setAgreed(e.target.checked)}
+              disabled={busy}
+              className="mt-0.5 shrink-0"
+              style={{ accentColor: T.brand, width: 15, height: 15 }}
+            />
+            <label htmlFor="agree-terms" className="cursor-pointer leading-snug">
+              I agree to the{' '}
+              <button type="button" onClick={() => onShowLegal('terms')} className="underline" style={{ color: T.brand }}>Terms and Conditions</button>
+              {' '}and{' '}
+              <button type="button" onClick={() => onShowLegal('privacy')} className="underline" style={{ color: T.brand }}>Privacy Policy</button>.
+            </label>
+          </div>
+
           <button
             onClick={submit}
-            disabled={busy}
+            disabled={busy || !agreed}
             data-variant="amber"
-            className="pd-btn w-full py-3 rounded-lg text-sm font-semibold inline-flex items-center justify-center gap-1.5 mt-6"
-            style={{ fontFamily: F_HEAD, backgroundColor: T.brand, color: '#fff', opacity: busy ? 0.6 : 1 }}
+            className="pd-btn w-full py-3 rounded-lg text-sm font-semibold inline-flex items-center justify-center gap-1.5 mt-4"
+            style={{ fontFamily: F_HEAD, backgroundColor: T.brand, color: '#fff', opacity: (busy || !agreed) ? 0.6 : 1, cursor: (busy || !agreed) ? 'not-allowed' : 'pointer' }}
           >
             {busy && <Loader2 size={14} className="pd-spin" />}
             {busy ? 'Signing in...' : 'Sign In'}
           </button>
-
-          <p className="text-center text-xs mt-5" style={{ fontFamily: F_BODY, color: T.soft }}>
-            By signing in you agree to the{' '}
-            <button onClick={() => onShowLegal('terms')} className="underline" style={{ color: T.brand }}>Terms and Conditions</button>
-            {' '}and{' '}
-            <button onClick={() => onShowLegal('privacy')} className="underline" style={{ color: T.brand }}>Privacy Policy</button>.
-          </p>
         </div>
       </div>
 
