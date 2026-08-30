@@ -75,15 +75,22 @@ button:disabled { cursor: not-allowed; }
 .pd-btn {
   transition: filter var(--pd-dur-base) var(--pd-ease),
     background-color var(--pd-dur-base) var(--pd-ease),
+    border-color var(--pd-dur-base) var(--pd-ease),
+    color var(--pd-dur-base) var(--pd-ease),
     transform var(--pd-dur-fast) var(--pd-ease),
     box-shadow var(--pd-dur-base) var(--pd-ease);
 }
 .pd-btn:not(:disabled):hover { filter: brightness(1.08); }
 .pd-btn:not(:disabled):active { transform: translateY(0.5px) scale(0.99); }
+/* White / outline (and ghost) buttons fill with crimson and flip their text to
+   white on hover. The Btn component sets its colours inline, which outrank a
+   normal stylesheet rule, so these overrides are marked !important to win. */
 .pd-btn[data-variant="outline"]:not(:disabled):hover,
 .pd-btn[data-variant="ghost"]:not(:disabled):hover {
   filter: none;
-  background-color: var(--pd-line-soft);
+  background-color: var(--pd-brand) !important;
+  border-color: var(--pd-brand) !important;
+  color: #fff !important;
 }
 
 /* Cards — subtle lift for clickable ones */
@@ -174,3 +181,18 @@ input::-ms-reveal,
 input::-ms-clear {
   display: none;
 }
+
+/* Clickable table rows (e.g. the dashboard payroll snapshot → Payroll). */
+.pd-clickable-row { transition: background-color 0.12s ease; }
+.pd-clickable-row:hover { background-color: var(--pd-bg, #F4F5F7); }
+
+/* Every button should feel alive. pd-btn and pd-nav-item already carry their own
+   richer hover; this covers all the plain text / link / tab / table-action
+   buttons (and gives native buttons the pointer cursor they lack by default),
+   so nothing interactive ever reads as dead. */
+button:not(:disabled) { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+button:not(.pd-btn):not(.pd-nav-item):not(:disabled) {
+  transition: opacity 0.12s ease, background-color 0.12s ease, color 0.12s ease;
+}
+button:not(.pd-btn):not(.pd-nav-item):not(:disabled):hover { opacity: 0.7; }

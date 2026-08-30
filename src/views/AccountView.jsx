@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { AlertTriangle, Check, CheckCircle2, Circle, Eye, EyeOff, KeyRound, LogOut, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Circle, Eye, EyeOff, KeyRound, ShieldCheck } from 'lucide-react';
 import { Btn, Confirm, Eyebrow, Field, Panel, inputCls, inputStyle } from '../components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
@@ -166,7 +166,7 @@ export const ChangePasswordPanel = ({ onDone, toast, compact = false }) => {
       )}
 
       <div className={compact ? 'mt-4' : 'mt-4 flex'}>
-        <Btn onClick={submit} icon={Check} loading={busy} disabled={busy} full={compact}>
+        <Btn onClick={submit} loading={busy} disabled={busy} full={compact}>
           {busy ? 'Saving...' : 'Change password'}
         </Btn>
       </div>
@@ -273,7 +273,7 @@ export const AccountView = ({ user, toast, onUserChange, onSignedOut }) => {
           </div>
           {nameChanged && (
             <div className="mt-3 flex gap-2">
-              <Btn size="sm" icon={Check} onClick={saveName} loading={savingName} disabled={savingName}>
+              <Btn size="sm" onClick={saveName} loading={savingName} disabled={savingName}>
                 {savingName ? 'Saving...' : 'Save name'}
               </Btn>
               <Btn size="sm" variant="outline" onClick={() => setName(user.displayName)}>Cancel</Btn>
@@ -302,7 +302,7 @@ export const AccountView = ({ user, toast, onUserChange, onSignedOut }) => {
             Last sign-in
             <div className="text-xs mt-0.5" style={{ fontFamily: F_MONO, color: T.soft }}>{fmt(user.lastLoginAt)}</div>
           </div>
-          <Btn size="sm" variant="outline" icon={LogOut} onClick={() => setConfirmSignOut(true)}>
+          <Btn size="sm" variant="outline" onClick={() => setConfirmSignOut(true)}>
             Sign out everywhere
           </Btn>
         </div>

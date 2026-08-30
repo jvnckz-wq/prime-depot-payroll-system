@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Edit2, Save, UserPlus, Clock, Receipt } from 'lucide-react';
+import { Search, Save, Clock } from 'lucide-react';
 import { Av, Badge, Btn, Confirm, Eyebrow, Field, H1, Modal, Money, Panel, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { POSITIONS, positionLabel } from '../data/seed';
 import { isCrewPosition } from '../lib/payroll';
@@ -151,7 +151,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
   return (
     <div className="p-4 sm:p-6">
       <H1 sub="Core registration fields only. Address, birthday, and contact details are masked from printed payroll sheets."
-        action={<Btn icon={UserPlus} onClick={openAdd}>Register Employee</Btn>}>Employees</H1>
+        action={<Btn onClick={openAdd}>Register Employee</Btn>}>Employees</H1>
       <div className="relative w-full sm:w-64 mb-3">
         <Search size={14} className="absolute left-3 top-2.5" color={T.soft} />
         <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search employees…"
@@ -226,9 +226,9 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
                   <Td><Badge tone={r.status === 'Active' ? 'green' : 'neutral'}>{r.status}</Badge></Td>
                   <Td>
                     <div className="flex gap-2 flex-wrap">
-                      <Btn size="sm" variant="outline" icon={Edit2} onClick={() => openEdit(r)}>Edit</Btn>
+                      <Btn size="sm" variant="outline" onClick={() => openEdit(r)}>Edit</Btn>
                       {!(typeof r.crew === 'boolean' ? r.crew : isCrewPosition(r.position)) && (
-                        <Btn size="sm" variant="outline" icon={Receipt} onClick={() => setFinalPayFor(r)}>Final Pay</Btn>
+                        <Btn size="sm" variant="outline" onClick={() => setFinalPayFor(r)}>Final Pay</Btn>
                       )}
                       <Btn size="sm" variant="outline" onClick={() => setConfirm(r)}>{r.status === 'Active' ? 'Deactivate' : 'Activate'}</Btn>
                     </div>
@@ -273,9 +273,9 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
                 </div>
               </div>
               <div className="flex gap-2 flex-wrap mt-3">
-                <Btn size="sm" variant="outline" icon={Edit2} onClick={() => openEdit(r)}>Edit</Btn>
+                <Btn size="sm" variant="outline" onClick={() => openEdit(r)}>Edit</Btn>
                 {!crew && (
-                  <Btn size="sm" variant="outline" icon={Receipt} onClick={() => setFinalPayFor(r)}>Final Pay</Btn>
+                  <Btn size="sm" variant="outline" onClick={() => setFinalPayFor(r)}>Final Pay</Btn>
                 )}
                 <Btn size="sm" variant="outline" onClick={() => setConfirm(r)}>{r.status === 'Active' ? 'Deactivate' : 'Activate'}</Btn>
               </div>
@@ -397,7 +397,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
           </div>
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="outline" onClick={() => setModal(false)} disabled={busy}>Cancel</Btn>
-            <Btn icon={Save} onClick={save} loading={busy} disabled={busy}>{busy ? 'Saving…' : editing ? 'Save changes' : 'Register'}</Btn>
+            <Btn onClick={save} loading={busy} disabled={busy}>{busy ? 'Saving…' : editing ? 'Save changes' : 'Register'}</Btn>
           </div>
         </div>
       </Modal>

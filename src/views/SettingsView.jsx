@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Plus, Check, Edit2, Save, Trash2, Copy, KeyRound, UserX, UserCheck, ShieldCheck, Download, FileSpreadsheet } from 'lucide-react';
+import { Plus, Check, Save, Trash2, Download } from 'lucide-react';
 import { Badge, Btn, Eyebrow, Field, H1, Money, Panel, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { computePagIBIG, computePhilHealth, computeSSS } from '../lib/payroll';
 import { exportXLSX, peso } from '../lib/utils';
@@ -123,10 +123,10 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
               <Eyebrow>SSS Contribution Table — employee share by declared monthly salary</Eyebrow>
               {editSss ? (
                 <div className="flex gap-2">
-                  <Btn size="sm" icon={Save} onClick={async () => { if (await saveTable('sss', sssDraft, 'SSS table')) { setSssTable(sssDraft); setEditSss(false); } }}>Save</Btn>
+                  <Btn size="sm" onClick={async () => { if (await saveTable('sss', sssDraft, 'SSS table')) { setSssTable(sssDraft); setEditSss(false); } }}>Save</Btn>
                   <Btn size="sm" variant="outline" onClick={() => { setSssDraft(sssTable); setEditSss(false); }}>Cancel</Btn>
                 </div>
-              ) : <Btn size="sm" variant="outline" icon={Edit2} onClick={() => { setSssDraft(sssTable); setEditSss(true); }}>Edit</Btn>}
+              ) : <Btn size="sm" variant="outline" onClick={() => { setSssDraft(sssTable); setEditSss(true); }}>Edit</Btn>}
             </div>
             <div className="overflow-y-auto" style={{ maxHeight: 340 }}>
               <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
@@ -168,10 +168,10 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
               <Eyebrow>PhilHealth — % of declared salary, split 50/50 employer/employee</Eyebrow>
               {editPh ? (
                 <div className="flex gap-2">
-                  <Btn size="sm" icon={Save} onClick={async () => { if (await saveTable('philhealth', phDraft, 'PhilHealth rate')) { setPhilhealthRates(phDraft); setEditPh(false); } }}>Save</Btn>
+                  <Btn size="sm" onClick={async () => { if (await saveTable('philhealth', phDraft, 'PhilHealth rate')) { setPhilhealthRates(phDraft); setEditPh(false); } }}>Save</Btn>
                   <Btn size="sm" variant="outline" onClick={() => { setPhDraft(philhealthRates); setEditPh(false); }}>Cancel</Btn>
                 </div>
-              ) : <Btn size="sm" variant="outline" icon={Edit2} onClick={() => { setPhDraft(philhealthRates); setEditPh(true); }}>Edit</Btn>}
+              ) : <Btn size="sm" variant="outline" onClick={() => { setPhDraft(philhealthRates); setEditPh(true); }}>Edit</Btn>}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4">
               {[['rate', 'Premium rate (%)'], ['floor', 'Salary floor (₱)'], ['ceiling', 'Salary ceiling (₱)']].map(([k, l]) => (
@@ -189,10 +189,10 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
                 <Eyebrow>Pag-IBIG (HDMF)</Eyebrow>
                 {editPi ? (
                   <div className="flex gap-2">
-                    <Btn size="sm" icon={Save} onClick={async () => { if (await saveTable('pagibig', piDraft, 'Pag-IBIG rates')) { setPagibigRates(piDraft); setEditPi(false); } }}>Save</Btn>
+                    <Btn size="sm" onClick={async () => { if (await saveTable('pagibig', piDraft, 'Pag-IBIG rates')) { setPagibigRates(piDraft); setEditPi(false); } }}>Save</Btn>
                     <Btn size="sm" variant="outline" onClick={() => { setPiDraft(pagibigRates); setEditPi(false); }}>Cancel</Btn>
                   </div>
-                ) : <Btn size="sm" variant="outline" icon={Edit2} onClick={() => { setPiDraft(pagibigRates); setEditPi(true); }}>Edit</Btn>}
+                ) : <Btn size="sm" variant="outline" onClick={() => { setPiDraft(pagibigRates); setEditPi(true); }}>Edit</Btn>}
               </div>
               <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
                 <thead><tr><Th>Salary up to (₱)</Th><Th right>Employee %</Th></tr></thead>
@@ -221,10 +221,10 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
                 <Eyebrow>BIR Withholding Tax Brackets</Eyebrow>
                 {editBir ? (
                   <div className="flex gap-2">
-                    <Btn size="sm" icon={Save} onClick={async () => { if (await saveTable('bir', birDraft, 'BIR table')) { setBirTable(birDraft); setEditBir(false); } }}>Save</Btn>
+                    <Btn size="sm" onClick={async () => { if (await saveTable('bir', birDraft, 'BIR table')) { setBirTable(birDraft); setEditBir(false); } }}>Save</Btn>
                     <Btn size="sm" variant="outline" onClick={() => { setBirDraft(birTable); setEditBir(false); }}>Cancel</Btn>
                   </div>
-                ) : <Btn size="sm" variant="outline" icon={Edit2} onClick={() => { setBirDraft(birTable); setEditBir(true); }}>Edit</Btn>}
+                ) : <Btn size="sm" variant="outline" onClick={() => { setBirDraft(birTable); setEditBir(true); }}>Edit</Btn>}
               </div>
               <div className="overflow-x-auto pd-scroll-shadow">
                 <table className="w-full">
@@ -263,8 +263,8 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
             Neon&apos;s free tier keeps no automatic backups, so download a copy regularly — especially before your defense. The <b>.json</b> file is a complete, restorable snapshot of every record (passwords and login sessions are never included). The <b>.xlsx</b> workbook is a readable copy of the main tables for review.
           </div>
           <div className="flex gap-2 flex-wrap">
-            <Btn icon={Download} disabled={exporting} onClick={exportJSON}>{exporting ? 'Preparing…' : 'Download full backup (.json)'}</Btn>
-            <Btn variant="outline" icon={FileSpreadsheet} disabled={exporting} onClick={exportExcel}>{exporting ? 'Preparing…' : 'Download Excel workbook (.xlsx)'}</Btn>
+            <Btn disabled={exporting} onClick={exportJSON}>{exporting ? 'Preparing…' : 'Download full backup (.json)'}</Btn>
+            <Btn variant="outline" disabled={exporting} onClick={exportExcel}>{exporting ? 'Preparing…' : 'Download Excel workbook (.xlsx)'}</Btn>
           </div>
           {lastExport && <div className="text-xs mt-3" style={{ fontFamily: F_BODY, color: T.soft }}>Last export: {lastExport}</div>}
         </Panel>

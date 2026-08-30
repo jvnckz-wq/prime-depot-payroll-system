@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { AlertTriangle, Check, Download } from 'lucide-react';
+import { AlertTriangle, Check } from 'lucide-react';
 import { Badge, Btn, EmptyState, Eyebrow, H1, Panel, Skeleton, Td, Th } from '../components/ui.jsx';
 import { CREW_RATE_FALLBACK, positionLabel } from '../data/seed';
 import { computeStaffPayroll, crewEarnings, deliveriesToLog } from '../lib/payroll';
@@ -103,7 +103,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
         <Panel className="overflow-hidden">
           <div className="px-4 py-2.5 flex justify-between items-center" style={{ borderBottom: `1px solid ${T.line}` }}>
             <Eyebrow>Payroll Register — {cutoffLabel || 'Current cutoff'}</Eyebrow>
-            <Btn size="sm" variant="outline" icon={Download} onClick={exportRegister}>Export Excel</Btn>
+            <Btn size="sm" variant="outline" onClick={exportRegister}>Export Excel</Btn>
           </div>
           <div className="overflow-x-auto pd-scroll-shadow">
             <table className="w-full">
@@ -126,7 +126,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
         <Panel className="overflow-hidden">
           <div className="px-4 py-2.5 flex justify-between items-center" style={{ borderBottom: `1px solid ${T.line}` }}>
             <Eyebrow>Government Remittance — Employee Share</Eyebrow>
-            <Btn size="sm" variant="outline" icon={Download} onClick={exportRemit}>Export Excel</Btn>
+            <Btn size="sm" variant="outline" onClick={exportRemit}>Export Excel</Btn>
           </div>
           <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
             <thead><tr><Th>Employee</Th><Th right>SSS</Th><Th right>PhilHealth</Th><Th right>Pag-IBIG</Th><Th right>Total Withheld</Th></tr></thead>
@@ -139,7 +139,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
         <Panel className="overflow-hidden">
           <div className="px-4 py-2.5 flex justify-between items-center" style={{ borderBottom: `1px solid ${T.line}` }}>
             <Eyebrow>13th Month Pay — FY {new Date().getFullYear()} (Basic ÷ 12)</Eyebrow>
-            <Btn size="sm" variant="outline" icon={Download} onClick={export13}>Export Excel</Btn>
+            <Btn size="sm" variant="outline" onClick={export13}>Export Excel</Btn>
           </div>
           <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
             <thead><tr><Th>Employee</Th><Th center>Months Worked</Th><Th right>Total Basic</Th><Th right>13th Month Pay</Th></tr></thead>
@@ -157,7 +157,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
               <input type="date" max={todayStr} value={to} onChange={e => setTo(e.target.value)} className="px-3 py-2 rounded border text-sm" style={{ borderColor: T.line, fontFamily: F_MONO, minWidth: 168, colorScheme: 'light', color: T.ink, backgroundColor: T.surface }} />
               {loadingRange && <Skeleton w={72} h={11} />}
             </div>
-            <Btn size="sm" variant="outline" icon={Download} onClick={exportDriver}>Export Excel</Btn>
+            <Btn size="sm" variant="outline" onClick={exportDriver}>Export Excel</Btn>
           </div>
           <p className="text-xs px-4 pb-3" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
             One row per person, totalled across every truck they rode. A pahinante who worked with two

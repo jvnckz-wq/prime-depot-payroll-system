@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Users, Wallet, ArrowLeft, Printer, Eye, Lock } from 'lucide-react';
+import { Users, Wallet, ArrowLeft } from 'lucide-react';
 import { Av, Badge, Btn, Confirm, Eyebrow, H1, Modal, Money, Panel, SkeletonBlock, SkeletonRows, StatCard, Td, Th } from '../components/ui.jsx';
 import { computePagIBIG, computeStaffPayroll, loanBalance } from '../lib/payroll';
 import { peso } from '../lib/utils';
@@ -9,7 +9,7 @@ import { F_BODY, F_HEAD, F_MONO, F_SERIF, T } from '../theme';
 
 // One payslip, reused by the single-print view and the batch "Print All" run so
 // the two never drift. Renders the client's exact approved layout.
-const PayslipCard = ({ e, calc, cutoffLabel, attPeriod, statutory, className = 'max-w-md', ...rest }) => (
+const PayslipCard = ({ e, calc, cutoffLabel, attPeriod, att, statutory, className = 'max-w-md', ...rest }) => (
   <Panel className={`${className} overflow-hidden`} {...rest}>
     <div className="px-6 pt-6 pb-4 text-center" style={{ borderBottom: `2px solid ${T.brand}` }}>
       <div className="font-bold" style={{ fontFamily: F_SERIF, color: T.brand, fontSize: 22, letterSpacing: '0.02em' }}>PRIME DEPOT HARDWARE</div>
@@ -30,6 +30,13 @@ const PayslipCard = ({ e, calc, cutoffLabel, attPeriod, statutory, className = '
           ? <span style={{ color: T.green }}>Days present, tardiness, and OT from imported attendance{attPeriod ? ` (${attPeriod.start} → ${attPeriod.end})` : ''}.</span>
           : <span style={{ color: T.amber }}>⚠ No attendance imported for this person — figures are an estimate ({calc.days} days assumed).</span>}
       </div>
+      {/* Attendance basis — the exact record behind Days Present, Tardiness and
+          OT, so a payslip can be traced to its source at a glance. */}
+      {calc.hasAttendance && att && (
+        <div className="mb-2 px-2.5 py-1.5 rounded text-xs" style={{ backgroundColor: T.bg, fontFamily: F_MONO, color: T.soft }}>
+          Present {att.present}{att.leave ? ` · Leave ${att.leave}` : ''} · Late {att.daysLate}d/{Math.round(att.lateMins || 0)}min · OT {Math.round(att.otWeekdayMins || 0)}min wkdy / {Math.round(att.otWeekendMins || 0)}min wknd
+        </div>
+      )}
       {[['Basic Rate (Daily):', peso(e.rate)], ['Days Present:', String(calc.days)], ['Gross Salary:', peso(calc.gross)]].map(([l, v], i) => (
         <div key={i} className="flex justify-between text-sm py-1" style={{ fontFamily: F_BODY }}>
           <span style={{ color: T.ink }}>{l}</span>
@@ -205,7 +212,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
 
   // A ₱0 daily rate means no salary is set yet, so that person isn't part of
   // this payroll run — keep them out of the list, the totals, and the snapshot.
-  const rows = staff.filter(e => Number(e.rate) > 0).map(e => ({ emp: e, calc: computeStaffPayroll(e, loans, statutory, attById[e.id], cutoffKey) }));
+  const rows = staff.filter(e => Number(e.rate) > 0).map(e => ({ emp: e, calc: computeStaffPayroll(e, loans, statutory, attById[e.id], cutoffKey), att: attById[e.id] || null }));
   const totalGross = rows.reduce((s, r) => s + r.calc.gross, 0);
   const totalNet = rows.reduce((s, r) => s + r.calc.net, 0);
 
@@ -292,7 +299,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
           <button onClick={() => setView('list')} className="flex items-center gap-1.5 text-sm" style={{ fontFamily: F_BODY, color: T.soft }}>
             <ArrowLeft size={14} /> Back to Payroll
           </button>
-          <Btn variant="outline" icon={Printer} onClick={() => window.print()}>Print</Btn>
+          <Btn variant="outline" onClick={() => window.print()}>Print</Btn>
         </div>
 
         <div className="no-print mb-4 flex items-center flex-wrap gap-3 p-3 rounded" style={{ backgroundColor: T.bg, border: `1px solid ${T.line}` }}>
@@ -316,7 +323,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
           }
         `}</style>
 
-        <PayslipCard id="staff-payslip" e={e} calc={calc} cutoffLabel={cutoffLabel} attPeriod={attPeriod} statutory={statutory} />
+        <PayslipCard id="staff-payslip" e={e} calc={calc} cutoffLabel={cutoffLabel} attPeriod={attPeriod} att={attById[selectedId]} statutory={statutory} />
       </div>
     );
   }
@@ -344,9 +351,9 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
               <Eyebrow>Payslips — {cutoffLabel}</Eyebrow>
               <div className="flex items-center gap-2">
                 <Badge tone={attPeriod ? 'green' : 'amber'}>{attPeriod ? `DTR ${attPeriod.start} → ${attPeriod.end}` : 'No attendance imported'}</Badge>
-                <Btn size="sm" variant="outline" icon={Printer} disabled={rows.length === 0 || printAll} onClick={() => setPrintAll(true)}>{printAll ? 'Preparing…' : 'Print All Payslips'}</Btn>
-                <Btn size="sm" variant="outline" icon={Wallet} disabled={dueLoans.length === 0} onClick={() => setConfirmApply(true)}>Apply Cutoff Deductions</Btn>
-                <Btn size="sm" icon={Lock} loading={finalizing} disabled={!attPeriod || finalizing} onClick={() => setConfirmFinalize(true)}>{finalizing ? 'Finalizing…' : 'Finalize / Release'}</Btn>
+                <Btn size="sm" variant="outline" disabled={rows.length === 0 || printAll} onClick={() => setPrintAll(true)}>{printAll ? 'Preparing…' : 'Print All Payslips'}</Btn>
+                <Btn size="sm" variant="outline" disabled={dueLoans.length === 0} onClick={() => setConfirmApply(true)}>Apply Cutoff Deductions</Btn>
+                <Btn size="sm" loading={finalizing} disabled={!attPeriod || finalizing} onClick={() => setConfirmFinalize(true)}>{finalizing ? 'Finalizing…' : 'Finalize / Release'}</Btn>
               </div>
             </div>
             <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
@@ -366,7 +373,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
                     <Td right mono><span style={{ color: T.green, fontWeight: 600 }}>+{peso(calc.ot)}</span></Td>
                     <Td right mono><span style={{ color: T.red, fontWeight: 600 }}>-{peso(calc.totalDeductions)}</span></Td>
                     <Td right mono><b>{peso(calc.net)}</b></Td>
-                    <Td><Btn size="sm" variant="outline" icon={Eye} onClick={() => { setSelectedId(emp.id); setView('slip'); }}>View</Btn></Td>
+                    <Td><Btn size="sm" variant="outline" onClick={() => { setSelectedId(emp.id); setView('slip'); }}>View</Btn></Td>
                   </tr>
                 ))}
               </tbody>
@@ -404,7 +411,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
                     <Td right mono>{peso(p.totalGross)}</Td>
                     <Td right mono>{peso(p.totalNet)}</Td>
                     <Td><Badge tone="green">Released</Badge></Td>
-                    <Td><div className="flex gap-1.5 justify-end"><Btn size="sm" variant="outline" icon={Eye} onClick={() => openPeriod(p)}>View</Btn><Btn size="sm" variant="outline" onClick={() => setConfirmUnfinalize(p)}>Un-finalize</Btn></div></Td>
+                    <Td><div className="flex gap-1.5 justify-end"><Btn size="sm" variant="outline" onClick={() => openPeriod(p)}>View</Btn><Btn size="sm" variant="outline" onClick={() => setConfirmUnfinalize(p)}>Un-finalize</Btn></div></Td>
                   </tr>
                 ))}
               </tbody>
@@ -477,9 +484,9 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
             }
           `}</style>
           <div id="staff-payslip-batch" style={{ position: 'absolute', left: '-9999px', top: 0 }} aria-hidden="true">
-            {rows.map(({ emp, calc }) => (
+            {rows.map(({ emp, calc, att }) => (
               <div key={emp.id} className="payslip-page" style={{ display: 'flex', justifyContent: 'center', padding: '12px 0' }}>
-                <PayslipCard e={emp} calc={calc} cutoffLabel={cutoffLabel} attPeriod={attPeriod} statutory={statutory} />
+                <PayslipCard e={emp} calc={calc} cutoffLabel={cutoffLabel} attPeriod={attPeriod} att={att} statutory={statutory} />
               </div>
             ))}
           </div>

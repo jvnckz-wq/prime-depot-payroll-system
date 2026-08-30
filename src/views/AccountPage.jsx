@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import { AlertTriangle, ArrowLeft, Camera, Check, LogOut, ShieldCheck, Trash2 } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import { Btn, Confirm, Eyebrow, Field, Panel, inputCls, inputStyle } from '../components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 import { ChangePasswordPanel } from './AccountView.jsx';
@@ -134,7 +134,7 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut }) 
     <div className="p-4 sm:p-6">
       {onBack && (
         <div className="mb-4">
-          <Btn variant="outline" size="sm" icon={ArrowLeft} onClick={onBack}>Back</Btn>
+          <Btn variant="outline" size="sm" onClick={onBack}>Back</Btn>
         </div>
       )}
 
@@ -172,11 +172,11 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut }) 
               <Avatar user={user} size={96} />
               <div className="flex flex-col gap-2">
                 <input ref={fileRef} type="file" accept="image/*" onChange={onPickFile} style={{ display: 'none' }} />
-                <Btn size="sm" icon={Camera} onClick={() => fileRef.current?.click()} loading={uploading} disabled={uploading}>
+                <Btn size="sm" onClick={() => fileRef.current?.click()} loading={uploading} disabled={uploading}>
                   {uploading ? 'Working...' : user.avatar ? 'Change picture' : 'Upload picture'}
                 </Btn>
                 {user.avatar && (
-                  <Btn size="sm" variant="outline" icon={Trash2} onClick={() => setConfirmRemovePic(true)} disabled={uploading}>
+                  <Btn size="sm" variant="outline" onClick={() => setConfirmRemovePic(true)} disabled={uploading}>
                     Remove
                   </Btn>
                 )}
@@ -203,7 +203,7 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut }) 
             </div>
             {nameChanged && (
               <div className="mt-4 flex gap-2">
-                <Btn size="sm" icon={Check} onClick={saveName} loading={savingName} disabled={savingName}>
+                <Btn size="sm" onClick={saveName} loading={savingName} disabled={savingName}>
                   {savingName ? 'Saving...' : 'Save changes'}
                 </Btn>
                 <Btn size="sm" variant="outline" onClick={() => setName(user.displayName)}>Cancel</Btn>
@@ -230,7 +230,7 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut }) 
                 Last sign-in
                 <div className="text-xs mt-0.5" style={{ fontFamily: F_MONO, color: T.soft }}>{fmt(user.lastLoginAt)}</div>
               </div>
-              <Btn size="sm" variant="outline" icon={LogOut} onClick={() => setConfirmSignOut(true)}>
+              <Btn size="sm" variant="outline" onClick={() => setConfirmSignOut(true)}>
                 Sign out everywhere
               </Btn>
             </div>

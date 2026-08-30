@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Wallet, Plus, Package, ArrowLeft, Printer, Edit2, Save, Trash2, Check, AlertTriangle, MapPin, Phone } from 'lucide-react';
+import { Package, ArrowLeft, Trash2, AlertTriangle, MapPin, Phone } from 'lucide-react';
 import { DeliveryForm } from '../components/DeliveryForm.jsx';
 import { Av, Badge, Btn, Confirm, EmptyState, Eyebrow, Field, H1, Modal, Panel, Skeleton, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { CREW_RATE_FALLBACK } from '../data/seed';
@@ -358,13 +358,13 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {readOnly ? <Badge tone="amber">History · {viewDate}</Badge> : <Btn variant="outline" size="sm" icon={Plus} onClick={() => setLogOpen(true)}>Log Delivery</Btn>}
+              {readOnly ? <Badge tone="amber">History · {viewDate}</Badge> : <Btn variant="outline" size="sm" onClick={() => setLogOpen(true)}>Log Delivery</Btn>}
               <div className="px-3 py-1.5 rounded text-sm font-semibold tabular-nums" style={{ fontFamily: F_MONO, backgroundColor: T.ink, color: '#fff' }}>{crew.plate}</div>
             </div>
           </div>
         </Panel>
         {!log ? (
-          <Panel><EmptyState icon={Package} title="No deliveries logged" desc={readOnly ? 'No deliveries were logged for this truck on this day.' : 'No Checker has logged a delivery for this truck yet today.'} action={readOnly ? undefined : <Btn icon={Plus} onClick={() => setLogOpen(true)}>Log a delivery</Btn>} /></Panel>
+          <Panel><EmptyState icon={Package} title="No deliveries logged" desc={readOnly ? 'No deliveries were logged for this truck on this day.' : 'No Checker has logged a delivery for this truck yet today.'} action={readOnly ? undefined : <Btn onClick={() => setLogOpen(true)}>Log a delivery</Btn>} /></Panel>
         ) : (
           <Panel className="overflow-hidden">
             <div className="overflow-x-auto pd-scroll-shadow">
@@ -461,7 +461,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
             `}</style>
             <div className="flex items-center justify-between mb-2 mt-4 no-print">
               <Eyebrow>Payslips — {crew.id}</Eyebrow>
-              <Btn variant="outline" size="sm" icon={Printer} onClick={() => window.print()}>Print truck payslip</Btn>
+              <Btn variant="outline" size="sm" onClick={() => window.print()}>Print truck payslip</Btn>
             </div>
 
             {/* ===== Truck payslip — matches the client's TRUCK_PAYROLL sheet ===== */}
@@ -567,7 +567,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                   placeholder="e.g. wrong quantity, wrong truck" className={inputCls} style={inputStyle} />
               </Field>
               <div className="flex gap-2 mt-4">
-                <Btn onClick={submitVoid} icon={Check} loading={voiding} disabled={voiding || voidReason.trim().length < 3}>
+                <Btn onClick={submitVoid} loading={voiding} disabled={voiding || voidReason.trim().length < 3}>
                   {voiding ? 'Voiding...' : 'Void delivery'}
                 </Btn>
                 <Btn variant="outline" onClick={() => setVoidTarget(null)}>Cancel</Btn>
@@ -634,8 +634,8 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
           : 'Log the crew’s trips per day and manage the piece-rate table.'}
         action={readOnly ? null : <div className="flex items-center gap-2">
           {payslipsMode
-            ? <Btn variant="outline" icon={Wallet} disabled={dueLoans.length === 0} onClick={() => setConfirmApply(true)}>Apply Today&apos;s Deductions</Btn>
-            : <Btn icon={Plus} onClick={() => setLogOpen(true)}>Log Delivery</Btn>}
+            ? <Btn variant="outline" disabled={dueLoans.length === 0} onClick={() => setConfirmApply(true)}>Apply Today&apos;s Deductions</Btn>
+            : <Btn onClick={() => setLogOpen(true)}>Log Delivery</Btn>}
         </div>}>{payslipsMode ? 'Crew Payroll — Piece-rate' : 'Deliveries — Piece-rate'}</H1>
 
       {/* Which day are we looking at — today (live) or a past day from history */}
@@ -662,11 +662,11 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
           <Eyebrow>Piece-Rate Table</Eyebrow>
           {editingRates ? (
             <div className="flex gap-2">
-              <Btn size="sm" icon={Plus} variant="outline" onClick={() => setAddRateOpen(true)}>Add item</Btn>
-              <Btn size="sm" icon={Save} onClick={saveRates}>Save</Btn>
+              <Btn size="sm" variant="outline" onClick={() => setAddRateOpen(true)}>Add item</Btn>
+              <Btn size="sm" onClick={saveRates}>Save</Btn>
               <Btn size="sm" variant="outline" onClick={() => { setRatesDraft(rates); setEditingRates(false); }}>Cancel</Btn>
             </div>
-          ) : <Btn size="sm" variant="outline" icon={Edit2} onClick={() => { setRatesDraft(rates.map(r => ({ ...r, _custom: isCustomDouble(r) }))); setEditingRates(true); }}>Edit</Btn>}
+          ) : <Btn size="sm" variant="outline" onClick={() => { setRatesDraft(rates.map(r => ({ ...r, _custom: isCustomDouble(r) }))); setEditingRates(true); }}>Edit</Btn>}
         </div>
         <div className="overflow-auto pd-scroll-shadow" style={{ maxHeight: 440 }}><table className="w-full">
           <thead className="sticky top-0 z-10" style={{ backgroundColor: T.surface }}><tr><Th>Category</Th><Th>Unit</Th><Th right>Single — Drv</Th><Th right>Single — Hlp</Th><Th right>Double — Drv</Th><Th right>Double — Hlp</Th>{editingRates && <Th center>Double</Th>}{editingRates && <Th right>Retire</Th>}</tr></thead>
@@ -802,7 +802,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                 }
               `}</style>
               <div className="flex justify-end mb-3 no-print">
-                <Btn variant="outline" size="sm" icon={Printer} onClick={() => window.print()}>Print this payslip</Btn>
+                <Btn variant="outline" size="sm" onClick={() => window.print()}>Print this payslip</Btn>
               </div>
               <div id="person-slip">
                 <Panel className="overflow-hidden">
@@ -898,7 +898,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
           </div>
         )}
         <div className="flex gap-2 mt-4">
-          <Btn onClick={addRateItem} icon={Check}>Add item</Btn>
+          <Btn onClick={addRateItem}>Add item</Btn>
           <Btn variant="outline" onClick={() => setAddRateOpen(false)}>Cancel</Btn>
         </div>
       </Modal>

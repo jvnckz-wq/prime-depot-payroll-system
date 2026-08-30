@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, Check, Copy, KeyRound, Plus, UserCheck, UserX } from 'lucide-react';
+import { AlertTriangle, Copy, KeyRound, UserCheck, UserX } from 'lucide-react';
 import { Badge, Btn, Confirm, Eyebrow, Field, Modal, Panel, Skeleton, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
@@ -90,7 +90,7 @@ export const AccountsPanel = ({ currentUser, toast }) => {
     <div>
       <div className="flex items-center justify-between mb-3">
         <Eyebrow>System Accounts</Eyebrow>
-        <Btn size="sm" icon={Plus} onClick={() => { setError(''); setAddOpen(true); }}>Create Account</Btn>
+        <Btn size="sm" onClick={() => { setError(''); setAddOpen(true); }}>Create Account</Btn>
       </div>
 
       <Panel className="overflow-hidden">
@@ -203,7 +203,7 @@ export const AccountsPanel = ({ currentUser, toast }) => {
         )}
 
         <div className="flex gap-2 mt-4">
-          <Btn onClick={create} icon={Check} loading={busy} disabled={busy}>{busy ? 'Creating...' : 'Create account'}</Btn>
+          <Btn onClick={create} loading={busy} disabled={busy}>{busy ? 'Creating...' : 'Create account'}</Btn>
           <Btn variant="outline" onClick={() => setAddOpen(false)}>Cancel</Btn>
         </div>
       </Modal>

@@ -134,6 +134,15 @@ export async function POST(request) {
         helperRateDouble: body.helperRateDouble != null ? rate(body.helperRateDouble) : rate(body.helperRate) * 2,
       },
     });
+
+    await logSecurityEvent('CREW_RATES_UPDATED', {
+      actorId: auth.user.id,
+      actorLabel: auth.user.username,
+      targetType: 'rateItem',
+      targetId: created.id,
+      detail: `Added "${created.itemName}" (${created.unit}): driver ₱${num(created.driverRate).toFixed(2)}, helper ₱${num(created.helperRate).toFixed(2)}.`,
+    });
+
     return NextResponse.json({ rate: shape(created) });
   } catch (err) {
     console.error('POST /api/rates failed:', err);

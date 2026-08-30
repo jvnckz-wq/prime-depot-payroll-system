@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, Check, MapPin, Plus, Truck as TruckIcon } from 'lucide-react';
+import { AlertTriangle, MapPin } from 'lucide-react';
 import { Badge, Btn, Confirm, Eyebrow, Field, Modal, Panel, Skeleton, SkeletonRows, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
@@ -136,7 +136,7 @@ export const FleetPanel = ({ toast }) => {
       {/* ---------------- Fleet ---------------- */}
       <div className="flex items-center justify-between mb-3">
         <Eyebrow>Trucks</Eyebrow>
-        <Btn size="sm" icon={Plus} onClick={openAddTruck}>Add Truck</Btn>
+        <Btn size="sm" onClick={openAddTruck}>Add Truck</Btn>
       </div>
 
       <Panel className="overflow-hidden mb-2">
@@ -196,7 +196,7 @@ export const FleetPanel = ({ toast }) => {
                 placeholder="e.g. SITIO MALAKING PULO" className={inputCls} style={inputStyle} />
             </Field>
           </div>
-          <Btn icon={Plus} onClick={addArea} loading={busy} disabled={busy}>Add</Btn>
+          <Btn onClick={addArea} loading={busy} disabled={busy}>Add</Btn>
         </div>
         {areaError && (
           <div className="flex items-start gap-2 mt-3 px-3 py-2.5 rounded text-xs"
@@ -266,7 +266,7 @@ export const FleetPanel = ({ toast }) => {
         )}
 
         <div className="flex gap-2 mt-4">
-          <Btn onClick={saveTruck} icon={Check} loading={busy} disabled={busy}>{busy ? 'Saving...' : editingTruck ? 'Save changes' : 'Add truck'}</Btn>
+          <Btn onClick={saveTruck} loading={busy} disabled={busy}>{busy ? 'Saving...' : editingTruck ? 'Save changes' : 'Add truck'}</Btn>
           <Btn variant="outline" onClick={() => setTruckModal(false)}>Cancel</Btn>
         </div>
       </Modal>

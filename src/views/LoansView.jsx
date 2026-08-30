@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Plus, Pause, Play, Check, Save } from 'lucide-react';
+import { Pause, Play, Check } from 'lucide-react';
 import { Av, Badge, Btn, Eyebrow, Field, H1, Modal, Money, Panel, ProgressBar, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { loanBalance, loanLedger } from '../lib/payroll';
 import { peso } from '../lib/utils';
@@ -61,7 +61,7 @@ export const LoansView = ({ staff, loans, reloadLoans, toast }) => {
   return (
     <div className="p-4 sm:p-6">
       <H1 sub="Staggered loans and daily advances (bali, allowances) — tracked separately from statutory micro-deductions."
-        action={<Btn icon={Plus} onClick={() => setModal(true)}>Add Loan / Advance</Btn>}>Loans & Advances</H1>
+        action={<Btn onClick={() => setModal(true)}>Add Loan / Advance</Btn>}>Loans & Advances</H1>
       <div className="space-y-4">
         {loans.map(l => {
           const balance = loanBalance(l);
@@ -138,7 +138,7 @@ export const LoansView = ({ staff, loans, reloadLoans, toast }) => {
           <Field label="Date granted"><input type="date" value={form.date} onChange={e => ff('date', e.target.value)} className={inputCls} style={inputStyle} /></Field>
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="outline" onClick={() => setModal(false)} disabled={busy}>Cancel</Btn>
-            <Btn icon={Save} onClick={addLoan} loading={busy} disabled={busy}>{busy ? 'Saving…' : 'Add'}</Btn>
+            <Btn onClick={addLoan} loading={busy} disabled={busy}>{busy ? 'Saving…' : 'Add'}</Btn>
           </div>
         </div>
       </Modal>

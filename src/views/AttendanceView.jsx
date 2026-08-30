@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, ClipboardList, ArrowLeft, Check, Eye, Pencil, Upload, UserPlus, Loader2 } from 'lucide-react';
+import { AlertTriangle, ClipboardList, ArrowLeft, Pencil, Upload, Loader2 } from 'lucide-react';
 import { Av, Badge, BigStat, Btn, EmptyState, Eyebrow, Field, H1, Modal, Panel, SkeletonBlock, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
@@ -317,7 +317,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
               </div>
               <div className="flex justify-end gap-2 pt-1">
                 <Btn variant="outline" onClick={() => setEditDay(null)} disabled={savingEdit}>Cancel</Btn>
-                <Btn icon={Check} onClick={saveEdit} loading={savingEdit} disabled={savingEdit}>{savingEdit ? 'Saving…' : 'Save correction'}</Btn>
+                <Btn onClick={saveEdit} loading={savingEdit} disabled={savingEdit}>{savingEdit ? 'Saving…' : 'Save correction'}</Btn>
               </div>
             </div>
           )}
@@ -334,7 +334,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
 
       {!showImport ? (
         <div className="mb-4">
-          <Btn icon={Upload} onClick={() => setShowImport(true)}>Import Biometric .xls</Btn>
+          <Btn onClick={() => setShowImport(true)}>Import Biometric .xls</Btn>
         </div>
       ) : (
         <div
@@ -349,7 +349,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
           </div>
           <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Exported from the biometric scanner — .xls or .xlsx</div>
           <div className="flex gap-2">
-            <Btn variant="outline" icon={Upload} onClick={() => fileRef.current?.click()} loading={importing} disabled={importing}>{importing ? 'Importing…' : 'Browse for a file'}</Btn>
+            <Btn variant="outline" onClick={() => fileRef.current?.click()} loading={importing} disabled={importing}>{importing ? 'Importing…' : 'Browse for a file'}</Btn>
             {!importing && <Btn variant="ghost" onClick={() => setShowImport(false)}>Cancel</Btn>}
           </div>
         </div>
@@ -400,7 +400,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
                       <Td center mono><span style={{ color: s.otMins > 0 ? T.green : T.soft, fontWeight: s.otMins > 0 ? 700 : 400 }}>{s.otMins > 0 ? `${s.otMins}m` : '—'}</span></Td>
                       <Td center mono><span style={{ color: s.absent > 0 ? T.amber : T.soft, fontWeight: s.absent > 0 ? 700 : 400 }}>{s.absent || '—'}</span></Td>
                       <Td center mono>{s.leave || '—'}</Td>
-                      <Td><Btn size="sm" variant="outline" icon={Eye} onClick={() => { setSelectedId(s.id); setView('dtr'); }}>View DTR</Btn></Td>
+                      <Td><Btn size="sm" variant="outline" onClick={() => { setSelectedId(s.id); setView('dtr'); }}>View</Btn></Td>
                     </tr>
                   ))}
                 </tbody>
@@ -432,11 +432,11 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
                     <Td mono><span className="text-xs" style={{ color: T.soft }}>{g.firstDate} → {g.lastDate}</span></Td>
                     <Td>
                       {g.hasEmployee ? (
-                        <Btn size="sm" icon={Check} disabled={resolvingId === g.biometricId} onClick={() => resolveId(g.biometricId)}>
+                        <Btn size="sm" disabled={resolvingId === g.biometricId} onClick={() => resolveId(g.biometricId)}>
                           {resolvingId === g.biometricId ? 'Resolving…' : 'Resolve'}
                         </Btn>
                       ) : (
-                        <Btn size="sm" variant="outline" icon={UserPlus} onClick={() => onRegister && onRegister(g.biometricId, g.biometricName)}>Register</Btn>
+                        <Btn size="sm" variant="outline" onClick={() => onRegister && onRegister(g.biometricId, g.biometricName)}>Register</Btn>
                       )}
                     </Td>
                   </tr>
@@ -460,7 +460,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
                   <Td center mono>{b.mappedRows}</Td>
                   <Td center mono><span style={{ color: b.unmappedRows > 0 ? T.amber : T.soft }}>{b.unmappedRows}</span></Td>
                   <Td><Badge tone={b.status === 'COMPLETED' ? 'green' : b.status === 'FAILED' ? 'red' : 'amber'}>{b.status}</Badge></Td>
-                  <Td>{b.periodStart ? <Btn size="sm" variant="outline" icon={Eye} onClick={() => openBatch(b)}>View</Btn> : null}</Td>
+                  <Td>{b.periodStart ? <Btn size="sm" variant="outline" onClick={() => openBatch(b)}>View</Btn> : null}</Td>
                 </tr>
               ))}</tbody>
             </table></div>
@@ -496,7 +496,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
                         <Td center mono>{s.otMins > 0 ? `${s.otMins}m` : '—'}</Td>
                         <Td center mono>{s.absent || '—'}</Td>
                         <Td center mono>{s.leave || '—'}</Td>
-                        <Td><Btn size="sm" variant="outline" icon={Eye} onClick={() => openHistDtr(s)}>View DTR</Btn></Td>
+                        <Td><Btn size="sm" variant="outline" onClick={() => openHistDtr(s)}>View</Btn></Td>
                       </tr>
                     ))}
                   </tbody>

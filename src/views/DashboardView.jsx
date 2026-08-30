@@ -149,7 +149,10 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
       {/* Payroll snapshot table + two charts */}
       <div className="grid lg:grid-cols-2 gap-4 items-start">
         <Panel className="overflow-hidden lg:flex lg:flex-col" style={{ height: snapshotHeight }}>
-          <div className="px-4 pt-4 pb-2 shrink-0"><Eyebrow>{cutoffLabel} · Payroll Snapshot</Eyebrow></div>
+          <div className="px-4 pt-4 pb-2 shrink-0 flex items-center justify-between gap-2 flex-wrap">
+            <Eyebrow>{cutoffLabel} · Payroll Snapshot</Eyebrow>
+            <span className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Tap a row to open Payroll for the full breakdown</span>
+          </div>
           <div className="overflow-auto lg:flex-1 lg:min-h-0 pd-no-scrollbar">
             <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
               <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}>
@@ -157,7 +160,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
               </thead>
               <tbody>
                 {snapshot.map((r, i) => (
-                  <tr key={i}>
+                  <tr key={i} onClick={() => go('payroll')} className="pd-clickable-row" style={{ cursor: 'pointer' }} title="Open Payroll">
                     <Td>
                       <div className="flex items-center gap-2.5">
                         <Av name={r.name} size={26} tone={T.brand} />
@@ -165,7 +168,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
                       </div>
                     </Td>
                     <Td right mono>{peso(r.gross)}</Td>
-                    <Td right mono style={{ color: r.net < 0 ? T.red : T.ink, fontWeight: 600 }}>{peso(r.net)}</Td>
+                    <Td right mono style={{ color: r.net < 0 ? T.red : T.brand, fontWeight: 700 }}>{peso(r.net)}</Td>
                   </tr>
                 ))}
               </tbody>

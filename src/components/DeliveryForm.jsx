@@ -294,7 +294,7 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
         ) : <span />}
         <div className="text-sm" style={{ fontFamily: F_MONO, color: T.soft }}>Trip total: <span style={{ color: T.green, fontWeight: 600 }}>{peso(totalD)} / {peso(totalH)}</span></div>
       </div>
-      <Btn onClick={submit} icon={Check} loading={busy} disabled={!address || !driverId || busy} full>{busy ? 'Saving…' : 'Save delivery'}</Btn>
+      <Btn onClick={submit} loading={busy} disabled={!address || !driverId || busy} full>{busy ? 'Saving…' : 'Save delivery'}</Btn>
     </div>
   );
 };

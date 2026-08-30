@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Printer } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { Btn, Field, Panel } from '../components/ui.jsx';
 import { peso } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, F_SERIF, T } from '../theme';
@@ -69,7 +69,7 @@ export const FinalPayView = ({ employee, onBack, toast }) => {
         <button onClick={onBack} className="flex items-center gap-1.5 text-sm" style={{ fontFamily: F_BODY, color: T.soft }}>
           <ArrowLeft size={14} /> Back to Employees
         </button>
-        <Btn variant="outline" icon={Printer} onClick={() => window.print()}>Print</Btn>
+        <Btn variant="outline" onClick={() => window.print()}>Print</Btn>
       </div>
 
       {/* Editable inputs — never printed */}

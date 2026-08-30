@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ArrowLeft } from 'lucide-react';
+
 import { Btn, Eyebrow, Panel } from '../components/ui.jsx';
 import { F_BODY, F_HEAD, T } from '../theme';
 
@@ -215,7 +215,7 @@ export const LegalView = ({ initialTab = 'terms', onBack, embedded = false }) =>
     <div className="min-h-screen py-10 px-4" style={{ backgroundColor: T.bg }}>
       <div className="max-w-3xl mx-auto">
         <div className="mb-4">
-          <Btn variant="outline" size="sm" icon={ArrowLeft} onClick={onBack}>Back to sign in</Btn>
+          <Btn variant="outline" size="sm" onClick={onBack}>Back to sign in</Btn>
         </div>
         {body}
       </div>
