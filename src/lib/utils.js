@@ -32,6 +32,31 @@ export function exportXLSX(filename, sheets) {
 
 export const todayLabel = () => new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
+// ---- Phone helpers -------------------------------------------------------
+// A tel: href built from whatever the user typed — keep a leading + (country
+// code) and digits, drop spaces, dashes, and parentheses so the dialer gets a
+// clean number to call.
+export const telHref = (raw) => 'tel:' + String(raw || '').replace(/[^\d+]/g, '');
+
+// Soft check for a plausible Philippine number: an 11-digit mobile (09XXXXXXXXX),
+// its +63 form (+639XXXXXXXXX), or a 7–10 digit landline. Deliberately lenient —
+// it drives a gentle hint, never a hard block, because a checker may only have a
+// partial number and still needs to save the delivery.
+export const looksLikePHPhone = (raw) => {
+  const t = String(raw || '').trim();
+  if (!t) return true; // empty is fine — the field is optional
+  const s = t.replace(/[^\d+]/g, '');
+  if (!s) return false; // had content but no digits at all — clearly not a number
+  return /^09\d{9}$/.test(s) || /^\+639\d{9}$/.test(s) || /^0\d{7,9}$/.test(s) || /^\d{7,8}$/.test(s);
+};
+
+// Short local time, e.g. "2:45 PM" — for "who logged this, and when".
+export const timeLabel = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? '' : d.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
+};
+
 // ---- Semi-monthly cutoff -------------------------------------------------
 // Prime Depot pays twice a month: the 1st–15th, and the 16th–end-of-month.
 // The single source of truth for "which cutoff are we in" is the most recent

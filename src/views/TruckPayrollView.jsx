@@ -1,15 +1,37 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Wallet, Plus, Package, ArrowLeft, Printer, Edit2, Save, Trash2, Check, AlertTriangle } from 'lucide-react';
+import { Wallet, Plus, Package, ArrowLeft, Printer, Edit2, Save, Trash2, Check, AlertTriangle, MapPin, Phone } from 'lucide-react';
 import { DeliveryForm } from '../components/DeliveryForm.jsx';
 import { Av, Badge, Btn, Confirm, EmptyState, Eyebrow, Field, H1, Modal, Panel, Skeleton, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { CREW_RATE_FALLBACK } from '../data/seed';
 import { crewEarnings, deliveriesToLog, flattenDeliveries, loanBalance } from '../lib/payroll';
-import { peso } from '../lib/utils';
+import { peso, telHref, timeLabel } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
-export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, rates, setRates, crewRates = CREW_RATE_FALLBACK, loans, reloadLoans, crewNames = [], toast }) => {
+// #H15 — one component, two modes. mode="payslips" shows the crew's per-person
+// pay for the day (lives under Payroll > Crew, beside Staff Payroll);
+// mode="logging" shows the piece-rate table + Log Delivery + the deliveries list
+// (the separate "Deliveries" page). Splitting by mode keeps all the shared
+// day/history/crewEarnings logic in one place instead of duplicating it.
+export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, rates, setRates, crewRates = CREW_RATE_FALLBACK, loans, reloadLoans, crewNames = [], toast, mode = 'logging' }) => {
+  const payslipsMode = mode === 'payslips';
+  // Display-only label for the helper role. The internal role value stays
+  // 'Pahinante' everywhere (crewEarnings sets it, and comparisons like
+  // p.role === 'Driver' still rely on it) — only what the user reads is English.
+  const roleLabel = (r) => (r === 'Pahinante' ? 'Helper' : r);
+  // Round to centavos — shared by the payslip math and the piece-rate table.
+  const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+  // A rate row is "custom" when either double rate is NOT exactly single×2. Most
+  // rows follow the ×2 rule, so their double cells are locked (auto-derived);
+  // only a genuine exception (e.g. an item whose driver rate does not double) is
+  // unlocked for hand-editing. Detecting it from the data means an existing
+  // exception loaded from the database opens in Custom mode instead of being
+  // silently overwritten back to ×2.
+  const isCustomDouble = (r) => (r.s || []).some((v, k) => round2(r.d?.[k] ?? 0) !== round2((v || 0) * 2));
+  // Drop the transient _custom UI flag before a rate row leaves the editor —
+  // it must never reach the parent `rates` state or the save payload.
+  const stripCustom = ({ _custom, ...rest }) => rest;
   const [selected, setSelected] = useState(null);
 
   // Fleet list for the truck cards, the crew-filter dropdown, and the delivery
@@ -88,9 +110,21 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
   // logged, so raising a rate today never rewrites what someone earned last
   // week — the new figure applies only to deliveries logged from here on.
   const saveRates = async () => {
+    // A double rate below its single rate is almost always a typo (the fumble
+    // the lock is meant to prevent). Auto rows can never trip this — single×2 is
+    // always ≥ single — so only a hand-edited Custom row can, and it is blocked
+    // before it reaches the database. An equal double (double = single) is
+    // allowed: some items genuinely do not raise the rate in a double area.
+    const bad = ratesDraft.find(r => (r.s || []).some((v, k) => round2(r.d?.[k] ?? 0) < round2(v || 0)));
+    if (bad) {
+      toast(`"${bad.cat}": a double rate can't be lower than its single rate. Check the Custom values.`, 'error');
+      return;
+    }
     setSavingRates(true);
     try {
-      const changed = ratesDraft.filter((r, i) => JSON.stringify(r) !== JSON.stringify(rates[i]));
+      // Compare without the transient _custom UI flag, which never existed on
+      // the saved rate — otherwise every row would look changed on every save.
+      const changed = ratesDraft.filter((r, i) => JSON.stringify(stripCustom(r)) !== JSON.stringify(rates[i]));
       for (const r of changed) {
         if (!r.id) continue;
         const res = await fetch(`/api/rates/${r.id}`, {
@@ -109,7 +143,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
           return;
         }
       }
-      setRates(ratesDraft);
+      setRates(ratesDraft.map(stripCustom));
       setEditingRates(false);
       toast(changed.length ? `${changed.length} rate${changed.length > 1 ? 's' : ''} saved.` : 'No changes to save.');
     } catch {
@@ -131,9 +165,9 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
       });
       const data = await res.json();
       if (!res.ok) { setRateError(data.error || 'Could not add the item.'); return; }
-      const next = [...ratesDraft, data.rate];
+      const next = [...ratesDraft, { ...data.rate, _custom: isCustomDouble(data.rate) }];
       setRatesDraft(next);
-      setRates(next);
+      setRates(next.map(stripCustom));
       setNewRate({ cat: '', unit: '', driverRate: '', helperRate: '' });
       setAddRateOpen(false);
       toast(`"${data.rate.cat}" added to the rate table.`);
@@ -153,7 +187,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
       if (!res.ok) { toast('Could not retire the item.', 'error'); return; }
       const next = ratesDraft.filter(x => x.id !== r.id);
       setRatesDraft(next);
-      setRates(next);
+      setRates(next.map(stripCustom));
       toast(`"${r.cat}" retired — past deliveries keep their recorded amounts.`);
     } catch {
       toast('Could not reach the server.', 'error');
@@ -198,12 +232,14 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!res.ok) { toast(data.error || 'Could not save the delivery.', 'error'); return; }
+      if (!res.ok) { toast(data.error || 'Could not save the delivery.', 'error'); return false; }
       await reloadDeliveries();
       toast(`Delivery logged for ${payload.truckId}.`);
       setLogOpen(false);
+      return true;
     } catch {
       toast('Could not reach the server.', 'error');
+      return false;
     }
   };
 
@@ -318,7 +354,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
               </div>
               <div className="text-sm" style={{ fontFamily: F_BODY, color: T.soft }}>
                 {crew.vehicle} · <span style={{ fontFamily: F_MONO }}>{crew.plate}</span> · {log ? log.date : 'No deliveries logged'}
-                {bonusEligible && <span style={{ color: T.green, fontWeight: 600 }}> · {tripCount} trips — palima bonus applies</span>}
+                {bonusEligible && <span style={{ color: T.green, fontWeight: 600 }}> · {tripCount} trips — trip bonus applies</span>}
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -334,13 +370,17 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
             <div className="overflow-x-auto pd-scroll-shadow">
               <table className="w-full">
                 <thead>
-                  <tr><Th>Seq.</Th><Th>Address</Th><Th>Customer</Th><Th>Crew</Th><Th>Item Category</Th><Th center>Qty</Th><Th>Unit</Th><Th right>Driver</Th><Th right>Pahinante</Th><Th>Double</Th><Th right>Correct</Th></tr>
+                  <tr><Th>Seq.</Th><Th>Address</Th><Th>Customer</Th><Th>Crew</Th><Th>Item Category</Th><Th center>Qty</Th><Th>Unit</Th><Th right>Driver</Th><Th right>Helper</Th><Th>Double</Th><Th right>Correct</Th></tr>
                 </thead>
                 <tbody>
                   {log.items.map((it, idx) => (
                     <tr key={idx} style={it.voided ? { opacity: 0.5, textDecoration: 'line-through' } : undefined}>
                       <Td mono>{it.seq || ''}</Td>
-                      <Td>{it.address}</Td>
+                      <Td>
+                        <div>{it.address}</div>
+                        {it.landmark && <div className="flex items-center gap-1 text-xs mt-0.5" style={{ color: T.soft }}><MapPin size={11} className="shrink-0" />{it.landmark}</div>}
+                        {it.contactNo && <a href={telHref(it.contactNo)} className="flex items-center gap-1 text-xs mt-0.5" style={{ color: T.brand }}><Phone size={11} className="shrink-0" />{it.contactNo}</a>}
+                      </Td>
                       <Td>{it.customer}</Td>
                       <Td>{it.seq ? (
                         <span className="flex items-center gap-1.5">
@@ -378,14 +418,14 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                   <thead>
                     <tr>
                       <Th>Name</Th><Th>Role</Th><Th center>Trips</Th>
-                      <Th right>Daily</Th><Th right>Piece rate</Th><Th right>Palima</Th><Th right>Kaltas</Th><Th right>Net</Th>
+                      <Th right>Daily</Th><Th right>Piece rate</Th><Th right>Trip bonus</Th><Th right>Deductions</Th><Th right>Net</Th>
                     </tr>
                   </thead>
                   <tbody>
                     {people.map((p, i) => (
                       <tr key={i}>
                         <Td>{p.name}</Td>
-                        <Td><Badge tone={p.role === 'Driver' ? 'amber' : 'neutral'}>{p.role}</Badge></Td>
+                        <Td><Badge tone={p.role === 'Driver' ? 'amber' : 'neutral'}>{roleLabel(p.role)}</Badge></Td>
                         <Td center mono>{p.trips}</Td>
                         <Td right mono>{peso(p.dailyRate)}</Td>
                         <Td right mono>{peso(p.pieceRate)}</Td>
@@ -428,7 +468,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
             <div id="truck-payslip">
               <Panel className="overflow-hidden">
                 <div className="px-6 py-5 flex items-center gap-3" style={{ backgroundColor: T.ink }}>
-                  <div className="w-10 h-10 rounded flex items-center justify-center font-bold text-white shrink-0" style={{ backgroundColor: T.amber, fontFamily: F_HEAD }}>PD</div>
+                  <img src="/logo.png" alt="Prime Depot" className="w-10 h-10 rounded bg-white p-1 object-contain shrink-0" />
                   <div>
                     <div className="text-white font-bold text-sm" style={{ fontFamily: F_HEAD }}>PRIME DEPOT HARDWARE AND CONSTRUCTION SUPPLY</div>
                     <div className="text-xs" style={{ color: T.soft, fontFamily: F_BODY }}>Mabini, Batangas City</div>
@@ -444,7 +484,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                     <thead>
                       <tr>
                         <Th>Seq</Th><Th>Address</Th><Th>Customer</Th><Th>Item Category</Th>
-                        <Th center>Qty</Th><Th>Unit</Th><Th right>Driver</Th><Th right>Pahinante</Th><Th>Double</Th>
+                        <Th center>Qty</Th><Th>Unit</Th><Th right>Driver</Th><Th right>Helper</Th><Th>Double</Th>
                       </tr>
                     </thead>
                     <tbody>
@@ -470,16 +510,16 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                 <div className="px-6 py-4" style={{ borderTop: `1px dashed ${T.line}`, backgroundColor: T.bg }}>
                   <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full" style={{ fontFamily: F_MONO, fontSize: 13 }}>
                     <thead>
-                      <tr><Th>{' '}</Th><Th right>Driver</Th><Th right>Pahinante (all)</Th></tr>
+                      <tr><Th>{' '}</Th><Th right>Driver</Th><Th right>Helper (all)</Th></tr>
                     </thead>
                     <tbody>
                       {[
                         ['Daily', T2.dailyD, T2.dailyP],
                         ['Piece rate', T2.pieceD, T2.pieceP],
-                        ['Palima bonus', T2.bonusD, T2.bonusP],
+                        ['Trip bonus', T2.bonusD, T2.bonusP],
                         ['Salary after bonus', T2.afterD, T2.afterP],
-                        ['Kaltas', -T2.kaltasD, -T2.kaltasP],
-                        ['Kaltas (no name)', 0, -noNameKaltas],
+                        ['Deductions', -T2.kaltasD, -T2.kaltasP],
+                        ['Deductions (no name)', 0, -noNameKaltas],
                       ].map(([label, d, p], i) => (
                         <tr key={i}>
                           <Td style={{ fontFamily: F_HEAD, color: T.soft }}>{label}</Td>
@@ -495,7 +535,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                     </tbody>
                   </table></div>
                   <div className="text-xs mt-2" style={{ fontFamily: F_BODY, color: T.soft }}>
-                    The Pahinante column is the combined total for all helpers — each helper&apos;s own share is on their individual payslip.
+                    The Helper column is the combined total for all helpers — each helper&apos;s own share is on their individual payslip.
                   </div>
                 </div>
               </Panel>
@@ -543,13 +583,27 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
   const dayDate = viewDate || todayStr;
 
   // Per-person totals across ALL trucks for the active day — one row per person,
-  // so a pahinante who rode two trucks appears once, not per truck. Kaltas is
-  // summed from whichever truck named them; net = total − kaltas.
+  // so a pahinante who rode two trucks appears once, not per truck. Kaltas is the
+  // sum of two things: manual kaltas recorded against a truck (damage, shortage),
+  // and the loan deductions actually APPLIED for this day. The loan side lives in
+  // the Loans ledger, not in the delivery record — "Apply Today's Deductions"
+  // stamps each deduction with runKey `crew-<date>` (same idea as Staff Payroll's
+  // applied-only rule). Reading only log.kaltas is why a deducted loan used to
+  // show ₱0.00 on the payslip: the money was taken, but on a different ledger.
+  const loanKaltasFor = (name) => {
+    const runKey = 'crew-' + dayDate;
+    return (loans || [])
+      .filter(l => l.person === name)
+      .reduce((s, l) => s + (l.entries || [])
+        .filter(en => en.type === 'deduction' && en.payslipId === runKey)
+        .reduce((a, en) => a + (en.amount || 0), 0), 0);
+  };
   const dayPeople = crewEarnings(D, crewRates).map(p => {
-    const kaltas = Object.values(D).flatMap(l => l.kaltas || [])
+    const manualKaltas = Object.values(D).flatMap(l => l.kaltas || [])
       .filter(k => (k.name || k.who) === p.name)
       .reduce((s, k) => s + (k.h ?? k.amount ?? 0), 0);
-    return { ...p, kaltas, net: p.total - kaltas };
+    const kaltas = round2(manualKaltas + loanKaltasFor(p.name));
+    return { ...p, kaltas, net: round2(p.total - kaltas) };
   });
 
   // One person's line items across every truck they rode that day.
@@ -575,11 +629,14 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
 
   return (
     <div className="p-4 sm:p-6">
-      <H1 sub="Grouped by truck: one driver + two pahinante share the delivery log for the day."
+      <H1 sub={payslipsMode
+          ? 'One full slip per person for the day, totalled across every truck.'
+          : 'Log the crew’s trips per day and manage the piece-rate table.'}
         action={readOnly ? null : <div className="flex items-center gap-2">
-          <Btn variant="outline" icon={Wallet} disabled={dueLoans.length === 0} onClick={() => setConfirmApply(true)}>Apply Today&apos;s Deductions</Btn>
-          <Btn icon={Plus} onClick={() => setLogOpen(true)}>Log Delivery</Btn>
-        </div>}>Truck Payroll — Pakyawan</H1>
+          {payslipsMode
+            ? <Btn variant="outline" icon={Wallet} disabled={dueLoans.length === 0} onClick={() => setConfirmApply(true)}>Apply Today&apos;s Deductions</Btn>
+            : <Btn icon={Plus} onClick={() => setLogOpen(true)}>Log Delivery</Btn>}
+        </div>}>{payslipsMode ? 'Crew Payroll — Piece-rate' : 'Deliveries — Piece-rate'}</H1>
 
       {/* Which day are we looking at — today (live) or a past day from history */}
       <div className="flex items-center flex-wrap gap-2 mb-5">
@@ -599,6 +656,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
         )}
       </div>
 
+      {!payslipsMode && (
       <Panel className="overflow-hidden mb-5">
         <div className="px-4 py-2.5 flex items-center justify-between" style={{ borderBottom: `1px solid ${T.line}` }}>
           <Eyebrow>Piece-Rate Table</Eyebrow>
@@ -608,16 +666,41 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
               <Btn size="sm" icon={Save} onClick={saveRates}>Save</Btn>
               <Btn size="sm" variant="outline" onClick={() => { setRatesDraft(rates); setEditingRates(false); }}>Cancel</Btn>
             </div>
-          ) : <Btn size="sm" variant="outline" icon={Edit2} onClick={() => { setRatesDraft(rates); setEditingRates(true); }}>Edit</Btn>}
+          ) : <Btn size="sm" variant="outline" icon={Edit2} onClick={() => { setRatesDraft(rates.map(r => ({ ...r, _custom: isCustomDouble(r) }))); setEditingRates(true); }}>Edit</Btn>}
         </div>
-        <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
-          <thead><tr><Th>Category</Th><Th>Unit</Th><Th right>Single — Drv</Th><Th right>Single — Hlp</Th><Th right>Double — Drv</Th><Th right>Double — Hlp</Th>{editingRates && <Th right>Retire</Th>}</tr></thead>
+        <div className="overflow-auto pd-scroll-shadow" style={{ maxHeight: 440 }}><table className="w-full">
+          <thead className="sticky top-0 z-10" style={{ backgroundColor: T.surface }}><tr><Th>Category</Th><Th>Unit</Th><Th right>Single — Drv</Th><Th right>Single — Hlp</Th><Th right>Double — Drv</Th><Th right>Double — Hlp</Th>{editingRates && <Th center>Double</Th>}{editingRates && <Th right>Retire</Th>}</tr></thead>
           <tbody>{(editingRates ? ratesDraft : rates).map((r, i) => (
             <tr key={i}>
               <Td>{editingRates ? <input value={r.cat} onChange={e => setRatesDraft(p => p.map((x, j) => j === i ? { ...x, cat: e.target.value } : x))} className="px-2 py-1 rounded border text-xs w-full" style={{ borderColor: T.line, fontFamily: F_BODY }} /> : r.cat}</Td>
               <Td>{r.unit}</Td>
-              {[0, 1].map(k => <Td right mono key={'s' + k}>{editingRates ? <input type="number" value={r.s[k]} onChange={e => setRatesDraft(p => p.map((x, j) => j === i ? { ...x, s: x.s.map((v, vi) => vi === k ? parseFloat(e.target.value) || 0 : v) } : x))} className="px-2 py-1 rounded border text-xs w-16 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} /> : peso(r.s[k])}</Td>)}
-              {[0, 1].map(k => <Td right mono key={'d' + k}>{editingRates ? <input type="number" value={r.d[k]} onChange={e => setRatesDraft(p => p.map((x, j) => j === i ? { ...x, d: x.d.map((v, vi) => vi === k ? parseFloat(e.target.value) || 0 : v) } : x))} className="px-2 py-1 rounded border text-xs w-16 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} /> : peso(r.d[k])}</Td>)}
+              {/* Single rate — editing it re-derives the double (×2) UNLESS the
+                  row is in Custom mode, where the double is left untouched. */}
+              {[0, 1].map(k => <Td right mono key={'s' + k}>{editingRates ? <input type="number" value={r.s[k]} onChange={e => { const nv = parseFloat(e.target.value) || 0; setRatesDraft(p => p.map((x, j) => j === i ? { ...x, s: x.s.map((v, vi) => vi === k ? nv : v), d: x._custom ? x.d : x.d.map((v, vi) => vi === k ? round2(nv * 2) : v) } : x)); }} className="px-2 py-1 rounded border text-xs w-16 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} /> : peso(r.s[k])}</Td>)}
+              {/* Double rate — locked to single×2 (greyed, read-only) unless the
+                  row is Custom, then it becomes a hand-editable field. */}
+              {[0, 1].map(k => <Td right mono key={'d' + k}>{
+                editingRates
+                  ? (r._custom
+                      ? <input type="number" value={r.d[k]} onChange={e => setRatesDraft(p => p.map((x, j) => j === i ? { ...x, d: x.d.map((v, vi) => vi === k ? parseFloat(e.target.value) || 0 : v) } : x))} className="px-2 py-1 rounded border text-xs w-16 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} />
+                      : <span style={{ color: T.soft }} title="Auto — single × 2">{peso(round2((r.s[k] || 0) * 2))}</span>)
+                  : peso(r.d[k])
+              }</Td>)}
+              {editingRates && (
+                <Td center>
+                  <button
+                    onClick={() => setRatesDraft(p => p.map((x, j) => j === i
+                      ? (x._custom
+                          ? { ...x, _custom: false, d: x.s.map(v => round2((v || 0) * 2)) }
+                          : { ...x, _custom: true })
+                      : x))}
+                    className="text-xs font-semibold px-2 py-1 rounded border"
+                    style={{ fontFamily: F_HEAD, borderColor: T.line, color: r._custom ? T.brand : T.soft, backgroundColor: r._custom ? T.brandBg : 'transparent' }}
+                    title={r._custom ? 'Custom double rate — click to reset to single × 2' : 'Auto: double = single × 2. Click to set a custom double rate.'}>
+                    {r._custom ? 'Custom' : 'Auto ×2'}
+                  </button>
+                </Td>
+              )}
               {editingRates && (
                 <Td right>
                   <button title="Retire this item" onClick={() => setConfirmRetire(r)}>
@@ -629,47 +712,11 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
           ))}</tbody>
         </table></div>
       </Panel>
-
-      <Eyebrow>Crews</Eyebrow>
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-2 mb-6">
-        {trucks.map(c => {
-          const log = D[c.id];
-          // Same function as the payslip and the report, so a card can never
-          // show a figure the payslip disagrees with.
-          const cardCrew = log ? crewEarnings({ [c.id]: log }, crewRates) : [];
-          const cardTotal = cardCrew.reduce((sum, p) => sum + p.total, 0);
-          const cardNames = cardCrew.map(p => p.name);
-          const tripCount = log ? new Set(log.items.filter(i => !i.voided).map(i => i.seq).filter(Boolean)).size : 0;
-          const bonusEligible = tripCount >= crewRates.bonusTrips;
-          return (
-            <button key={c.id} onClick={() => setSelected(c.id)} className="text-left">
-              <Panel className="p-4 h-full" style={{ borderLeftWidth: 3, borderLeftColor: log ? T.brand : T.line }}>
-                <div className="flex items-center justify-between mb-2">
-                  <Eyebrow>{c.id}</Eyebrow>
-                  <span className="text-xs tabular-nums px-1.5 py-0.5 rounded" style={{ fontFamily: F_MONO, backgroundColor: T.lineSoft, color: T.soft }}>{c.plate}</span>
-                </div>
-                <div className="text-sm font-semibold mb-0.5" style={{ fontFamily: F_BODY, color: T.ink }}>
-                  {cardNames.length ? cardNames.join(', ') : <span style={{ color: T.soft, fontWeight: 400 }}>No crew logged yet</span>}
-                </div>
-                <div className="text-xs mb-3" style={{ fontFamily: F_BODY, color: T.soft }}>{c.vehicle}</div>
-                {log ? (
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex gap-1.5">
-                      <Badge tone="blue">{tripCount} trips</Badge>
-                      {bonusEligible && <Badge tone="amber">Bonus</Badge>}
-                    </div>
-                    <span style={{ fontFamily: F_MONO, color: T.green }}>{peso(cardTotal)}</span>
-                  </div>
-                ) : <Badge tone="neutral">No deliveries yet</Badge>}
-              </Panel>
-            </button>
-          );
-        })}
-      </div>
+      )}
 
       {/* ===== Per-person payslips — standalone: one full slip per person for the
               whole day, across every truck. Tap to open and print. ===== */}
-      {dayPeople.length > 0 && (
+      {payslipsMode && dayPeople.length > 0 && (
         <div className="mb-5">
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <Eyebrow>Per-Person Payslips</Eyebrow>
@@ -684,7 +731,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                   <Av name={p.name} size={32} tone={p.role === 'Driver' ? T.amber : T.brand} />
                   <div>
                     <div className="text-sm font-semibold" style={{ fontFamily: F_HEAD, color: T.ink }}>{p.name}</div>
-                    <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>{p.role} · {p.trips} trip{p.trips === 1 ? '' : 's'} · {p.trucks.join(', ')}</div>
+                    <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>{roleLabel(p.role)} · {p.trips} trip{p.trips === 1 ? '' : 's'}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
@@ -697,6 +744,11 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
         </div>
       )}
 
+      {payslipsMode && dayPeople.length === 0 && (
+        <Panel className="overflow-hidden"><EmptyState title="No crew pay for this day" desc="Crew payslips appear here once deliveries are logged for the day." /></Panel>
+      )}
+
+      {!payslipsMode && (<>
       <Panel className="overflow-hidden">
         <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
           <Eyebrow>All Deliveries ({allTrips.length})</Eyebrow>
@@ -708,15 +760,20 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
         {allTrips.length === 0 ? <EmptyState title="No trips logged" desc="Deliveries will appear here once a Checker logs them." /> : (
           <div className="overflow-x-auto pd-scroll-shadow">
             <table className="w-full">
-              <thead><tr><Th>Date</Th><Th>Crew</Th><Th>Pahinante</Th><Th>Address</Th><Th>Customer</Th><Th right>Driver Earn</Th></tr></thead>
+              <thead><tr><Th>Date</Th><Th>Crew</Th><Th>Helper</Th><Th>Address</Th><Th>Customer</Th><Th right>Driver Earn</Th><Th>Logged by</Th></tr></thead>
               <tbody>{allTrips.map((t, i) => (
                 <tr key={i}>
                   <Td mono>{t.date}</Td>
                   <Td>{t.crewId}</Td>
                   <Td>{t.helpers?.length ? t.helpers.join(' & ') : '—'}</Td>
-                  <Td>{t.address}</Td>
+                  <Td>
+                    <div>{t.address}</div>
+                    {t.landmark && <div className="flex items-center gap-1 text-xs mt-0.5" style={{ color: T.soft }}><MapPin size={11} className="shrink-0" />{t.landmark}</div>}
+                    {t.contactNo && <a href={telHref(t.contactNo)} className="flex items-center gap-1 text-xs mt-0.5" style={{ color: T.brand }}><Phone size={11} className="shrink-0" />{t.contactNo}</a>}
+                  </Td>
                   <Td>{t.customer}</Td>
                   <Td right mono>{peso(t.d)}</Td>
+                  <Td>{t.loggedBy ? <span className="text-xs" style={{ color: T.ink }}>{t.loggedBy}{t.loggedAt && <span style={{ color: T.soft }}> · {timeLabel(t.loggedAt)}</span>}</span> : <span style={{ color: T.soft }}>—</span>}</Td>
                 </tr>
               ))}</tbody>
             </table>
@@ -727,6 +784,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
       <Modal open={logOpen} onClose={() => setLogOpen(false)} title="Log Delivery" width={560}>
         <DeliveryForm crews={trucks} rates={rates} onSubmit={logDelivery} />
       </Modal>
+      </>)}
 
       {/* Individual payslip — the full day for one person, across every truck */}
       <Modal open={!!slipPerson} onClose={() => setSlipPerson(null)} title={`Payslip — ${slipPerson?.name || ''}`} width={600}>
@@ -750,10 +808,10 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                 <Panel className="overflow-hidden">
                   <div className="px-6 py-4 flex items-center justify-between" style={{ backgroundColor: T.ink }}>
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded flex items-center justify-center font-bold text-white shrink-0" style={{ backgroundColor: T.amber, fontFamily: F_HEAD }}>PD</div>
+                      <img src="/logo.png" alt="Prime Depot" className="w-9 h-9 rounded bg-white p-1 object-contain shrink-0" />
                       <div>
                         <div className="text-white font-bold text-sm" style={{ fontFamily: F_HEAD }}>{p.name}</div>
-                        <div className="text-xs" style={{ color: T.soft, fontFamily: F_BODY }}>{p.role} · {dayDate} · {p.trucks.join(', ')}</div>
+                        <div className="text-xs" style={{ color: T.soft, fontFamily: F_BODY }}>{roleLabel(p.role)} · {dayDate}</div>
                       </div>
                     </div>
                     <div className="text-right">
@@ -763,11 +821,10 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                   </div>
                   <div className="overflow-x-auto pd-scroll-shadow">
                     <table className="w-full" style={{ fontSize: 12 }}>
-                      <thead><tr><Th>Truck</Th><Th>Seq</Th><Th>Item</Th><Th center>Qty</Th><Th>Unit</Th><Th>Double</Th><Th right>Amount</Th></tr></thead>
+                      <thead><tr><Th>Seq</Th><Th>Item</Th><Th center>Qty</Th><Th>Unit</Th><Th>Double</Th><Th right>Amount</Th></tr></thead>
                       <tbody>
                         {lines.map((l, li) => (
                           <tr key={li}>
-                            <Td mono>{l.truckId}</Td>
                             <Td mono>{l.seq}</Td>
                             <Td>{l.item}</Td>
                             <Td center mono>{l.qty}</Td>
@@ -776,7 +833,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                             <Td right mono>{peso(l.amt)}</Td>
                           </tr>
                         ))}
-                        {!lines.length && <tr><Td colSpan={7}><span style={{ color: T.soft }}>No piece-rate trips.</span></Td></tr>}
+                        {!lines.length && <tr><Td colSpan={6}><span style={{ color: T.soft }}>No piece-rate trips.</span></Td></tr>}
                       </tbody>
                     </table>
                   </div>
@@ -785,8 +842,8 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                       <tbody>
                         <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Daily rate</Td><Td right mono>{peso(p.dailyRate)}</Td></tr>
                         <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Piece rate ({p.trips} trip{p.trips === 1 ? '' : 's'})</Td><Td right mono>{peso(p.pieceRate)}</Td></tr>
-                        <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Palima bonus</Td><Td right mono style={{ color: p.bonus ? T.green : undefined }}>{p.bonus ? `+${peso(p.bonus)}` : peso(0)}</Td></tr>
-                        <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Kaltas</Td><Td right mono style={{ color: p.kaltas ? T.red : undefined }}>{p.kaltas ? `-${peso(p.kaltas)}` : peso(0)}</Td></tr>
+                        <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Trip bonus</Td><Td right mono style={{ color: p.bonus ? T.green : undefined }}>{p.bonus ? `+${peso(p.bonus)}` : peso(0)}</Td></tr>
+                        <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Deductions</Td><Td right mono style={{ color: p.kaltas ? T.red : undefined }}>{p.kaltas ? `-${peso(p.kaltas)}` : peso(0)}</Td></tr>
                         <tr style={{ borderTop: `1px solid ${T.line}` }}><Td style={{ fontFamily: F_HEAD, color: T.ink }}><b>NET SALARY</b></Td><Td right mono><b style={{ color: T.brand }}>{peso(p.net)}</b></Td></tr>
                       </tbody>
                     </table></div>
@@ -824,15 +881,15 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
               onChange={e => setNewRate(f => ({ ...f, driverRate: e.target.value }))}
               className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
           </Field>
-          <Field label="Pahinante rate (₱)">
+          <Field label="Helper rate (₱)">
             <input type="number" step="0.01" value={newRate.helperRate}
               onChange={e => setNewRate(f => ({ ...f, helperRate: e.target.value }))}
               className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
           </Field>
         </div>
         <div className="text-xs mt-2.5" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
-          Double-area rates are set to twice these amounts automatically. Adjust them in the table
-          afterwards if this item works differently.
+          Double-area rates default to twice these amounts. If this item works differently, switch
+          its row to &quot;Custom&quot; in the table to set the double rate by hand.
         </div>
         {rateError && (
           <div className="flex items-start gap-2 mt-3 px-3 py-2.5 rounded text-xs"

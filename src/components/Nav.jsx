@@ -144,6 +144,8 @@ export const Sidebar = ({ tab, setTab, onLogout, user, onOpenAccount, open = fal
 
   const header = (withClose) => (
     <div className="flex items-center gap-2.5 px-4 py-4" style={{ borderBottom: `1px solid ${T.sidebarLine}` }}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- static brand logo from /public; next/image adds no value here */}
+      <img src="/logo.png" alt="Prime Depot" className="shrink-0 rounded-md bg-white p-1" style={{ width: 34, height: 34 }} />
       <span className="min-w-0 flex-1 leading-tight">
         <span className="block text-sm font-bold text-white truncate" style={{ fontFamily: F_HEAD }}>Prime Depot</span>
         <span className="block text-xs truncate" style={{ fontFamily: F_BODY, color: T.sidebarSoft }}>Payroll System</span>

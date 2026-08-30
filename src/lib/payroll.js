@@ -48,6 +48,8 @@ export function deliveriesToLog(apiDeliveries) {
         deliveryId: d.id,
         seq: first ? d.seq : null,
         address: first ? d.address : '',
+        landmark: first ? (d.landmark || '') : '',
+        contactNo: first ? (d.contactNo || '') : '',
         customer: first ? d.customer : '',
         item: it.item, qty: it.qty, unit: it.unit, d: it.d, h: it.h,
         dbl: d.dbl,
@@ -57,6 +59,7 @@ export function deliveriesToLog(apiDeliveries) {
         voidedBy: d.voidedBy,
         voidReason: d.voidReason,
         loggedBy: d.loggedBy,
+        loggedAt: d.loggedAt,
         date: d.date,
       });
     });
@@ -102,17 +105,25 @@ export function computeStaffPayroll(e, loans = [], statutory, attendance = null,
   const phic = round2(e.phOn ? computePhilHealth(e.declaredSalary, statutory.philhealth) : 0);
   const hdmf = round2(e.piOn ? (computePagIBIG(e.declaredSalary, statutory.pagibig) + (e.mp2 || 0)) : 0);
 
-  // Loan deduction for THIS cutoff. If it's already applied (a ledger entry
-  // tagged with this cutoff's runKey exists), use that exact amount so it stays
-  // on the payslip after "Apply Deductions"/Finalize. Otherwise preview what
-  // this cutoff would deduct from the running balance.
+  // Loan deduction for THIS cutoff.
+  //
+  // With a cutoff runKey (Staff Payroll, Reports, Dashboard, Finalize all pass
+  // one), show ONLY what has actually been applied for this cutoff — the ledger
+  // entries tagged with this runKey. Nothing is deducted on the payslip until
+  // "Apply Cutoff Deductions" (or Finalize) is pressed; there is no forward
+  // preview that makes money look already taken before it is.
+  //
+  // Without a runKey (a bare estimate, no cutoff context), fall back to a
+  // preview of what this cutoff would deduct from the running balance.
   const advance = round2(loans
     .filter(l => l.person === e.name && !l.paused)
     .reduce((s, l) => {
-      const appliedThisCutoff = runKey
-        ? l.entries.filter(en => en.type === 'deduction' && en.payslipId === runKey).reduce((a, en) => a + en.amount, 0)
-        : 0;
-      if (appliedThisCutoff > 0) return s + appliedThisCutoff;
+      if (runKey) {
+        const appliedThisCutoff = l.entries
+          .filter(en => en.type === 'deduction' && en.payslipId === runKey)
+          .reduce((a, en) => a + en.amount, 0);
+        return s + appliedThisCutoff;
+      }
       const bal = loanBalance(l);
       return bal > 0 ? s + Math.min(l.perCutoff, bal) : s;
     }, 0));

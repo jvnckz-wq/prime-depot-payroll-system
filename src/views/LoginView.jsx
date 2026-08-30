@@ -64,9 +64,11 @@ export const LoginView = ({ onSignedIn, onShowLegal }) => {
       {/* ---------- Form half (centered) ---------- */}
       <div className="w-full lg:w-1/2 relative flex items-center justify-center px-6">
         <span
-          className="absolute top-8 left-8"
+          className="absolute top-8 left-8 inline-flex items-center gap-2.5"
           style={{ fontFamily: F_HEAD, fontWeight: 800, fontSize: 30, letterSpacing: '-0.015em', color: T.brand }}
         >
+          {/* eslint-disable-next-line @next/next/no-img-element -- static brand logo from /public; next/image adds no value here */}
+          <img src="/logo.png" alt="" style={{ width: 40, height: 40 }} />
           Prime Depot
         </span>
 

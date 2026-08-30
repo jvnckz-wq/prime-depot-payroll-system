@@ -18,6 +18,8 @@ function shape(d) {
     seq: d.sequenceNo,
     customer: d.customerName ?? '',
     address: d.address,
+    landmark: d.landmark ?? '',
+    contactNo: d.contactNo ?? '',
     dbl: d.isDouble,
     matchedArea: d.matchedArea,
     items: d.items.map((i) => ({
@@ -25,6 +27,7 @@ function shape(d) {
       qty: num(i.quantity), d: num(i.driverAmount), h: num(i.helperAmount),
     })),
     loggedBy: d.loggedBy?.displayName ?? null,
+    loggedAt: d.createdAt ? d.createdAt.toISOString() : null,
     // Void metadata travels with the row so the UI can strike it through and
     // name who corrected it, rather than the trip simply vanishing.
     voided: !!d.voidedAt,
@@ -132,6 +135,8 @@ export async function POST(request) {
           sequenceNo,
           customerName: typeof body.customer === 'string' ? body.customer.trim() : null,
           address,
+          landmark: typeof body.landmark === 'string' && body.landmark.trim() ? body.landmark.trim() : null,
+          contactNo: typeof body.contactNo === 'string' && body.contactNo.trim() ? body.contactNo.trim() : null,
           isDouble: !!body.dbl,
           matchedArea: body.matchedArea || null,
           loggedById: auth.user.id,

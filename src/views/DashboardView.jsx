@@ -110,8 +110,8 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <div className="lg:col-span-2 grid grid-cols-2 gap-4 pd-stagger">
           <StatCard label="Total Employees" value={totalEmployees} icon={Users} onClick={() => go('employees')} />
-          <StatCard label="Net Pay This Cutoff" value={peso(netThisCutoff)} tone="amber" icon={Wallet} onClick={() => go('staff')} />
-          <StatCard label="Deliveries Logged" value={deliveriesLogged} tone="green" icon={Truck} onClick={() => go('truck')} />
+          <StatCard label="Net Pay This Cutoff" value={peso(netThisCutoff)} tone="amber" icon={Wallet} onClick={() => go('payroll')} />
+          <StatCard label="Deliveries Logged" value={deliveriesLogged} tone="green" icon={Truck} onClick={() => go('deliveries')} />
           <StatCard label="Active Loans & Advances" value={peso(activeLoans)} tone="amber" icon={FileText} onClick={() => go('loans')} />
         </div>
         <Panel className="p-4">

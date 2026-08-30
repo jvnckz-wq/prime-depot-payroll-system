@@ -1,0 +1,30 @@
+diff --git a/src/components/Nav.jsx b/src/components/Nav.jsx
+index 22d3d14..1751b39 100644
+--- a/src/components/Nav.jsx
++++ b/src/components/Nav.jsx
+@@ -144,6 +144,8 @@ export const Sidebar = ({ tab, setTab, onLogout, user, onOpenAccount, open = fal
+ 
+   const header = (withClose) => (
+     <div className="flex items-center gap-2.5 px-4 py-4" style={{ borderBottom: `1px solid ${T.sidebarLine}` }}>
++      {/* eslint-disable-next-line @next/next/no-img-element -- static brand logo from /public; next/image adds no value here */}
++      <img src="/logo.png" alt="Prime Depot" className="shrink-0 rounded-md bg-white p-1" style={{ width: 34, height: 34 }} />
+       <span className="min-w-0 flex-1 leading-tight">
+         <span className="block text-sm font-bold text-white truncate" style={{ fontFamily: F_HEAD }}>Prime Depot</span>
+         <span className="block text-xs truncate" style={{ fontFamily: F_BODY, color: T.sidebarSoft }}>Payroll System</span>
+diff --git a/src/views/LoginView.jsx b/src/views/LoginView.jsx
+index 5812965..8cb7de3 100644
+--- a/src/views/LoginView.jsx
++++ b/src/views/LoginView.jsx
+@@ -64,9 +64,11 @@ export const LoginView = ({ onSignedIn, onShowLegal }) => {
+       {/* ---------- Form half (centered) ---------- */}
+       <div className="w-full lg:w-1/2 relative flex items-center justify-center px-6">
+         <span
+-          className="absolute top-8 left-8"
++          className="absolute top-8 left-8 inline-flex items-center gap-2.5"
+           style={{ fontFamily: F_HEAD, fontWeight: 800, fontSize: 30, letterSpacing: '-0.015em', color: T.brand }}
+         >
++          {/* eslint-disable-next-line @next/next/no-img-element -- static brand logo from /public; next/image adds no value here */}
++          <img src="/logo.png" alt="" style={{ width: 40, height: 40 }} />
+           Prime Depot
+         </span>
+ 

@@ -67,20 +67,31 @@ function PasswordStrength({ value }) {
         </div>
         {word && <span className="text-xs font-semibold shrink-0" style={{ fontFamily: F_HEAD, color: barColor }}>{word}</span>}
       </div>
-      <div className="text-xs font-semibold mb-1.5" style={{ fontFamily: F_HEAD, color: T.soft }}>
-        Your password must contain:
-      </div>
-      <ul className="space-y-1">
-        {PASSWORD_RULES.map((r) => {
-          const ok = r.test(value);
-          return (
-            <li key={r.key} className="flex items-center gap-1.5 text-xs" style={{ fontFamily: F_BODY, color: ok ? T.green : T.soft }}>
-              {ok ? <CheckCircle2 size={13} className="shrink-0" /> : <Circle size={13} className="shrink-0" />}
-              <span>{r.label}</span>
-            </li>
-          );
-        })}
-      </ul>
+      {/* #A1 — the requirements checklist has done its job once every rule
+          passes, so it collapses into a single confirmation line instead of
+          staying on screen as a wall of green ticks. */}
+      {passwordMeetsAll(value) ? (
+        <div className="flex items-center gap-1.5 text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.green }}>
+          <CheckCircle2 size={13} className="shrink-0" /><span>All password requirements met</span>
+        </div>
+      ) : (
+        <>
+          <div className="text-xs font-semibold mb-1.5" style={{ fontFamily: F_HEAD, color: T.soft }}>
+            Your password must contain:
+          </div>
+          <ul className="space-y-1">
+            {PASSWORD_RULES.map((r) => {
+              const ok = r.test(value);
+              return (
+                <li key={r.key} className="flex items-center gap-1.5 text-xs" style={{ fontFamily: F_BODY, color: ok ? T.green : T.soft }}>
+                  {ok ? <CheckCircle2 size={13} className="shrink-0" /> : <Circle size={13} className="shrink-0" />}
+                  <span>{r.label}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
     </div>
   );
 }

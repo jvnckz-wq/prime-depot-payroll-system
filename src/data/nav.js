@@ -16,11 +16,11 @@ import { LayoutDashboard, Users, Clock, Truck, Wallet, Settings as SettingsIcon,
 // `null` means the item stands on its own, outside any section.
 export const ADMIN_NAV = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, group: null },
-  { key: 'truck', label: 'Truck Payroll', icon: Truck, group: 'Payroll' },
-  { key: 'staff', label: 'Staff Payroll', icon: FileText, group: 'Payroll' },
+  { key: 'payroll', label: 'Payroll', icon: FileText, group: 'Payroll' },
   { key: 'loans', label: 'Loans', icon: Wallet, group: 'Payroll' },
   { key: 'employees', label: 'Employees', icon: Users, group: 'Workforce' },
   { key: 'attendance', label: 'Attendance', icon: Clock, group: 'Workforce' },
+  { key: 'deliveries', label: 'Deliveries', icon: Truck, group: 'Workforce' },
   { key: 'reports', label: 'Reports', icon: BarChart3, group: 'Administration' },
   { key: 'settings', label: 'Settings', icon: SettingsIcon, group: 'Administration' },
 ];

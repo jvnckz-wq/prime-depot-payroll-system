@@ -18,7 +18,7 @@ import { ForcedPasswordChange } from './views/AccountView.jsx';
 import { AccountPage } from './views/AccountPage.jsx';
 import { ReportsView } from './views/ReportsView.jsx';
 import { SettingsView } from './views/SettingsView.jsx';
-import { StaffPayrollView } from './views/StaffPayrollView.jsx';
+import { PayrollView } from './views/PayrollView.jsx';
 import { TruckPayrollView } from './views/TruckPayrollView.jsx';
 
 export default function PrimeDepotPayroll() {
@@ -261,8 +261,8 @@ export default function PrimeDepotPayroll() {
   </>;
 
   const titles = {
-    dashboard: 'Overview', employees: 'Employees', attendance: 'Attendance', truck: 'Truck Payroll',
-    staff: 'Staff Payroll', loans: 'Loans & Advances', reports: 'Reports', settings: 'Settings',
+    dashboard: 'Overview', employees: 'Employees', attendance: 'Attendance', payroll: 'Payroll',
+    deliveries: 'Deliveries', loans: 'Loans & Advances', reports: 'Reports', settings: 'Settings',
     account: 'My Account',
   };
 
@@ -286,8 +286,8 @@ export default function PrimeDepotPayroll() {
           {tab === 'dashboard' && <DashboardView deliveries={deliveries} staff={staff} totalEmployees={allStaff.filter(e => e.status !== 'Inactive').length} loans={loans} statutory={statutory} setTab={setTab} cutoffLabel={cutoffText} attendanceSummaries={attSummaries} unmappedCount={unmappedCount} />}
           {tab === 'employees' && <EmployeesView staff={allStaff} reloadStaff={reloadStaff} toast={toast} prefill={employeePrefill} onPrefillConsumed={() => setEmployeePrefill(null)} />}
           {tab === 'attendance' && <AttendanceView staff={allStaff} toast={toast} onRegister={(id, name) => { setEmployeePrefill({ id, name }); setTab('employees'); }} />}
-          {tab === 'truck' && <TruckPayrollView deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} crewRates={crewRates} loans={loans} reloadLoans={reloadLoans} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} toast={toast} />}
-          {tab === 'staff' && <StaffPayrollView staff={staff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} toast={toast} cutoffLabel={cutoffText} reloadStaff={reloadStaff} loading={staffLoading} />}
+          {tab === 'payroll' && <PayrollView staff={staff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} toast={toast} cutoffLabel={cutoffText} reloadStaff={reloadStaff} staffLoading={staffLoading} deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} crewRates={crewRates} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} />}
+          {tab === 'deliveries' && <TruckPayrollView mode="logging" deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} crewRates={crewRates} loans={loans} reloadLoans={reloadLoans} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} toast={toast} />}
           {tab === 'loans' && <LoansView staff={allStaff} loans={loans} reloadLoans={reloadLoans} toast={toast} />}
           {tab === 'reports' && <ReportsView staff={staff} deliveries={deliveries} loans={loans} statutory={statutory} cutoffLabel={cutoffText} attendanceSummaries={attSummaries} crewRates={crewRates} />}
           {tab === 'account' && (

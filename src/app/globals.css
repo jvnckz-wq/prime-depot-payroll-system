@@ -165,3 +165,12 @@ button:disabled { cursor: not-allowed; }
     scroll-behavior: auto !important;
   }
 }
+
+/* #A2 — hide the browser's built-in password reveal / clear controls. Edge and
+   some Chromium builds inject their own eye button, which showed up as a SECOND
+   eye beside our custom show/hide toggle and toggled independently of it (the
+   "duplicate + inverted" icon). Our PasswordInput is the single source of truth. */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}

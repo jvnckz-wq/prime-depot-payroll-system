@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Plus, Check, Trash2, MapPin } from 'lucide-react';
+import { Plus, Check, Trash2, MapPin } from 'lucide-react';
 import { Av, Btn, Eyebrow, Field, inputCls, inputStyle } from './ui.jsx';
 import { DOBLE_AREAS } from '../data/seed';
 import { matchDobleArea } from '../lib/payroll';
-import { peso } from '../lib/utils';
+import { peso, looksLikePHPhone } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
 export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
@@ -35,7 +35,11 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
 
   const [address, setAddress] = useState('');
   const [customer, setCustomer] = useState('');
-  const [dbl, setDbl] = useState(false);
+  // Specific address/landmark and the receiver's contact number — the detail a
+  // driver actually navigates and calls by. `address` stays the broad area that
+  // drives double-rate matching; these two are free text and never affect pay.
+  const [landmark, setLandmark] = useState('');
+  const [contactNo, setContactNo] = useState('');
   const [lineRows, setLineRows] = useState([{ item: rates[0] ? (rates[0].id || `${rates[0].cat}|${rates[0].unit}`) : '', qty: '' }]);
   // Driver, truck, and helpers are each chosen per delivery. Nothing in the
   // client's account ties a driver to a truck, so nothing here assumes it.
@@ -53,7 +57,13 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
   // rows read as the same choice.
   const rateLabel = (r) => (r.unit ? `${r.cat} — per ${r.unit}` : r.cat);
 
-  const addRow = () => setLineRows(r => [...r, { item: rateKey(rates[0]), qty: '' }]);
+  // #D11 — Add item picks the first rate not already listed; if every rate is
+  // already on the delivery there is nothing left to add.
+  const addRow = () => setLineRows(r => {
+    const used = new Set(r.map(x => x.item));
+    const next = rates.find(rt => !used.has(rateKey(rt)));
+    return next ? [...r, { item: rateKey(next), qty: '' }] : r;
+  });
 
   // The rate table arrives from the database a moment after the form mounts,
   // and the seed rows used until then have different keys. Without this, the
@@ -69,33 +79,60 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
   const removeRow = (i) => setLineRows(r => r.filter((_, idx) => idx !== i));
   const updateRow = (i, patch) => setLineRows(r => r.map((row, idx) => idx === i ? { ...row, ...patch } : row));
 
+  // #D10 — Double rate applies AUTOMATICALLY when the delivery address matches a
+  // known double-rate area. No manual "Mark as Double" toggle to forget, which
+  // was a real source of wrong pay.
+  const dobleMatch = matchDobleArea(address);
+  const dbl = !!dobleMatch;
+
+  // #D11 — keys already chosen on other rows, so each item is offered only once.
+  const usedKeys = new Set(lineRows.map(r => r.item));
+
   // Peso amounts are worked out here and sent with the delivery, then frozen on
   // the record. Recomputing them later from the rate table would mean an edit
   // to a rate silently rewrote what someone already earned.
   const computed = lineRows.map(row => {
+    // The Checker renders this form inline, so it can mount a moment before the
+    // rate table has loaded — `rate` (and its d/s pairs) can be undefined on the
+    // first render. Guard it so the form shows zeroes until the rates arrive
+    // instead of crashing on `rate.s`.
     const rate = rateByKey(row.item);
-    const [dR, hR] = dbl ? rate.d : rate.s;
+    const pair = rate ? (dbl ? rate.d : rate.s) : null;
+    const dR = pair ? pair[0] : 0;
+    const hR = pair ? pair[1] : 0;
     const q = parseFloat(row.qty) || 0;
-    return { item: rate.cat, qty: q, unit: rate.unit, d: +(dR * q).toFixed(2), h: +(hR * q).toFixed(2) };
+    return { item: rate ? rate.cat : '', qty: q, unit: rate ? rate.unit : '', d: +(dR * q).toFixed(2), h: +(hR * q).toFixed(2) };
   });
   const totalD = computed.reduce((s, r) => s + r.d, 0), totalH = computed.reduce((s, r) => s + r.h, 0);
 
-  const dobleMatch = matchDobleArea(address);
-
-  const submit = () => {
+  // Guards against a double tap sending the same trip twice — a real risk on a
+  // slow warehouse connection, and a double trip means double pay. The button is
+  // disabled while a save is in flight, and the form only clears once the save
+  // actually succeeds (so a failed attempt keeps everything for a retry).
+  const [busy, setBusy] = useState(false);
+  const submit = async () => {
+    if (busy) return;
     if (!driverId || !address || computed.every(r => !r.qty)) return;
-    onSubmit({
-      truckId: crewId,
-      driverId,
-      helper1Id: helper1Id || null,
-      helper2Id: helper2Id || null,
-      address, customer, dbl,
-      matchedArea: dobleMatch || null,
-      items: computed.map(r => ({ ...r, dbl })),
-    });
-    setAddress(''); setCustomer(''); setDbl(false); setLineRows([{ item: rateKey(rates[0]), qty: '' }]);
-    // Crew stays selected — the next load that day is usually the same three
-    // people, and re-picking them every time would be its own annoyance.
+    setBusy(true);
+    try {
+      const ok = await onSubmit({
+        truckId: crewId,
+        driverId,
+        helper1Id: helper1Id || null,
+        helper2Id: helper2Id || null,
+        address, customer, dbl,
+        landmark, contactNo,
+        matchedArea: dobleMatch || null,
+        items: computed.map(r => ({ ...r, dbl })),
+      });
+      if (ok !== false) {
+        setAddress(''); setCustomer(''); setLandmark(''); setContactNo(''); setLineRows([{ item: rateKey(rates[0]), qty: '' }]);
+        // Crew stays selected — the next load that day is usually the same three
+        // people, and re-picking them every time would be its own annoyance.
+      }
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -147,10 +184,10 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
         </Field>
       </div>
 
-      {/* Address + customer */}
+      {/* Area (broad — drives the double rate) + customer */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 mb-1">
-        <Field label="Delivery address">
-          <input list="doble-areas" placeholder="Address" value={address} onChange={e => setAddress(e.target.value)} className={inputCls} style={inputStyle} />
+        <Field label={<>Area / Barangay <span style={{ color: T.brand }}>*</span></>}>
+          <input list="doble-areas" placeholder="e.g. Estrellang Langit" value={address} onChange={e => setAddress(e.target.value)} className={inputCls} style={inputStyle} />
           <datalist id="doble-areas">{DOBLE_AREAS.map(a => <option key={a} value={a} />)}</datalist>
         </Field>
         <Field label="Customer's name">
@@ -158,31 +195,44 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
         </Field>
       </div>
 
-      {dobleMatch && !dbl && (
-        <div className="mt-2 mb-1 flex items-center justify-between gap-2 px-2.5 py-1.5 rounded text-xs" style={{ backgroundColor: T.warnBg }}>
-          <span className="flex items-center gap-1.5" style={{ color: T.warn, fontFamily: F_BODY }}><MapPin size={12} /> &quot;{dobleMatch}&quot; is a double-rate area.</span>
-          <button onClick={() => setDbl(true)} className="font-semibold underline shrink-0" style={{ color: T.warn, fontFamily: F_HEAD }}>Apply double rate</button>
-        </div>
-      )}
-      {dobleMatch && dbl && (
-        <div className="mt-2 mb-1 flex items-center gap-1.5 text-xs" style={{ color: T.green, fontFamily: F_BODY }}><MapPin size={12} /> Double rate applied — matches known area &quot;{dobleMatch}&quot;.</div>
-      )}
-      {!dobleMatch && dbl && address && (
-        <div className="mt-2 mb-1 flex items-center gap-1.5 text-xs" style={{ color: T.soft, fontFamily: F_BODY }}><AlertTriangle size={12} /> &quot;{address}&quot; isn&apos;t on the standard double-rate list — double check before saving.</div>
+      {/* Specific address / landmark + contact — what the driver navigates and
+          calls by. Free text; neither affects pay. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 mb-1">
+        <Field label="Specific address / landmark">
+          <input placeholder="Purok/sitio, kulay ng gate, katabi ng…" value={landmark} onChange={e => setLandmark(e.target.value)} className={inputCls} style={inputStyle} />
+        </Field>
+        <Field label="Contact number">
+          <input type="tel" inputMode="tel" placeholder="e.g. 0917 123 4567" value={contactNo} onChange={e => setContactNo(e.target.value)} className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
+          {/* Soft hint only — never blocks saving. A checker may only have a
+              partial number and still needs to log the delivery. */}
+          {contactNo && !looksLikePHPhone(contactNo) && (
+            <div className="text-xs mt-1" style={{ fontFamily: F_BODY, color: T.warn }}>
+              Double-check this number — it doesn’t look like a PH mobile (09XX XXX XXXX) or landline.
+            </div>
+          )}
+        </Field>
+      </div>
+
+      {dobleMatch && (
+        <div className="mt-2 mb-1 flex items-center gap-1.5 text-xs" style={{ color: T.green, fontFamily: F_BODY }}><MapPin size={12} /> Double rate applied automatically — &quot;{dobleMatch}&quot; is a double-rate area.</div>
       )}
 
       {/* Items delivered */}
       <div className="flex items-center justify-between mt-4 mb-2">
         <Eyebrow>Items Delivered</Eyebrow>
-        <button onClick={addRow} className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold border" style={{ fontFamily: F_HEAD, color: T.ink, borderColor: T.line, backgroundColor: T.surface }}><Plus size={13} /> Add item</button>
+        <button onClick={addRow} disabled={lineRows.length >= rates.length} className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold border disabled:opacity-40" style={{ fontFamily: F_HEAD, color: T.ink, borderColor: T.line, backgroundColor: T.surface }}><Plus size={13} /> Add item</button>
       </div>
       {/* Each item is its own block rather than a row in a cramped table. The
           form lives in a 560px modal; six columns squeezed into that width left
           the quantity field too narrow to read what had just been typed. */}
       <div className="flex flex-col gap-2 mb-3">
         {lineRows.map((row, i) => {
+          // Same guard as the `computed` map above: the rate table can still be
+          // loading on the Checker's first render, so `rate` may be undefined.
           const rate = rateByKey(row.item);
-          const [dR, hR] = dbl ? rate.d : rate.s;
+          const pair = rate ? (dbl ? rate.d : rate.s) : null;
+          const dR = pair ? pair[0] : 0;
+          const hR = pair ? pair[1] : 0;
           const q = parseFloat(row.qty) || 0;
           return (
             <div key={i} className="border rounded-md p-2.5" style={{ borderColor: T.line, backgroundColor: T.surface }}>
@@ -190,7 +240,8 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
                 <select value={row.item} onChange={e => updateRow(i, { item: e.target.value })}
                   className="flex-1 min-w-0 px-2.5 py-2 rounded border text-sm"
                   style={{ fontFamily: F_BODY, borderColor: T.line, color: T.ink }}>
-                  {rates.map(r => <option key={rateKey(r)} value={rateKey(r)}>{rateLabel(r)}</option>)}
+                  {/* #D11 — offer this row's own item plus only items not used by another row. */}
+                  {rates.filter(r => rateKey(r) === row.item || !usedKeys.has(rateKey(r))).map(r => <option key={rateKey(r)} value={rateKey(r)}>{rateLabel(r)}</option>)}
                 </select>
                 {lineRows.length > 1 && (
                   <button onClick={() => removeRow(i)} className="shrink-0 p-1.5" title="Remove this item">
@@ -210,7 +261,7 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
 
                 <div className="flex-1 min-w-0">
                   <div className="text-xs mb-1" style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.04em' }}>
-                    RATE PER {rate.unit ? rate.unit.toUpperCase() : 'UNIT'}
+                    RATE PER {rate?.unit ? rate.unit.toUpperCase() : 'UNIT'}
                   </div>
                   <div className="text-sm py-2" style={{ fontFamily: F_MONO }}>
                     <span style={{ color: T.brand }}>{peso(dR)}</span>
@@ -234,14 +285,16 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
         })}
       </div>
 
-      {/* Mark as Double + trip total + save */}
+      {/* Double rate is automatic from the address area (#D10) — read-only chip. */}
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <button onClick={() => setDbl(d => !d)} className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold" style={{ fontFamily: F_HEAD, backgroundColor: dbl ? T.brand : T.lineSoft, color: dbl ? '#fff' : T.ink }}>
-          {dbl ? <Check size={13} /> : <MapPin size={13} />} {dbl ? 'Marked as Double' : 'Mark as Double'}
-        </button>
+        {dbl ? (
+          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold" style={{ fontFamily: F_HEAD, backgroundColor: T.brand, color: '#fff' }}>
+            <Check size={13} /> Double rate (auto)
+          </span>
+        ) : <span />}
         <div className="text-sm" style={{ fontFamily: F_MONO, color: T.soft }}>Trip total: <span style={{ color: T.green, fontWeight: 600 }}>{peso(totalD)} / {peso(totalH)}</span></div>
       </div>
-      <Btn onClick={submit} icon={Check} disabled={!address || !driverId} full>Save delivery</Btn>
+      <Btn onClick={submit} icon={Check} loading={busy} disabled={!address || !driverId || busy} full>{busy ? 'Saving…' : 'Save delivery'}</Btn>
     </div>
   );
 };

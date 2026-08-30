@@ -438,6 +438,13 @@ model Delivery {
   customerName String?
   address      String
 
+  /// Specific address / landmark (purok, sitio, gate colour, "beside the
+  /// chapel"). `address` stays the broad area that drives double-rate matching;
+  /// this carries the detail a driver actually navigates by.
+  landmark     String?
+  /// Receiver's contact number, so the driver can call when near or lost.
+  contactNo    String?
+
   /// True when the destination falls in a double-rate ("doble") area. Set
   /// automatically from the known area list, but overridable — the checker
   /// can mark a trip doble even if the address text doesn't match.

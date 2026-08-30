@@ -1,0 +1,68 @@
+diff --git a/src/PrimeDepotPayrollUI.jsx b/src/PrimeDepotPayrollUI.jsx
+index 6297c00..1ee5a06 100644
+--- a/src/PrimeDepotPayrollUI.jsx
++++ b/src/PrimeDepotPayrollUI.jsx
+@@ -18,7 +18,7 @@ import { ForcedPasswordChange } from './views/AccountView.jsx';
+ import { AccountPage } from './views/AccountPage.jsx';
+ import { ReportsView } from './views/ReportsView.jsx';
+ import { SettingsView } from './views/SettingsView.jsx';
+-import { StaffPayrollView } from './views/StaffPayrollView.jsx';
++import { PayrollView } from './views/PayrollView.jsx';
+ import { TruckPayrollView } from './views/TruckPayrollView.jsx';
+ 
+ export default function PrimeDepotPayroll() {
+@@ -261,8 +261,8 @@ export default function PrimeDepotPayroll() {
+   </>;
+ 
+   const titles = {
+-    dashboard: 'Overview', employees: 'Employees', attendance: 'Attendance', truck: 'Truck Payroll',
+-    staff: 'Staff Payroll', loans: 'Loans & Advances', reports: 'Reports', settings: 'Settings',
++    dashboard: 'Overview', employees: 'Employees', attendance: 'Attendance', payroll: 'Payroll',
++    deliveries: 'Deliveries', loans: 'Loans & Advances', reports: 'Reports', settings: 'Settings',
+     account: 'My Account',
+   };
+ 
+@@ -286,8 +286,8 @@ export default function PrimeDepotPayroll() {
+           {tab === 'dashboard' && <DashboardView deliveries={deliveries} staff={staff} totalEmployees={allStaff.filter(e => e.status !== 'Inactive').length} loans={loans} statutory={statutory} setTab={setTab} cutoffLabel={cutoffText} attendanceSummaries={attSummaries} unmappedCount={unmappedCount} />}
+           {tab === 'employees' && <EmployeesView staff={allStaff} reloadStaff={reloadStaff} toast={toast} prefill={employeePrefill} onPrefillConsumed={() => setEmployeePrefill(null)} />}
+           {tab === 'attendance' && <AttendanceView staff={allStaff} toast={toast} onRegister={(id, name) => { setEmployeePrefill({ id, name }); setTab('employees'); }} />}
+-          {tab === 'truck' && <TruckPayrollView deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} crewRates={crewRates} loans={loans} reloadLoans={reloadLoans} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} toast={toast} />}
+-          {tab === 'staff' && <StaffPayrollView staff={staff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} toast={toast} cutoffLabel={cutoffText} reloadStaff={reloadStaff} loading={staffLoading} />}
++          {tab === 'payroll' && <PayrollView staff={staff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} toast={toast} cutoffLabel={cutoffText} reloadStaff={reloadStaff} staffLoading={staffLoading} deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} crewRates={crewRates} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} />}
++          {tab === 'deliveries' && <TruckPayrollView mode="logging" deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} crewRates={crewRates} loans={loans} reloadLoans={reloadLoans} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} toast={toast} />}
+           {tab === 'loans' && <LoansView staff={allStaff} loans={loans} reloadLoans={reloadLoans} toast={toast} />}
+           {tab === 'reports' && <ReportsView staff={staff} deliveries={deliveries} loans={loans} statutory={statutory} cutoffLabel={cutoffText} attendanceSummaries={attSummaries} crewRates={crewRates} />}
+           {tab === 'account' && (
+diff --git a/src/data/nav.js b/src/data/nav.js
+index 604e031..80f8e5e 100644
+--- a/src/data/nav.js
++++ b/src/data/nav.js
+@@ -16,11 +16,11 @@ import { LayoutDashboard, Users, Clock, Truck, Wallet, Settings as SettingsIcon,
+ // `null` means the item stands on its own, outside any section.
+ export const ADMIN_NAV = [
+   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, group: null },
+-  { key: 'truck', label: 'Truck Payroll', icon: Truck, group: 'Payroll' },
+-  { key: 'staff', label: 'Staff Payroll', icon: FileText, group: 'Payroll' },
++  { key: 'payroll', label: 'Payroll', icon: FileText, group: 'Payroll' },
+   { key: 'loans', label: 'Loans', icon: Wallet, group: 'Payroll' },
+   { key: 'employees', label: 'Employees', icon: Users, group: 'Workforce' },
+   { key: 'attendance', label: 'Attendance', icon: Clock, group: 'Workforce' },
++  { key: 'deliveries', label: 'Deliveries', icon: Truck, group: 'Workforce' },
+   { key: 'reports', label: 'Reports', icon: BarChart3, group: 'Administration' },
+   { key: 'settings', label: 'Settings', icon: SettingsIcon, group: 'Administration' },
+ ];
+diff --git a/src/views/DashboardView.jsx b/src/views/DashboardView.jsx
+index ba23395..ddb95b0 100644
+--- a/src/views/DashboardView.jsx
++++ b/src/views/DashboardView.jsx
+@@ -110,8 +110,8 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
+       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+         <div className="lg:col-span-2 grid grid-cols-2 gap-4 pd-stagger">
+           <StatCard label="Total Employees" value={totalEmployees} icon={Users} onClick={() => go('employees')} />
+-          <StatCard label="Net Pay This Cutoff" value={peso(netThisCutoff)} tone="amber" icon={Wallet} onClick={() => go('staff')} />
+-          <StatCard label="Deliveries Logged" value={deliveriesLogged} tone="green" icon={Truck} onClick={() => go('truck')} />
++          <StatCard label="Net Pay This Cutoff" value={peso(netThisCutoff)} tone="amber" icon={Wallet} onClick={() => go('payroll')} />
++          <StatCard label="Deliveries Logged" value={deliveriesLogged} tone="green" icon={Truck} onClick={() => go('deliveries')} />
+           <StatCard label="Active Loans & Advances" value={peso(activeLoans)} tone="amber" icon={FileText} onClick={() => go('loans')} />
+         </div>
+         <Panel className="p-4">
