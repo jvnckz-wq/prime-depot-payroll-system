@@ -80,8 +80,22 @@ button:disabled { cursor: not-allowed; }
     transform var(--pd-dur-fast) var(--pd-ease),
     box-shadow var(--pd-dur-base) var(--pd-ease);
 }
-.pd-btn:not(:disabled):hover { filter: brightness(1.08); }
-.pd-btn:not(:disabled):active { transform: translateY(0.5px) scale(0.99); }
+/* Filled buttons (dark ink, amber) lift on a soft shadow and darken slightly —
+   a tactile, premium press-ready feel. All pd-btn get the lift + shadow; only
+   the filled variants darken (outline/ghost fill crimson instead, below). */
+.pd-btn:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(27, 36, 48, 0.18);
+}
+.pd-btn[data-variant="dark"]:not(:disabled):hover,
+.pd-btn[data-variant="amber"]:not(:disabled):hover {
+  filter: brightness(0.92);
+}
+.pd-btn:not(:disabled):active {
+  transform: translateY(0.5px) scale(0.99);
+  box-shadow: none;
+  filter: brightness(0.88);
+}
 /* White / outline (and ghost) buttons fill with crimson and flip their text to
    white on hover. The Btn component sets its colours inline, which outrank a
    normal stylesheet rule, so these overrides are marked !important to win. */
@@ -186,13 +200,17 @@ input::-ms-clear {
 .pd-clickable-row { transition: background-color 0.12s ease; }
 .pd-clickable-row:hover { background-color: var(--pd-bg, #F4F5F7); }
 
-/* Every button should feel alive. pd-btn and pd-nav-item already carry their own
-   richer hover; this covers all the plain text / link / tab / table-action
-   buttons (and gives native buttons the pointer cursor they lack by default),
-   so nothing interactive ever reads as dead. */
-button:not(:disabled) { cursor: pointer; }
-button:disabled { cursor: not-allowed; }
+/* Plain text / tab / table-action buttons (everything that is NOT a pd-btn or a
+   sidebar item) turn crimson on hover, and press in slightly when clicked. The
+   colour is set inline on many of these (Void red, Restore green, tab ink/soft),
+   which outranks a normal rule, so the hover colour is marked !important to win.
+   pd-btn and pd-nav-item keep their own richer hover and are excluded. */
 button:not(.pd-btn):not(.pd-nav-item):not(:disabled) {
-  transition: opacity 0.12s ease, background-color 0.12s ease, color 0.12s ease;
+  transition: color 0.12s ease, background-color 0.12s ease, transform 0.08s ease, opacity 0.12s ease;
 }
-button:not(.pd-btn):not(.pd-nav-item):not(:disabled):hover { opacity: 0.7; }
+button:not(.pd-btn):not(.pd-nav-item):not(:disabled):hover {
+  color: var(--pd-brand) !important;
+}
+button:not(.pd-btn):not(.pd-nav-item):not(:disabled):active {
+  transform: translateY(0.5px);
+}

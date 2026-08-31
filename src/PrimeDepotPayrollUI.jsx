@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Sidebar, TopBar } from './components/Nav.jsx';
 import { Toasts } from './components/ui.jsx';
+import { IdleTimeout } from './components/IdleTimeout.jsx';
 import { BIR_TABLE_INIT, CREW_RATE_FALLBACK, PAGIBIG_INIT, PHILHEALTH_INIT, SSS_TABLE_INIT } from './data/seed';
 import { deliveriesToLog } from './lib/payroll';
 import { uid, cutoffLabel } from './lib/utils';
@@ -257,6 +258,7 @@ export default function PrimeDepotPayroll() {
   if (user.role === 'CHECKER') return <>
     <style>{FONTS}</style>
     <Toasts toasts={toasts} />
+    <IdleTimeout enabled onExit={logout} />
     <CheckerView currentUser={user} onUserChange={u => setUser(prev => ({ ...prev, ...u }))} onSignedOut={() => { setUser(null); setTab('dashboard'); }} deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} crewRates={crewRates} onLogout={logout} toast={toast} />
   </>;
 
@@ -270,6 +272,7 @@ export default function PrimeDepotPayroll() {
     <div className="flex h-screen w-full overflow-hidden" style={{ backgroundColor: T.bg, fontFamily: F_BODY }}>
       <style>{FONTS}</style>
       <Toasts toasts={toasts} />
+      <IdleTimeout enabled onExit={logout} />
       <Sidebar
         tab={tab}
         setTab={setTab}

@@ -129,6 +129,10 @@ model User {
   username     String   @unique
   passwordHash String
   displayName  String
+  /// Optional recovery email. Only the Operations Head sets one; it is where a
+  /// "forgot password" reset code is sent. Checkers do not self-reset — the
+  /// admin resets their password directly.
+  email        String?
   /// Profile picture, stored as a base64 data URL rather than a file.
   ///
   /// With a handful of accounts this is the pragmatic choice: no storage
@@ -155,8 +159,29 @@ model User {
   voidedDeliveries Delivery[] @relation("DeliveryVoidedBy")
   sessions         Session[]
   auditLogs        AuditLog[]
+  passwordResets   PasswordReset[]
 
   @@map("users")
+}
+
+/// A short-lived code emailed to the Operations Head to reset a forgotten
+/// password. The code itself is never stored — only its SHA-256 hash — so a
+/// leaked database does not hand over usable codes. A row is single-use
+/// (usedAt), expires quickly (expiresAt), and counts wrong guesses (attempts)
+/// so a six-digit code cannot be brute-forced.
+model PasswordReset {
+  id        String    @id @default(cuid())
+  userId    String
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int       @default(0)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_resets")
 }
 
 /// Server-side sessions.

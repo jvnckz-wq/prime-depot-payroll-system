@@ -39,6 +39,9 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut }) 
   const [tab, setTab] = useState('profile');
   const [name, setName] = useState(user.displayName);
   const [savingName, setSavingName] = useState(false);
+  const [email, setEmail] = useState(user.email || '');
+  const [savingEmail, setSavingEmail] = useState(false);
+  const emailChanged = (email.trim() || '') !== (user.email || '');
   const [uploading, setUploading] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [confirmRemovePic, setConfirmRemovePic] = useState(false);
@@ -64,6 +67,13 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut }) 
     try { await patch({ displayName: name }, 'Name updated.'); }
     catch { toast('Could not reach the server.', 'error'); }
     finally { setSavingName(false); }
+  };
+
+  const saveEmail = async () => {
+    setSavingEmail(true);
+    try { await patch({ email: email.trim() || null }, email.trim() ? 'Recovery email saved.' : 'Recovery email removed.'); }
+    catch { toast('Could not reach the server.', 'error'); }
+    finally { setSavingEmail(false); }
   };
 
   /// Shrinks the picture in the browser before it is ever sent.
@@ -207,6 +217,29 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut }) 
                   {savingName ? 'Saving...' : 'Save changes'}
                 </Btn>
                 <Btn size="sm" variant="outline" onClick={() => setName(user.displayName)}>Cancel</Btn>
+              </div>
+            )}
+
+            {/* Recovery email — Operations Head only. Where a forgotten-password
+                reset code is sent. */}
+            {user.role === 'ADMIN' && (
+              <div className="mt-4" style={{ borderTop: `1px solid ${T.lineSoft}`, paddingTop: 16 }}>
+                <Field label="Recovery email">
+                  <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                    placeholder="you@example.com" autoComplete="email" className={inputCls} style={inputStyle} />
+                </Field>
+                <div className="text-xs mt-2" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
+                  Where a one-time reset code is sent if you forget your password. Leave blank to turn off
+                  email recovery.
+                </div>
+                {emailChanged && (
+                  <div className="mt-3 flex gap-2">
+                    <Btn size="sm" onClick={saveEmail} loading={savingEmail} disabled={savingEmail}>
+                      {savingEmail ? 'Saving...' : 'Save email'}
+                    </Btn>
+                    <Btn size="sm" variant="outline" onClick={() => setEmail(user.email || '')}>Cancel</Btn>
+                  </div>
+                )}
               </div>
             )}
           </Panel>

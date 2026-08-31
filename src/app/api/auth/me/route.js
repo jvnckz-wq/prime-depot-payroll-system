@@ -12,13 +12,14 @@ export async function GET() {
 
   const record = await prisma.user.findUnique({
     where: { id: user.id },
-    select: { lastLoginAt: true, createdAt: true, avatar: true },
+    select: { lastLoginAt: true, createdAt: true, avatar: true, email: true },
   });
 
   return NextResponse.json({
     user: {
       ...user,
       avatar: record?.avatar ?? null,
+      email: record?.email ?? null,
       lastLoginAt: record?.lastLoginAt ? record.lastLoginAt.toISOString() : null,
       createdAt: record?.createdAt ? record.createdAt.toISOString() : null,
     },
@@ -43,6 +44,23 @@ export async function PATCH(request) {
       if (!displayName) return NextResponse.json({ error: 'Name cannot be empty.' }, { status: 400 });
       if (displayName.length > 80) return NextResponse.json({ error: 'Name is too long.' }, { status: 400 });
       data.displayName = displayName;
+    }
+
+    // Recovery email — the address a "forgot password" code is sent to. Only the
+    // Operations Head keeps one; a Checker setting it would have no effect since
+    // Checkers do not self-reset.
+    if ('email' in body) {
+      if (auth.user.role !== 'ADMIN') {
+        return NextResponse.json({ error: 'Only the Operations Head can set a recovery email.' }, { status: 403 });
+      }
+      const raw = body.email;
+      if (raw === null || (typeof raw === 'string' && !raw.trim())) {
+        data.email = null; // clearing it
+      } else if (typeof raw === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw.trim())) {
+        data.email = raw.trim().toLowerCase();
+      } else {
+        return NextResponse.json({ error: 'Enter a valid email address.' }, { status: 400 });
+      }
     }
 
     if ('avatar' in body) {
@@ -78,7 +96,7 @@ export async function PATCH(request) {
     const updated = await prisma.user.update({
       where: { id: auth.user.id },
       data,
-      select: { id: true, username: true, displayName: true, avatar: true, role: true, mustChangePassword: true },
+      select: { id: true, username: true, displayName: true, avatar: true, email: true, role: true, mustChangePassword: true },
     });
 
     return NextResponse.json({ user: updated });
