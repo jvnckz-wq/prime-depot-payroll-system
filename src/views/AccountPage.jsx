@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
-import { ShieldCheck } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { AlertTriangle, ShieldCheck } from 'lucide-react';
 import { Btn, Confirm, Eyebrow, Field, Panel, inputCls, inputStyle } from '../components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
-import { ChangePasswordPanel } from './AccountView.jsx';
+import { ChangePasswordPanel, EMAIL_RE, PasswordInput } from './AccountView.jsx';
 import { AccountsPanel } from './AccountsPanel.jsx';
 /* eslint-disable @next/next/no-img-element -- user avatars are base64 data URIs; next/image adds no value and cannot optimize data URIs */
 
@@ -35,13 +35,154 @@ const Avatar = ({ user, size = 96 }) => {
   );
 };
 
+/// The recovery email, where a forgotten-password code is sent. That code
+/// resets the password, so the address is guarded like the password itself:
+/// changing it needs the current password, and the new address replaces the
+/// old one only after a code sent to it is typed back. A mistyped (or someone
+/// else's) address can never be saved.
+const RecoveryEmailPanel = ({ user, toast, onUserChange }) => {
+  const [email, setEmail] = useState(user.email || '');
+  const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
+  const [step, setStep] = useState('edit'); // 'edit' → 'verify'
+  const [cooldown, setCooldown] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  // Mirrors the server's one-minute resend throttle, so "Resend" only appears
+  // once it will actually send.
+  useEffect(() => {
+    if (cooldown <= 0) return undefined;
+    const t = setTimeout(() => setCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
+
+  const addr = email.trim().toLowerCase();
+  const changed = !!addr && addr !== (user.email || '');
+
+  const cancel = () => {
+    setEmail(user.email || ''); setPassword(''); setCode(''); setError(''); setStep('edit');
+  };
+
+  const sendCode = async () => {
+    if (busy) return;
+    setError('');
+    if (!EMAIL_RE.test(addr)) { setError('Enter a valid email address.'); return; }
+    if (!password) { setError('Enter your current password.'); return; }
+    setBusy(true);
+    try {
+      const res = await fetch('/api/auth/verify-email/start', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: password, email: addr }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Could not send the code.'); return; }
+      setStep('verify'); setCode(''); setCooldown(60);
+    } catch { setError('Could not reach the server. Try again.'); }
+    finally { setBusy(false); }
+  };
+
+  const verify = async () => {
+    if (busy) return;
+    setError('');
+    if (code.length !== 6) { setError('Enter the 6-digit code sent to your email.'); return; }
+    setBusy(true);
+    try {
+      const res = await fetch('/api/auth/verify-email/complete', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: password, email: addr, code }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'That code did not match. Try again.'); return; }
+      const saved = data.email || addr;
+      if (onUserChange) onUserChange({ email: saved });
+      toast('Recovery email updated.');
+      setEmail(saved); setPassword(''); setCode(''); setStep('edit');
+    } catch { setError('Could not reach the server. Try again.'); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className="mt-4" style={{ borderTop: `1px solid ${T.lineSoft}`, paddingTop: 16 }}>
+      {step === 'edit' ? (
+        <>
+          <Field label="Recovery email">
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+              placeholder="you@example.com" autoComplete="email" autoCapitalize="none" spellCheck={false}
+              className={inputCls} style={inputStyle} />
+          </Field>
+          <div className="text-xs mt-2" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
+            Where a one-time reset code is sent if you forget your password. A new address is saved
+            only after you enter a code sent to it.
+          </div>
+          {changed && (
+            <div className="mt-3">
+              <Field label="Current password">
+                <PasswordInput value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" />
+              </Field>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="text-xs px-3 py-2.5 rounded"
+            style={{ backgroundColor: '#EAF2FB', color: '#1B4E8A', fontFamily: F_BODY, lineHeight: 1.5 }}>
+            We sent a 6-digit code to <span style={{ fontWeight: 700 }}>{addr}</span>. Enter it to confirm this inbox is yours.
+          </div>
+          <div className="mt-3">
+            <Field label="Verification code">
+              <input
+                value={code} onChange={e => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                inputMode="numeric" autoComplete="one-time-code" placeholder="------"
+                className={inputCls} style={{ ...inputStyle, textAlign: 'center', letterSpacing: '0.3em', fontFamily: F_MONO }}
+              />
+            </Field>
+          </div>
+        </>
+      )}
+
+      {error && (
+        <div className="flex items-start gap-2 mt-3 px-3 py-2.5 rounded text-xs"
+          style={{ backgroundColor: T.brandBg, fontFamily: F_BODY, color: T.brandDark }}>
+          <AlertTriangle size={13} className="mt-0.5 shrink-0" /><span>{error}</span>
+        </div>
+      )}
+
+      {(changed || step === 'verify') && (
+        <div className="mt-3 flex gap-2">
+          {step === 'edit' ? (
+            <Btn size="sm" onClick={sendCode} loading={busy} disabled={busy}>
+              {busy ? 'Sending...' : 'Send code'}
+            </Btn>
+          ) : (
+            <Btn size="sm" onClick={verify} loading={busy} disabled={busy}>
+              {busy ? 'Verifying...' : 'Verify and save'}
+            </Btn>
+          )}
+          <Btn size="sm" variant="outline" onClick={cancel} disabled={busy}>Cancel</Btn>
+        </div>
+      )}
+
+      {step === 'verify' && (
+        <div className="text-xs mt-3" style={{ fontFamily: F_BODY, color: T.soft }}>
+          {cooldown > 0 ? (
+            <span>Didn&apos;t receive it? You can resend in {cooldown}s.</span>
+          ) : (
+            <button type="button" onClick={sendCode} disabled={busy}
+              className="underline" style={{ color: T.brand, opacity: busy ? 0.6 : 1 }}>
+              Didn&apos;t receive the code? Resend it
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut }) => {
   const [tab, setTab] = useState('profile');
   const [name, setName] = useState(user.displayName);
   const [savingName, setSavingName] = useState(false);
-  const [email, setEmail] = useState(user.email || '');
-  const [savingEmail, setSavingEmail] = useState(false);
-  const emailChanged = (email.trim() || '') !== (user.email || '');
   const [uploading, setUploading] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [confirmRemovePic, setConfirmRemovePic] = useState(false);
@@ -67,13 +208,6 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut }) 
     try { await patch({ displayName: name }, 'Name updated.'); }
     catch { toast('Could not reach the server.', 'error'); }
     finally { setSavingName(false); }
-  };
-
-  const saveEmail = async () => {
-    setSavingEmail(true);
-    try { await patch({ email: email.trim() || null }, email.trim() ? 'Recovery email saved.' : 'Recovery email removed.'); }
-    catch { toast('Could not reach the server.', 'error'); }
-    finally { setSavingEmail(false); }
   };
 
   /// Shrinks the picture in the browser before it is ever sent.
@@ -223,24 +357,7 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut }) 
             {/* Recovery email — Operations Head only. Where a forgotten-password
                 reset code is sent. */}
             {user.role === 'ADMIN' && (
-              <div className="mt-4" style={{ borderTop: `1px solid ${T.lineSoft}`, paddingTop: 16 }}>
-                <Field label="Recovery email">
-                  <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                    placeholder="you@example.com" autoComplete="email" className={inputCls} style={inputStyle} />
-                </Field>
-                <div className="text-xs mt-2" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
-                  Where a one-time reset code is sent if you forget your password. Leave blank to turn off
-                  email recovery.
-                </div>
-                {emailChanged && (
-                  <div className="mt-3 flex gap-2">
-                    <Btn size="sm" onClick={saveEmail} loading={savingEmail} disabled={savingEmail}>
-                      {savingEmail ? 'Saving...' : 'Save email'}
-                    </Btn>
-                    <Btn size="sm" variant="outline" onClick={() => setEmail(user.email || '')}>Cancel</Btn>
-                  </div>
-                )}
-              </div>
+              <RecoveryEmailPanel user={user} toast={toast} onUserChange={onUserChange} />
             )}
           </Panel>
         </div>

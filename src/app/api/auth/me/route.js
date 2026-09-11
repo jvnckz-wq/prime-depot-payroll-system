@@ -28,9 +28,14 @@ export async function GET() {
 
 /// PATCH /api/auth/me — edit your own profile.
 ///
-/// Only the display name is editable. The username is the login identity and
-/// is attached to every delivery this account has logged; letting it change
-/// would quietly rewrite who did what.
+/// Only the display name and picture are editable. The username is the login
+/// identity and is attached to every delivery this account has logged; letting
+/// it change would quietly rewrite who did what.
+///
+/// The recovery email is deliberately NOT editable here. A password-reset code
+/// goes to that address, so changing it would hand the account to whoever
+/// controls the new inbox. It changes only through /api/auth/verify-email,
+/// which asks for the current password and a code sent to the new address.
 export async function PATCH(request) {
   const auth = await requireUser();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -39,28 +44,18 @@ export async function PATCH(request) {
     const body = await request.json();
     const data = {};
 
+    if ('email' in body) {
+      return NextResponse.json(
+        { error: 'The recovery email is changed from My Account, which confirms the new address first.' },
+        { status: 400 },
+      );
+    }
+
     if ('displayName' in body) {
       const displayName = typeof body.displayName === 'string' ? body.displayName.trim() : '';
       if (!displayName) return NextResponse.json({ error: 'Name cannot be empty.' }, { status: 400 });
       if (displayName.length > 80) return NextResponse.json({ error: 'Name is too long.' }, { status: 400 });
       data.displayName = displayName;
-    }
-
-    // Recovery email — the address a "forgot password" code is sent to. Only the
-    // Operations Head keeps one; a Checker setting it would have no effect since
-    // Checkers do not self-reset.
-    if ('email' in body) {
-      if (auth.user.role !== 'ADMIN') {
-        return NextResponse.json({ error: 'Only the Operations Head can set a recovery email.' }, { status: 403 });
-      }
-      const raw = body.email;
-      if (raw === null || (typeof raw === 'string' && !raw.trim())) {
-        data.email = null; // clearing it
-      } else if (typeof raw === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw.trim())) {
-        data.email = raw.trim().toLowerCase();
-      } else {
-        return NextResponse.json({ error: 'Enter a valid email address.' }, { status: 400 });
-      }
     }
 
     if ('avatar' in body) {

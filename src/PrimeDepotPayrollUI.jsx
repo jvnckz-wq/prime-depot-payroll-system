@@ -16,6 +16,7 @@ import { LoansView } from './views/LoansView.jsx';
 import { LoginView } from './views/LoginView.jsx';
 import { LegalView } from './views/LegalView.jsx';
 import { ForcedPasswordChange } from './views/AccountView.jsx';
+import TwoFactorSetup from './views/TwoFactorSetup.jsx';
 import { AccountPage } from './views/AccountPage.jsx';
 import { ReportsView } from './views/ReportsView.jsx';
 import { SettingsView } from './views/SettingsView.jsx';
@@ -61,8 +62,9 @@ export default function PrimeDepotPayroll() {
   }, []);
 
   // Employee data is admin-only, so there is nothing to fetch until an admin is
-  // signed in. Extracted into a callback so a register or edit can refresh the
-  // list the same way — one source of truth, straight from the database.
+  // signed in with two-factor on (the admin APIs refuse until then). Extracted
+  // into a callback so a register or edit can refresh the list the same way —
+  // one source of truth, straight from the database.
   const reloadStaff = React.useCallback(async () => {
     try {
       const res = await fetch('/api/employees');
@@ -79,7 +81,7 @@ export default function PrimeDepotPayroll() {
   }, []);
 
   useEffect(() => {
-    if (!user || user.role !== 'ADMIN') return;
+    if (!user || user.role !== 'ADMIN' || !user.totpEnabled) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     reloadStaff();
   }, [user, reloadStaff]);
@@ -153,7 +155,7 @@ export default function PrimeDepotPayroll() {
   }, []);
 
   useEffect(() => {
-    if (!user || user.role !== 'ADMIN') return;
+    if (!user || user.role !== 'ADMIN' || !user.totpEnabled) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     reloadLoans();
   }, [user, reloadLoans]);
@@ -182,7 +184,7 @@ export default function PrimeDepotPayroll() {
   }, []);
 
   useEffect(() => {
-    if (!user || user.role !== 'ADMIN') return;
+    if (!user || user.role !== 'ADMIN' || !user.totpEnabled) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     reloadStatutory();
   }, [user, reloadStatutory]);
@@ -194,7 +196,7 @@ export default function PrimeDepotPayroll() {
   const [attSummaries, setAttSummaries] = useState([]);
   const [unmappedCount, setUnmappedCount] = useState(0);
   useEffect(() => {
-    if (!user || user.role !== 'ADMIN') return;
+    if (!user || user.role !== 'ADMIN' || !user.totpEnabled) return;
     let cancelled = false;
     fetch('/api/attendance')
       .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
@@ -252,7 +254,17 @@ export default function PrimeDepotPayroll() {
   if (user.mustChangePassword) return <>
     <style>{FONTS}</style>
     <Toasts toasts={toasts} />
-    <ForcedPasswordChange user={user} onDone={() => setUser(u => ({ ...u, mustChangePassword: false }))} />
+    <ForcedPasswordChange user={user} onDone={(email) => setUser(u => ({ ...u, mustChangePassword: false, ...(email ? { email } : {}) }))} />
+  </>;
+
+  // An admin cannot reach the app until two-factor is set up. Enforced from the
+  // first login onwards, including for an existing admin (totpEnabled is false
+  // until they enroll). This screen is the friendly half; requireAdmin on the
+  // server refuses every admin API until then.
+  if (user.role === 'ADMIN' && !user.totpEnabled) return <>
+    <style>{FONTS}</style>
+    <Toasts toasts={toasts} />
+    <TwoFactorSetup user={user} onDone={() => setUser(u => ({ ...u, totpEnabled: true }))} />
   </>;
 
   if (user.role === 'CHECKER') return <>

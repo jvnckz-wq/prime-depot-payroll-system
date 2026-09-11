@@ -15,6 +15,7 @@
 // This module is server-only. Importing it from a 'use client' component would
 // ship the connection string to the browser, so it must only ever be imported
 // by API routes and server components.
+import 'server-only';
 import { PrismaClient } from '../generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { wrapWithRetry } from './db-retry';

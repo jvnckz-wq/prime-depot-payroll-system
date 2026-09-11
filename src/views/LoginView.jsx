@@ -38,7 +38,7 @@ const pwMeetsAll = (p) => PW_RULES.every(([, test]) => test(p));
 // whether an account or a recovery email exists.
 function ForgotPassword({ onBack }) {
   const [step, setStep] = useState('request');
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [pw, setPw] = useState('');
   const [pw2, setPw2] = useState('');
@@ -46,25 +46,42 @@ function ForgotPassword({ onBack }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  // Seconds until another code may be requested. Mirrors the server's 60s
+  // resend throttle, so the "Resend" link is only offered once it will work.
+  const [cooldown, setCooldown] = useState(0);
+
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  useEffect(() => {
+    if (cooldown <= 0) return undefined;
+    const t = setTimeout(() => setCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
 
   const field = {
     fontFamily: F_BODY, backgroundColor: '#F4F5F7', color: T.ink,
     border: `1px solid ${error ? T.brand : 'transparent'}`,
   };
 
+  // Handles the first send and every resend. A resend keeps the user on the
+  // verify step and just refreshes the notice and the cooldown.
   const request = async () => {
     if (busy) return;
     setError('');
-    if (!username.trim()) { setError('Enter your username.'); return; }
+    const addr = email.trim().toLowerCase();
+    if (!EMAIL_RE.test(addr)) { setError('Enter the recovery email you registered.'); return; }
     setBusy(true);
     try {
       const res = await fetch('/api/auth/forgot-password', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username }),
+        body: JSON.stringify({ email: addr }),
       });
       const data = await res.json();
+      // The server answers the same way whether or not the address is on file,
+      // so the notice is worded to be true either way.
       setNotice(data.message || 'If that account has a recovery email on file, a reset code has been sent.');
       setStep('verify');
+      setCooldown(60);
     } catch { setError('Could not reach the server. Try again.'); }
     finally { setBusy(false); }
   };
@@ -79,7 +96,7 @@ function ForgotPassword({ onBack }) {
     try {
       const res = await fetch('/api/auth/reset-password', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, code, newPassword: pw }),
+        body: JSON.stringify({ email: email.trim().toLowerCase(), code, newPassword: pw }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Could not reset the password.'); return; }
@@ -93,7 +110,7 @@ function ForgotPassword({ onBack }) {
       <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: F_HEAD, color: T.ink }}>Reset password</h1>
       <p className="text-sm mb-6" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
         {step === 'request'
-          ? 'Enter your username and a one-time code will be emailed to your recovery address.'
+          ? 'Enter your recovery email and a one-time code will be sent to it.'
           : 'Enter the code from your email and choose a new password.'}
       </p>
 
@@ -105,14 +122,15 @@ function ForgotPassword({ onBack }) {
 
       {step === 'request' ? (
         <>
-          <label className="block text-sm mb-1.5" style={{ color: T.soft }}>Username</label>
-          <input value={username} onChange={e => setUsername(e.target.value)} autoCapitalize="none" spellCheck={false} disabled={busy}
+          <label className="block text-sm mb-1.5" style={{ color: T.soft }}>Recovery email</label>
+          <input value={email} onChange={e => setEmail(e.target.value)} type="email" autoComplete="email" autoCapitalize="none" spellCheck={false}
+            placeholder="you@example.com" disabled={busy}
             className="w-full px-4 py-2.5 rounded-lg text-sm outline-none" style={field} />
         </>
       ) : (
         <>
           <label className="block text-sm mb-1.5" style={{ color: T.soft }}>Reset code</label>
-          <input value={code} onChange={e => setCode(e.target.value)} inputMode="numeric" maxLength={6} placeholder="6-digit code" disabled={busy}
+          <input value={code} onChange={e => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))} inputMode="numeric" maxLength={6} placeholder="6-digit code" disabled={busy}
             className="w-full px-4 py-2.5 rounded-lg text-sm outline-none" style={{ ...field, fontFamily: F_MONO, letterSpacing: '0.3em' }} />
 
           <label className="block text-sm mb-1.5 mt-4" style={{ color: T.soft }}>New password</label>
@@ -170,14 +188,27 @@ function ForgotPassword({ onBack }) {
         </div>
       )}
 
-      <button onClick={step === 'request' ? request : reset} disabled={busy} data-variant="amber"
+      <button onClick={step === 'request' ? () => request() : reset} disabled={busy} data-variant="amber"
         className="pd-btn w-full py-3 rounded-lg text-sm font-semibold inline-flex items-center justify-center gap-1.5 mt-6"
         style={{ fontFamily: F_HEAD, backgroundColor: T.brand, color: '#fff', opacity: busy ? 0.6 : 1 }}>
         {busy && <Loader2 size={14} className="pd-spin" />}
         {busy ? 'Please wait…' : (step === 'request' ? 'Send code' : 'Reset password')}
       </button>
 
-      <div className="text-center mt-4">
+      {step === 'verify' && (
+        <div className="text-center mt-4 text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
+          {cooldown > 0 ? (
+            <span>Didn&apos;t receive it? You can resend in {cooldown}s.</span>
+          ) : (
+            <button type="button" onClick={() => request()} disabled={busy}
+              className="underline" style={{ color: T.brand, opacity: busy ? 0.6 : 1 }}>
+              Didn&apos;t receive the code? Resend it
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className="text-center mt-3">
         <button type="button" onClick={() => onBack()} className="text-xs underline" style={{ fontFamily: F_BODY, color: T.soft }}>
           Back to sign in
         </button>
@@ -196,6 +227,11 @@ export const LoginView = ({ onSignedIn, onShowLegal }) => {
   // 'login' or 'forgot' — the sign-in panel doubles as the password-reset flow.
   const [mode, setMode] = useState('login');
   const [resetDone, setResetDone] = useState('');
+  // After a correct password on a 2FA account, the panel switches to a code step
+  // instead of signing straight in.
+  const [awaiting2FA, setAwaiting2FA] = useState(false);
+  const [tfaCode, setTfaCode] = useState('');
+  const [useBackup, setUseBackup] = useState(false);
 
   // Pre-check the Terms box if this device accepted them on a past sign-in.
   // Read after mount so server and client render the same first paint.
@@ -229,6 +265,7 @@ export const LoginView = ({ onSignedIn, onShowLegal }) => {
       }
       // Remember the acceptance on this device for next time.
       try { localStorage.setItem(TERMS_KEY, '1'); } catch { /* storage blocked — no memory, box just re-ticks next time */ }
+      if (data.twoFactorRequired) { setAwaiting2FA(true); setPassword(''); return; }
       onSignedIn(data.user);
     } catch {
       setError('Could not reach the server. Check your connection and try again.');
@@ -239,6 +276,39 @@ export const LoginView = ({ onSignedIn, onShowLegal }) => {
 
   // Enter submits, which is what anyone typing a password expects.
   const onKeyDown = (e) => { if (e.key === 'Enter') submit(); };
+
+  // Second step for a 2FA account: send the authenticator code (or a backup
+  // code) to complete the pending session.
+  const verify2FA = async () => {
+    if (busy) return;
+    setError('');
+    if (!tfaCode.trim()) { setError(useBackup ? 'Enter a backup code.' : 'Enter your 6-digit code.'); return; }
+    setBusy(true);
+    try {
+      const res = await fetch('/api/auth/2fa', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: tfaCode.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        // The pending sign-in is gone (expired, or ended after too many wrong
+        // codes), so the only way on is the password again.
+        if (res.status === 401 || res.status === 429) { setAwaiting2FA(false); setUseBackup(false); }
+        setError(data.error || 'Could not verify the code.');
+        setTfaCode('');
+        return;
+      }
+      onSignedIn(data.user);
+    } catch {
+      setError('Could not reach the server. Try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const backToSignIn = () => {
+    setAwaiting2FA(false); setTfaCode(''); setUseBackup(false); setError(''); setPassword('');
+  };
 
   const fieldStyle = {
     fontFamily: F_BODY, backgroundColor: '#F4F5F7', color: T.ink,
@@ -259,7 +329,57 @@ export const LoginView = ({ onSignedIn, onShowLegal }) => {
         </span>
 
         <div className="w-full max-w-sm">
-        {mode === 'forgot' ? (
+        {awaiting2FA ? (
+        <>
+          <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: F_HEAD, color: T.ink }}>Two-factor login</h1>
+          <p className="text-sm mb-6" style={{ color: T.soft, lineHeight: 1.6 }}>
+            {useBackup
+              ? 'Enter one of your backup codes to finish signing in.'
+              : 'Enter the 6-digit code from your authenticator app to finish signing in.'}
+          </p>
+
+          <label className="block text-sm mb-1.5" style={{ color: T.soft }}>
+            {useBackup ? 'Backup code' : 'Authentication code'}
+          </label>
+          <input
+            value={tfaCode}
+            onChange={e => setTfaCode(useBackup
+              ? e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 9)
+              : e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+            onKeyDown={e => { if (e.key === 'Enter') verify2FA(); }}
+            inputMode={useBackup ? 'text' : 'numeric'}
+            autoComplete="one-time-code" autoCapitalize="characters" spellCheck={false} disabled={busy}
+            placeholder={useBackup ? 'XXXX-XXXX' : '------'}
+            className="w-full px-4 py-2.5 rounded-lg text-base outline-none"
+            style={{ ...fieldStyle, textAlign: 'center', letterSpacing: '0.34em', fontFamily: F_MONO }}
+          />
+
+          {error && (
+            <div className="flex items-start gap-2 mt-4 px-3 py-2.5 rounded-lg text-xs" style={{ backgroundColor: T.brandBg, fontFamily: F_BODY, color: T.brandDark }}>
+              <AlertTriangle size={13} className="mt-0.5 shrink-0" /><span>{error}</span>
+            </div>
+          )}
+
+          <button onClick={verify2FA} disabled={busy} data-variant="amber"
+            className="pd-btn w-full py-3 rounded-lg text-sm font-semibold inline-flex items-center justify-center gap-1.5 mt-6"
+            style={{ fontFamily: F_HEAD, backgroundColor: T.brand, color: '#fff', opacity: busy ? 0.6 : 1 }}>
+            {busy && <Loader2 size={14} className="pd-spin" />}
+            {busy ? 'Please wait…' : 'Verify'}
+          </button>
+
+          <div className="text-center mt-4">
+            <button type="button" onClick={() => { setUseBackup(!useBackup); setTfaCode(''); setError(''); }}
+              className="text-xs underline" style={{ fontFamily: F_BODY, color: T.brand }}>
+              {useBackup ? 'Use your authenticator app instead' : 'Use a backup code instead'}
+            </button>
+          </div>
+          <div className="text-center mt-2">
+            <button type="button" onClick={backToSignIn} className="text-xs underline" style={{ fontFamily: F_BODY, color: T.soft }}>
+              Back to sign in
+            </button>
+          </div>
+        </>
+        ) : mode === 'forgot' ? (
           <ForgotPassword
             onBack={(msg) => { setMode('login'); setError(''); if (msg) setResetDone(msg); }}
           />

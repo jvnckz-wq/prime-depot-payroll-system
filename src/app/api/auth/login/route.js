@@ -121,6 +121,20 @@ export async function POST(request) {
     await prisma.loginAttempt.deleteMany({ where: { key } });
     await sweepExpired();
 
+    // Password is correct. If 2FA is on, do NOT grant a usable session yet:
+    // issue a short-lived pending one and make the client finish at
+    // /api/auth/2fa. Until then getCurrentUser treats the session as signed out.
+    if (user.totpEnabled) {
+      await createSession(user.id, { pendingTwoFactor: true });
+      await logSecurityEvent('LOGIN_2FA_PENDING', {
+        actorId: user.id,
+        actorLabel: user.username,
+        ip,
+        detail: 'Password accepted; waiting for the two-factor code.',
+      });
+      return NextResponse.json({ twoFactorRequired: true });
+    }
+
     await createSession(user.id);
     await prisma.user.update({
       where: { id: user.id },
@@ -141,6 +155,11 @@ export async function POST(request) {
         avatar: user.avatar,
         role: user.role,
         mustChangePassword: user.mustChangePassword,
+        // Carried so the app knows whether a recovery email is on file without a
+        // page reload — the Settings field and the gate both read user.email.
+        email: user.email,
+        // Drives the enforced 2FA-setup gate for an admin who has not set it up.
+        totpEnabled: user.totpEnabled,
       },
     });
   } catch (err) {

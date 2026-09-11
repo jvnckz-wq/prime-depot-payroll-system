@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { AlertTriangle, CheckCircle2, Circle, Eye, EyeOff, KeyRound, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { AlertTriangle, CheckCircle2, Circle, Eye, EyeOff, KeyRound, Lock, ShieldCheck } from 'lucide-react';
 import { Btn, Confirm, Eyebrow, Field, Panel, inputCls, inputStyle } from '../components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
@@ -20,9 +20,14 @@ const PASSWORD_RULES = [
 // True only when every rule passes — used as the submit gate and "Strong" state.
 const passwordMeetsAll = (p) => PASSWORD_RULES.every((r) => r.test(p));
 
+// Recovery-email shape. Kept identical to the server checks in
+// verify-email/start and verify-email/complete so the field never accepts
+// locally what the API would reject.
+export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 // Password field with a show/hide (eye) toggle. Flipping the type keeps the
 // value; the toggle is skipped by Tab so it never steals focus from the form.
-function PasswordInput({ value, onChange, placeholder, autoComplete }) {
+export function PasswordInput({ value, onChange, placeholder, autoComplete }) {
   const [show, setShow] = useState(false);
   return (
     <div className="relative">
@@ -174,28 +179,201 @@ export const ChangePasswordPanel = ({ onDone, toast, compact = false }) => {
   );
 };
 
-/// Shown immediately after signing in with a temporary password. There is no
-/// way past it other than choosing a real password — a temporary one handed
-/// over verbally should never survive the first session.
-export const ForcedPasswordChange = ({ user, onDone }) => (
+/// The crimson full-screen shell the first-time gates live in. Shared by the
+/// password step, the email-verification step, and the two-factor setup screen
+/// so they all read as one continuous onboarding flow.
+export const GateShell = ({ username, title, subtitle, icon = 'key', children }) => (
   <div className="min-h-screen flex items-center justify-center px-4 py-10" style={{ backgroundColor: T.sidebar }}>
     <div className="w-full max-w-sm">
       <div className="text-center mb-6">
         <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-4" style={{ backgroundColor: '#fff' }}>
-          <KeyRound size={22} color={T.brand} />
+          {icon === 'shield' ? <ShieldCheck size={22} color={T.brand} />
+            : icon === 'lock' ? <Lock size={22} color={T.brand} />
+              : <KeyRound size={22} color={T.brand} />}
         </div>
-        <div className="text-xl font-bold text-white" style={{ fontFamily: F_HEAD }}>Choose your password</div>
-        <div className="text-xs mt-1.5" style={{ fontFamily: F_BODY, color: T.sidebarSoft, lineHeight: 1.6 }}>
-          Signed in as <span style={{ fontFamily: F_MONO, color: '#fff' }}>{user.username}</span>.
-          You are using a temporary password, so please set your own before continuing.
-        </div>
+        <div className="text-xl font-bold text-white" style={{ fontFamily: F_HEAD }}>{title}</div>
+        {subtitle && (
+          <div className="text-xs mt-1.5" style={{ fontFamily: F_BODY, color: T.sidebarSoft, lineHeight: 1.6 }}>
+            {username ? <>Signed in as <span style={{ fontFamily: F_MONO, color: '#fff' }}>{username}</span>. </> : null}{subtitle}
+          </div>
+        )}
       </div>
-      <Panel className="p-6">
-        <ChangePasswordPanel onDone={onDone} compact />
-      </Panel>
+      <Panel className="p-6">{children}</Panel>
     </div>
   </div>
 );
+
+/// The admin's first-time gate. Unlike a Checker's, it also registers a
+/// recovery email, and it will not take that email on trust. Step 1 sets the
+/// password and the address; step 2 makes the admin type a code emailed to that
+/// address, proving the inbox is real and theirs. Nothing is saved until the
+/// code checks out, so a mistyped or fake address can never be registered.
+const AdminGateVerify = ({ user, onDone }) => {
+  const [step, setStep] = useState('setup');
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [cooldown, setCooldown] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  // Mirrors the server's 60s resend throttle so the "Resend" link only appears
+  // once it will actually send a new code.
+  useEffect(() => {
+    if (cooldown <= 0) return undefined;
+    const t = setTimeout(() => setCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
+
+  const addr = email.trim().toLowerCase();
+
+  // Step 1 and every resend. On the first send we validate the passwords up
+  // front, so we never email a code only to fail on the password afterwards.
+  const sendCode = async (isResend = false) => {
+    if (busy) return;
+    setError('');
+    if (!isResend) {
+      if (next !== confirm) { setError('The two new passwords do not match.'); return; }
+      if (!passwordMeetsAll(next)) { setError('Your new password does not meet all the requirements below.'); return; }
+    }
+    if (!EMAIL_RE.test(addr)) { setError('Enter a valid recovery email.'); return; }
+    setBusy(true);
+    try {
+      const res = await fetch('/api/auth/verify-email/start', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: current, newPassword: next, email: addr }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Could not send the verification code.'); return; }
+      setStep('verify');
+      setCode('');
+      setCooldown(60);
+    } catch { setError('Could not reach the server. Try again.'); }
+    finally { setBusy(false); }
+  };
+
+  // Step 2. The password change and the email registration happen only here,
+  // once the emailed code matches the address it was sent to.
+  const verify = async () => {
+    if (busy) return;
+    setError('');
+    if (!code.trim()) { setError('Enter the code sent to your email.'); return; }
+    setBusy(true);
+    try {
+      const res = await fetch('/api/auth/verify-email/complete', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: current, newPassword: next, email: addr, code: code.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'That code did not match. Try again.'); return; }
+      if (onDone) onDone(data.email || addr);
+    } catch { setError('Could not reach the server. Try again.'); }
+    finally { setBusy(false); }
+  };
+
+  const errorBox = error && (
+    <div className="flex items-start gap-2 mt-3 px-3 py-2.5 rounded text-xs"
+      style={{ backgroundColor: T.brandBg, fontFamily: F_BODY, color: T.brandDark }}>
+      <AlertTriangle size={13} className="mt-0.5 shrink-0" /><span>{error}</span>
+    </div>
+  );
+
+  if (step === 'verify') {
+    return (
+      <GateShell username={user.username} icon="lock" title="Confirm your email"
+        subtitle="Enter the code to verify your recovery email and finish setup.">
+        <div className="text-xs px-3 py-2.5 rounded mb-4"
+          style={{ backgroundColor: '#EAF2FB', color: '#1B4E8A', fontFamily: F_BODY, lineHeight: 1.5 }}>
+          We sent a 6-digit code to <span style={{ fontWeight: 700 }}>{addr}</span>. Enter it below to confirm this inbox is yours.
+        </div>
+        <Field label="Verification code">
+          <input
+            value={code} onChange={e => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+            inputMode="numeric" autoComplete="one-time-code" placeholder="------"
+            className={inputCls} style={{ ...inputStyle, textAlign: 'center', letterSpacing: '0.3em', fontFamily: F_MONO }}
+          />
+        </Field>
+        {errorBox}
+        <div className="mt-4">
+          <Btn onClick={verify} loading={busy} disabled={busy} full>{busy ? 'Verifying...' : 'Verify'}</Btn>
+        </div>
+        <div className="text-center mt-4 text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
+          {cooldown > 0 ? (
+            <span>Didn&apos;t receive it? You can resend in {cooldown}s.</span>
+          ) : (
+            <button type="button" onClick={() => sendCode(true)} disabled={busy}
+              className="underline" style={{ color: T.brand, opacity: busy ? 0.6 : 1 }}>
+              Didn&apos;t receive the code? Resend it
+            </button>
+          )}
+        </div>
+        <div className="text-center mt-2">
+          <button type="button" onClick={() => { setStep('setup'); setError(''); }}
+            className="text-xs underline" style={{ fontFamily: F_BODY, color: T.soft }}>
+            Use a different email
+          </button>
+        </div>
+      </GateShell>
+    );
+  }
+
+  return (
+    <GateShell username={user.username} title="Choose your password"
+      subtitle="Set your password and confirm a recovery email before continuing.">
+      <Field label="Current password">
+        <PasswordInput value={current} onChange={e => setCurrent(e.target.value)} autoComplete="current-password" />
+      </Field>
+      <div className="mt-3">
+        <Field label="New password">
+          <PasswordInput value={next} onChange={e => setNext(e.target.value)} autoComplete="new-password" />
+        </Field>
+        {next && <PasswordStrength value={next} />}
+      </div>
+      <div className="mt-3">
+        <Field label="Confirm new password">
+          <PasswordInput value={confirm} onChange={e => setConfirm(e.target.value)} autoComplete="new-password" />
+        </Field>
+        {confirm && next !== confirm && (
+          <div className="text-xs mt-1.5" style={{ fontFamily: F_BODY, color: T.red }}>Passwords do not match yet.</div>
+        )}
+      </div>
+      <div className="mt-4 pt-4" style={{ borderTop: `1px dashed ${T.line}` }}>
+        <Field label={<>Recovery email <span style={{ color: T.brand }}>*</span></>}>
+          <input
+            type="email" value={email} onChange={e => setEmail(e.target.value)}
+            autoComplete="email" autoCapitalize="none" spellCheck={false}
+            placeholder="you@example.com" className={inputCls} style={inputStyle}
+          />
+        </Field>
+        <div className="text-xs mt-1.5" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.55 }}>
+          We will send a 6-digit code to this address to confirm it is really yours before it is saved.
+        </div>
+      </div>
+      {errorBox}
+      <div className="mt-4">
+        <Btn onClick={() => sendCode(false)} loading={busy} disabled={busy} full>
+          {busy ? 'Sending...' : 'Send verification code'}
+        </Btn>
+      </div>
+    </GateShell>
+  );
+};
+
+/// Shown immediately after signing in with a temporary password. There is no
+/// way past it other than choosing a real password — a temporary one handed
+/// over verbally should never survive the first session. The admin also
+/// registers a verified recovery email here; a Checker just sets a password.
+export const ForcedPasswordChange = ({ user, onDone }) => {
+  if (user.role === 'ADMIN') return <AdminGateVerify user={user} onDone={onDone} />;
+  return (
+    <GateShell username={user.username} title="Choose your password"
+      subtitle="You are using a temporary password, so please set your own before continuing.">
+      <ChangePasswordPanel onDone={onDone} compact />
+    </GateShell>
+  );
+};
 
 /// "My Account" — profile and security, the one Settings section a Checker
 /// can reach. Laid out the way people expect from any account page: who you

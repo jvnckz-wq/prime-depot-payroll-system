@@ -16,6 +16,7 @@
 //  * The cookie carries a random token; the database stores only its SHA-256
 //    hash. Same principle as passwords: a leaked database gives an attacker
 //    hashes, not usable sessions.
+import 'server-only';
 import { cookies, headers } from 'next/headers';
 import { createHash, randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
@@ -55,15 +56,28 @@ const hashToken = (token) => createHash('sha256').update(token).digest('hex');
 
 /// Issues a session and sets the cookie. Returns nothing useful on purpose —
 /// callers should not be passing the raw token around.
-export async function createSession(userId) {
+export async function createSession(userId, { pendingTwoFactor = false } = {}) {
+  const jar = await cookies();
+
+  // Drop whatever session this browser already holds before issuing a new one,
+  // so signing in again (or finishing 2FA) never leaves the old token working
+  // alongside the new one.
+  const previous = jar.get(COOKIE_NAME)?.value;
+  if (previous) {
+    await prisma.session.deleteMany({ where: { tokenHash: hashToken(previous) } });
+  }
+
   const token = randomBytes(32).toString('hex');
-  const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
+  // A pending-2FA session is deliberately short-lived: it only has to survive
+  // the few minutes between the password and the code, so it is not a long
+  // brute-force window if left open.
+  const ttlMs = pendingTwoFactor ? 10 * 60 * 1000 : SESSION_DAYS * 24 * 60 * 60 * 1000;
+  const expiresAt = new Date(Date.now() + ttlMs);
 
   await prisma.session.create({
-    data: { tokenHash: hashToken(token), userId, expiresAt },
+    data: { tokenHash: hashToken(token), userId, expiresAt, pendingTwoFactor },
   });
 
-  const jar = await cookies();
   jar.set(COOKIE_NAME, token, {
     // httpOnly keeps the cookie out of reach of JavaScript, so a script
     // injected into the page cannot read the session and impersonate the user.
@@ -114,8 +128,50 @@ export async function getCurrentUser() {
     return null;
   }
 
-  const { id, username, displayName, avatar, role, mustChangePassword } = session.user;
-  return { id, username, displayName, avatar, role, mustChangePassword };
+  // Password was correct but the required 2FA code has not been entered yet, so
+  // this session grants no access anywhere except the /api/auth/2fa endpoint
+  // (which reads it through getPendingTwoFactorLogin instead).
+  if (session.pendingTwoFactor) return null;
+
+  const { id, username, displayName, avatar, role, mustChangePassword, totpEnabled } = session.user;
+  return { id, username, displayName, avatar, role, mustChangePassword, totpEnabled };
+}
+
+/// Read the user behind a still-pending 2FA login. Returns { sessionId, user }
+/// (the full user record, so the caller can check the TOTP secret and backup
+/// codes) or null. Only /api/auth/2fa uses this — everywhere else a pending
+/// session is treated as signed out.
+export async function getPendingTwoFactorLogin() {
+  const jar = await cookies();
+  const token = jar.get(COOKIE_NAME)?.value;
+  if (!token) return null;
+
+  const session = await prisma.session.findUnique({
+    where: { tokenHash: hashToken(token) },
+    include: { user: true },
+  });
+  if (!session) return null;
+  if (session.expiresAt < new Date() || !session.user.isActive || !session.pendingTwoFactor) {
+    return null;
+  }
+  return { sessionId: session.id, user: session.user };
+}
+
+/// Finish a two-factor login once the code checks out: spend the pending
+/// session and issue a brand-new full one in its place. A fresh token, rather
+/// than upgrading the pending one, means the token handed out before the code
+/// was checked never becomes a full session, and the cookie gets the full
+/// lifetime instead of keeping the pending session's ten minutes.
+///
+/// Returns false if the pending session was already spent or removed, so two
+/// racing requests cannot both turn one pending session into a login.
+export async function completeTwoFactor(sessionId, userId) {
+  const { count } = await prisma.session.deleteMany({
+    where: { id: sessionId, pendingTwoFactor: true },
+  });
+  if (count !== 1) return false;
+  await createSession(userId);
+  return true;
 }
 
 /// Guards for API routes. Each returns { user } on success or { error, status }
@@ -135,6 +191,14 @@ export async function requireAdmin() {
   if (result.error) return result;
   if (result.user.role !== 'ADMIN') {
     return { error: 'This action is restricted to the Operations Head.', status: 403 };
+  }
+  // The Operations Head must have two-factor on before any admin data or action
+  // is reachable. The setup screen enforces this in the browser; this is the
+  // check that actually holds. Enrollment itself (2fa/setup, 2fa/enable) and
+  // the first-time password and email steps go through requireUser, so they
+  // still work before this is satisfied.
+  if (!result.user.totpEnabled) {
+    return { error: 'Set up two-factor login to continue.', status: 403 };
   }
   return result;
 }

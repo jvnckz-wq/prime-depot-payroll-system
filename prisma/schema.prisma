@@ -116,6 +116,22 @@ enum AuditAction {
   DELIVERY_VOIDED
   DELIVERY_UNVOIDED
   CREW_RATES_UPDATED
+  /// Added Sep 2026 with two-factor login. Appended at the end to match
+  /// Postgres ALTER TYPE ADD VALUE ordering.
+  LOGIN_2FA_PENDING
+  LOGIN_2FA_FAILURE
+  TWO_FACTOR_ENABLED
+  TWO_FACTOR_DISABLED
+  RECOVERY_EMAIL_CHANGED
+}
+
+/// Which flow an emailed code belongs to. Password resets and recovery-email
+/// confirmations share the password_resets table; each flow reads, throttles
+/// and clears only its own rows, so a code sent for one can never be spent on
+/// the other.
+enum CodePurpose {
+  PASSWORD_RESET
+  EMAIL_VERIFY
 }
 
 // ============================================================================
@@ -151,6 +167,17 @@ model User {
   /// The user is forced to choose their own password before doing anything
   /// else, so a temporary password handed over verbally never stays in use.
   mustChangePassword Boolean @default(true)
+  /// Two-factor authentication (TOTP), Operations Head only. totpSecret is the
+  /// shared secret an authenticator app is enrolled with; totpEnabled flips true
+  /// only after a code confirms the enrollment. backupCodes holds sha256 hashes
+  /// of one-time recovery codes, each removed from the list as it is used.
+  totpSecret   String?
+  totpEnabled  Boolean  @default(false)
+  backupCodes  String[] @default([])
+  /// The 30-second time step of the last TOTP code accepted. A code is only
+  /// accepted for a later step, so one seen over a shoulder or captured by a
+  /// phishing page cannot be replayed while it is still valid.
+  totpLastStep Int?
   lastLoginAt  DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -164,14 +191,16 @@ model User {
   @@map("users")
 }
 
-/// A short-lived code emailed to the Operations Head to reset a forgotten
-/// password. The code itself is never stored — only its SHA-256 hash — so a
+/// A short-lived code emailed to the Operations Head, either to reset a
+/// forgotten password or to confirm a new recovery email (see `purpose`).
+/// The code itself is never stored — only its SHA-256 hash — so a
 /// leaked database does not hand over usable codes. A row is single-use
 /// (usedAt), expires quickly (expiresAt), and counts wrong guesses (attempts)
 /// so a six-digit code cannot be brute-forced.
 model PasswordReset {
   id        String    @id @default(cuid())
   userId    String
+  purpose   CodePurpose @default(PASSWORD_RESET)
   codeHash  String
   expiresAt DateTime
   attempts  Int       @default(0)
@@ -196,6 +225,13 @@ model Session {
   tokenHash  String   @unique
   userId     String
   expiresAt  DateTime
+  /// True for a session created after a correct password but before a required
+  /// 2FA code. getCurrentUser treats it as signed out, so it grants no access
+  /// until the code is verified; these are short-lived.
+  pendingTwoFactor Boolean @default(false)
+  /// Codes tried against this pending session. /api/auth/2fa deletes the
+  /// session once the cap is reached, so the password must be entered again.
+  twoFactorAttempts Int @default(0)
   createdAt  DateTime @default(now())
 
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -6,7 +6,9 @@ import {
 } from '../../../../lib/auth';
 
 // Changing your own password. Available to both roles — this is the one
-// account action a Checker can perform.
+// account action a Checker can perform. The admin's first-time change also
+// registers a verified recovery email, but that runs through the dedicated
+// verify-email endpoints, not here, so this stays password-only.
 export async function POST(request) {
   const auth = await requireUser();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });

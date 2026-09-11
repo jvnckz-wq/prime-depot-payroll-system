@@ -1,3 +1,4 @@
+import 'server-only';
 import nodemailer from 'nodemailer';
 
 // Email sending, kept behind one helper so the rest of the app never touches
@@ -52,6 +53,38 @@ export async function sendPasswordResetCode(to, code) {
       + `<p style="margin:0 0 8px;color:#6B7280;font-size:13px">The code expires in 10 minutes.</p>`
       + `<p style="margin:0;color:#6B7280;font-size:13px">If you did not request this, ignore this email — `
       + `your password stays unchanged.</p>`
+      + `</div></div>`,
+  });
+}
+
+/// Send a one-time code to confirm a recovery email during first-time setup.
+/// Same transport as the reset code, but its own message so the recipient knows
+/// they are confirming an address, not resetting a password. Throws on failure
+/// so the route can surface it (here the user is the authenticated admin, so a
+/// clear error is appropriate — there is nothing to hide behind a generic reply).
+export async function sendEmailVerificationCode(to, code) {
+  const t = getTransporter();
+  if (!t) throw new Error('Email is not configured (set EMAIL_USER and EMAIL_APP_PASSWORD).');
+
+  await t.sendMail({
+    from: `"Prime Depot Payroll" <${process.env.EMAIL_USER}>`,
+    to,
+    subject: 'Confirm your Prime Depot recovery email',
+    text:
+      `Your Prime Depot recovery email confirmation code is: ${code}\n\n`
+      + `Enter it on the setup screen to confirm this address. `
+      + `The code expires in 10 minutes.\n\n`
+      + `If you did not request this, you can ignore this email.`,
+    html:
+      `<div style="font-family:Arial,Helvetica,sans-serif;max-width:440px;margin:0 auto;color:#1B2430">`
+      + `<div style="background:#C8161D;color:#fff;padding:16px 20px;border-radius:8px 8px 0 0;font-weight:700">`
+      + `Prime Depot Payroll</div>`
+      + `<div style="border:1px solid #DED9D7;border-top:none;border-radius:0 0 8px 8px;padding:20px">`
+      + `<p style="margin:0 0 12px">Use this code to confirm this is your recovery email:</p>`
+      + `<div style="font-size:30px;font-weight:800;letter-spacing:6px;text-align:center;`
+      + `background:#F4F5F7;border-radius:8px;padding:14px 0;margin:0 0 14px">${code}</div>`
+      + `<p style="margin:0 0 8px;color:#6B7280;font-size:13px">The code expires in 10 minutes.</p>`
+      + `<p style="margin:0;color:#6B7280;font-size:13px">If you did not request this, ignore this email.</p>`
       + `</div></div>`,
   });
 }
