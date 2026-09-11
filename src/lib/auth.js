@@ -180,9 +180,18 @@ export async function completeTwoFactor(sessionId, userId) {
 /// This is the server-side half of access control. Hiding a page in the UI is
 /// not protection — without these checks, anyone could call the endpoint
 /// directly and read whatever it returns.
-export async function requireUser() {
+///
+/// An account still on a temporary password is refused everywhere, the same way
+/// the forced-change screen blocks the UI. Only the endpoints that carry out the
+/// change pass `allowPasswordChange: true`: change-password (Checker) and
+/// verify-email/start + /complete (the admin's gate). GET /api/auth/me and
+/// logout read the session through getCurrentUser, so they are unaffected.
+export async function requireUser({ allowPasswordChange = false } = {}) {
   const user = await getCurrentUser();
   if (!user) return { error: 'Not signed in.', status: 401 };
+  if (user.mustChangePassword && !allowPasswordChange) {
+    return { error: 'You must change your password first.', status: 403 };
+  }
   return { user };
 }
 
@@ -196,7 +205,8 @@ export async function requireAdmin() {
   // is reachable. The setup screen enforces this in the browser; this is the
   // check that actually holds. Enrollment itself (2fa/setup, 2fa/enable) and
   // the first-time password and email steps go through requireUser, so they
-  // still work before this is satisfied.
+  // still work before this is satisfied. (requireUser above has already refused
+  // a temporary password, so enrollment only opens once that is replaced.)
   if (!result.user.totpEnabled) {
     return { error: 'Set up two-factor login to continue.', status: 403 };
   }

@@ -28,7 +28,9 @@ const hashFor = (code, email) => createHash('sha256').update(`${code}|${email}`)
 const sixDigits = () => String(randomInt(100000, 1000000));
 
 export async function POST(request) {
-  const auth = await requireUser();
+  // Allowed on a temporary password: the admin's gate replaces it here (the
+  // mustChangePassword branch below makes the new password mandatory).
+  const auth = await requireUser({ allowPasswordChange: true });
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   try {

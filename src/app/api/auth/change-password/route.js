@@ -10,7 +10,8 @@ import {
 // registers a verified recovery email, but that runs through the dedicated
 // verify-email endpoints, not here, so this stays password-only.
 export async function POST(request) {
-  const auth = await requireUser();
+  // Allowed on a temporary password: this is how a Checker replaces it.
+  const auth = await requireUser({ allowPasswordChange: true });
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   try {

@@ -19,7 +19,8 @@ const CODE_RE = /^\d{6}$/;
 const hashFor = (code, email) => createHash('sha256').update(`${code}|${email}`).digest('hex');
 
 export async function POST(request) {
-  const auth = await requireUser();
+  // Allowed on a temporary password, as in /start: this is where it is replaced.
+  const auth = await requireUser({ allowPasswordChange: true });
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   try {

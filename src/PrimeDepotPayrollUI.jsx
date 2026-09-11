@@ -108,7 +108,8 @@ export default function PrimeDepotPayroll() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    // The server refuses data endpoints until a temporary password is replaced.
+    if (!user || user.mustChangePassword) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     reloadDeliveries();
   }, [user, reloadDeliveries]);
@@ -125,7 +126,7 @@ export default function PrimeDepotPayroll() {
   const [crewRates, setCrewRates] = useState(CREW_RATE_FALLBACK);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || user.mustChangePassword) return;
     let cancelled = false;
     fetch('/api/rates')
       .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
