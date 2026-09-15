@@ -12,7 +12,7 @@ export async function GET() {
 
   const record = await prisma.user.findUnique({
     where: { id: user.id },
-    select: { lastLoginAt: true, createdAt: true, avatar: true, email: true },
+    select: { lastLoginAt: true, createdAt: true, avatar: true, email: true, backupCodes: true },
   });
 
   return NextResponse.json({
@@ -20,6 +20,7 @@ export async function GET() {
       ...user,
       avatar: record?.avatar ?? null,
       email: record?.email ?? null,
+      backupCodesRemaining: record?.backupCodes?.length ?? 0,
       lastLoginAt: record?.lastLoginAt ? record.lastLoginAt.toISOString() : null,
       createdAt: record?.createdAt ? record.createdAt.toISOString() : null,
     },

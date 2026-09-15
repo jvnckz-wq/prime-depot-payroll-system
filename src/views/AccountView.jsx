@@ -105,10 +105,11 @@ function PasswordStrength({ value }) {
 
 /// The change-password form itself. Used both inside Settings and on the
 /// forced-change screen, so the rules and messages stay identical in both.
-export const ChangePasswordPanel = ({ onDone, toast, compact = false }) => {
+export const ChangePasswordPanel = ({ onDone, toast, compact = false, twoFactor = false }) => {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -118,18 +119,19 @@ export const ChangePasswordPanel = ({ onDone, toast, compact = false }) => {
 
     if (next !== confirm) { setError('The two new passwords do not match.'); return; }
     if (!passwordMeetsAll(next)) { setError('Your new password does not meet all the requirements below.'); return; }
+    if (twoFactor && code.length !== 6) { setError('Enter the 6-digit code from your authenticator app.'); return; }
 
     setBusy(true);
     try {
       const res = await fetch('/api/auth/change-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPassword: current, newPassword: next }),
+        body: JSON.stringify({ currentPassword: current, newPassword: next, ...(twoFactor ? { code } : {}) }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Could not change password.'); return; }
 
-      setCurrent(''); setNext(''); setConfirm('');
+      setCurrent(''); setNext(''); setConfirm(''); setCode('');
       if (toast) toast('Password changed. Other devices have been signed out.');
       if (onDone) onDone();
     } catch {
@@ -158,6 +160,19 @@ export const ChangePasswordPanel = ({ onDone, toast, compact = false }) => {
           <div className="text-xs mt-1.5" style={{ fontFamily: F_BODY, color: T.red }}>Passwords do not match yet.</div>
         )}
       </div>
+
+      {twoFactor && (
+        <div className="mt-3">
+          <Field label="Authenticator code">
+            <input value={code} onChange={e => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+              inputMode="numeric" autoComplete="one-time-code" placeholder="------"
+              className={inputCls} style={{ ...inputStyle, textAlign: 'center', letterSpacing: '0.3em', fontFamily: F_MONO }} />
+          </Field>
+          <div className="text-xs mt-1.5" style={{ fontFamily: F_BODY, color: T.soft }}>
+            Two-factor is on, so a current code is required to change your password.
+          </div>
+        </div>
+      )}
 
       <div className="text-xs mt-3" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
         Changing your password signs out every other device using this account.

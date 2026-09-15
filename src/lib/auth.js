@@ -282,3 +282,34 @@ export async function logSecurityEvent(action, details = {}) {
     console.error('Audit log write failed:', action, err);
   }
 }
+
+/// Fail-closed attempt limiter for sensitive, already-authenticated actions
+/// (changing a password, regenerating backup codes, re-enrolling an
+/// authenticator). It reuses the login_attempts table but with its own keys, so
+/// it never collides with the login or the 2FA-login counters. The count is
+/// bumped BEFORE the code is checked and returns false once the ceiling is
+/// crossed, so a burst of parallel guesses cannot all slip through.
+///
+/// Keys here never contain "|" (login keys are "<ip>|<username>") and never use
+/// the "2fa:" prefix (the 2FA-login counter), so the three stay isolated.
+export async function reserveAttempt(key, { max = 10, windowMs = 15 * 60 * 1000 } = {}) {
+  const now = new Date();
+  await prisma.loginAttempt.deleteMany({
+    where: { key, firstAt: { lt: new Date(now.getTime() - windowMs) } },
+  });
+  const { count } = await prisma.loginAttempt.upsert({
+    where: { key },
+    create: { key, count: 1, firstAt: now, lastAt: now },
+    update: { count: { increment: 1 }, lastAt: now },
+  });
+  return count <= max;
+}
+
+/// Hand back the attempt a CORRECT code reserved, so only wrong codes count
+/// against the ceiling. Mirrors what the 2FA-login route does on success.
+export async function releaseAttempt(key) {
+  await prisma.loginAttempt.updateMany({
+    where: { key, count: { gt: 0 } },
+    data: { count: { decrement: 1 } },
+  });
+}

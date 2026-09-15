@@ -1,10 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Check, Trash2, MapPin } from 'lucide-react';
+import { Plus, Check, Trash2 } from 'lucide-react';
 import { Av, Btn, Eyebrow, Field, inputCls, inputStyle } from './ui.jsx';
-import { DOBLE_AREAS } from '../data/seed';
-import { matchDobleArea } from '../lib/payroll';
 import { peso, looksLikePHPhone } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
@@ -40,6 +38,9 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
   // drives double-rate matching; these two are free text and never affect pay.
   const [landmark, setLandmark] = useState('');
   const [contactNo, setContactNo] = useState('');
+  // Double rate is a manual mark now, set by whoever logs the trip (they know
+  // the terrain and distance). It drives which rate column each line uses.
+  const [dbl, setDbl] = useState(false);
   const [lineRows, setLineRows] = useState([{ item: rates[0] ? (rates[0].id || `${rates[0].cat}|${rates[0].unit}`) : '', qty: '' }]);
   // Driver, truck, and helpers are each chosen per delivery. Nothing in the
   // client's account ties a driver to a truck, so nothing here assumes it.
@@ -79,12 +80,6 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
   const removeRow = (i) => setLineRows(r => r.filter((_, idx) => idx !== i));
   const updateRow = (i, patch) => setLineRows(r => r.map((row, idx) => idx === i ? { ...row, ...patch } : row));
 
-  // #D10 — Double rate applies AUTOMATICALLY when the delivery address matches a
-  // known double-rate area. No manual "Mark as Double" toggle to forget, which
-  // was a real source of wrong pay.
-  const dobleMatch = matchDobleArea(address);
-  const dbl = !!dobleMatch;
-
   // #D11 — keys already chosen on other rows, so each item is offered only once.
   const usedKeys = new Set(lineRows.map(r => r.item));
 
@@ -122,7 +117,7 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
         helper2Id: helper2Id || null,
         address, customer, dbl,
         landmark, contactNo,
-        matchedArea: dobleMatch || null,
+        matchedArea: null,
         items: computed.map(r => ({ ...r, dbl })),
       });
       if (ok !== false) {
@@ -187,8 +182,7 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
       {/* Area (broad — drives the double rate) + customer */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 mb-1">
         <Field label={<>Area / Barangay <span style={{ color: T.brand }}>*</span></>}>
-          <input list="doble-areas" placeholder="e.g. Estrellang Langit" value={address} onChange={e => setAddress(e.target.value)} className={inputCls} style={inputStyle} />
-          <datalist id="doble-areas">{DOBLE_AREAS.map(a => <option key={a} value={a} />)}</datalist>
+          <input placeholder="e.g. Estrellang Langit" value={address} onChange={e => setAddress(e.target.value)} className={inputCls} style={inputStyle} />
         </Field>
         <Field label="Customer's name">
           <input placeholder="Customer's name" value={customer} onChange={e => setCustomer(e.target.value)} className={inputCls} style={inputStyle} />
@@ -212,10 +206,6 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
           )}
         </Field>
       </div>
-
-      {dobleMatch && (
-        <div className="mt-2 mb-1 flex items-center gap-1.5 text-xs" style={{ color: T.green, fontFamily: F_BODY }}><MapPin size={12} /> Double rate applied automatically — &quot;{dobleMatch}&quot; is a double-rate area.</div>
-      )}
 
       {/* Items delivered */}
       <div className="flex items-center justify-between mt-4 mb-2">
@@ -285,13 +275,17 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
         })}
       </div>
 
-      {/* Double rate is automatic from the address area (#D10) — read-only chip. */}
+      {/* Double rate is a manual mark set by whoever logs the trip. Toggling it
+          re-prices every line above (single rate vs double) as you watch. */}
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        {dbl ? (
-          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold" style={{ fontFamily: F_HEAD, backgroundColor: T.brand, color: '#fff' }}>
-            <Check size={13} /> Double rate (auto)
+        <button type="button" onClick={() => setDbl(v => !v)}
+          className="flex items-center gap-2 px-3 py-1.5 rounded text-xs font-semibold border"
+          style={{ fontFamily: F_HEAD, borderColor: dbl ? T.brand : T.line, backgroundColor: dbl ? T.brand : T.surface, color: dbl ? '#fff' : T.ink }}>
+          <span className="flex items-center justify-center rounded-sm" style={{ width: 15, height: 15, border: `1.5px solid ${dbl ? '#fff' : T.line}`, backgroundColor: dbl ? '#fff' : 'transparent' }}>
+            {dbl && <Check size={11} color={T.brand} strokeWidth={3} />}
           </span>
-        ) : <span />}
+          Mark as double rate
+        </button>
         <div className="text-sm" style={{ fontFamily: F_MONO, color: T.soft }}>Trip total: <span style={{ color: T.green, fontWeight: 600 }}>{peso(totalD)} / {peso(totalH)}</span></div>
       </div>
       <Btn onClick={submit} loading={busy} disabled={!address || !driverId || busy} full>{busy ? 'Saving…' : 'Save delivery'}</Btn>

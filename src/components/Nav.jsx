@@ -22,7 +22,7 @@ const NavItem = ({ item, active, onSelect }) => {
         fontFamily: F_BODY,
         fontWeight: active ? 600 : 400,
         color: active ? '#FFFFFF' : T.sidebarSoft,
-        backgroundColor: active ? T.sidebarActiveBg : 'transparent',
+        backgroundColor: active ? T.sidebarActiveBg : undefined,
       }}
     >
       {/* The active marker is its own element rather than a border-left, so
@@ -144,7 +144,6 @@ export const Sidebar = ({ tab, setTab, onLogout, user, onOpenAccount, open = fal
 
   const header = (withClose) => (
     <div className="flex items-center gap-2.5 px-4 py-4" style={{ borderBottom: `1px solid ${T.sidebarLine}` }}>
-      {/* eslint-disable-next-line @next/next/no-img-element -- static brand logo from /public; next/image adds no value here */}
       <img src="/logo.png" alt="Prime Depot" className="shrink-0 rounded-md bg-white p-1" style={{ width: 34, height: 34 }} />
       <span className="min-w-0 flex-1 leading-tight">
         <span className="block text-sm font-bold text-white truncate" style={{ fontFamily: F_HEAD }}>Prime Depot</span>

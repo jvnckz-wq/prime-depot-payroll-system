@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../../lib/prisma';
 import {
-  destroyAllSessions, createSession, hashPassword, logSecurityEvent,
-  requireUser, validatePassword, verifyPassword,
+  createSession, destroyAllSessions, hashPassword, logSecurityEvent,
+  releaseAttempt, requireUser, reserveAttempt, validatePassword, verifyPassword,
 } from '../../../../lib/auth';
+import { totpStep } from '../../../../lib/twofactor';
 
 // Changing your own password. Available to both roles — this is the one
 // account action a Checker can perform. The admin's first-time change also
@@ -15,7 +16,7 @@ export async function POST(request) {
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   try {
-    const { currentPassword, newPassword } = await request.json();
+    const { currentPassword, newPassword, code } = await request.json();
 
     const record = await prisma.user.findUnique({ where: { id: auth.user.id } });
     if (!record) return NextResponse.json({ error: 'Account not found.' }, { status: 404 });
@@ -25,6 +26,40 @@ export async function POST(request) {
     // machine from locking the real owner out of their own account.
     const ok = await verifyPassword(currentPassword ?? '', record.passwordHash);
     if (!ok) return NextResponse.json({ error: 'Current password is incorrect.' }, { status: 400 });
+
+    // If two-factor is on for this account, the password alone is not enough:
+    // a current authenticator code is required too, so someone at an unattended
+    // signed-in machine still cannot change the password. This never fires on
+    // the first-time forced change (two-factor is set up only afterwards, so
+    // totpEnabled is false then), which keeps that flow working. Wrong codes are
+    // rate-limited fail-closed, and an accepted code's time step is recorded so
+    // it cannot be replayed at the sign-in prompt.
+    if (record.totpEnabled) {
+      const key = `chpwd:${record.id}`;
+      if (!(await reserveAttempt(key))) {
+        return NextResponse.json(
+          { error: 'Too many incorrect codes. Please wait 15 minutes and try again.' },
+          { status: 429 },
+        );
+      }
+      const entered = typeof code === 'string' ? code.trim() : '';
+      let codeOk = false;
+      const step = totpStep(entered, record.totpSecret);
+      if (step !== null) {
+        const { count } = await prisma.user.updateMany({
+          where: { id: record.id, OR: [{ totpLastStep: null }, { totpLastStep: { lt: step } }] },
+          data: { totpLastStep: step },
+        });
+        codeOk = count === 1;
+      }
+      if (!codeOk) {
+        return NextResponse.json(
+          { error: 'That authentication code did not match. Check your authenticator app and try again.' },
+          { status: 400 },
+        );
+      }
+      await releaseAttempt(key);
+    }
 
     const problem = validatePassword(newPassword);
     if (problem) return NextResponse.json({ error: problem }, { status: 400 });

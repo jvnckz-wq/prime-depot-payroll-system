@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, Copy, KeyRound, UserCheck, UserX } from 'lucide-react';
-import { Badge, Btn, Confirm, Eyebrow, Field, Modal, Panel, Skeleton, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
+import { AlertTriangle, Copy, KeyRound, Plus, UserCheck, UserX } from 'lucide-react';
+import { Av, Badge, Btn, Confirm, Eyebrow, Field, Modal, Skeleton, inputCls, inputStyle } from '../components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
 /// Account management, Operations Head only.
@@ -11,6 +11,9 @@ import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 /// creates an account, the system generates a temporary password, the admin
 /// hands it over in person, and the new user is forced to replace it on first
 /// sign-in.
+///
+/// Presented as a row list (one account per row) rather than a dense table, so
+/// it reads at a glance on the account settings screen.
 export const AccountsPanel = ({ currentUser, toast }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -86,87 +89,90 @@ export const AccountsPanel = ({ currentUser, toast }) => {
     }
   };
 
+  const fmtDate = (iso) => iso
+    ? new Date(iso).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })
+    : 'Never';
+
+  const roleLabel = (role) => (role === 'ADMIN' ? 'Operations Head' : 'Delivery entry only');
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-3">
-        <Eyebrow>System Accounts</Eyebrow>
-        <Btn size="sm" onClick={() => { setError(''); setAddOpen(true); }}>Create Account</Btn>
+      <div className="flex items-center justify-between gap-4 mb-1">
+        <h1 className="text-2xl font-bold" style={{ fontFamily: F_HEAD, color: T.ink }}>Account Access</h1>
+        <Btn size="sm" icon={Plus} onClick={() => { setError(''); setAddOpen(true); }}>Create account</Btn>
       </div>
 
-      <Panel className="overflow-hidden">
-        <div className="overflow-x-auto pd-scroll-shadow">
-          <table className="w-full">
-            <thead>
-              <tr><Th>Username</Th><Th>Name</Th><Th>Role</Th><Th>Status</Th><Th>Last sign-in</Th><Th right>Actions</Th></tr>
-            </thead>
-            <tbody>
-              {loading && [0, 1, 2].map((i) => (
-                <tr key={`sk-${i}`}>
-                  <Td><Skeleton w={90} /></Td>
-                  <Td><Skeleton w={120} /></Td>
-                  <Td><Skeleton w={54} /></Td>
-                  <Td><Skeleton w={70} /></Td>
-                  <Td><Skeleton w={84} /></Td>
-                  <Td right><Skeleton w={48} /></Td>
-                </tr>
-              ))}
-              {!loading && users.map(u => (
-                <tr key={u.id}>
-                  <Td mono>{u.username}</Td>
-                  <Td>{u.displayName}</Td>
-                  <Td>
-                    <Badge tone={u.role === 'ADMIN' ? 'amber' : 'blue'}>
-                      {u.role === 'ADMIN' ? 'Operations Head' : 'Delivery entry only'}
-                    </Badge>
-                  </Td>
-                  <Td>
-                    {!u.isActive
-                      ? <Badge tone="red">Disabled</Badge>
-                      : u.mustChangePassword
-                        ? <Badge tone="amber">Temp password</Badge>
-                        : <Badge tone="green">Active</Badge>}
-                  </Td>
-                  <Td mono>
-                    <span style={{ color: T.soft }}>
-                      {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }) : 'Never'}
-                    </span>
-                  </Td>
-                  <Td right>
-                    <div className="flex items-center justify-end gap-1.5">
-                      <button title="Reset password"
-                        onClick={() => setConfirm({
-                          title: `Reset password for ${u.username}?`,
-                          message: 'A new temporary password will be generated. Any session this account currently has will be signed out immediately.',
-                          onConfirm: () => act(u, 'reset-password'),
-                        })}>
-                        <KeyRound size={14} color={T.soft} />
-                      </button>
-                      {u.id !== currentUser.id && (
-                        u.isActive ? (
-                          <button title="Disable account"
-                            onClick={() => setConfirm({
-                              title: `Disable ${u.username}?`,
-                              message: 'They will be signed out and cannot sign in again until re-enabled. Their past delivery records stay intact — this is why accounts are disabled rather than deleted.',
-                              danger: true,
-                              confirmLabel: 'Disable account',
-                              onConfirm: () => act(u, 'disable'),
-                            })}>
-                            <UserX size={14} color={T.red} />
-                          </button>
-                        ) : (
-                          <button title="Re-enable account" onClick={() => act(u, 'enable')}>
-                            <UserCheck size={14} color={T.green} />
-                          </button>
-                        )
-                      )}
-                    </div>
-                  </Td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Panel>
+      <div className="mt-4">
+        {loading && [0, 1, 2].map((i) => (
+          <div key={`sk-${i}`} className="flex items-center gap-4 py-4" style={{ borderBottom: `1px solid ${T.lineSoft}` }}>
+            <Skeleton w={40} h={40} r={20} />
+            <div className="flex-1">
+              <Skeleton w={110} /><div className="mt-1.5"><Skeleton w={180} /></div>
+            </div>
+            <Skeleton w={90} />
+          </div>
+        ))}
+
+        {!loading && users.map(u => {
+          const statusBadge = !u.isActive
+            ? <Badge tone="red">Disabled</Badge>
+            : u.mustChangePassword
+              ? <Badge tone="amber">Temp password</Badge>
+              : <Badge tone="green">Active</Badge>;
+
+          return (
+            <div key={u.id} className="flex items-center gap-4 py-4"
+              style={{ borderBottom: `1px solid ${T.lineSoft}`, opacity: u.isActive ? 1 : 0.65 }}>
+              <Av name={u.displayName} size={40} tone={u.role === 'ADMIN' ? T.brand : T.soft} />
+
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold truncate" style={{ fontFamily: F_MONO, color: T.ink }}>{u.username}</div>
+                <div className="text-xs mt-0.5 truncate" style={{ fontFamily: F_BODY, color: T.soft }}>
+                  {u.displayName} <span aria-hidden="true">&middot;</span> last sign-in {fmtDate(u.lastLoginAt)}
+                </div>
+              </div>
+
+              <div className="hidden sm:flex items-center gap-2 shrink-0">
+                <Badge tone={u.role === 'ADMIN' ? 'amber' : 'blue'}>{roleLabel(u.role)}</Badge>
+                {statusBadge}
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button className="pd-clickable p-2 rounded" title="Reset password"
+                  style={{ border: `1px solid ${T.line}` }}
+                  onClick={() => setConfirm({
+                    title: `Reset password for ${u.username}?`,
+                    message: 'A new temporary password will be generated. Any session this account currently has will be signed out immediately.',
+                    onConfirm: () => act(u, 'reset-password'),
+                  })}>
+                  <KeyRound size={14} color={T.soft} />
+                </button>
+                {u.id !== currentUser.id && (
+                  u.isActive ? (
+                    <button className="pd-clickable p-2 rounded" title="Disable account"
+                      style={{ border: `1px solid ${T.line}` }}
+                      onClick={() => setConfirm({
+                        title: `Disable ${u.username}?`,
+                        message: 'They will be signed out and cannot sign in again until re-enabled. Their past delivery records stay intact, which is why accounts are disabled rather than deleted.',
+                        danger: true,
+                        confirmLabel: 'Disable account',
+                        onConfirm: () => act(u, 'disable'),
+                      })}>
+                      <UserX size={14} color={T.red} />
+                    </button>
+                  ) : (
+                    <button className="pd-clickable p-2 rounded" title="Re-enable account"
+                      style={{ border: `1px solid ${T.line}` }}
+                      onClick={() => act(u, 'enable')}>
+                      <UserCheck size={14} color={T.green} />
+                    </button>
+                  )
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
       {/* Create account */}
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Create Account" width={420}>
@@ -181,17 +187,8 @@ export const AccountsPanel = ({ currentUser, toast }) => {
               className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
           </Field>
         </div>
-        <div className="mt-3">
-          <Field label="Role">
-            <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
-              className={inputCls} style={inputStyle}>
-              <option value="CHECKER">Checker — delivery entry only</option>
-              <option value="ADMIN">Operations Head — full access</option>
-            </select>
-          </Field>
-        </div>
         <div className="text-xs mt-2.5" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
-          A temporary password will be generated and shown once. Give it to the person directly — they
+          A temporary password will be generated and shown once. Give it to the person directly. They
           will be asked to choose their own password when they first sign in.
         </div>
 
@@ -208,7 +205,7 @@ export const AccountsPanel = ({ currentUser, toast }) => {
         </div>
       </Modal>
 
-      {/* Temporary password handover — shown once, never retrievable again */}
+      {/* Temporary password handover, shown once, never retrievable again */}
       <Modal open={!!handover} onClose={() => setHandover(null)}
         title={handover?.isReset ? 'Password reset' : 'Account created'} width={420}>
         {handover && (
@@ -229,8 +226,8 @@ export const AccountsPanel = ({ currentUser, toast }) => {
               style={{ backgroundColor: T.warnBg, fontFamily: F_BODY, color: T.ink, lineHeight: 1.6 }}>
               <AlertTriangle size={13} color={T.warn} className="mt-0.5 shrink-0" />
               <span>
-                This is shown only once. It is stored as a one-way hash, so it cannot be looked up later —
-                if it is lost, reset the password again.
+                This is shown only once. It is stored as a one-way hash, so it cannot be looked up later. If it is
+                lost, reset the password again.
               </span>
             </div>
             <Btn onClick={() => setHandover(null)} full>Done</Btn>

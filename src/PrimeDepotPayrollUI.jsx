@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Sidebar, TopBar } from './components/Nav.jsx';
-import { Toasts } from './components/ui.jsx';
+import { Confirm, Toasts } from './components/ui.jsx';
 import { IdleTimeout } from './components/IdleTimeout.jsx';
 import { BIR_TABLE_INIT, CREW_RATE_FALLBACK, PAGIBIG_INIT, PHILHEALTH_INIT, SSS_TABLE_INIT } from './data/seed';
 import { deliveriesToLog } from './lib/payroll';
@@ -34,6 +34,7 @@ export default function PrimeDepotPayroll() {
   // Mobile navigation drawer. Below `md` the sidebar is off-canvas, so this is
   // the only way to reach the other sections.
   const [navOpen, setNavOpen] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
   const closeNav = React.useCallback(() => setNavOpen(false), []);
   // Hand-off from Attendance's "Register" on an unmapped biometric ID: carries
   // the id + name into the Employees Add form, consumed once on arrival.
@@ -275,6 +276,21 @@ export default function PrimeDepotPayroll() {
     <CheckerView currentUser={user} onUserChange={u => setUser(prev => ({ ...prev, ...u }))} onSignedOut={() => { setUser(null); setTab('dashboard'); }} deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} crewRates={crewRates} onLogout={logout} toast={toast} />
   </>;
 
+  // Account settings takes over the whole screen (its own left rail + Back),
+  // so the app sidebar and top bar are hidden while it is open.
+  if (tab === 'account') return <>
+    <style>{FONTS}</style>
+    <Toasts toasts={toasts} />
+    <IdleTimeout enabled onExit={logout} />
+    <AccountPage
+      user={user}
+      toast={toast}
+      onBack={() => setTab('dashboard')}
+      onUserChange={u => setUser(prev => ({ ...prev, ...u }))}
+      onSignedOut={() => { setUser(null); setTab('dashboard'); }}
+    />
+  </>;
+
   const titles = {
     dashboard: 'Overview', employees: 'Employees', attendance: 'Attendance', payroll: 'Payroll',
     deliveries: 'Deliveries', loans: 'Loans & Advances', reports: 'Reports', settings: 'Settings',
@@ -286,10 +302,18 @@ export default function PrimeDepotPayroll() {
       <style>{FONTS}</style>
       <Toasts toasts={toasts} />
       <IdleTimeout enabled onExit={logout} />
+      <Confirm
+        open={confirmLogout}
+        title="Log out?"
+        message="You will be signed out of Prime Depot and need to sign in again to get back in."
+        confirmLabel="Log out"
+        onCancel={() => setConfirmLogout(false)}
+        onConfirm={() => { setConfirmLogout(false); logout(); }}
+      />
       <Sidebar
         tab={tab}
         setTab={setTab}
-        onLogout={logout}
+        onLogout={() => setConfirmLogout(true)}
         user={user}
         onOpenAccount={() => setTab('account')}
         open={navOpen}
@@ -306,15 +330,6 @@ export default function PrimeDepotPayroll() {
           {tab === 'deliveries' && <TruckPayrollView mode="logging" deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} crewRates={crewRates} loans={loans} reloadLoans={reloadLoans} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} toast={toast} />}
           {tab === 'loans' && <LoansView staff={allStaff} loans={loans} reloadLoans={reloadLoans} toast={toast} />}
           {tab === 'reports' && <ReportsView staff={staff} deliveries={deliveries} loans={loans} statutory={statutory} cutoffLabel={cutoffText} attendanceSummaries={attSummaries} crewRates={crewRates} />}
-          {tab === 'account' && (
-            <AccountPage
-              user={user}
-              toast={toast}
-              onBack={() => setTab('dashboard')}
-              onUserChange={u => setUser(prev => ({ ...prev, ...u }))}
-              onSignedOut={() => { setUser(null); setTab('dashboard'); }}
-            />
-          )}
           {tab === 'settings' && <SettingsView currentUser={user} onUserChange={u => setUser(prev => ({ ...prev, ...u }))} onSignedOut={() => { setUser(null); setTab('dashboard'); }} checkers={checkers} setCheckers={setCheckers} sssTable={sssTable} setSssTable={setSssTable} philhealthRates={philhealthRates} setPhilhealthRates={setPhilhealthRates} pagibigRates={pagibigRates} setPagibigRates={setPagibigRates} birTable={birTable} setBirTable={setBirTable} toast={toast} />}
           </div>
         </main>

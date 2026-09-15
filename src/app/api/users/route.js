@@ -47,7 +47,17 @@ export async function POST(request) {
     // have — including role — regardless of what this endpoint intends.
     const username = typeof body.username === 'string' ? body.username.trim().toLowerCase() : '';
     const displayName = typeof body.displayName === 'string' ? body.displayName.trim() : '';
-    const role = body.role === 'ADMIN' ? 'ADMIN' : 'CHECKER';
+    // Only Checker accounts are created here. There is exactly one Operations
+    // Head by design, so this refuses to mint a second admin even if the body
+    // asks for one. The UI no longer offers the choice; this is the check that
+    // actually holds it, so the API cannot be driven directly to bypass it.
+    if (body.role === 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Only Checker accounts can be created. There is one Operations Head by design.' },
+        { status: 400 },
+      );
+    }
+    const role = 'CHECKER';
 
     if (!/^[a-z0-9._-]{3,32}$/.test(username)) {
       return NextResponse.json(

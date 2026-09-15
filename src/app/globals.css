@@ -124,7 +124,7 @@ button:disabled { cursor: not-allowed; }
     color var(--pd-dur-base) var(--pd-ease),
     border-color var(--pd-dur-base) var(--pd-ease);
 }
-.pd-nav-item:hover { background-color: rgba(255, 255, 255, 0.08); }
+.pd-nav-item:hover { background-color: rgba(255, 255, 255, 0.10); color: #FFFFFF !important; }
 
 /* Table rows — hover highlight (opt-in via .pd-table; rolled out per view in a later batch) */
 .pd-table tbody tr { transition: background-color var(--pd-dur-fast) var(--pd-ease); }

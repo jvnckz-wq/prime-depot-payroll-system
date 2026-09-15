@@ -123,6 +123,10 @@ enum AuditAction {
   TWO_FACTOR_ENABLED
   TWO_FACTOR_DISABLED
   RECOVERY_EMAIL_CHANGED
+  /// Added Sep 2026 with the account-settings 2FA management. Appended at the
+  /// end to match Postgres ALTER TYPE ADD VALUE ordering.
+  BACKUP_CODES_REGENERATED
+  TWO_FACTOR_REENROLLED
 }
 
 /// Which flow an emailed code belongs to. Password resets and recovery-email
