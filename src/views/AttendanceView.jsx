@@ -381,18 +381,13 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
               : data.summaries.length === 0 ? <EmptyState icon={ClipboardList} title="No attendance yet" desc="Import a biometric .xls file to get started. Employees are matched by their biometric User ID." />
               : (
               <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
-                <thead><tr><Th>Employee</Th><Th center>Present</Th><Th center>Days Late</Th><Th center>Late (mins)</Th><Th center>OT (mins)</Th><Th center>Absences</Th><Th center>Leave</Th><Th>Action</Th></tr></thead>
+                <thead><tr><Th>ID</Th><Th>Employee</Th><Th center>Present</Th><Th center>Days Late</Th><Th center>Late (mins)</Th><Th center>OT (mins)</Th><Th center>Absences</Th><Th center>Leave</Th><Th>Action</Th></tr></thead>
                 <tbody>
                   {data.summaries.map(s => (
                     <tr key={s.id}>
+                      <Td mono>{s.id}</Td>
                       <Td>
-                        <div className="flex items-center gap-2.5">
-                          <Av name={s.name} size={28} />
-                          <div>
-                            <div className="font-semibold" style={{ fontFamily: F_BODY }}>{s.name}</div>
-                            <div className="text-xs" style={{ color: T.soft, fontFamily: F_MONO }}>{s.id}</div>
-                          </div>
-                        </div>
+                        <div className="font-semibold" style={{ fontFamily: F_BODY }}>{s.name}</div>
                       </Td>
                       <Td center mono>{s.present}</Td>
                       <Td center mono><span style={{ color: s.daysLate > 0 ? T.red : T.soft, fontWeight: s.daysLate > 0 ? 700 : 400 }}>{s.daysLate || '—'}</span></Td>
@@ -484,12 +479,13 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
               <div className="overflow-x-auto pd-scroll-shadow" style={{ maxHeight: 380 }}>
                 <table className="w-full">
                   <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}>
-                    <tr><Th>Employee</Th><Th center>Present</Th><Th center>Days Late</Th><Th center>Late (mins)</Th><Th center>OT (mins)</Th><Th center>Absences</Th><Th center>Leave</Th><Th></Th></tr>
+                    <tr><Th>ID</Th><Th>Employee</Th><Th center>Present</Th><Th center>Days Late</Th><Th center>Late (mins)</Th><Th center>OT (mins)</Th><Th center>Absences</Th><Th center>Leave</Th><Th></Th></tr>
                   </thead>
                   <tbody>
                     {batchRows.map((s) => (
                       <tr key={s.id}>
-                        <Td><div className="flex items-center gap-2.5"><Av name={s.name} size={26} /><span className="font-semibold text-sm" style={{ fontFamily: F_BODY }}>{s.name}</span></div></Td>
+                        <Td mono>{s.id}</Td>
+                        <Td><span className="font-semibold text-sm" style={{ fontFamily: F_BODY }}>{s.name}</span></Td>
                         <Td center mono>{s.present}</Td>
                         <Td center mono>{s.daysLate || '—'}</Td>
                         <Td center mono>{s.lateMins > 0 ? `${s.lateMins}m` : '—'}</Td>

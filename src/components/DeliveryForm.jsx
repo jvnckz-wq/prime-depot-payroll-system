@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Plus, Check, Trash2 } from 'lucide-react';
-import { Av, Btn, Eyebrow, Field, SearchSelect, inputCls, inputStyle } from './ui.jsx';
-import { peso, looksLikePHPhone } from '../lib/utils';
+import { Btn, Eyebrow, Field, SearchSelect, inputCls, inputStyle } from './ui.jsx';
+import { peso } from '../lib/utils';
 import { PH_AREAS, PH_PROVINCES } from '../data/batangas-areas';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
@@ -113,7 +113,7 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
   const [busy, setBusy] = useState(false);
   const submit = async () => {
     if (busy) return;
-    if (!driverId || !municipality || !barangay || computed.every(r => !r.qty)) return;
+    if (!driverId || !crewId || !customer.trim() || !contactNo.trim() || !province || !municipality || !barangay || !landmark.trim() || computed.every(r => !r.qty)) return;
     setBusy(true);
     try {
       // One combined line for display, kept in `address` so every existing screen
@@ -191,25 +191,21 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
       </div>
 
       {/* Customer and contact first: who and how to reach them, before the
-          location. Both optional; the phone hint never blocks saving. */}
+          location. Both required. The contact field accepts digits only and is
+          capped, so a scrambled or over-long entry can never be saved. */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 mb-1">
-        <Field label="Customer's name">
+        <Field label={<>Customer&rsquo;s name <span style={{ color: T.brand }}>*</span></>}>
           <input placeholder="Customer's name" value={customer} onChange={e => setCustomer(e.target.value)} className={inputCls} style={inputStyle} />
         </Field>
-        <Field label="Contact number">
-          <input type="tel" inputMode="tel" placeholder="e.g. 0917 123 4567" value={contactNo} onChange={e => setContactNo(e.target.value)} className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
-          {contactNo && !looksLikePHPhone(contactNo) && (
-            <div className="text-xs mt-1" style={{ fontFamily: F_BODY, color: T.warn }}>
-              Double-check this number, it doesn&rsquo;t look like a PH mobile (09XX XXX XXXX) or landline.
-            </div>
-          )}
+        <Field label={<>Contact number <span style={{ color: T.brand }}>*</span></>}>
+          <input type="tel" inputMode="numeric" maxLength={13} placeholder="e.g. 09171234567" value={contactNo} onChange={e => setContactNo(e.target.value.replace(/\D/g, '').slice(0, 13))} className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
         </Field>
       </div>
 
       {/* Location, top down: province, then municipality, barangay, and the
-          specific landmark. Municipality and barangay are required. */}
+          specific landmark. All four are required. */}
       <div className="mt-3 mb-1">
-        <Field label="Province">
+        <Field label={<>Province <span style={{ color: T.brand }}>*</span></>}>
           <SearchSelect value={province} onChange={(v) => { setProvince(v); setMunicipality(''); setBarangay(''); }}
             options={PH_PROVINCES} placeholder="Search a province..." allowCustom />
         </Field>
@@ -229,7 +225,7 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
         </Field>
       </div>
       <div className="mt-3 mb-1">
-        <Field label="Specific address / landmark">
+        <Field label={<>Specific address / landmark <span style={{ color: T.brand }}>*</span></>}>
           <input placeholder="Purok/sitio, kulay ng gate, katabi ng…" value={landmark} onChange={e => setLandmark(e.target.value)} className={inputCls} style={inputStyle} />
         </Field>
       </div>
@@ -316,7 +312,7 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
         </button>
         <div className="text-sm" style={{ fontFamily: F_MONO, color: T.soft }}>Trip total: <span style={{ color: T.green, fontWeight: 600 }}>{peso(totalD)} / {peso(totalH)}</span></div>
       </div>
-      <Btn onClick={submit} loading={busy} disabled={!municipality || !barangay || !driverId || busy} full>{busy ? 'Saving…' : 'Save delivery'}</Btn>
+      <Btn onClick={submit} loading={busy} disabled={!driverId || !crewId || !customer.trim() || !contactNo.trim() || !province || !municipality || !barangay || !landmark.trim() || busy} full>{busy ? 'Saving…' : 'Save delivery'}</Btn>
     </div>
   );
 };

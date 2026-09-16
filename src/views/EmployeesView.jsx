@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Search, Save, Clock } from 'lucide-react';
-import { Av, Badge, Btn, Confirm, Eyebrow, Field, H1, Modal, Money, Panel, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
+import { Badge, Btn, Confirm, Eyebrow, Field, H1, Modal, Money, Panel, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { POSITIONS, positionLabel } from '../data/seed';
 import { isCrewPosition } from '../lib/payroll';
 import { WEEKDAYS, describeEarlyShift } from '../lib/attendance';
@@ -239,19 +239,14 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
         <div className="overflow-x-auto overflow-y-auto pd-scroll-shadow" style={{ maxHeight: 520 }}>
           <table className="w-full">
             <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}>
-              <tr><Th>Employee</Th><Th>Position</Th><Th right>Daily Rate</Th><Th>Status</Th><Th>Actions</Th></tr>
+              <tr><Th>ID</Th><Th>Employee</Th><Th>Position</Th><Th right>Daily Rate</Th><Th>Status</Th><Th>Actions</Th></tr>
             </thead>
             <tbody>
               {rows.map(r => (
                 <tr key={r.id}>
+                  <Td mono>{r.id}</Td>
                   <Td>
-                    <div className="flex items-center gap-2.5">
-                      <Av name={r.name} size={28} tone={r.crew ? T.brand : T.ink} />
-                      <div>
-                        <div className="font-semibold" style={{ fontFamily: F_BODY }}>{r.name}</div>
-                        <div className="text-xs" style={{ color: T.soft, fontFamily: F_MONO }}>{r.id}</div>
-                      </div>
-                    </div>
+                    <div className="font-semibold" style={{ fontFamily: F_BODY }}>{r.name}</div>
                   </Td>
                   <Td>
                     {positionLabel(r.position)}
@@ -283,10 +278,9 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
           return (
             <Panel key={r.id} className="p-3.5">
               <div className="flex items-center gap-3">
-                <Av name={r.name} size={38} tone={crew ? T.brand : T.ink} />
                 <div className="min-w-0 flex-1">
                   <div className="font-semibold truncate" style={{ fontFamily: F_BODY }}>{r.name}</div>
-                  <div className="text-xs truncate" style={{ color: T.soft }}>{positionLabel(r.position)} · <span style={{ fontFamily: F_MONO }}>{r.id}</span></div>
+                  <div className="text-xs truncate" style={{ color: T.soft }}><span style={{ fontFamily: F_MONO }}>ID {r.id}</span> · {positionLabel(r.position)}</div>
                 </div>
                 <Badge tone={r.status === 'Active' ? 'green' : 'neutral'}>{r.status}</Badge>
               </div>
