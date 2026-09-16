@@ -1,18 +1,17 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, MapPin } from 'lucide-react';
-import { Badge, Btn, Confirm, Eyebrow, Field, Modal, Panel, Skeleton, SkeletonRows, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
+import { AlertTriangle } from 'lucide-react';
+import { Badge, Btn, Confirm, Eyebrow, Field, Modal, Panel, SkeletonRows, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
-/// Fleet and double-rate areas, Operations Head only.
+/// Fleet management (trucks), Operations Head only.
 ///
 /// Neither list can be deleted, only retired. Past deliveries point at a truck
 /// and were priced against an area — removing either would leave old records
 /// referring to something that no longer exists.
 export const FleetPanel = ({ toast }) => {
   const [trucks, setTrucks] = useState([]);
-  const [areas, setAreas] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [truckModal, setTruckModal] = useState(false);
@@ -20,18 +19,14 @@ export const FleetPanel = ({ toast }) => {
   const [truckForm, setTruckForm] = useState({ id: '', vehicle: '', plate: '' });
   const [truckError, setTruckError] = useState('');
 
-  const [areaName, setAreaName] = useState('');
-  const [areaError, setAreaError] = useState('');
-
   const [confirm, setConfirm] = useState(null);
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
     try {
-      const [tr, ar] = await Promise.all([fetch('/api/trucks'), fetch('/api/doble-areas')]);
-      const [td, ad] = await Promise.all([tr.json(), ar.json()]);
+      const tr = await fetch('/api/trucks');
+      const td = await tr.json();
       if (tr.ok) setTrucks(td.trucks);
-      if (ar.ok) setAreas(ad.areas);
     } catch {
       toast('Could not load fleet data.', 'error');
     } finally {
@@ -96,41 +91,6 @@ export const FleetPanel = ({ toast }) => {
     } catch { toast('Could not reach the server.', 'error'); }
   };
 
-  const addArea = async () => {
-    setAreaError('');
-    if (!areaName.trim()) { setAreaError('Enter the barangay or sitio name.'); return; }
-    setBusy(true);
-    try {
-      const res = await fetch('/api/doble-areas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: areaName }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setAreaError(data.error || 'Could not add the area.'); return; }
-      setAreaName('');
-      toast(`${data.area.name} added to double-rate areas.`);
-      load();
-    } catch {
-      setAreaError('Could not reach the server.');
-    } finally { setBusy(false); }
-  };
-
-  const setAreaActive = async (area, isActive) => {
-    try {
-      const res = await fetch(`/api/doble-areas/${area.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isActive }),
-      });
-      if (!res.ok) { toast('Could not update the area.', 'error'); return; }
-      load();
-    } catch { toast('Could not reach the server.', 'error'); }
-  };
-
-  const activeAreas = areas.filter(a => a.isActive);
-  const retiredAreas = areas.filter(a => !a.isActive);
-
   return (
     <div>
       {/* ---------------- Fleet ---------------- */}
@@ -179,58 +139,6 @@ export const FleetPanel = ({ toast }) => {
         A truck record holds the vehicle only. The driver and helpers are chosen on each delivery, so
         no one is tied to a particular truck.
       </p>
-
-      {/* ---------------- Double-rate areas ---------------- */}
-      <Eyebrow>Double-Rate Areas</Eyebrow>
-      <p className="text-xs mt-1 mb-3" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.65 }}>
-        When a delivery address matches one of these, the form offers to pay the trip at double rate.
-        {' '}{activeAreas.length} active{retiredAreas.length ? `, ${retiredAreas.length} retired` : ''}.
-      </p>
-
-      <Panel className="p-4 mb-3">
-        <div className="flex gap-2 items-end flex-wrap">
-          <div className="flex-1" style={{ minWidth: 220 }}>
-            <Field label="Add an area">
-              <input value={areaName} onChange={e => setAreaName(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') addArea(); }}
-                placeholder="e.g. SITIO MALAKING PULO" className={inputCls} style={inputStyle} />
-            </Field>
-          </div>
-          <Btn onClick={addArea} loading={busy} disabled={busy}>Add</Btn>
-        </div>
-        {areaError && (
-          <div className="flex items-start gap-2 mt-3 px-3 py-2.5 rounded text-xs"
-            style={{ backgroundColor: T.brandBg, fontFamily: F_BODY, color: T.brandDark }}>
-            <AlertTriangle size={13} className="mt-0.5 shrink-0" /><span>{areaError}</span>
-          </div>
-        )}
-      </Panel>
-
-      <Panel className="p-4">
-        <div className="flex flex-wrap gap-2">
-          {loading && <Skeleton w={90} h={11} />}
-          {!loading && areas.map(a => (
-            <span key={a.id}
-              className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded text-xs font-semibold"
-              style={{
-                fontFamily: F_MONO,
-                backgroundColor: a.isActive ? T.warnBg : T.lineSoft,
-                color: a.isActive ? T.warn : T.soft,
-              }}>
-              <MapPin size={11} />
-              {a.name}
-              <button
-                title={a.isActive ? 'Retire this area' : 'Reactivate'}
-                onClick={() => setAreaActive(a, !a.isActive)}
-                className="px-1"
-                style={{ color: a.isActive ? T.warn : T.green, fontFamily: F_HEAD }}>
-                {a.isActive ? '×' : '+'}
-              </button>
-            </span>
-          ))}
-          {!loading && !areas.length && <span className="text-sm" style={{ color: T.soft }}>No areas yet.</span>}
-        </div>
-      </Panel>
 
       {/* ---------------- Add truck modal ---------------- */}
       <Modal open={truckModal} onClose={() => setTruckModal(false)} title={editingTruck ? `Edit ${editingTruck.id}` : 'Add Truck'} width={420}>

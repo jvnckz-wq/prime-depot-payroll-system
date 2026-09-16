@@ -1,4 +1,4 @@
-import { CREW_POSITIONS, DOBLE_AREAS } from '../data/seed';
+import { CREW_POSITIONS } from '../data/seed';
 
 // The one place that decides which payroll an employee belongs to. Position is
 // the only input: Driver and Pahinante are paid piece-rate (pakyawan) through
@@ -138,13 +138,6 @@ export function computeStaffPayroll(e, loans = [], statutory, attendance = null,
 }
 
 // deterministic pseudo-random per employee, so charts are stable across renders
-
-export function matchDobleArea(address) {
-  if (!address || !address.trim()) return null;
-  const a = address.trim().toLowerCase();
-  return DOBLE_AREAS.find(area => a.includes(area.toLowerCase()) || area.toLowerCase().includes(a)) || null;
-}
-
 
 export function computeSSS(monthlySalary, table) {
   if (!monthlySalary || monthlySalary <= 0 || !table.length) return 0;

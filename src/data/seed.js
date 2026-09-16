@@ -29,14 +29,6 @@ export const CREW_POSITIONS = ['Driver', 'Pahinante'];
 // at render time so no data or payroll logic changes.
 const POSITION_LABELS = { Pahinante: 'Delivery Helper' };
 export const positionLabel = (p) => POSITION_LABELS[p] || p;
-// Named barangays/sitios that qualify for the DOBLE (double) piece-rate, taken
-// directly from the "DOBLE" sheet in the client's real TRUCK_PAYROLL.xlsx.
-export const DOBLE_AREAS = [
-  'Estrellang Langit', 'Balanoy', 'Bauan', 'Tulo Laurel', 'Gulod Bagalangit', 'Orense',
-  'Laurel', 'Malagaklak Ligaya', 'Matala Gulugod', 'Panay', 'Malimatoc 2', 'Guitisan San Teodoro',
-  'Yong Yong Malimatoc 2', 'Hulo Solo', 'Mainit', 'Kina Piolo Pascual', 'Nagiba',
-  'Nangkaan San Teodoro', 'Sta Monica Nagiba', 'Pang Akle', 'Sampalucan',
-];
 // Crew pakyawan rates — FALLBACK ONLY.
 //
 // The live values live in the database (the CrewRate table) and arrive with

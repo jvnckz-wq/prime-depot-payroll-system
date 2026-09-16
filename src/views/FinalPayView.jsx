@@ -6,9 +6,10 @@ import { Btn, Field, Panel } from '../components/ui.jsx';
 import { peso } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, F_SERIF, T } from '../theme';
 
-const EXIT_TYPES = ['Resignation', 'Termination', 'End of Contract', 'Retirement', 'AWOL'];
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 const nf = (v) => (Number.isFinite(parseFloat(v)) ? parseFloat(v) : 0);
+
+const EXIT_TYPES = ['Resignation', 'Termination', 'End of Contract', 'Retirement', 'AWOL'];
 
 // A labelled amount row on the final-pay slip. Defined at module scope (not
 // inside FinalPayView) so it is a stable component identity across renders —
@@ -22,7 +23,7 @@ const Row = ({ label, value, bold }) => (
 
 // Final pay = (a) unpaid salary + (b) pro-rated 13th month + (c) unused leave
 // credits — matching the client's FINAL PAY sheet exactly (no deductions).
-export const FinalPayView = ({ employee, onBack, toast }) => {
+export const FinalPayView = ({ employee, onBack, toast, onDeactivate, editable = false }) => {
   const [loading, setLoading] = useState(true);
   const [exitType, setExitType] = useState('Resignation');
   const [exitDate, setExitDate] = useState('');
@@ -69,29 +70,41 @@ export const FinalPayView = ({ employee, onBack, toast }) => {
         <button onClick={onBack} className="flex items-center gap-1.5 text-sm" style={{ fontFamily: F_BODY, color: T.soft }}>
           <ArrowLeft size={14} /> Back to Employees
         </button>
-        <Btn variant="outline" onClick={() => window.print()}>Print</Btn>
+        <div className="flex items-center gap-2 no-print">
+          <Btn variant="outline" onClick={() => window.print()}>Print</Btn>
+          {onDeactivate && (
+            <Btn variant="amber" onClick={onDeactivate}>Deactivate employee</Btn>
+          )}
+        </div>
       </div>
 
-      {/* Editable inputs — never printed */}
-      <div className="no-print mb-4 grid gap-3 md:grid-cols-2 p-4 rounded" style={{ backgroundColor: T.bg, border: `1px solid ${T.line}` }}>
-        <div className="md:col-span-2 text-xs font-semibold uppercase" style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.04em' }}>
-          Final pay details {loading ? '· loading…' : ''}{periodLabel ? ` · last cutoff ${periodLabel}` : ''}
+      {editable ? (
+        <div className="no-print mb-4 grid gap-3 md:grid-cols-2 p-4 rounded" style={{ backgroundColor: T.bg, border: `1px solid ${T.line}` }}>
+          <div className="md:col-span-2 text-xs font-semibold uppercase" style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.04em' }}>
+            Final pay details {loading ? ', loading...' : ''}{periodLabel ? ` · last cutoff ${periodLabel}` : ''}
+          </div>
+          <Field label="Type of exit">
+            <select value={exitType} onChange={e => setExitType(e.target.value)} className="px-2 py-1.5 rounded border text-sm w-full" style={{ borderColor: T.line, fontFamily: F_BODY, color: T.ink, backgroundColor: T.surface }}>
+              {EXIT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </Field>
+          <Field label="Date of exit effectivity">
+            <input type="date" value={exitDate} onChange={e => setExitDate(e.target.value)} className="px-2 py-1.5 rounded border text-sm w-full" style={{ borderColor: T.line, fontFamily: F_BODY, color: T.ink, backgroundColor: T.surface, colorScheme: 'light' }} />
+          </Field>
+          <Field label="Last date of service"><input type="date" value={lastService} onChange={e => setLastService(e.target.value)} className="px-2 py-1.5 rounded border text-sm w-full" style={{ borderColor: T.line, fontFamily: F_BODY, color: T.ink, backgroundColor: T.surface, colorScheme: 'light' }} /></Field>
+          <Field label="Daily rate (₱)">{numInput(rate, setRate)}</Field>
+          <Field label="Days worked (last cutoff)">{numInput(days, setDays)}</Field>
+          <Field label="OT + other allowances (₱)">{numInput(otAllow, setOtAllow)}</Field>
+          <Field label="Total basic salary this year (₱)">{numInput(yearBasic, setYearBasic)}</Field>
+          <Field label="Unused leave days">{numInput(leaveDays, setLeaveDays)}</Field>
         </div>
-        <Field label="Type of exit">
-          <select value={exitType} onChange={e => setExitType(e.target.value)} className="px-2 py-1.5 rounded border text-sm w-full" style={{ borderColor: T.line, fontFamily: F_BODY, color: T.ink, backgroundColor: T.surface }}>
-            {EXIT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </Field>
-        <Field label="Date of exit effectivity">
-          <input type="date" value={exitDate} onChange={e => setExitDate(e.target.value)} className="px-2 py-1.5 rounded border text-sm w-full" style={{ borderColor: T.line, fontFamily: F_BODY, color: T.ink, backgroundColor: T.surface, colorScheme: 'light' }} />
-        </Field>
-        <Field label="Last date of service"><input type="date" value={lastService} onChange={e => setLastService(e.target.value)} className="px-2 py-1.5 rounded border text-sm w-full" style={{ borderColor: T.line, fontFamily: F_BODY, color: T.ink, backgroundColor: T.surface, colorScheme: 'light' }} /></Field>
-        <Field label="Daily rate (₱)">{numInput(rate, setRate)}</Field>
-        <Field label="Days worked (last cutoff)">{numInput(days, setDays)}</Field>
-        <Field label="OT + other allowances (₱)">{numInput(otAllow, setOtAllow)}</Field>
-        <Field label="Total basic salary this year (₱)">{numInput(yearBasic, setYearBasic)}</Field>
-        <Field label="Unused leave days">{numInput(leaveDays, setLeaveDays)}</Field>
-      </div>
+      ) : (
+        periodLabel && (
+          <div className="no-print mb-4 text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
+            Final pay details · last cutoff {periodLabel}
+          </div>
+        )
+      )}
 
       <style>{`
         @media print {

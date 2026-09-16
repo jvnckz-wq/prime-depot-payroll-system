@@ -146,7 +146,47 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
     }
   };
 
-  if (finalPayFor) return <FinalPayView employee={finalPayFor} onBack={() => setFinalPayFor(null)} toast={toast} />;
+  // Deactivating a staff member goes through their final-pay slip: the slip opens
+  // first (review, print), and this finalises the deactivation from there.
+  const finalizeDeactivate = async (r) => {
+    await toggleStatus(r);
+    setFinalPayFor(null);
+  };
+
+  // Row actions differ by type and status. Crew (pakyawan) have no final pay, so
+  // they deactivate straight through the confirm dialog. Staff deactivate via the
+  // final-pay slip; once resigned, their final pay stays one click away.
+  const renderActions = (r) => {
+    const isCrew = typeof r.crew === 'boolean' ? r.crew : isCrewPosition(r.position);
+    if (r.status === 'Active') {
+      return (
+        <>
+          <Btn size="sm" variant="outline" onClick={() => openEdit(r)}>Edit</Btn>
+          {isCrew ? (
+            <Btn size="sm" variant="outline" onClick={() => setConfirm(r)}>Deactivate</Btn>
+          ) : (
+            <Btn size="sm" variant="outline" onClick={() => setFinalPayFor({ emp: r, deactivate: true })}>Deactivate</Btn>
+          )}
+        </>
+      );
+    }
+    // Resigned: no Edit (nothing to change once they have left). Staff keep their
+    // final-pay record one click away; anyone can be reactivated.
+    return (
+      <>
+        {!isCrew && (
+          <Btn size="sm" variant="outline" onClick={() => setFinalPayFor({ emp: r, deactivate: false })}>Final Pay</Btn>
+        )}
+        <Btn size="sm" variant="outline" onClick={() => setConfirm(r)}>Activate</Btn>
+      </>
+    );
+  };
+
+  if (finalPayFor) return (
+    <FinalPayView employee={finalPayFor.emp} onBack={() => setFinalPayFor(null)} toast={toast}
+      editable={finalPayFor.deactivate}
+      onDeactivate={finalPayFor.deactivate ? () => finalizeDeactivate(finalPayFor.emp) : undefined} />
+  );
 
   return (
     <div className="p-4 sm:p-6">
@@ -226,11 +266,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
                   <Td><Badge tone={r.status === 'Active' ? 'green' : 'neutral'}>{r.status}</Badge></Td>
                   <Td>
                     <div className="flex gap-2 flex-wrap">
-                      <Btn size="sm" variant="outline" onClick={() => openEdit(r)}>Edit</Btn>
-                      {!(typeof r.crew === 'boolean' ? r.crew : isCrewPosition(r.position)) && (
-                        <Btn size="sm" variant="outline" onClick={() => setFinalPayFor(r)}>Final Pay</Btn>
-                      )}
-                      <Btn size="sm" variant="outline" onClick={() => setConfirm(r)}>{r.status === 'Active' ? 'Deactivate' : 'Activate'}</Btn>
+                      {renderActions(r)}
                     </div>
                   </Td>
                 </tr>
@@ -273,11 +309,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
                 </div>
               </div>
               <div className="flex gap-2 flex-wrap mt-3">
-                <Btn size="sm" variant="outline" onClick={() => openEdit(r)}>Edit</Btn>
-                {!crew && (
-                  <Btn size="sm" variant="outline" onClick={() => setFinalPayFor(r)}>Final Pay</Btn>
-                )}
-                <Btn size="sm" variant="outline" onClick={() => setConfirm(r)}>{r.status === 'Active' ? 'Deactivate' : 'Activate'}</Btn>
+                {renderActions(r)}
               </div>
             </Panel>
           );

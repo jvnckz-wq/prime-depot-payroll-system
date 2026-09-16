@@ -95,7 +95,7 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
         {(currentUser?.role === 'ADMIN'
           // Configuration only. Anything about a person now lives on the
           // Account page, reached from your own name in the sidebar.
-          ? [['statutory', 'Statutory Deductions'], ['fleet', 'Fleet & Areas'], ['backup', 'Backup']]
+          ? [['statutory', 'Statutory Deductions'], ['fleet', 'Fleet'], ['backup', 'Backup']]
           : []
         ).map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)} className="px-3 py-1.5 rounded text-xs font-semibold"
