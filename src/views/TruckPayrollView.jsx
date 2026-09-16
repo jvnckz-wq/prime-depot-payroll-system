@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Package, ArrowLeft, Trash2, AlertTriangle, MapPin, Phone } from 'lucide-react';
+import { Package, ArrowLeft, Trash2, AlertTriangle, MapPin, Phone, Printer } from 'lucide-react';
 import { DeliveryForm } from '../components/DeliveryForm.jsx';
 import { Av, Badge, Btn, Confirm, EmptyState, Eyebrow, Field, H1, Modal, Panel, Skeleton, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { CREW_RATE_FALLBACK } from '../data/seed';
@@ -59,6 +59,9 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
   const [voidTarget, setVoidTarget] = useState(null);
   const [voidReason, setVoidReason] = useState('');
   const [voiding, setVoiding] = useState(false);
+  // Operations Head double-rate correction: preview target + apply-in-progress.
+  const [dblTarget, setDblTarget] = useState(null);
+  const [dblBusy, setDblBusy] = useState(false);
   // Whose individual payslip is open in the modal — keeps the per-person slips
   // out of the long scroll while staying one tap away inside Truck Payroll.
   const [slipPerson, setSlipPerson] = useState(null);
@@ -105,7 +108,43 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
     } catch { toast('Could not reach the server.', 'error'); }
   };
 
-  // Editing a rate writes to the database, one PATCH per changed row. Amounts
+  // Double rate is a manual mark. The Operations Head can still correct a trip
+  // here before the cutoff closes: openDouble asks the server to PREVIEW the new
+  // amounts (nothing is written yet), the confirmation shows before and after,
+  // and applyDouble commits it. The server re-prices every line so the flag and
+  // the money always match.
+  const openDouble = async (it) => {
+    const to = !it.dbl;
+    setDblTarget({ deliveryId: it.deliveryId, seq: it.seq, to, loading: true, before: null, after: null });
+    try {
+      const res = await fetch(`/api/deliveries/${it.deliveryId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'setDouble', value: to, preview: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast(data.error || 'Could not work out the change.', 'error'); setDblTarget(null); return; }
+      setDblTarget(t => (t && t.deliveryId === it.deliveryId ? { ...t, loading: false, before: data.before, after: data.after } : t));
+    } catch { toast('Could not reach the server.', 'error'); setDblTarget(null); }
+  };
+
+  const applyDouble = async () => {
+    if (!dblTarget) return;
+    setDblBusy(true);
+    try {
+      const res = await fetch(`/api/deliveries/${dblTarget.deliveryId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'setDouble', value: dblTarget.to }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast(data.error || 'Could not apply the change.', 'error'); return; }
+      await reloadDeliveries();
+      setDblTarget(null);
+      toast(data.warning || `Trip #${dblTarget.seq} is now ${dblTarget.to ? 'double' : 'single'} rate.`, data.warning ? 'error' : 'success');
+    } catch { toast('Could not reach the server.', 'error'); }
+    finally { setDblBusy(false); }
+  };
   // already recorded on a logged delivery are frozen at the moment they were
   // logged, so raising a rate today never rewrites what someone earned last
   // week — the new figure applies only to deliveries logged from here on.
@@ -394,13 +433,20 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                       <Td right mono>{peso(it.h)}</Td>
                       <Td>{it.dbl && <Badge tone="amber">DOUBLE</Badge>}</Td>
                       <Td right>
-                        {!readOnly && it.seq && (it.voided ? (
-                          <button className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.green, textDecoration: 'none' }}
-                            onClick={() => restoreDelivery(it)}>Restore</button>
-                        ) : (
-                          <button className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.red }}
-                            onClick={() => { setVoidReason(''); setVoidTarget(it); }}>Void</button>
-                        ))}
+                        <span className="inline-flex items-center gap-3">
+                          {!readOnly && it.seq && !it.voided && (
+                            <button className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: it.dbl ? T.amber : T.soft }}
+                              title={it.dbl ? 'Turn off double rate for this trip' : 'Mark this trip as double rate'}
+                              onClick={() => openDouble(it)}>{it.dbl ? 'Double: on' : 'Double: off'}</button>
+                          )}
+                          {!readOnly && it.seq && (it.voided ? (
+                            <button className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.green, textDecoration: 'none' }}
+                              onClick={() => restoreDelivery(it)}>Restore</button>
+                          ) : (
+                            <button className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.red }}
+                              onClick={() => { setVoidReason(''); setVoidTarget(it); }}>Void</button>
+                          ))}
+                        </span>
                       </Td>
                     </tr>
                   ))}
@@ -571,6 +617,38 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                   {voiding ? 'Voiding...' : 'Void delivery'}
                 </Btn>
                 <Btn variant="outline" onClick={() => setVoidTarget(null)}>Cancel</Btn>
+              </div>
+            </div>
+          )}
+        </Modal>
+
+      <Modal open={!!dblTarget} onClose={() => { if (!dblBusy) setDblTarget(null); }} title={dblTarget?.to ? 'Mark trip as double rate?' : 'Turn off double rate?'} width={440}>
+          {dblTarget && (
+            <div>
+              <div className="text-sm mb-3" style={{ fontFamily: F_BODY, color: T.ink, lineHeight: 1.6 }}>
+                Trip #{dblTarget.seq} will be re-priced at {dblTarget.to ? 'double' : 'single'} rate using the current rate table. This changes what the crew earns for this trip.
+              </div>
+              <div className="p-3 rounded mb-4" style={{ backgroundColor: T.bg }}>
+                {dblTarget.loading ? (
+                  <div className="text-sm" style={{ fontFamily: F_BODY, color: T.soft }}>Working out the new amounts...</div>
+                ) : (
+                  <div className="text-sm" style={{ fontFamily: F_MONO }}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span style={{ color: T.soft }}>Driver</span>
+                      <span>{peso(dblTarget.before.driver)}<span style={{ color: T.soft }}> to </span><span style={{ color: T.green, fontWeight: 600 }}>{peso(dblTarget.after.driver)}</span></span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span style={{ color: T.soft }}>Helper</span>
+                      <span>{peso(dblTarget.before.helper)}<span style={{ color: T.soft }}> to </span><span style={{ color: T.green, fontWeight: 600 }}>{peso(dblTarget.after.helper)}</span></span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Btn onClick={applyDouble} loading={dblBusy} disabled={dblBusy || dblTarget.loading}>
+                  {dblBusy ? 'Applying...' : (dblTarget.to ? 'Mark as double' : 'Turn off double')}
+                </Btn>
+                <Btn variant="outline" onClick={() => setDblTarget(null)} disabled={dblBusy}>Cancel</Btn>
               </div>
             </div>
           )}

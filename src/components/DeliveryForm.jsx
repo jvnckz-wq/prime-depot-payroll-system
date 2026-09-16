@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Plus, Check, Trash2 } from 'lucide-react';
-import { Av, Btn, Eyebrow, Field, inputCls, inputStyle } from './ui.jsx';
+import { Av, Btn, Eyebrow, Field, SearchSelect, inputCls, inputStyle } from './ui.jsx';
 import { peso, looksLikePHPhone } from '../lib/utils';
+import { PH_AREAS, PH_PROVINCES } from '../data/batangas-areas';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
 export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
@@ -31,11 +32,16 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
     if (!fixedCrewId && !crewId && crews.length) setCrewId(crews[0].id);
   }, [crews, fixedCrewId, crewId]);
 
-  const [address, setAddress] = useState('');
+  // Location fields. Province is pre-filled Batangas (editable for the rare
+  // out-of-province drop); municipality and barangay come from the PSGC list so
+  // the same place is always spelled the same way.
+  const [province, setProvince] = useState('Batangas');
+  const [municipality, setMunicipality] = useState('');
+  const [barangay, setBarangay] = useState('');
   const [customer, setCustomer] = useState('');
-  // Specific address/landmark and the receiver's contact number — the detail a
-  // driver actually navigates and calls by. `address` stays the broad area that
-  // drives double-rate matching; these two are free text and never affect pay.
+  // Specific address/landmark and the receiver's contact number: the detail a
+  // driver actually navigates and calls by. Both are free text and never affect
+  // pay (the combined municipality/barangay line is built at submit time).
   const [landmark, setLandmark] = useState('');
   const [contactNo, setContactNo] = useState('');
   // Double rate is a manual mark now, set by whoever logs the trip (they know
@@ -107,21 +113,26 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
   const [busy, setBusy] = useState(false);
   const submit = async () => {
     if (busy) return;
-    if (!driverId || !address || computed.every(r => !r.qty)) return;
+    if (!driverId || !municipality || !barangay || computed.every(r => !r.qty)) return;
     setBusy(true);
     try {
+      // One combined line for display, kept in `address` so every existing screen
+      // still shows a single address; the parts are sent separately too, so the
+      // backend can store them for per-area reporting once those columns exist.
+      const address = `${barangay}, ${municipality}, ${province}`;
       const ok = await onSubmit({
         truckId: crewId,
         driverId,
         helper1Id: helper1Id || null,
         helper2Id: helper2Id || null,
-        address, customer, dbl,
+        address, province, municipality, barangay,
+        customer, dbl,
         landmark, contactNo,
         matchedArea: null,
         items: computed.map(r => ({ ...r, dbl })),
       });
       if (ok !== false) {
-        setAddress(''); setCustomer(''); setLandmark(''); setContactNo(''); setLineRows([{ item: rateKey(rates[0]), qty: '' }]);
+        setProvince('Batangas'); setMunicipality(''); setBarangay(''); setCustomer(''); setLandmark(''); setContactNo(''); setLineRows([{ item: rateKey(rates[0]), qty: '' }]);
         // Crew stays selected — the next load that day is usually the same three
         // people, and re-picking them every time would be its own annoyance.
       }
@@ -179,31 +190,47 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
         </Field>
       </div>
 
-      {/* Area (broad — drives the double rate) + customer */}
+      {/* Customer and contact first: who and how to reach them, before the
+          location. Both optional; the phone hint never blocks saving. */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 mb-1">
-        <Field label={<>Area / Barangay <span style={{ color: T.brand }}>*</span></>}>
-          <input placeholder="e.g. Estrellang Langit" value={address} onChange={e => setAddress(e.target.value)} className={inputCls} style={inputStyle} />
-        </Field>
         <Field label="Customer's name">
           <input placeholder="Customer's name" value={customer} onChange={e => setCustomer(e.target.value)} className={inputCls} style={inputStyle} />
         </Field>
-      </div>
-
-      {/* Specific address / landmark + contact — what the driver navigates and
-          calls by. Free text; neither affects pay. */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 mb-1">
-        <Field label="Specific address / landmark">
-          <input placeholder="Purok/sitio, kulay ng gate, katabi ng…" value={landmark} onChange={e => setLandmark(e.target.value)} className={inputCls} style={inputStyle} />
-        </Field>
         <Field label="Contact number">
           <input type="tel" inputMode="tel" placeholder="e.g. 0917 123 4567" value={contactNo} onChange={e => setContactNo(e.target.value)} className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
-          {/* Soft hint only — never blocks saving. A checker may only have a
-              partial number and still needs to log the delivery. */}
           {contactNo && !looksLikePHPhone(contactNo) && (
             <div className="text-xs mt-1" style={{ fontFamily: F_BODY, color: T.warn }}>
-              Double-check this number — it doesn’t look like a PH mobile (09XX XXX XXXX) or landline.
+              Double-check this number, it doesn&rsquo;t look like a PH mobile (09XX XXX XXXX) or landline.
             </div>
           )}
+        </Field>
+      </div>
+
+      {/* Location, top down: province, then municipality, barangay, and the
+          specific landmark. Municipality and barangay are required. */}
+      <div className="mt-3 mb-1">
+        <Field label="Province">
+          <SearchSelect value={province} onChange={(v) => { setProvince(v); setMunicipality(''); setBarangay(''); }}
+            options={PH_PROVINCES} placeholder="Search a province..." allowCustom />
+        </Field>
+      </div>
+      <div className="mt-3 mb-1">
+        <Field label={<>Municipality <span style={{ color: T.brand }}>*</span></>}>
+          <SearchSelect value={municipality} onChange={(v) => { setMunicipality(v); setBarangay(''); }}
+            options={Object.keys(PH_AREAS[province] || {})} placeholder="Search a town or city..." allowCustom />
+        </Field>
+      </div>
+      <div className="mt-3 mb-1">
+        <Field label={<>Barangay <span style={{ color: T.brand }}>*</span></>}>
+          <SearchSelect value={barangay} onChange={setBarangay}
+            options={(province && municipality) ? (PH_AREAS[province]?.[municipality] || []) : []}
+            placeholder={municipality ? 'Search a barangay...' : 'Pick a municipality first'}
+            disabled={!municipality} allowCustom />
+        </Field>
+      </div>
+      <div className="mt-3 mb-1">
+        <Field label="Specific address / landmark">
+          <input placeholder="Purok/sitio, kulay ng gate, katabi ng…" value={landmark} onChange={e => setLandmark(e.target.value)} className={inputCls} style={inputStyle} />
         </Field>
       </div>
 
@@ -276,19 +303,20 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
       </div>
 
       {/* Double rate is a manual mark set by whoever logs the trip. Toggling it
-          re-prices every line above (single rate vs double) as you watch. */}
+          re-prices every line above (single rate vs double) as you watch. The
+          label stays dark so it reads in both states; only the box fills. */}
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <button type="button" onClick={() => setDbl(v => !v)}
           className="flex items-center gap-2 px-3 py-1.5 rounded text-xs font-semibold border"
-          style={{ fontFamily: F_HEAD, borderColor: dbl ? T.brand : T.line, backgroundColor: dbl ? T.brand : T.surface, color: dbl ? '#fff' : T.ink }}>
-          <span className="flex items-center justify-center rounded-sm" style={{ width: 15, height: 15, border: `1.5px solid ${dbl ? '#fff' : T.line}`, backgroundColor: dbl ? '#fff' : 'transparent' }}>
-            {dbl && <Check size={11} color={T.brand} strokeWidth={3} />}
+          style={{ fontFamily: F_HEAD, borderColor: dbl ? T.brand : T.line, backgroundColor: T.surface, color: T.ink }}>
+          <span className="flex items-center justify-center rounded-sm" style={{ width: 16, height: 16, border: `1.5px solid ${dbl ? T.brand : T.line}`, backgroundColor: dbl ? T.brand : 'transparent' }}>
+            {dbl && <Check size={12} color="#fff" strokeWidth={3} />}
           </span>
           Mark as double rate
         </button>
         <div className="text-sm" style={{ fontFamily: F_MONO, color: T.soft }}>Trip total: <span style={{ color: T.green, fontWeight: 600 }}>{peso(totalD)} / {peso(totalH)}</span></div>
       </div>
-      <Btn onClick={submit} loading={busy} disabled={!address || !driverId || busy} full>{busy ? 'Saving…' : 'Save delivery'}</Btn>
+      <Btn onClick={submit} loading={busy} disabled={!municipality || !barangay || !driverId || busy} full>{busy ? 'Saving…' : 'Save delivery'}</Btn>
     </div>
   );
 };

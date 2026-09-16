@@ -127,6 +127,9 @@ enum AuditAction {
   /// end to match Postgres ALTER TYPE ADD VALUE ordering.
   BACKUP_CODES_REGENERATED
   TWO_FACTOR_REENROLLED
+  /// Added with the manual double-rate toggle: an Operations Head re-priced a
+  /// logged trip between single and double rate before the cutoff closed.
+  DELIVERY_DOUBLE_CHANGED
 }
 
 /// Which flow an emailed code belongs to. Password resets and recovery-email
@@ -503,9 +506,16 @@ model Delivery {
   customerName String?
   address      String
 
+  /// Structured address parts. `address` above stays the combined display line,
+  /// built on entry from these, so every screen keeps showing one address; these
+  /// are stored separately so deliveries can be counted per municipality or
+  /// barangay. Province defaults to Batangas but is editable at entry.
+  province     String?  @default("Batangas")
+  municipality String?
+  barangay     String?
+
   /// Specific address / landmark (purok, sitio, gate colour, "beside the
-  /// chapel"). `address` stays the broad area that drives double-rate matching;
-  /// this carries the detail a driver actually navigates by.
+  /// chapel"): the detail a driver actually navigates by. Free text; no pay effect.
   landmark     String?
   /// Receiver's contact number, so the driver can call when near or lost.
   contactNo    String?

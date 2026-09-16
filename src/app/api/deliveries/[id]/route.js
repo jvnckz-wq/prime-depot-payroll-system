@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../../lib/prisma';
+import { prisma, prismaBase } from '../../../../lib/prisma';
 import { logSecurityEvent, requireUser } from '../../../../lib/auth';
 
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
@@ -21,7 +21,7 @@ export async function PATCH(request, { params }) {
   const { id } = await params;
 
   try {
-    const { action, reason } = await request.json();
+    const { action, reason, value, preview } = await request.json();
 
     const delivery = await prisma.delivery.findUnique({
       where: { id },
@@ -108,6 +108,100 @@ export async function PATCH(request, { params }) {
       });
 
       return NextResponse.json({ ok: true });
+    }
+
+    if (action === 'setDouble') {
+      // Re-pricing a logged trip is Operations Head only. Checkers correct a
+      // wrong trip by voiding and re-entering it; this is the admin's one-tap
+      // fix before a cutoff is closed.
+      if (!isAdmin) {
+        return NextResponse.json({ error: "Only the Operations Head can change a trip's double rate." }, { status: 403 });
+      }
+      if (delivery.voidedAt) {
+        return NextResponse.json({ error: 'This delivery is voided. Restore it first if you need to change it.' }, { status: 409 });
+      }
+
+      const want = !!value;
+      const full = await prisma.delivery.findUnique({
+        where: { id },
+        select: { isDouble: true, items: { select: { id: true, quantity: true, rateItemId: true } } },
+      });
+
+      // A line whose rate item was removed cannot be re-priced cleanly, so send
+      // the admin to void + re-enter for that rare case rather than guess.
+      const rateIds = [...new Set(full.items.map((i) => i.rateItemId).filter(Boolean))];
+      const rateItems = rateIds.length
+        ? await prisma.rateItem.findMany({
+            where: { id: { in: rateIds } },
+            select: { id: true, driverRate: true, helperRate: true, driverRateDouble: true, helperRateDouble: true },
+          })
+        : [];
+      const rateById = new Map(rateItems.map((r) => [r.id, r]));
+      if (full.items.some((i) => !i.rateItemId || !rateById.has(i.rateItemId))) {
+        return NextResponse.json(
+          { error: 'This trip has an item whose rate was removed. Correct it by voiding and re-entering.' },
+          { status: 400 },
+        );
+      }
+
+      const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+      let beforeD = 0, beforeH = 0, afterD = 0, afterH = 0;
+      const lineWrites = [];
+      for (const i of full.items) {
+        const r = rateById.get(i.rateItemId);
+        const q = Number(i.quantity);
+        // Byte-for-byte the same computation the entry form uses (+(x).toFixed(2)),
+        // so a toggle re-prices a trip exactly as if it were entered now at the
+        // current rate table, with no one-centavo rounding drift.
+        const newD = +(q * Number(want ? r.driverRateDouble : r.driverRate)).toFixed(2);
+        const newH = +(q * Number(want ? r.helperRateDouble : r.helperRate)).toFixed(2);
+        afterD += newD; afterH += newH;
+        lineWrites.push(prisma.deliveryLine.update({ where: { id: i.id }, data: { driverAmount: newD, helperAmount: newH } }));
+      }
+      const current = await prisma.deliveryLine.findMany({
+        where: { deliveryId: id }, select: { driverAmount: true, helperAmount: true },
+      });
+      for (const l of current) { beforeD += Number(l.driverAmount); beforeH += Number(l.helperAmount); }
+
+      const summary = {
+        before: { driver: round2(beforeD), helper: round2(beforeH) },
+        after: { driver: round2(afterD), helper: round2(afterH) },
+        from: full.isDouble, to: want,
+      };
+
+      // Preview mode computes and reports, changing nothing, so the confirmation
+      // can show the before and after amounts.
+      if (preview) {
+        return NextResponse.json({ ok: true, preview: true, unchanged: full.isDouble === want, ...summary });
+      }
+      if (full.isDouble === want) {
+        return NextResponse.json({ ok: true, unchanged: true, ...summary });
+      }
+
+      // One batch (non-interactive) transaction: the flag and every line move
+      // together, so the flag and the money can never disagree.
+      await prismaBase.$transaction([
+        prisma.delivery.update({ where: { id }, data: { isDouble: want } }),
+        ...lineWrites,
+      ]);
+
+      await logSecurityEvent('DELIVERY_DOUBLE_CHANGED', {
+        actorId: auth.user.id,
+        actorLabel: auth.user.username,
+        targetType: 'delivery',
+        targetId: id,
+        detail: `Trip ${delivery.sequenceNo} on ${delivery.truckId}, ${ymd(delivery.date)}: `
+          + `double rate ${want ? 'ON' : 'OFF'} (driver ${summary.before.driver} to ${summary.after.driver}, `
+          + `helper ${summary.before.helper} to ${summary.after.helper})${released ? ' (cutoff already released)' : ''}.`,
+      });
+
+      return NextResponse.json({
+        ok: true,
+        ...summary,
+        warning: released
+          ? `${period.label} was already released. The payslip issued for this cutoff no longer matches the record. Make the adjustment on the next cutoff.`
+          : null,
+      });
     }
 
     return NextResponse.json({ error: 'Unknown action.' }, { status: 400 });
