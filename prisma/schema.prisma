@@ -821,3 +821,57 @@ model Payslip {
   @@index([employeeId])
   @@map("payslips")
 }
+
+// ============================================================================
+// DEVICE SYNC (live monitoring heartbeat)
+// ----------------------------------------------------------------------------
+// One row per biometric device ("primary" for the single ZK3969). The local
+// sync agent upserts this every cycle, even when there are no new scans, so the
+// server always knows when it last heard from the device. The Attendance "Live"
+// tab reads this to show a truthful connected / offline status: the pill must
+// reflect the DEVICE, not just the browser poll. Without this, the board could
+// look live while the agent is actually dead.
+// ============================================================================
+model DeviceSync {
+  id         String    @id            // device key; "primary" = the single ZK3969
+  lastSyncAt DateTime                 // server time of the agent's last heartbeat
+  lastScanAt DateTime?                // last cycle that actually carried scans
+  matched    Int       @default(0)    // matched rows written on the last cycle (informative)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@map("device_sync")
+}
+
+// ============================================================================
+// PULL REQUEST (queued "Pull from device" for a cutoff)
+// ----------------------------------------------------------------------------
+// The web app cannot reach the device on the warehouse LAN, so a "Pull from
+// device" button cannot read it directly. Instead the button drops a PENDING row
+// here. The sync agent (already running on the warehouse PC) sees it on its next
+// heartbeat, reads the whole cutoff from the device, and posts it to
+// /api/attendance/pull, which finalizes present + absences. This row carries the
+// status so the button can show Queued -> Pulling -> Done without a terminal.
+// ============================================================================
+enum PullStatus {
+  PENDING
+  RUNNING
+  DONE
+  FAILED
+}
+
+model PullRequest {
+  id            String     @id @default(cuid())
+  periodStart   DateTime   @db.Date
+  periodEnd     DateTime   @db.Date
+  status        PullStatus @default(PENDING)
+  requestedAt   DateTime   @default(now())
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  matched       Int        @default(0)   // matched employees, filled in when DONE
+  mappedRows    Int        @default(0)   // present + absent rows written
+  unmappedUsers Int        @default(0)   // device ids with no matching employee
+  error         String?
+
+  @@map("pull_requests")
+}

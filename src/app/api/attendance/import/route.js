@@ -4,9 +4,8 @@ import { withRetry } from '../../../../lib/db-retry';
 import { requireAdmin } from '../../../../lib/auth';
 import { MAX_IMPORT_BYTES, base64TooLarge } from '../../../../lib/uploads';
 import { parseZktecoXls } from '../../../../lib/attendance-import';
-import { callTimeFor, minutesLate } from '../../../../lib/attendance';
+import { buildAttendanceRow } from '../../../../lib/attendance';
 
-const toMin = (t) => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
 const atTime = (dateStr, hhmm) => (hhmm ? new Date(`${dateStr}T${hhmm}:00.000Z`) : null);
 const dayStr = (d) => d.toISOString().slice(0, 10);
 
@@ -72,23 +71,8 @@ export async function POST(request) {
         for (const ds of days) {
           totalRows++;
           if (manualKeys.has(`${emp.id}|${ds}`)) continue;
-          const date = new Date(`${ds}T00:00:00.000Z`);
           const p = userDays[ds];
-          if (!p) {
-            attendanceRows.push({ employeeId: emp.id, date, isAbsent: true, tardinessMins: 0, overtimeMins: 0, importBatchId: batch.id });
-          } else {
-            const assumedIn = !p.timeIn;
-            const assumedOut = !p.timeOut;
-            const tardiness = minutesLate(emp, date, p.timeIn);
-            const timeOut = p.timeOut || '17:00';
-            attendanceRows.push({
-              employeeId: emp.id, date,
-              timeIn: atTime(ds, p.timeIn), timeOut: atTime(ds, timeOut),
-              tardinessMins: tardiness,
-              overtimeMins: assumedOut ? 0 : Math.max(0, toMin(timeOut) - 17 * 60),
-              isAbsent: false, isAssumedIn: assumedIn, isAssumedOut: assumedOut, importBatchId: batch.id,
-            });
-          }
+          attendanceRows.push(buildAttendanceRow(emp, ds, p || null, { importBatchId: batch.id }));
         }
       } else {
         // Unmapped: log the actual punches only — an absence can't be pinned on

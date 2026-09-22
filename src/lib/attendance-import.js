@@ -14,6 +14,7 @@
 // and computing tardiness happen in the import route.
 
 import * as XLSX from 'xlsx';
+import { pairPunches } from './attendance';
 
 // An Excel time is a fraction of a 24-hour day. 0.2361 → 05:40.
 function fracToHHMM(f) {
@@ -100,17 +101,10 @@ export function parseZktecoXls(buffer) {
             .sort();
           if (!times.length) continue;
 
-          // Morning punches (before noon) are arrivals; afternoon punches are
-          // departures. A day with only an afternoon scan therefore has NO
-          // time-in — the person forgot to scan in — rather than an arrival that
-          // is eleven hours "late". The import penalises the missing in-scan.
-          const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
-          const morning = times.filter((t) => toMin(t) < 720);
-          const afternoon = times.filter((t) => toMin(t) >= 720);
-          const timeIn = morning[0] || null;
-          const timeOut = afternoon.length
-            ? afternoon[afternoon.length - 1]
-            : (morning.length >= 2 ? morning[morning.length - 1] : null);
+          // Pairing lives in one shared function (used by the live device push
+          // too) so both paths agree on identical punches. Sunday is the
+          // half-day, so it pairs by first/last instead of the noon split.
+          const { timeIn, timeOut } = pairPunches(times);
 
           const dateStr = ymd(new Date(Date.UTC(year, month, day)));
           rec.days[dateStr] = { timeIn, timeOut };

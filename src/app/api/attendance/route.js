@@ -101,6 +101,62 @@ export async function GET(request) {
       ? { start: new Date(`${fromStr}T00:00:00.000Z`), end: new Date(`${toStr}T00:00:00.000Z`) }
       : null;
 
+    // Live board: today's scans (Asia/Manila), present-only, with quick stats.
+    // The device push writes present rows through the day; this reads them so the
+    // Live tab shows who is in right now. "Today" is computed in Manila so it
+    // lines up with the dates the sync agent and the .xls importer write.
+    if (searchParams.get('live')) {
+      const todayStr = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit',
+      }).format(new Date());
+      const reqDate = searchParams.get('date');
+      const dateStr = validYmd(reqDate) ? reqDate : todayStr;
+      const isToday = dateStr === todayStr;
+      const day = new Date(`${dateStr}T00:00:00.000Z`);
+      const rows = await prisma.attendance.findMany({
+        where: { date: day },
+        include: { employee: { select: { name: true, position: true } } },
+        orderBy: { timeIn: 'asc' },
+      });
+      const activeCount = await prisma.employee.count({ where: { status: 'ACTIVE' } });
+      const present = rows
+        .filter((a) => !a.isAbsent && !a.isLeave)
+        .map((a) => ({
+          id: a.employeeId,
+          name: (a.employee && a.employee.name) || a.employeeId,
+          position: (a.employee && a.employee.position) || null,
+          in: hhmm(a.timeIn),
+          out: a.isAssumedOut ? null : hhmm(a.timeOut),
+          late: a.tardinessMins,
+          status: a.isAssumedOut ? 'in' : 'out', // real time-out means they have clocked out
+          assumedIn: a.isAssumedIn,
+        }));
+      const stats = {
+        present: present.length,
+        late: present.filter((r) => r.late > 0).length,
+        notYetIn: Math.max(0, activeCount - present.length),
+      };
+
+      // Truthful device status, and only for "today" (a past day is history, not
+      // a live feed). Two stages so trouble shows up early without a single slow
+      // heartbeat crying wolf: live < 30s, "stale" (reconnecting) < 60s, else
+      // offline. The heartbeat lands every ~15s whether or not there were scans.
+      // Wrapped so a not-yet-migrated table degrades to offline instead of 500.
+      let sync = { status: 'offline', lastSyncAt: null, lastScanAt: null };
+      if (isToday) {
+        try {
+          const s = await prisma.deviceSync.findUnique({ where: { id: 'primary' } });
+          if (s && s.lastSyncAt) {
+            const ageMs = Date.now() - new Date(s.lastSyncAt).getTime();
+            const status = ageMs < 30000 ? 'live' : ageMs < 60000 ? 'stale' : 'offline';
+            sync = { status, lastSyncAt: s.lastSyncAt, lastScanAt: s.lastScanAt || null };
+          }
+        } catch { /* device_sync not migrated yet — treat as offline */ }
+      }
+
+      return NextResponse.json({ date: dateStr, today: todayStr, isToday, rows: present, stats, sync });
+    }
+
     // Multi-cutoff attendance trend for the dashboard: Present / Late / Absent
     // totals per recent import, oldest to newest (up to the last 6 cutoffs).
     if (searchParams.get('trend')) {

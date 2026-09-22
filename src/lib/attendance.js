@@ -71,6 +71,73 @@ export function describeEarlyShift(employee) {
   return `${time} on ${labels.join(', ')}`;
 }
 
+/* ============================= PAIRING ============================= */
+
+const _toMin = (t) => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
+const _atTime = (dateStr, hhmm) => (hhmm ? new Date(`${dateStr}T${hhmm}:00.000Z`) : null);
+
+/// Pair a day's biometric punches into one arrival and one departure. This is
+/// the SINGLE source of truth used by BOTH the .xls import and the live device
+/// push, so identical punches always yield the same result.
+///
+/// Noon split: pre-noon punches are arrivals, afternoon punches are departures.
+/// A lone afternoon scan therefore means a MISSING time-in (the person forgot
+/// to scan in), not an eleven-hour-late arrival. A day with two or more morning
+/// punches and none after noon keeps the LAST morning punch as the time-out —
+/// which is exactly what a Sunday half-day (shift ends ~12:00) looks like, so it
+/// needs no special case. A single morning punch is an arrival with a missing out.
+///
+/// `times` is an array of "HH:MM" strings in any order. Returns { timeIn, timeOut }.
+export function pairPunches(times) {
+  // A finger held or tapped twice registers two punches seconds apart. At HH:MM
+  // resolution that reads as two scans about a minute apart, which the noon
+  // split would wrongly treat as a clock-in AND a clock-out. Collapse any punch
+  // that lands within DOUBLE_SCAN_MIN minutes of the previous kept one, so a
+  // double tap counts once. Real in/out pairs are hours apart and unaffected.
+  const DOUBLE_SCAN_MIN = 2;
+  const sorted = (times || []).filter(Boolean).slice().sort();
+  if (!sorted.length) return { timeIn: null, timeOut: null };
+
+  const kept = [];
+  for (const t of sorted) {
+    if (!kept.length || _toMin(t) - _toMin(kept[kept.length - 1]) >= DOUBLE_SCAN_MIN) kept.push(t);
+  }
+
+  const morning = kept.filter((t) => _toMin(t) < 720);
+  const afternoon = kept.filter((t) => _toMin(t) >= 720);
+  return {
+    timeIn: morning[0] || null,
+    timeOut: afternoon.length
+      ? afternoon[afternoon.length - 1]
+      : (morning.length >= 2 ? morning[morning.length - 1] : null),
+  };
+}
+
+/// Build one Attendance row from a paired day. Extracted from the import route
+/// so the live push writes byte-identical rows on the same punches: same
+/// tardiness, same assumed-5PM time-out, same overtime, same flags.
+///
+/// Pass `paired = null` for a day with no punches (an absence). `extra` merges
+/// in row-source fields such as `importBatchId`. Missing time-in is penalised
+/// inside minutesLate (a flat 30); missing time-out is assumed 17:00 so no
+/// accidental overtime is credited, and the row is flagged assumed.
+export function buildAttendanceRow(emp, dateStr, paired, extra = {}) {
+  const date = new Date(`${dateStr}T00:00:00.000Z`);
+  if (!paired) {
+    return { employeeId: emp.id, date, isAbsent: true, tardinessMins: 0, overtimeMins: 0, ...extra };
+  }
+  const assumedIn = !paired.timeIn;
+  const assumedOut = !paired.timeOut;
+  const timeOut = paired.timeOut || '17:00';
+  return {
+    employeeId: emp.id, date,
+    timeIn: _atTime(dateStr, paired.timeIn), timeOut: _atTime(dateStr, timeOut),
+    tardinessMins: minutesLate(emp, date, paired.timeIn),
+    overtimeMins: assumedOut ? 0 : Math.max(0, _toMin(timeOut) - 17 * 60),
+    isAbsent: false, isAssumedIn: assumedIn, isAssumedOut: assumedOut, ...extra,
+  };
+}
+
 /* ============================= SUMMARIES ============================= */
 
 /// Roll a period's Attendance rows up into one summary per employee.

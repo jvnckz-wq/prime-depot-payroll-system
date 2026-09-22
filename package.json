@@ -7,6 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:pairing": "tsx scripts/pairing-parity.test.mjs",
+    "sync": "node scripts/sync-agent.js",
+    "sync:live": "node scripts/sync-agent.js --live",
+    "pull-cutoff": "node scripts/pull-cutoff.js",
     "postinstall": "prisma generate"
   },
   "dependencies": {
