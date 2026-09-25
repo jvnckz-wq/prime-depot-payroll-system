@@ -50,6 +50,15 @@ export async function POST(request) {
   try {
     const body = await request.json();
     requestId = body?.requestId ? String(body.requestId) : null;
+    // The agent reports a device-read failure here so the request doesn't hang in
+    // "Pulling" — mark it FAILED with a clear reason.
+    if (requestId && body?.failed) {
+      await prisma.pullRequest.update({
+        where: { id: requestId },
+        data: { status: 'FAILED', finishedAt: new Date(), error: String(body.error || 'Could not read the device.').slice(0, 500) },
+      }).catch(() => {});
+      return NextResponse.json({ ok: true, marked: 'FAILED' });
+    }
     const from = String(body?.from || '').slice(0, 10);
     const to = String(body?.to || '').slice(0, 10);
     if (!validYmd(from) || !validYmd(to)) {

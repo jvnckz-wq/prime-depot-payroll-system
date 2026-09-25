@@ -67,14 +67,16 @@ export async function POST(request) {
       orderBy: { requestedAt: 'desc' },
     });
     if (active) {
-      const stale = active.status === 'RUNNING' && active.startedAt && (Date.now() - new Date(active.startedAt).getTime()) > STALE_MS;
-      if (!stale) {
-        return NextResponse.json({ error: 'A pull is already in progress.', request: serialize(active) }, { status: 409 });
+      const runningFresh = active.status === 'RUNNING' && active.startedAt && (Date.now() - new Date(active.startedAt).getTime()) <= STALE_MS;
+      if (runningFresh) {
+        return NextResponse.json({ error: 'A pull is already running. Wait for it to finish.', request: serialize(active) }, { status: 409 });
       }
+      // PENDING (agent hasn't picked it up — e.g. device/agent offline) or a stale
+      // RUNNING (agent died): supersede it so the user can retry, never stuck.
       await prisma.pullRequest.update({
         where: { id: active.id },
-        data: { status: 'FAILED', error: 'Timed out — the agent did not finish. Is it running on the warehouse PC?', finishedAt: new Date() },
-      });
+        data: { status: 'FAILED', finishedAt: new Date(), error: active.status === 'PENDING' ? 'Superseded by a newer request.' : 'Timed out — the agent did not finish. Is it running on the warehouse PC?' },
+      }).catch(() => {});
     }
 
     const created = await prisma.pullRequest.create({

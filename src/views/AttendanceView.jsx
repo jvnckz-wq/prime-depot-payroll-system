@@ -619,7 +619,9 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
             </div>
             {(() => {
               let banner = null;
-              if (pullActive) banner = { tone: 'info', text: pullReq.status === 'PENDING' ? 'Queued — waiting for the device agent on the warehouse PC…' : `Pulling ${pullReq.from} to ${pullReq.to} from the device…` };
+              const devOffline = pullDevice.status !== 'live';
+              if (pullActive && devOffline) banner = { tone: 'warn', text: `${pullReq.status === 'RUNNING' ? 'Started, but the' : 'Queued, but the'} device or agent looks offline, so it can't be read right now. It will run automatically once they are back online on the warehouse PC — or press "Pull from device" again to retry.` };
+              else if (pullActive) banner = { tone: 'info', text: pullReq.status === 'PENDING' ? 'Queued — the device agent will run it on its next sync…' : `Pulling ${pullReq.from} to ${pullReq.to} from the device…` };
               else if (pullError) banner = { tone: 'warn', text: pullError };
               else if (pullReq && pullReq.status === 'DONE') banner = { tone: 'ok', text: `Pulled ${pullReq.from} to ${pullReq.to}: ${pullReq.mappedRows} rows across ${pullReq.matched} employees${pullReq.unmappedUsers ? `, ${pullReq.unmappedUsers} unmapped` : ''}. Review below, then run payroll.` };
               else if (pullReq && pullReq.status === 'FAILED') banner = { tone: 'warn', text: `Pull failed: ${pullReq.error || 'unknown error'}` };

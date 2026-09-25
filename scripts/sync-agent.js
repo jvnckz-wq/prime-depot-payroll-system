@@ -166,6 +166,14 @@ async function handlePull(req, stamp) {
     }
   } catch (e) {
     console.log(`[${stamp}] Pull could not complete: ${e.message}`);
+    // Tell the app so the request shows "Failed" instead of hanging on "Pulling".
+    try {
+      await fetch(PULL_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
+        body: JSON.stringify({ requestId: req.id, failed: true, error: `Could not read the device: ${e.message}` }),
+      });
+    } catch { /* ignore */ }
   }
 }
 
