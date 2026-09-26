@@ -16,13 +16,32 @@ import { LayoutDashboard, Users, Clock, Truck, Wallet, Settings as SettingsIcon,
 // `null` means the item stands on its own, outside any section.
 export const ADMIN_NAV = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, group: null },
-  { key: 'payroll', label: 'Payroll', icon: FileText, group: 'Payroll' },
+  { key: 'payroll', label: 'Payroll', icon: FileText, group: 'Payroll', children: [
+    { key: 'staff', label: 'Staff Payroll' },
+    { key: 'crew', label: 'Crew (Truck) Payroll' },
+    { key: 'staff-history', label: 'History' },
+  ] },
   { key: 'loans', label: 'Loans', icon: Wallet, group: 'Payroll' },
   { key: 'employees', label: 'Employees', icon: Users, group: 'Workforce' },
-  { key: 'attendance', label: 'Attendance', icon: Clock, group: 'Workforce' },
+  { key: 'attendance', label: 'Attendance', icon: Clock, group: 'Workforce', children: [
+    { key: 'live', label: 'Live' },
+    { key: 'dtr', label: 'Employee DTR' },
+    { key: 'unmapped', label: 'Unmapped IDs' },
+    { key: 'history', label: 'Import History' },
+  ] },
   { key: 'deliveries', label: 'Deliveries', icon: Truck, group: 'Workforce' },
-  { key: 'reports', label: 'Reports', icon: BarChart3, group: 'Administration' },
-  { key: 'settings', label: 'Settings', icon: SettingsIcon, group: 'Administration' },
+  { key: 'reports', label: 'Reports', icon: BarChart3, group: 'Administration', children: [
+    { key: 'register', label: 'Payroll Register' },
+    { key: 'remittance', label: 'Government Remittance' },
+    { key: '13th', label: '13th Month Pay' },
+    { key: 'drivers', label: 'Crew Earnings' },
+    { key: 'bir', label: 'BIR Reference' },
+  ] },
+  { key: 'settings', label: 'Settings', icon: SettingsIcon, group: 'Administration', children: [
+    { key: 'statutory', label: 'Statutory Deductions' },
+    { key: 'fleet', label: 'Fleet' },
+    { key: 'backup', label: 'Backup' },
+  ] },
 ];
 
 // ADMIN_NAV in render order, collapsed into [{ group, items }]. Kept next to the

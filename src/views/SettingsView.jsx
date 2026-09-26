@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Check, Save, Trash2, Download } from 'lucide-react';
 import { Badge, Btn, Eyebrow, Field, H1, Money, Panel, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { computePagIBIG, computePhilHealth, computeSSS } from '../lib/payroll';
@@ -8,8 +8,10 @@ import { exportXLSX, peso } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 import { FleetPanel } from './FleetPanel.jsx';
 
-export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers, setCheckers, sssTable, setSssTable, philhealthRates, setPhilhealthRates, pagibigRates, setPagibigRates, birTable, setBirTable, toast }) => {
-  const [tab, setTab] = useState('statutory');
+export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers, setCheckers, sssTable, setSssTable, philhealthRates, setPhilhealthRates, pagibigRates, setPagibigRates, birTable, setBirTable, toast, navTab }) => {
+  const [tab, setTab] = useState(navTab || 'statutory');
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- sync the settings panel from the sidebar selection
+  useEffect(() => { if (navTab) setTab(navTab); }, [navTab]);
   const [editSss, setEditSss] = useState(false);
   const [sssDraft, setSssDraft] = useState(sssTable);
   const [editPh, setEditPh] = useState(false);
@@ -91,17 +93,6 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
   return (
     <div className="p-4 sm:p-6">
       <H1 sub="Admin-editable rates. Editing these changes real payslip numbers going forward — past payslips already computed are unaffected.">Settings</H1>
-      <div className="flex gap-1 mb-4 rounded-md p-0.5" style={{ backgroundColor: T.lineSoft, width: 'fit-content' }}>
-        {(currentUser?.role === 'ADMIN'
-          // Configuration only. Anything about a person now lives on the
-          // Account page, reached from your own name in the sidebar.
-          ? [['statutory', 'Statutory Deductions'], ['fleet', 'Fleet'], ['backup', 'Backup']]
-          : []
-        ).map(([k, l]) => (
-          <button key={k} onClick={() => setTab(k)} className="px-3 py-1.5 rounded text-xs font-semibold"
-            style={{ fontFamily: F_HEAD, backgroundColor: tab === k ? T.surface : 'transparent', color: tab === k ? T.ink : T.soft }}>{l}</button>
-        ))}
-      </div>
 
       {tab === 'statutory' && (
         <div className="space-y-4">

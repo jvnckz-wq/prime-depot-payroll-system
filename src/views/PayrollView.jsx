@@ -1,27 +1,21 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { StaffPayrollView } from './StaffPayrollView.jsx';
 import { TruckPayrollView } from './TruckPayrollView.jsx';
-import { F_HEAD, T } from '../theme';
 
-// #H15 — Staff and Crew payroll are now two tabs of a single "Payroll" section
-// instead of two separate sidebar items. Loans stays on its own nav item. Each
-// inner view is rendered unchanged; this wrapper only adds the tab switch.
+// Staff and Crew payroll live in the sidebar now (Payroll -> Staff Payroll /
+// Staff History / Crew Payroll), so this wrapper only maps the sidebar choice
+// to the right inner view. navSub: 'staff' | 'staff-history' | 'crew'.
 export const PayrollView = (props) => {
-  const [sub, setSub] = useState('staff');
+  const navSub = props.navSub || 'staff';
+  const isCrew = navSub === 'crew';
+  const staffView = navSub === 'staff-history' ? 'history' : 'current';
   return (
     <div>
-      <div className="px-4 sm:px-6 pt-4 sm:pt-6">
-        <div className="inline-flex gap-1 rounded-md p-0.5" style={{ backgroundColor: T.lineSoft }}>
-          {[['staff', 'Staff Payroll'], ['crew', 'Crew (Truck) Payroll']].map(([k, l]) => (
-            <button key={k} onClick={() => setSub(k)} className="px-3.5 py-1.5 rounded text-xs font-semibold"
-              style={{ fontFamily: F_HEAD, backgroundColor: sub === k ? T.surface : 'transparent', color: sub === k ? T.ink : T.soft }}>{l}</button>
-          ))}
-        </div>
-      </div>
-      {sub === 'staff' ? (
+      {!isCrew ? (
         <StaffPayrollView
+          navView={staffView}
           staff={props.staff} loans={props.loans} reloadLoans={props.reloadLoans}
           statutory={props.statutory} toast={props.toast} cutoffLabel={props.cutoffLabel}
           reloadStaff={props.reloadStaff} loading={props.staffLoading} />

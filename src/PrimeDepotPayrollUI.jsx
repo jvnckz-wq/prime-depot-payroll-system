@@ -18,6 +18,7 @@ import { LegalView } from './views/LegalView.jsx';
 import { ForcedPasswordChange } from './views/AccountView.jsx';
 import TwoFactorSetup from './views/TwoFactorSetup.jsx';
 import { AccountPage } from './views/AccountPage.jsx';
+import { FAQView } from './views/FAQView.jsx';
 import { ReportsView } from './views/ReportsView.jsx';
 import { SettingsView } from './views/SettingsView.jsx';
 import { PayrollView } from './views/PayrollView.jsx';
@@ -31,6 +32,10 @@ export default function PrimeDepotPayroll() {
   const [authChecking, setAuthChecking] = useState(true);
   const [legalPage, setLegalPage] = useState(null); // 'terms' | 'privacy' | null
   const [tab, setTab] = useState('dashboard');
+  // Sub-tab per section, driven from the nested sidebar. The active section
+  // expands and its active child is highlighted; each view reads its value here.
+  const [subs, setSubs] = useState({ payroll: 'staff', attendance: 'live', reports: 'register', settings: 'statutory' });
+  const navSelect = React.useCallback((key, child) => { setTab(key); if (child) setSubs(s => ({ ...s, [key]: child })); }, []);
   // Mobile navigation drawer. Below `md` the sidebar is off-canvas, so this is
   // the only way to reach the other sections.
   const [navOpen, setNavOpen] = useState(false);
@@ -291,12 +296,6 @@ export default function PrimeDepotPayroll() {
     />
   </>;
 
-  const titles = {
-    dashboard: 'Overview', employees: 'Employees', attendance: 'Attendance', payroll: 'Payroll',
-    deliveries: 'Deliveries', loans: 'Loans & Advances', reports: 'Reports', settings: 'Settings',
-    account: 'My Account',
-  };
-
   return (
     <div className="flex h-screen w-full overflow-hidden" style={{ backgroundColor: T.bg, fontFamily: F_BODY }}>
       <style>{FONTS}</style>
@@ -312,25 +311,24 @@ export default function PrimeDepotPayroll() {
       />
       <Sidebar
         tab={tab}
-        setTab={setTab}
-        onLogout={() => setConfirmLogout(true)}
-        user={user}
-        onOpenAccount={() => setTab('account')}
+        subs={subs}
+        onSelect={navSelect}
         open={navOpen}
         onClose={closeNav}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <TopBar tab={tab} title={titles[tab]} cutoff={cutoffText} onOpenNav={() => setNavOpen(true)} />
+        <TopBar user={user} onOpenAccount={() => setTab('account')} onLogout={() => setConfirmLogout(true)} onOpenNav={() => setNavOpen(true)} />
         <main className="flex-1 overflow-y-auto">
           <div key={tab} className="pd-view-in">
           {tab === 'dashboard' && <DashboardView deliveries={deliveries} staff={staff} totalEmployees={allStaff.filter(e => e.status !== 'Inactive').length} loans={loans} statutory={statutory} setTab={setTab} cutoffLabel={cutoffText} attendanceSummaries={attSummaries} unmappedCount={unmappedCount} />}
           {tab === 'employees' && <EmployeesView staff={allStaff} reloadStaff={reloadStaff} toast={toast} prefill={employeePrefill} onPrefillConsumed={() => setEmployeePrefill(null)} />}
-          {tab === 'attendance' && <AttendanceView staff={allStaff} toast={toast} onRegister={(id, name) => { setEmployeePrefill({ id, name }); setTab('employees'); }} />}
-          {tab === 'payroll' && <PayrollView staff={staff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} toast={toast} cutoffLabel={cutoffText} reloadStaff={reloadStaff} staffLoading={staffLoading} deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} crewRates={crewRates} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} />}
+          {tab === 'attendance' && <AttendanceView navSub={subs.attendance} staff={allStaff} toast={toast} onRegister={(id, name) => { setEmployeePrefill({ id, name }); setTab('employees'); }} />}
+          {tab === 'payroll' && <PayrollView navSub={subs.payroll} staff={staff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} toast={toast} cutoffLabel={cutoffText} reloadStaff={reloadStaff} staffLoading={staffLoading} deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} crewRates={crewRates} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} />}
           {tab === 'deliveries' && <TruckPayrollView mode="logging" deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} crewRates={crewRates} loans={loans} reloadLoans={reloadLoans} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} toast={toast} />}
           {tab === 'loans' && <LoansView staff={allStaff} loans={loans} reloadLoans={reloadLoans} toast={toast} />}
-          {tab === 'reports' && <ReportsView staff={staff} deliveries={deliveries} loans={loans} statutory={statutory} cutoffLabel={cutoffText} attendanceSummaries={attSummaries} crewRates={crewRates} />}
-          {tab === 'settings' && <SettingsView currentUser={user} onUserChange={u => setUser(prev => ({ ...prev, ...u }))} onSignedOut={() => { setUser(null); setTab('dashboard'); }} checkers={checkers} setCheckers={setCheckers} sssTable={sssTable} setSssTable={setSssTable} philhealthRates={philhealthRates} setPhilhealthRates={setPhilhealthRates} pagibigRates={pagibigRates} setPagibigRates={setPagibigRates} birTable={birTable} setBirTable={setBirTable} toast={toast} />}
+          {tab === 'faqs' && <FAQView />}
+          {tab === 'reports' && <ReportsView navTab={subs.reports} staff={staff} deliveries={deliveries} loans={loans} statutory={statutory} cutoffLabel={cutoffText} attendanceSummaries={attSummaries} crewRates={crewRates} />}
+          {tab === 'settings' && <SettingsView navTab={subs.settings} currentUser={user} onUserChange={u => setUser(prev => ({ ...prev, ...u }))} onSignedOut={() => { setUser(null); setTab('dashboard'); }} checkers={checkers} setCheckers={setCheckers} sssTable={sssTable} setSssTable={setSssTable} philhealthRates={philhealthRates} setPhilhealthRates={setPhilhealthRates} pagibigRates={pagibigRates} setPagibigRates={setPagibigRates} birTable={birTable} setBirTable={setBirTable} toast={toast} />}
           </div>
         </main>
       </div>

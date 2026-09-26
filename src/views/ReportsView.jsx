@@ -32,8 +32,10 @@ function crewEarningsRange(apiDeliveries, crewRates) {
     .sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === 'Driver' ? -1 : 1));
 }
 
-export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel = '', attendanceSummaries = [], crewRates = CREW_RATE_FALLBACK }) => {
-  const [tab, setTab] = useState('register');
+export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel = '', attendanceSummaries = [], crewRates = CREW_RATE_FALLBACK, navTab }) => {
+  const [tab, setTab] = useState(navTab || 'register');
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- sync the report from the sidebar selection
+  useEffect(() => { if (navTab) setTab(navTab); }, [navTab]);
 
   // Crew Earnings has its own date range — a day, a week, or any span — fetched
   // independently of the "today only" live feed the rest of the app uses.
@@ -91,17 +93,9 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
     'Daily Rate': r.dailyRate, 'Piece Rate': r.pieceRate, 'Palima Bonus': r.bonus, 'Total Earned': r.total,
   })) }]);
 
-  const tabs = [['register', 'Payroll Register'], ['remittance', "Government Remittance"], ['13th', '13th Month Pay'], ['drivers', 'Crew Earnings'], ['bir', 'BIR Reference']];
-
   return (
     <div className="p-4 sm:p-6">
       <H1 sub="Payroll, government compliance, and delivery earnings reports.">Reports</H1>
-      <div className="flex gap-1 mb-4 flex-wrap rounded-md p-0.5" style={{ backgroundColor: T.lineSoft, width: 'fit-content' }}>
-        {tabs.map(([k, l]) => (
-          <button key={k} onClick={() => setTab(k)} className="px-3 py-1.5 rounded text-xs font-semibold"
-            style={{ fontFamily: F_HEAD, backgroundColor: tab === k ? T.surface : 'transparent', color: tab === k ? T.ink : T.soft }}>{l}</button>
-        ))}
-      </div>
 
       {tab === 'register' && (
         <Panel className="overflow-hidden">

@@ -85,10 +85,10 @@ const PayslipCard = ({ e, calc, cutoffLabel, attPeriod, att, statutory, classNam
   </Panel>
 );
 
-export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, cutoffLabel = '', reloadStaff, loading = false }) => {
+export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, cutoffLabel = '', reloadStaff, loading = false, navView }) => {
   const [view, setView] = useState('list');
   const [selectedId, setSelectedId] = useState(null);
-  const [subTab, setSubTab] = useState('current');
+  const [subTab, setSubTab] = useState(navView || 'current');
   const [confirmApply, setConfirmApply] = useState(false);
   const [confirmFinalize, setConfirmFinalize] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
@@ -165,6 +165,8 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
   };
   // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
   useEffect(() => { loadHistory(); }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- sync Current/History from the sidebar selection
+  useEffect(() => { if (navView) setSubTab(navView); }, [navView]);
 
   const unfinalize = async (p) => {
     if (!p) return;
@@ -332,13 +334,6 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
     <div className="p-4 sm:p-6">
       <H1 sub="Bi-monthly payroll, computed for each staff member from their current-cutoff attendance.">Staff Payroll</H1>
 
-      <div className="flex gap-1 mb-4 rounded-md p-0.5" style={{ backgroundColor: T.lineSoft, width: 'fit-content' }}>
-        {[['current', 'Current Cutoff'], ['history', 'History']].map(([k, l]) => (
-          <button key={k} onClick={() => setSubTab(k)} className="px-3 py-1.5 rounded text-xs font-semibold"
-            style={{ fontFamily: F_HEAD, backgroundColor: subTab === k ? T.surface : 'transparent', color: subTab === k ? T.ink : T.soft }}>{l}</button>
-        ))}
-      </div>
-
       {subTab === 'current' && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
@@ -399,7 +394,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
           {historyLoading ? (
             <SkeletonBlock avatar={false} />
           ) : history.length === 0 ? (
-            <div className="p-8 text-center text-sm" style={{ color: T.soft, fontFamily: F_BODY }}>No cut-offs have been finalized yet. Release one from the Current Cutoff tab.</div>
+            <div className="p-8 text-center text-sm" style={{ color: T.soft, fontFamily: F_BODY }}>No cut-offs have been finalized yet. Release one from Staff Payroll.</div>
           ) : (
             <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
               <thead><tr><Th>Cut-off Period</Th><Th center>Employees</Th><Th right>Total Gross</Th><Th right>Total Net</Th><Th>Status</Th><Th></Th></tr></thead>

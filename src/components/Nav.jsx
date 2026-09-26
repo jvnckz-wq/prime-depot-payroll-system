@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
-import { LogOut, Menu, X } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { ChevronDown, HelpCircle, LogOut, Menu, User, X } from 'lucide-react';
 import { ADMIN_NAV, ADMIN_NAV_GROUPS } from '../data/nav';
 import { F_BODY, F_HEAD, T } from '../theme';
 /* eslint-disable @next/next/no-img-element -- user avatars are base64 data URIs; next/image adds no value and cannot optimize data URIs */
@@ -11,46 +11,64 @@ const SIDEBAR_W = 236;
 /* ============================= NAV LIST ============================= */
 // py-3 against a 20px line box lands each row at exactly the 44px minimum
 // touch target, which the old py-2.5 rows missed.
-const NavItem = ({ item, active, onSelect }) => {
+const NavRow = ({ item, tab, subs, onSelect }) => {
   const Icon = item.icon;
+  const kids = item.children || null;
+  const active = tab === item.key;
+  const isOpen = !!kids && active; // the active section is the expanded one
+  const activeChild = kids ? (subs[item.key] || kids[0].key) : null;
   return (
-    <button
-      onClick={onSelect}
-      aria-current={active ? 'page' : undefined}
-      className="pd-nav-item relative w-full flex items-center gap-3 pl-5 pr-3 py-3 text-sm text-left"
-      style={{
-        fontFamily: F_BODY,
-        fontWeight: active ? 600 : 400,
-        color: active ? '#FFFFFF' : T.sidebarSoft,
-        backgroundColor: active ? T.sidebarActiveBg : undefined,
-      }}
-    >
-      {/* The active marker is its own element rather than a border-left, so
-          inactive items need no transparent placeholder to stay aligned. */}
-      {active && (
-        <span
-          aria-hidden="true"
-          style={{
-            position: 'absolute', left: 0, top: 7, bottom: 7, width: 3,
-            borderRadius: '0 3px 3px 0', backgroundColor: T.sidebarAccent,
-          }}
-        />
-      )}
-      <Icon size={17} strokeWidth={active ? 2.2 : 1.9} color={active ? T.sidebarAccent : 'currentColor'} />
-      <span className="truncate">{item.label}</span>
-    </button>
+    <div>
+      <button
+        onClick={() => (kids ? onSelect(item.key, subs[item.key] || kids[0].key) : onSelect(item.key))}
+        aria-current={active && !kids ? 'page' : undefined}
+        aria-expanded={kids ? isOpen : undefined}
+        className="pd-nav-item relative w-full flex items-center gap-3 pl-5 pr-3 py-3 text-sm text-left"
+        style={{
+          fontFamily: F_BODY,
+          fontWeight: active ? 600 : 400,
+          color: active ? '#FFFFFF' : T.sidebarSoft,
+          backgroundColor: active && !kids ? T.sidebarActiveBg : undefined,
+        }}
+      >
+        {active && !kids && (
+          <span aria-hidden="true" style={{ position: 'absolute', left: 0, top: 7, bottom: 7, width: 3, borderRadius: '0 3px 3px 0', backgroundColor: T.sidebarAccent }} />
+        )}
+        <Icon size={17} strokeWidth={active ? 2.2 : 1.9} color={active ? T.sidebarAccent : 'currentColor'} />
+        <span className="truncate flex-1">{item.label}</span>
+        {kids && <ChevronDown size={14} style={{ transition: 'transform .18s ease', transform: isOpen ? 'rotate(180deg)' : 'none', opacity: 0.8 }} />}
+      </button>
+      {kids && isOpen && kids.map((c) => {
+        const cActive = activeChild === c.key;
+        return (
+          <button
+            key={c.key}
+            onClick={() => onSelect(item.key, c.key)}
+            aria-current={cActive ? 'page' : undefined}
+            className="pd-nav-item relative w-full flex items-center py-2 text-left"
+            style={{
+              paddingLeft: 46, paddingRight: 12, fontFamily: F_BODY, fontSize: 13.5,
+              fontWeight: cActive ? 600 : 400,
+              color: cActive ? '#FFFFFF' : T.sidebarSoft,
+              backgroundColor: cActive ? T.sidebarActiveBg : undefined,
+            }}
+          >
+            {cActive && (
+              <span aria-hidden="true" style={{ position: 'absolute', left: 0, top: 6, bottom: 6, width: 3, borderRadius: '0 3px 3px 0', backgroundColor: T.sidebarAccent }} />
+            )}
+            <span className="truncate">{c.label}</span>
+          </button>
+        );
+      })}
+    </div>
   );
 };
 
 // Shared by the desktop rail and the mobile drawer so the two can never drift.
-const NavList = ({ tab, onSelect }) => (
+const NavList = ({ tab, subs, onSelect }) => (
   <nav aria-label="Main" className="pd-no-scrollbar flex-1 py-3 overflow-y-auto">
     {ADMIN_NAV_GROUPS.map(({ group, items }) => (
       <div key={group || 'root'} className={group ? 'mt-5' : ''}>
-        {/* Same colour as the nav labels, deliberately: #EBB9BB is only 4.88:1 on
-            the crimson sidebar, so anything dimmer would fail AA. The hierarchy
-            comes from type instead — 11px uppercase with wide tracking against
-            14px regular rows. */}
         {group && (
           <div
             className="px-5 pb-1.5 text-[11px] font-semibold uppercase"
@@ -60,52 +78,44 @@ const NavList = ({ tab, onSelect }) => (
           </div>
         )}
         {items.map(item => (
-          <NavItem key={item.key} item={item} active={tab === item.key} onSelect={() => onSelect(item.key)} />
+          <NavRow key={item.key} item={item} tab={tab} subs={subs} onSelect={onSelect} />
         ))}
       </div>
     ))}
   </nav>
 );
 
-const NavFooter = ({ user, tab, onOpenAccount, onLogout }) => (
-  <div className="px-3 py-3" style={{ borderTop: `1px solid ${T.sidebarLine}` }}>
-    {user && (
-      <button
-        onClick={onOpenAccount}
-        aria-current={tab === 'account' ? 'page' : undefined}
-        className="pd-nav-item w-full flex items-center gap-2.5 px-2 py-2 rounded mb-1 text-left"
-        style={tab === 'account' ? { backgroundColor: T.sidebarActiveBg } : undefined}
-      >
-        {user.avatar ? (
-          <img src={user.avatar} alt="" className="rounded-full object-cover shrink-0"
-            style={{ width: 30, height: 30, border: '1px solid rgba(255,255,255,0.25)' }} />
-        ) : (
-          <span className="rounded-full flex items-center justify-center shrink-0"
-            style={{ width: 30, height: 30, backgroundColor: 'rgba(255,255,255,0.15)', color: '#fff', fontFamily: F_HEAD, fontWeight: 700, fontSize: 11 }}>
-            {(user.displayName || user.username).split(/[\s,]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase()}
-          </span>
-        )}
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold text-white truncate" style={{ fontFamily: F_BODY }}>{user.displayName}</span>
-          <span className="block text-xs truncate" style={{ fontFamily: F_BODY, color: T.sidebarSoft }}>
-            {user.role === 'ADMIN' ? 'Operations Head' : 'Checker'}
-          </span>
-        </span>
-      </button>
-    )}
-    <button onClick={onLogout} className="pd-nav-item w-full flex items-center gap-2 px-2 py-2 text-sm rounded"
-      style={{ fontFamily: F_BODY, color: T.sidebarSoft }}>
-      <LogOut size={15} /> Log out
+// Pinned to the very bottom of the sidebar, where the profile used to sit. The
+// account + Log out now live in the top-right avatar menu instead.
+const FaqButton = ({ tab, onClick }) => {
+  const active = tab === 'faqs';
+  return (
+    <button
+      onClick={onClick}
+      aria-current={active ? 'page' : undefined}
+      className="pd-nav-item relative w-full flex items-center gap-3 pl-5 pr-3 py-3 text-sm text-left"
+      style={{
+        fontFamily: F_BODY, fontWeight: active ? 600 : 400,
+        color: active ? '#FFFFFF' : T.sidebarSoft,
+        backgroundColor: active ? T.sidebarActiveBg : undefined,
+        borderTop: `1px solid ${T.sidebarLine}`,
+      }}
+    >
+      {active && (
+        <span aria-hidden="true" style={{ position: 'absolute', left: 0, top: 7, bottom: 7, width: 3, borderRadius: '0 3px 3px 0', backgroundColor: T.sidebarAccent }} />
+      )}
+      <HelpCircle size={17} strokeWidth={active ? 2.2 : 1.9} color={active ? T.sidebarAccent : 'currentColor'} />
+      <span className="truncate">FAQs</span>
     </button>
-  </div>
-);
+  );
+};
 
 /* ============================= SIDEBAR ============================= */
 // One component, two presentations: a static rail from `md` up, and an
 // off-canvas drawer below it. The drawer replaces the old bottom bar, which
 // rendered only the first five of eight destinations — Loans, Reports and
 // Settings had no route at all on a phone.
-export const Sidebar = ({ tab, setTab, onLogout, user, onOpenAccount, open = false, onClose }) => {
+export const Sidebar = ({ tab, subs = {}, onSelect, open = false, onClose }) => {
   const panelRef = useRef(null);
   const restoreRef = useRef(null);
 
@@ -160,8 +170,7 @@ export const Sidebar = ({ tab, setTab, onLogout, user, onOpenAccount, open = fal
   );
 
   // Selecting a destination on mobile should also dismiss the drawer.
-  const select = (key) => { setTab(key); onClose?.(); };
-  const openAccount = () => { onOpenAccount(); onClose?.(); };
+  const select = (key, child) => { onSelect(key, child); onClose?.(); };
 
   return (
     <>
@@ -169,8 +178,8 @@ export const Sidebar = ({ tab, setTab, onLogout, user, onOpenAccount, open = fal
       <aside className="hidden md:flex flex-col shrink-0 h-full"
         style={{ width: SIDEBAR_W, backgroundColor: T.sidebar, borderRight: `1px solid ${T.sidebarLine}` }}>
         {header(false)}
-        <NavList tab={tab} onSelect={setTab} />
-        <NavFooter user={user} tab={tab} onOpenAccount={onOpenAccount} onLogout={onLogout} />
+        <NavList tab={tab} subs={subs} onSelect={onSelect} />
+        <FaqButton tab={tab} onClick={() => onSelect('faqs')} />
       </aside>
 
       {/* Mobile drawer */}
@@ -186,8 +195,8 @@ export const Sidebar = ({ tab, setTab, onLogout, user, onOpenAccount, open = fal
             style={{ width: SIDEBAR_W, backgroundColor: T.sidebar, borderRight: `1px solid ${T.sidebarLine}` }}
           >
             {header(true)}
-            <NavList tab={tab} onSelect={select} />
-            <NavFooter user={user} tab={tab} onOpenAccount={openAccount} onLogout={onLogout} />
+            <NavList tab={tab} subs={subs} onSelect={select} />
+            <FaqButton tab={tab} onClick={() => select('faqs')} />
           </div>
         </div>
       )}
@@ -201,40 +210,59 @@ export const Sidebar = ({ tab, setTab, onLogout, user, onOpenAccount, open = fal
 // of its content was a duplicate of something else on screen. It now carries
 // only what is not stated anywhere else: where you are in the nav hierarchy,
 // and which pay period every figure on the page belongs to.
-export const TopBar = ({ tab, title, cutoff, onOpenNav }) => {
-  const section = ADMIN_NAV.find(i => i.key === tab)?.group;
-  return (
-    <header className="flex items-center justify-between gap-3 px-4 md:px-6 py-3"
-      style={{ borderBottom: `1px solid ${T.line}`, backgroundColor: T.surface }}>
-      <div className="flex items-center gap-2 min-w-0">
-        <button onClick={onOpenNav} aria-label="Open navigation menu"
-          className="pd-btn md:hidden -ml-2 rounded flex items-center justify-center shrink-0"
-          data-variant="ghost" style={{ width: 44, height: 44, color: T.ink }}>
-          <Menu size={20} />
-        </button>
-        <nav aria-label="Breadcrumb" className="min-w-0">
-          <ol className="flex items-center gap-1.5 min-w-0">
-            {section && (
-              <>
-                <li className="text-sm hidden sm:block" style={{ fontFamily: F_BODY, color: T.soft }}>{section}</li>
-                <li aria-hidden="true" className="text-sm hidden sm:block" style={{ color: T.line }}>/</li>
-              </>
-            )}
-            <li aria-current="page" className="text-sm font-semibold truncate" style={{ fontFamily: F_HEAD, color: T.ink }}>
-              {title}
-            </li>
-          </ol>
-        </nav>
-      </div>
+export const TopBar = ({ user, onOpenAccount, onLogout, onOpenNav }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
 
-      <div className="text-right shrink-0">
-        <div className="text-[10px] font-semibold uppercase leading-none mb-1"
-          style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.09em' }}>
-          Pay Period
-        </div>
-        <div className="text-sm font-semibold leading-none pd-num" style={{ fontFamily: F_HEAD, color: T.ink }}>
-          {cutoff}
-        </div>
+  const initials = (user?.displayName || user?.username || '?')
+    .split(/[\s,]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+  const roleLabel = user?.role === 'ADMIN' ? 'Operations Head' : 'Checker';
+
+  return (
+    <header className="flex items-center gap-3 px-4 md:px-6" style={{ height: 56, borderBottom: `1px solid ${T.line}`, backgroundColor: T.surface }}>
+      <button onClick={onOpenNav} aria-label="Open navigation menu"
+        className="pd-btn md:hidden -ml-2 rounded flex items-center justify-center shrink-0"
+        data-variant="ghost" style={{ width: 44, height: 44, color: T.ink }}>
+        <Menu size={20} />
+      </button>
+
+      <div className="relative ml-auto" ref={ref}>
+        <button
+          onClick={() => setOpen(o => !o)}
+          aria-haspopup="menu" aria-expanded={open} aria-label="Account menu"
+          className="rounded-full flex items-center justify-center"
+          style={{ width: 36, height: 36, background: T.brand, color: '#fff', fontFamily: F_HEAD, fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer' }}
+        >
+          {user?.avatar
+            ? <img src={user.avatar} alt="" className="rounded-full object-cover" style={{ width: 36, height: 36 }} />
+            : initials}
+        </button>
+        {open && (
+          <div role="menu" className="absolute right-0 z-30"
+            style={{ top: 'calc(100% + 8px)', width: 236, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, boxShadow: '0 14px 34px rgba(0,0,0,0.14)', overflow: 'hidden' }}>
+            <div className="flex items-center gap-2.5" style={{ padding: '13px 14px', borderBottom: `1px solid ${T.lineSoft}` }}>
+              <span className="rounded-full flex items-center justify-center shrink-0" style={{ width: 34, height: 34, background: T.brand, color: '#fff', fontFamily: F_HEAD, fontWeight: 700, fontSize: 12 }}>{initials}</span>
+              <span className="min-w-0">
+                <span className="block truncate" style={{ fontFamily: F_HEAD, fontWeight: 600, fontSize: 13.5, color: T.ink }}>{user?.displayName || user?.username}</span>
+                <span className="block truncate" style={{ fontFamily: F_BODY, fontSize: 11.5, color: T.soft }}>{roleLabel}</span>
+              </span>
+            </div>
+            <button role="menuitem" onClick={() => { setOpen(false); onOpenAccount(); }}
+              className="pd-menu-item w-full flex items-center gap-2.5 text-left" style={{ padding: '11px 14px', fontFamily: F_BODY, fontSize: 13.5, color: T.ink }}>
+              <User size={16} color={T.soft} /> Account
+            </button>
+            <button role="menuitem" onClick={() => { setOpen(false); onLogout(); }}
+              className="pd-menu-item w-full flex items-center gap-2.5 text-left" style={{ padding: '11px 14px', fontFamily: F_BODY, fontSize: 13.5, color: T.brand, borderTop: `1px solid ${T.lineSoft}` }}>
+              <LogOut size={16} color={T.brand} /> Log out
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );

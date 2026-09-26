@@ -126,6 +126,10 @@ button:disabled { cursor: not-allowed; }
 }
 .pd-nav-item:hover { background-color: rgba(255, 255, 255, 0.10); color: #FFFFFF !important; }
 
+/* Account dropdown items — light hover on a white panel (text keeps its colour). */
+.pd-menu-item { transition: background-color 0.12s ease; }
+.pd-menu-item:hover { background-color: #F1EEEC; }
+
 /* Table rows — hover highlight (opt-in via .pd-table; rolled out per view in a later batch) */
 .pd-table tbody tr { transition: background-color var(--pd-dur-fast) var(--pd-ease); }
 .pd-table tbody tr:hover { background-color: var(--pd-line-soft); }
@@ -208,9 +212,17 @@ input::-ms-clear {
 button:not(.pd-btn):not(.pd-nav-item):not(:disabled) {
   transition: color 0.12s ease, background-color 0.12s ease, transform 0.08s ease, opacity 0.12s ease;
 }
-button:not(.pd-btn):not(.pd-nav-item):not(:disabled):hover {
+button:not(.pd-btn):not(.pd-nav-item):not(.pd-menu-item):not(:disabled):hover {
   color: var(--pd-brand) !important;
 }
 button:not(.pd-btn):not(.pd-nav-item):not(:disabled):active {
   transform: translateY(0.5px);
+}
+
+/* Live status pill — the pulsing "ping" ring on the Attendance auto-refresh badge.
+   Disabled automatically by the prefers-reduced-motion block above. */
+.pd-live-ping { animation: pd-live-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite; }
+@keyframes pd-live-ping {
+  0%   { transform: scale(1); opacity: 0.5; }
+  100% { transform: scale(3); opacity: 0;   }
 }

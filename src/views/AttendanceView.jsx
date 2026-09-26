@@ -56,10 +56,10 @@ const shiftCutoff = (sel, dir) => {
   return cutoffOf(yy, mi, half);
 };
 
-export const AttendanceView = ({ staff, toast, onRegister }) => {
+export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
   const [view, setView] = useState('list');
   const [selectedId, setSelectedId] = useState(null);
-  const [subTab, setSubTab] = useState('live');
+  const [subTab, setSubTab] = useState(navSub || 'live');
   const [data, setData] = useState({ period: null, summaries: [], unmappedCount: 0, batches: [] });
   const [loading, setLoading] = useState(true);
   const [liveDate, setLiveDate] = useState(null); // null = today (live); 'YYYY-MM-DD' = a past day
@@ -137,6 +137,8 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
     } catch { setPullError('Could not queue the pull.'); }
     finally { setPullBusy(false); }
   };
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- sync the sub-tab from the sidebar selection
+  useEffect(() => { if (navSub) setSubTab(navSub); }, [navSub]);
   // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- intentional: load the active tab's data on mount and when the tab or selected day changes
   useEffect(() => { if (subTab === 'live') loadLive(); else if (subTab === 'dtr' || subTab === 'history') load(); }, [subTab, liveDate]);
 
@@ -461,16 +463,11 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
       <input ref={fileRef} type="file" accept=".xls,.xlsx" onChange={onFile} style={{ display: 'none' }} />
       <H1>Attendance</H1>
 
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
-        {subTab !== 'live' && <Badge tone="blue">{data.period ? fmtPeriod(data.period) : 'No imports yet'}</Badge>}
-        <div className="flex gap-1 rounded-md p-0.5" style={{ backgroundColor: T.lineSoft }}>
-          {[['live', 'Live'], ['dtr', 'Employee DTR'], ['unmapped', 'Unmapped IDs'], ['history', 'Import History']].map(([k, l]) => (
-            <button key={k} onClick={() => setSubTab(k)} className="px-3 py-1.5 rounded text-xs font-semibold"
-              style={{ fontFamily: F_HEAD, backgroundColor: subTab === k ? T.surface : 'transparent', color: subTab === k ? T.ink : T.soft }}>{l}</button>
-          ))}
+      {subTab !== 'live' && (
+        <div className="mb-4">
+          <Badge tone="blue">{data.period ? fmtPeriod(data.period) : 'No imports yet'}</Badge>
         </div>
-      </div>
-
+      )}
       {subTab === 'live' && (
         <Panel className="overflow-hidden">
           <div className="flex items-center justify-between gap-4 flex-wrap" style={{ padding: '18px 18px 0' }}>
