@@ -71,13 +71,13 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
   // Only paid staff (₱0 daily rate = no salary set) appear here, matching the
   // Staff Payroll page — they aren't part of the register, remittance, or 13th month.
   const payrollRows = useMemo(
-    () => staff.filter(e => Number(e.rate) > 0).map(e => ({ emp: e, calc: computeStaffPayroll(e, loans, statutory, attById[e.id], cutoffKey) })),
+    () => staff.filter(e => Number(e.rate) > 0).map(e => ({ emp: e, calc: computeStaffPayroll(e, loans, statutory, attById[e.id], cutoffKey) })).filter(r => r.calc.hasAttendance),
     [staff, loans, statutory, attById, cutoffKey]
   );
-  // Government Remittance follows the corrected payroll: no attendance for the
-  // cutoff means no pay and no withheld share, so those staff drop off here too.
-  // (Only this report is filtered; the other report tabs are unchanged.)
-  const remitRows = payrollRows.filter(r => r.calc.hasAttendance);
+  // Both the Payroll Register and Government Remittance follow the corrected
+  // payroll: no attendance for the cutoff means no pay and no withheld share, so
+  // those staff drop off these reports too. (Other report tabs are unchanged.)
+  const remitRows = payrollRows;
   const T13 = staff.filter(e => Number(e.rate) > 0).map(e => ({ name: e.name, months: 12, basic: e.rate * 22 * 12, pay: Math.round(e.rate * 22 * 12 / 12 * 100) / 100 }));
   // Earnings are reported per PERSON across the chosen range. Voided trips are
   // already excluded upstream.
