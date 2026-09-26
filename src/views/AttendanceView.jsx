@@ -138,7 +138,7 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
     finally { setPullBusy(false); }
   };
   // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- intentional: load the active tab's data on mount and when the tab or selected day changes
-  useEffect(() => { if (subTab === 'live') loadLive(); else if (subTab === 'dtr') load(); }, [subTab, liveDate]);
+  useEffect(() => { if (subTab === 'live') loadLive(); else if (subTab === 'dtr' || subTab === 'history') load(); }, [subTab, liveDate]);
 
   // Show any in-progress pull when opening the DTR tab.
   // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot fetch of pull status when the DTR tab opens
@@ -724,7 +724,8 @@ export const AttendanceView = ({ staff, toast, onRegister }) => {
 
       {subTab === 'history' && (
         <Panel className="overflow-hidden">
-          {data.batches.length === 0 ? <EmptyState icon={ClipboardList} title="No imports yet" desc="Upload an attendance .xls file to get started." /> : (
+          {loading ? <SkeletonBlock avatar={false} />
+            : data.batches.length === 0 ? <EmptyState icon={ClipboardList} title="No imports yet" desc="Upload an attendance .xls file to get started." /> : (
             <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
               <thead><tr><Th>Imported</Th><Th>Filename</Th><Th>Period</Th><Th center>Mapped</Th><Th center>Unmapped</Th><Th>Status</Th><Th></Th></tr></thead>
               <tbody>{data.batches.map((b) => (

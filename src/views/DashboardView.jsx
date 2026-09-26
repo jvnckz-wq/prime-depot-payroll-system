@@ -45,7 +45,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
   // Staff Payroll page uses (same attendance AND same cutoff key), so the headline number
   // always agrees with the payslips down to the loan deductions.
   const netThisCutoff = useMemo(
-    () => staff.reduce((s, e) => s + computeStaffPayroll(e, loans, statutory, attById[e.id], cutoffKey).net, 0),
+    () => staff.filter(e => Number(e.rate) > 0).reduce((s, e) => { const c = computeStaffPayroll(e, loans, statutory, attById[e.id], cutoffKey); return c.hasAttendance ? s + c.net : s; }, 0),
     [staff, loans, statutory, attById, cutoffKey]
   );
   // Active loans & advances — total outstanding balance across every unpaid ledger.
@@ -80,7 +80,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
 
   // Payslip snapshot — first rows of the current staff payroll, matching the mockup table.
   const snapshot = useMemo(
-    () => staff.map(e => { const c = computeStaffPayroll(e, loans, statutory, attById[e.id], cutoffKey); return { name: e.name, gross: c.gross, net: c.net }; }),
+    () => staff.filter(e => Number(e.rate) > 0).map(e => ({ e, c: computeStaffPayroll(e, loans, statutory, attById[e.id], cutoffKey) })).filter(({ c }) => c.hasAttendance).map(({ e, c }) => ({ name: e.name, gross: c.gross, net: c.net })),
     [staff, loans, statutory, attById, cutoffKey]
   );
 

@@ -74,20 +74,24 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
     () => staff.filter(e => Number(e.rate) > 0).map(e => ({ emp: e, calc: computeStaffPayroll(e, loans, statutory, attById[e.id], cutoffKey) })),
     [staff, loans, statutory, attById, cutoffKey]
   );
+  // Government Remittance follows the corrected payroll: no attendance for the
+  // cutoff means no pay and no withheld share, so those staff drop off here too.
+  // (Only this report is filtered; the other report tabs are unchanged.)
+  const remitRows = payrollRows.filter(r => r.calc.hasAttendance);
   const T13 = staff.filter(e => Number(e.rate) > 0).map(e => ({ name: e.name, months: 12, basic: e.rate * 22 * 12, pay: Math.round(e.rate * 22 * 12 / 12 * 100) / 100 }));
   // Earnings are reported per PERSON across the chosen range. Voided trips are
   // already excluded upstream.
   const crewRows = useMemo(() => crewEarningsRange(rangeApi, crewRates), [rangeApi, crewRates]);
 
   const exportRegister = () => exportXLSX('Payroll-Register.xlsx', [{ name: 'Register', rows: payrollRows.map(r => ({ Employee: r.emp.name, Days: r.calc.days, Gross: r.calc.gross, OT: r.calc.ot, Deductions: r.calc.totalDeductions, 'Net Pay': r.calc.net })) }]);
-  const exportRemit = () => exportXLSX('Gov-Remittance.xlsx', [{ name: 'Remittance', rows: payrollRows.map(r => ({ Employee: r.emp.name, SSS: r.calc.sss, PhilHealth: r.calc.phic, 'Pag-IBIG': r.calc.hdmf, Total: r.calc.sss + r.calc.phic + r.calc.hdmf })) }]);
+  const exportRemit = () => exportXLSX('Gov-Remittance.xlsx', [{ name: 'Remittance', rows: remitRows.map(r => ({ Employee: r.emp.name, SSS: r.calc.sss, PhilHealth: r.calc.phic, 'Pag-IBIG': r.calc.hdmf, Total: r.calc.sss + r.calc.phic + r.calc.hdmf })) }]);
   const export13 = () => exportXLSX('13th-Month-Pay.xlsx', [{ name: '13th Month', rows: T13.map(r => ({ Employee: r.name, 'Months Worked': r.months, 'Total Basic': r.basic, '13th Month Pay': r.pay })) }]);
   const exportDriver = () => exportXLSX('Crew-Earnings.xlsx', [{ name: 'Crew', rows: crewRows.map(r => ({
     Name: r.name, Role: positionLabel(r.role), Trucks: r.trucks.join(', '), Days: r.days, Trips: r.trips,
     'Daily Rate': r.dailyRate, 'Piece Rate': r.pieceRate, 'Palima Bonus': r.bonus, 'Total Earned': r.total,
   })) }]);
 
-  const tabs = [['register', 'Payroll Register'], ['remittance', "Gov't Remittance"], ['13th', '13th Month Pay'], ['drivers', 'Crew Earnings'], ['bir', 'BIR Reference']];
+  const tabs = [['register', 'Payroll Register'], ['remittance', "Government Remittance"], ['13th', '13th Month Pay'], ['drivers', 'Crew Earnings'], ['bir', 'BIR Reference']];
 
   return (
     <div className="p-4 sm:p-6">
@@ -130,7 +134,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
           </div>
           <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
             <thead><tr><Th>Employee</Th><Th right>SSS</Th><Th right>PhilHealth</Th><Th right>Pag-IBIG</Th><Th right>Total Withheld</Th></tr></thead>
-            <tbody>{payrollRows.map((r, i) => <tr key={i}><Td>{r.emp.name}</Td><Td right mono>{peso(r.calc.sss)}</Td><Td right mono>{peso(r.calc.phic)}</Td><Td right mono>{peso(r.calc.hdmf)}</Td><Td right mono>{peso(r.calc.sss + r.calc.phic + r.calc.hdmf)}</Td></tr>)}</tbody>
+            <tbody>{remitRows.map((r, i) => <tr key={i}><Td>{r.emp.name}</Td><Td right mono>{peso(r.calc.sss)}</Td><Td right mono>{peso(r.calc.phic)}</Td><Td right mono>{peso(r.calc.hdmf)}</Td><Td right mono>{peso(r.calc.sss + r.calc.phic + r.calc.hdmf)}</Td></tr>)}</tbody>
           </table></div>
           <div className="px-4 py-2.5 text-xs flex items-center gap-2" style={{ fontFamily: F_BODY, color: T.soft, borderTop: `1px solid ${T.line}` }}><AlertTriangle size={12} /> Estimated employee-share figures for this prototype. Add employer counterpart before remitting.</div>
         </Panel>

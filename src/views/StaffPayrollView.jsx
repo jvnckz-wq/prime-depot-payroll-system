@@ -212,7 +212,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
 
   // A ₱0 daily rate means no salary is set yet, so that person isn't part of
   // this payroll run — keep them out of the list, the totals, and the snapshot.
-  const rows = staff.filter(e => Number(e.rate) > 0).map(e => ({ emp: e, calc: computeStaffPayroll(e, loans, statutory, attById[e.id], cutoffKey), att: attById[e.id] || null }));
+  const rows = staff.filter(e => Number(e.rate) > 0).map(e => ({ emp: e, calc: computeStaffPayroll(e, loans, statutory, attById[e.id], cutoffKey), att: attById[e.id] || null })).filter(r => r.calc.hasAttendance);
   const totalGross = rows.reduce((s, r) => s + r.calc.gross, 0);
   const totalNet = rows.reduce((s, r) => s + r.calc.net, 0);
 
@@ -344,7 +344,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
             <StatCard label="Total Gross" value={peso(totalGross)} tone="blue" icon={Wallet} />
             <StatCard label="Total Net Pay" value={peso(totalNet)} tone="green" icon={Wallet} />
-            <StatCard label="Employees Computed" value={staff.length} icon={Users} />
+            <StatCard label="Employees Computed" value={rows.length} icon={Users} />
           </div>
           <Panel className="overflow-hidden">
             <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>

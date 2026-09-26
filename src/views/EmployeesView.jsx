@@ -192,46 +192,26 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
     <div className="p-4 sm:p-6">
       <H1 sub="Core registration fields only. Address, birthday, and contact details are masked from printed payroll sheets."
         action={<Btn onClick={openAdd}>Register Employee</Btn>}>Employees</H1>
-      <div className="relative w-full sm:w-64 mb-3">
-        <Search size={14} className="absolute left-3 top-2.5" color={T.soft} />
-        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search employees…"
-          className={`${inputCls} pl-8`} style={inputStyle} />
-      </div>
-
-      {/* Active by default: the everyday question is "who is on payroll now",
-          not "who has ever worked here". Resigned staff stay one click away
-          rather than cluttering the list they are no longer part of. */}
-      <div className="flex gap-1.5 mb-3 flex-wrap">
-        {[['active', 'Active', counts.active], ['inactive', 'Resigned', counts.inactive], ['all', 'All', counts.all]].map(([k, label, n]) => (
-          <button key={k} onClick={() => setStatusFilter(k)}
-            className="px-3 py-1.5 rounded text-xs font-semibold"
-            style={{
-              fontFamily: F_HEAD,
-              backgroundColor: statusFilter === k ? T.brandBg : T.surface,
-              color: statusFilter === k ? T.brandDark : T.soft,
-              border: `1px solid ${statusFilter === k ? T.brand : T.line}`,
-            }}>
-            {label} <span style={{ fontFamily: F_MONO, opacity: 0.75 }}>{n}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Job type is a separate axis from status — kept on its own row (dark
-          accent) so it never gets confused with Active / Resigned. */}
-      <div className="flex items-center gap-1.5 mb-3 flex-wrap">
-        <span className="text-xs font-semibold uppercase mr-1" style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.04em' }}>Type</span>
-        {[['all', 'All', counts.all], ['staff', 'Staff', counts.staff], ['crew', 'Crew', counts.crew]].map(([k, label, n]) => (
-          <button key={k} onClick={() => setTypeFilter(k)}
-            className="px-3 py-1.5 rounded text-xs font-semibold"
-            style={{
-              fontFamily: F_HEAD,
-              backgroundColor: typeFilter === k ? T.ink : T.surface,
-              color: typeFilter === k ? '#fff' : T.soft,
-              border: `1px solid ${typeFilter === k ? T.ink : T.line}`,
-            }}>
-            {label} <span style={{ fontFamily: F_MONO, opacity: 0.75 }}>{n}</span>
-          </button>
-        ))}
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
+        <div className="relative flex-1" style={{ minWidth: 220 }}>
+          <Search size={14} className="absolute left-3 top-2.5" color={T.soft} />
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search employees…"
+            className={`${inputCls} pl-8 w-full`} style={inputStyle} />
+        </div>
+        <div className="flex items-center gap-2">
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+            style={{ fontFamily: F_HEAD, fontSize: 13, fontWeight: 600, color: T.ink, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, padding: '8px 10px' }}>
+            <option value="active">Active ({counts.active})</option>
+            <option value="inactive">Resigned ({counts.inactive})</option>
+            <option value="all">All status ({counts.all})</option>
+          </select>
+          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
+            style={{ fontFamily: F_HEAD, fontSize: 13, fontWeight: 600, color: T.ink, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, padding: '8px 10px' }}>
+            <option value="all">All types ({counts.all})</option>
+            <option value="staff">Staff ({counts.staff})</option>
+            <option value="crew">Crew ({counts.crew})</option>
+          </select>
+        </div>
       </div>
 
       {/* Desktop: full table */}
