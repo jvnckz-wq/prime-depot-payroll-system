@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Loader2, Check } from 'lucide-react';
 import { Btn, Field, inputCls, inputStyle } from '@/components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
-import { GateShell } from '@/views/AccountView.jsx';
+import { GateShell } from '@/features/auth/AccountView.jsx';
 
 // Enforced two-factor enrollment, shown to an admin who has not set it up yet.
 // Step 1: scan the QR (or key it in) and confirm a code. Step 2: save the

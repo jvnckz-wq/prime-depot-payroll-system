@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { Btn, Confirm, Field, Modal, inputCls, inputStyle } from '@/components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
-import { ChangePasswordPanel, EMAIL_RE, PasswordInput } from '@/views/AccountView.jsx';
+import { ChangePasswordPanel, EMAIL_RE, PasswordInput } from '@/features/auth/AccountView.jsx';
 import { AccountsPanel } from '@/features/settings/AccountsPanel.jsx';
 /* eslint-disable @next/next/no-img-element -- avatars and TOTP QR codes are base64 data URIs; next/image cannot optimize data URIs and adds no value */
 

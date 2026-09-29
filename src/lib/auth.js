@@ -218,7 +218,7 @@ export async function requireAdmin() {
 /// does NOT run through this (existing passwords keep working); it applies only
 /// when a new password is being SET (change-password). Temporary passwords are
 /// machine-generated and force-changed on first sign-in, so they bypass this too.
-/// Keep this list in step with PASSWORD_RULES in views/AccountView.jsx.
+/// Keep this list in step with PASSWORD_RULES in features/auth/AccountView.jsx.
 export function validatePassword(password) {
   if (typeof password !== 'string' || password.length < 8) {
     return 'Password must be at least 8 characters.';
