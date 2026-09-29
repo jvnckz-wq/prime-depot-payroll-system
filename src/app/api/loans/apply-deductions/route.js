@@ -59,6 +59,11 @@ export async function POST(request) {
     const result = await applyLoanDeductions(prisma, { scope: 'crew', runKey, available: await crewAvailableOn(prisma, day) });
     return NextResponse.json({ ...result, runKey });
   } catch (err) {
+    // Unique (loanId, payslipId): two runs at the same moment. The other one
+    // already took the deductions; nothing was taken twice.
+    if (err?.code === 'P2002') {
+      return NextResponse.json({ error: 'These deductions were just applied by someone else. Refresh to see them.' }, { status: 409 });
+    }
     console.error('POST /api/loans/apply-deductions failed:', err);
     return NextResponse.json({ error: 'Could not apply deductions: ' + (err?.message || 'unknown error') }, { status: 500 });
   }

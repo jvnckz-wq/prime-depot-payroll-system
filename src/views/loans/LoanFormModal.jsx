@@ -10,6 +10,7 @@ import { LOAN_PURPOSES, balanceOf, isOpen, payoffPlan, shortDate } from '../../l
 import { peso } from '../../lib/utils';
 import { F_BODY, T } from '../../theme';
 import { todayLocalYmd } from './parts.jsx';
+import { printLoanSlip } from './loanSlip';
 
 const Box = ({ tone, children }) => {
   const s = tone === 'warn'
@@ -57,7 +58,10 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmp
   else if (!(perNum > 0)) problem = `Enter the deduction per ${unit}.`;
   else if (perNum > newBalance) problem = `The deduction per ${unit} cannot be more than the ${topUp ? 'new balance' : 'loan'}.`;
 
-  const save = async () => {
+  // withSlip: "Save & print slip" saves first, then prints the acknowledgment
+  // the employee signs (consent to the salary deduction). Printing only after
+  // a successful save means a slip can never exist for money not on record.
+  const save = async (withSlip = false) => {
     if (problem) { toast(problem, 'error'); return; }
     setBusy(true);
     try {
@@ -73,6 +77,13 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmp
       const data = await res.json();
       if (!res.ok) { toast(data.error || 'Could not save the loan.', 'error'); return; }
       toast(topUp ? `Added ${peso(amt)} to ${emp.name}'s loan.` : `Loan saved for ${emp.name}.`);
+      if (withSlip) {
+        printLoanSlip({
+          kind: topUp ? 'TOPUP' : 'LOAN', name: emp.name, position: emp.position, employeeId: emp.id, crew: !!emp.crew,
+          date, amount: amt, purpose: topUp ? active.purpose : purpose, perRun: perNum,
+          previousBalance: balance, newBalance, plan, ref: data.loan?.id || active?.id || '',
+        });
+      }
       onSaved?.();
     } catch {
       toast('Could not reach the server.', 'error');
@@ -136,7 +147,8 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmp
 
         <div className="flex justify-end gap-2 pt-1">
           <Btn variant="outline" onClick={onClose} disabled={busy}>Cancel</Btn>
-          <Btn variant="amber" onClick={save} loading={busy} disabled={busy || !!problem}>{topUp ? 'Add to loan' : 'Save loan'}</Btn>
+          <Btn variant="outline" onClick={() => save(true)} disabled={busy || !!problem}>Save &amp; print slip</Btn>
+          <Btn variant="amber" onClick={() => save(false)} loading={busy} disabled={busy || !!problem}>{topUp ? 'Add to loan' : 'Save loan'}</Btn>
         </div>
       </div>
     </Modal>

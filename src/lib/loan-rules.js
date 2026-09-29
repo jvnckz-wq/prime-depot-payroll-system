@@ -205,6 +205,12 @@ const byText = (a, b) => String(a || '').localeCompare(String(b || ''));
 // Ledger remark for a deduction, e.g. "Payroll September 16–30, 2026 · P360.00
 // short, carried over". Written once, when the entry is made.
 function remarkFor(key, w) {
+  if (w.final) {
+    if (w.unpaid <= 0.004) return 'Final pay';
+    return w.amount <= 0.004
+      ? `Final pay · nothing left to deduct, ${pesoText(w.unpaid)} still unpaid`
+      : `Final pay · ${pesoText(w.unpaid)} still unpaid`;
+  }
   const base = key.startsWith('staff-') ? `Payroll ${key.slice(6)}`
     : key.startsWith('crew-') ? `Crew pay ${shortDate(key.slice(5), true) || key.slice(5)}`
       : `Payroll ${key}`;
@@ -236,7 +242,12 @@ function remarkFor(key, w) {
 //
 // Per employee, cash advances are taken first (oldest first), then loans. Each
 // takes what is due, but never more than is left, so net pay stops at P0.
-export function planDeductions(loans, { crew = false, runKey, endYmd = null, available } = {}) {
+//
+//   full       final pay (Phase 3): everything still owed is due at once, even
+//              on a paused loan, and whatever the final pay cannot cover stays
+//              on the ledger as the unpaid balance (nothing carries: there is
+//              no next payroll).
+export function planDeductions(loans, { crew = false, runKey, endYmd = null, available, full = false } = {}) {
   const key = String(runKey || '').trim();
   if (!key) throw new Error('Missing run key.');
   if (available == null) throw new Error('Missing available pay.');
@@ -254,7 +265,7 @@ export function planDeductions(loans, { crew = false, runKey, endYmd = null, ava
   let skipped = 0;
   const due = [];
   for (const l of group) {
-    if (l.settled || l.paused || balanceOf(l) <= 0.004) continue;
+    if (l.settled || (l.paused && !full) || balanceOf(l) <= 0.004) continue;
     if (!grantedBy(l, endYmd)) continue;
     if ((l.entries || []).some((e) => e.payslipId === key)) { skipped++; continue; }
     due.push(l);
@@ -271,17 +282,18 @@ export function planDeductions(loans, { crew = false, runKey, endYmd = null, ava
     if (!left.has(l.employeeId)) {
       left.set(l.employeeId, round2(Math.max(0, (Number(raw) || 0) - (takenAlready.get(l.employeeId) || 0))));
     }
-    const amountDue = dueFor(l, { endYmd, crew });
+    const amountDue = full ? balanceOf(l) : dueFor(l, { endYmd, crew });
     const have = left.get(l.employeeId);
     const amount = round2(Math.max(0, Math.min(amountDue, have)));
     left.set(l.employeeId, round2(have - amount));
     const unpaid = round2(amountDue - amount);
     const w = {
-      loanId: l.id, employeeId: l.employeeId, person: l.person, kind: l.kind, crew: !!crew,
+      loanId: l.id, employeeId: l.employeeId, person: l.person, kind: l.kind, crew: !!crew, final: !!full,
       due: amountDue, amount, unpaid,
-      // Carried to the next run: staff only. Crew are not stacked.
-      shortfall: crew ? 0 : unpaid,
-      carriedIn: crew || isCashAdvance(l) ? 0 : carryOf(l, endYmd).amount,
+      // Carried to the next run: staff payroll only. Crew are not stacked, and
+      // final pay has no next run (the unpaid part is simply the balance left).
+      shortfall: crew || full ? 0 : unpaid,
+      carriedIn: crew || full || isCashAdvance(l) ? 0 : carryOf(l, endYmd).amount,
       settles: balanceOf(l) - amount <= 0.004,
     };
     w.remark = remarkFor(key, w);

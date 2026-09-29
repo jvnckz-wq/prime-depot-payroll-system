@@ -695,6 +695,11 @@ model LoanEntry {
 
   loan      Loan            @relation(fields: [loanId], references: [id], onDelete: Cascade)
 
+  /// One entry per loan per run: the database itself refuses a second
+  /// deduction for the same payroll, even from two clicks at the same moment.
+  /// Entries without a run (grants, top-ups) have payslipId NULL, and NULLs
+  /// never collide.
+  @@unique([loanId, payslipId])
   @@index([loanId, date])
   @@map("loan_entries")
 }
@@ -823,6 +828,10 @@ model Payslip {
   advanceDeduction    Decimal @default(0) @db.Decimal(12, 2)
   tardinessDeduction  Decimal @default(0) @db.Decimal(12, 2)
   otherDeductions     Decimal @default(0) @db.Decimal(12, 2)
+  /// Paid by the company when the pay could not cover the government
+  /// contributions (Phase 3). An addition: gross + OT + allowances +
+  /// companyCover - totalDeductions = netPay.
+  companyCover        Decimal @default(0) @db.Decimal(12, 2)
 
   totalDeductions Decimal     @default(0) @db.Decimal(12, 2)
   netPay          Decimal     @default(0) @db.Decimal(12, 2)

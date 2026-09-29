@@ -48,10 +48,6 @@ const intOf = (v) => {
 function buildSlips({ staff, attendanceById, statutory }, loans, runKey) {
   return staff.map((e) => {
     const calc = computeStaffPayroll(e, loans, statutory, attendanceById.get(e.id), runKey);
-    // MP2 is a voluntary top-up that computeStaffPayroll folds into the Pag-IBIG
-    // figure; the payslip stores the two apart, so split them back out here.
-    const mp2 = e.piOn ? (Number(e.mp2) || 0) : 0;
-
     return {
       employeeId: e.id,
       employeeName: e.name,
@@ -63,8 +59,11 @@ function buildSlips({ staff, attendanceById, statutory }, loans, runKey) {
       grossPay: money(calc.gross),
       sssDeduction: money(calc.sss),
       philhealthDeduction: money(calc.phic),
-      pagibigDeduction: money(Math.max(0, calc.hdmf - mp2)),
-      mp2Deduction: money(mp2),
+      // MP1 and MP2 apart, as computed: on a short payslip MP2 (voluntary) is
+      // only what fits, and the company covers what the pay could not.
+      pagibigDeduction: money(calc.mp1),
+      mp2Deduction: money(calc.mp2),
+      companyCover: money(calc.companyCover),
       tardinessDeduction: money(calc.tardiness),
       // Loans and cash advances are stored apart (Phase 2), as the payslip
       // shows them. Snapshots from before kept both in loanDeduction.
@@ -230,6 +229,10 @@ export async function POST(request) {
       loans: { applied: plan.applied, skipped: plan.skipped, settled: plan.settled, total: plan.total, short: plan.short, unpaidTotal: plan.unpaidTotal },
     });
   } catch (err) {
+    // Unique (loanId, payslipId): another release of this cutoff got there first.
+    if (err?.code === 'P2002') {
+      return NextResponse.json({ error: 'This cutoff was just released or its deductions applied by someone else. Refresh Staff Payroll.' }, { status: 409 });
+    }
     console.error('POST /api/payroll/finalize failed:', err);
     return NextResponse.json({ error: 'Could not finalize the cutoff: ' + (err?.message || 'unknown error') }, { status: 500 });
   }

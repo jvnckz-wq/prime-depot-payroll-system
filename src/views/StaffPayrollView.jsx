@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Wallet, ArrowLeft } from 'lucide-react';
 import { Av, Badge, Btn, Confirm, Eyebrow, H1, Modal, Money, Panel, SkeletonBlock, SkeletonRows, StatCard, Td, Th } from '../components/ui.jsx';
-import { computePagIBIG, computeStaffPayroll } from '../lib/payroll';
+import { computeStaffPayroll } from '../lib/payroll';
 import { cutoffOf, nextCutoff, planDeductions, shortDate, staffRunKey } from '../lib/loan-rules';
 import { currentCutoffPeriod, peso } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, F_SERIF, T } from '../theme';
@@ -81,19 +81,31 @@ const PayslipCard = ({ e, calc, cutoffLabel, attPeriod, att, statutory, classNam
           <Money value={v} />
         </div>
       ))}
+      {/* Only when the pay could not cover the government contributions: the
+          company pays the difference for this cutoff (Phase 3 assumption). */}
+      {calc.companyCover > 0 && (
+        <div className="flex justify-between gap-3 text-sm py-1" style={{ fontFamily: F_BODY }}>
+          <span style={{ color: T.ink }}>
+            Covered by Company:
+            <span className="block text-xs" style={{ color: T.soft }}>Contributions were more than this cutoff&apos;s pay</span>
+          </span>
+          <Money value={calc.companyCover} />
+        </div>
+      )}
     </div>
     <div className="px-6 py-4" style={{ borderBottom: `1px solid ${T.line}` }}>
       <div className="text-sm italic mb-1.5" style={{ fontFamily: F_BODY, color: T.soft }}>Deductions</div>
       {[
-        ['HDMF MP1 Contribution:', e.piOn ? computePagIBIG(e.declaredSalary, statutory.pagibig) : 0, false],
-        ['HDMF MP2 Contribution:', e.piOn ? (e.mp2 || 0) : 0, false],
+        ['HDMF MP1 Contribution:', calc.mp1 ?? 0, false],
+        // MP2 is voluntary savings: on a short payslip it is only what fits.
+        ['HDMF MP2 Contribution:', calc.mp2 ?? 0, false, e.piOn && (Number(e.mp2) || 0) > (calc.mp2 ?? 0) + 0.004 ? `Not enough pay this cutoff for the full ${peso(Number(e.mp2) || 0)}` : null],
         ['PHIC Contribution:', calc.phic, false],
         ['SSS Contribution:', calc.sss, false],
         // Loans and cash advances on their own lines, as on the client's own
         // payslip, each with a short note so the employee can see what it is.
         ['Loans:', calc.loanDeduction ?? 0, false, loanNote(calc, 'LOAN', nextEnd)],
         ['Adjustments: Advance Payment', calc.advanceDeduction ?? calc.advance, false, loanNote(calc, 'CASH_ADVANCE', nextEnd)],
-        ['Tardiness:', calc.tardiness, true],
+        ['Tardiness:', calc.tardiness, true, calc.tardinessDue > calc.tardiness + 0.004 ? `${peso(calc.tardinessDue - calc.tardiness)} not deducted: no pay left` : null],
       ].map(([l, v, danger, sub], i) => (
         <div key={i} className="flex justify-between gap-3 text-sm py-1" style={{ fontFamily: F_BODY }}>
           <span className={danger ? 'font-bold' : ''} style={{ color: danger ? T.brand : T.ink }}>
@@ -303,7 +315,6 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
     if (!attPeriod) { toast("Import this cutoff's attendance before finalizing.", 'error'); return; }
     setFinalizing(true);
     const payslips = rows.map(({ emp: e, calc }) => {
-      const mp2Ded = e.piOn ? (Number(e.mp2) || 0) : 0;
       return {
         employeeId: e.id,
         daysPresent: calc.days,
@@ -314,8 +325,9 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
         grossPay: calc.gross,
         sssDeduction: calc.sss,
         philhealthDeduction: calc.phic,
-        pagibigDeduction: Math.max(0, calc.hdmf - mp2Ded),
-        mp2Deduction: mp2Ded,
+        pagibigDeduction: calc.mp1,
+        mp2Deduction: calc.mp2,
+        companyCover: calc.companyCover,
         tardinessDeduction: calc.tardiness,
         loanDeduction: calc.loanDeduction,
         advanceDeduction: calc.advanceDeduction,

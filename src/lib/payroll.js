@@ -104,7 +104,28 @@ export function computeStaffPayroll(e, loans = [], statutory, attendance = null,
 
   const sss = round2(e.sssOn ? computeSSS(e.declaredSalary, statutory.sss) : 0);
   const phic = round2(e.phOn ? computePhilHealth(e.declaredSalary, statutory.philhealth) : 0);
-  const hdmf = round2(e.piOn ? (computePagIBIG(e.declaredSalary, statutory.pagibig) + (e.mp2 || 0)) : 0);
+  const mp1 = round2(e.piOn ? computePagIBIG(e.declaredSalary, statutory.pagibig) : 0);
+  const mp2Set = round2(e.piOn ? (Number(e.mp2) || 0) : 0);
+
+  const lateMins = hasAttendance ? (attendance.lateMins || 0) : 0;
+  const tardinessDue = round2(e.rate * lateMins / 240);
+  const totalEarnings = round2(gross + ot + allowance);
+
+  // When the pay is too small for everything (Phase 3 assumption, pending the
+  // client): the mandatory contributions (SSS, PhilHealth, Pag-IBIG MP1) are
+  // still deducted and remitted in full, and whatever the pay cannot cover is
+  // COVERED BY THE COMPANY for that cutoff, shown as its own addition. Nothing
+  // becomes a debt the employee did not agree to. Then, from what is left:
+  // tardiness, then the voluntary MP2 savings (never paid by the company), then
+  // cash advances and loans (see loan-rules planDeductions). Net stops at P0.
+  // With enough pay, every figure is exactly what it was before.
+  let room = round2(totalEarnings - sss - phic - mp1);
+  const companyCover = room < 0 ? round2(-room) : 0;
+  room = Math.max(0, room);
+  const tardiness = round2(Math.min(tardinessDue, room));
+  room = round2(room - tardiness);
+  const mp2 = round2(Math.min(mp2Set, room));
+  const hdmf = round2(mp1 + mp2);
 
   // Loan deduction for THIS cutoff.
   //
@@ -155,13 +176,9 @@ export function computeStaffPayroll(e, loans = [], statutory, attendance = null,
   advanceDeduction = round2(advanceDeduction);
   const advance = round2(loanDeduction + advanceDeduction);
 
-  const lateMins = hasAttendance ? (attendance.lateMins || 0) : 0;
-  const tardiness = round2(e.rate * lateMins / 240);
-
-  const totalEarnings = round2(gross + ot + allowance);
   const totalDeductions = round2(sss + phic + hdmf + advance + tardiness);
-  const net = round2(totalEarnings - totalDeductions);
-  return { hasAttendance, days, present: hasAttendance ? attendance.present : days, leaveDays, lateMins, gross, otWeekday, otWeekend, ot, allowance, sss, phic, hdmf, advance, loanDeduction, advanceDeduction, deductionLines, tardiness, totalEarnings, totalDeductions, net };
+  const net = round2(totalEarnings + companyCover - totalDeductions);
+  return { hasAttendance, days, present: hasAttendance ? attendance.present : days, leaveDays, lateMins, gross, otWeekday, otWeekend, ot, allowance, sss, phic, mp1, mp2, hdmf, companyCover, advance, loanDeduction, advanceDeduction, deductionLines, tardiness, tardinessDue, totalEarnings, totalDeductions, net };
 }
 
 // deterministic pseudo-random per employee, so charts are stable across renders
