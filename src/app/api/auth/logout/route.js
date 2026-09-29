@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { destroySession, getCurrentUser, logSecurityEvent } from '../../../../lib/auth';
+import { destroySession, getCurrentUser, logSecurityEvent } from '@/lib/auth';
 
 export async function POST() {
   // Read the user before the session goes away — afterwards there is nothing

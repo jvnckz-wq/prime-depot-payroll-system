@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { prisma, prismaBase } from '../../../../lib/prisma';
-import { withRetry } from '../../../../lib/db-retry';
-import { requireAdmin } from '../../../../lib/auth';
-import { MAX_IMPORT_BYTES, base64TooLarge } from '../../../../lib/uploads';
-import { parseZktecoXls } from '../../../../lib/attendance-import';
-import { buildAttendanceRow } from '../../../../lib/attendance';
+import { prisma, prismaBase } from '@/lib/prisma';
+import { withRetry } from '@/lib/db-retry';
+import { requireAdmin } from '@/lib/auth';
+import { MAX_IMPORT_BYTES, base64TooLarge } from '@/lib/uploads';
+import { parseZktecoXls } from '@/lib/attendance-import';
+import { buildAttendanceRow } from '@/lib/attendance';
 
 const atTime = (dateStr, hhmm) => (hhmm ? new Date(`${dateStr}T${hhmm}:00.000Z`) : null);
 const dayStr = (d) => d.toISOString().slice(0, 10);

@@ -1,8 +1,8 @@
 import { NextResponse, after } from 'next/server';
 import { createHash, randomInt } from 'crypto';
-import { prisma } from '../../../../lib/prisma';
-import { logSecurityEvent } from '../../../../lib/auth';
-import { sendPasswordResetCode } from '../../../../lib/email';
+import { prisma } from '@/lib/prisma';
+import { logSecurityEvent } from '@/lib/auth';
+import { sendPasswordResetCode } from '@/lib/email';
 
 // Request a password-reset code by email. Operations Head only — Checkers do
 // not self-reset; the admin resets their password directly.

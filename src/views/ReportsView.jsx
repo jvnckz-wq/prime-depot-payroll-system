@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { AlertTriangle, Check } from 'lucide-react';
-import { Badge, Btn, EmptyState, Eyebrow, H1, Panel, Skeleton, Td, Th } from '../components/ui.jsx';
-import { CREW_RATE_FALLBACK, positionLabel } from '../data/seed';
-import { computeStaffPayroll, crewEarnings, deliveriesToLog } from '../lib/payroll';
-import { todayYmdManila } from '../lib/loan-rules';
-import { exportXLSX, peso } from '../lib/utils';
-import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
+import { Badge, Btn, EmptyState, Eyebrow, H1, Panel, Skeleton, Td, Th } from '@/components/ui.jsx';
+import { CREW_RATE_FALLBACK, positionLabel } from '@/data/seed';
+import { computeStaffPayroll, crewEarnings, deliveriesToLog } from '@/lib/payroll';
+import { todayYmdManila } from '@/lib/loan-rules';
+import { exportXLSX, peso } from '@/lib/utils';
+import { F_BODY, F_HEAD, F_MONO, T } from '@/theme';
 
 // Crew earnings over a date range. crewEarnings is built for a single day (one
 // date per truck), so a range is handled the safe way: split the raw rows by

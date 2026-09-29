@@ -3,10 +3,10 @@
 import React, { useMemo, useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Users, Truck, Wallet, FileText, AlertTriangle, TrendingUp, Check } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Av, Eyebrow, H1, Panel, StatCard, Td, Th } from '../components/ui.jsx';
-import { computeStaffPayroll, flattenDeliveries, loanBalance } from '../lib/payroll';
-import { peso } from '../lib/utils';
-import { F_BODY, T } from '../theme';
+import { Av, Eyebrow, H1, Panel, StatCard, Td, Th } from '@/components/ui.jsx';
+import { computeStaffPayroll, flattenDeliveries, loanBalance } from '@/lib/payroll';
+import { peso } from '@/lib/utils';
+import { F_BODY, T } from '@/theme';
 
 // Measure before paint on the client; fall back to useEffect on the server (no SSR warning).
 const useIsoLayoutEffect = typeof document !== 'undefined' ? useLayoutEffect : useEffect;

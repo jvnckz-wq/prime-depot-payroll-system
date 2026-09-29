@@ -5,10 +5,10 @@ import {
   AlertTriangle, ArrowLeft, Camera, Copy, Download, Eye, EyeOff,
   KeyRound, Pencil, RefreshCw, ShieldCheck, Smartphone, User, Users,
 } from 'lucide-react';
-import { Btn, Confirm, Field, Modal, inputCls, inputStyle } from '../components/ui.jsx';
-import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
-import { ChangePasswordPanel, EMAIL_RE, PasswordInput } from './AccountView.jsx';
-import { AccountsPanel } from './AccountsPanel.jsx';
+import { Btn, Confirm, Field, Modal, inputCls, inputStyle } from '@/components/ui.jsx';
+import { F_BODY, F_HEAD, F_MONO, T } from '@/theme';
+import { ChangePasswordPanel, EMAIL_RE, PasswordInput } from '@/views/AccountView.jsx';
+import { AccountsPanel } from '@/views/AccountsPanel.jsx';
 /* eslint-disable @next/next/no-img-element -- avatars and TOTP QR codes are base64 data URIs; next/image cannot optimize data URIs and adds no value */
 
 // Endpoints the two-factor management calls. The recovery-email, password,

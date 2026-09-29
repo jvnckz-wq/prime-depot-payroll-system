@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../../lib/prisma';
-import { requireAdmin } from '../../../../lib/auth';
-import { applyLoanDeductions } from '../../../../lib/loans-apply';
-import { cutoffOf, isYmd, staffRunKey, todayYmdManila } from '../../../../lib/loan-rules';
-import { crewAvailableOn, loadStaffPayrollInputs, staffAvailable, toDate } from '../../../../lib/payroll-inputs';
+import { prisma } from '@/lib/prisma';
+import { requireAdmin } from '@/lib/auth';
+import { applyLoanDeductions } from '@/lib/loans-apply';
+import { cutoffOf, isYmd, staffRunKey, todayYmdManila } from '@/lib/loan-rules';
+import { crewAvailableOn, loadStaffPayrollInputs, staffAvailable, toDate } from '@/lib/payroll-inputs';
 
 const bad = (error, status = 400) => NextResponse.json({ error }, { status });
 

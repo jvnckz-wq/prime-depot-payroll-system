@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { prisma, prismaBase } from '../../../../lib/prisma';
-import { logSecurityEvent, requireUser } from '../../../../lib/auth';
-import { todayYmdManila } from '../../../../lib/loan-rules';
+import { prisma, prismaBase } from '@/lib/prisma';
+import { logSecurityEvent, requireUser } from '@/lib/auth';
+import { todayYmdManila } from '@/lib/loan-rules';
 
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
 

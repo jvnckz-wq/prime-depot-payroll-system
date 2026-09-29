@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Btn, Modal } from './ui.jsx';
-import { F_BODY, T } from '../theme';
+import { Btn, Modal } from '@/components/ui.jsx';
+import { F_BODY, T } from '@/theme';
 
 const IDLE_MS = 15 * 60 * 1000;
 const ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'];

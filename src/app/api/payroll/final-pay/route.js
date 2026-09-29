@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../../lib/prisma';
-import { requireAdmin } from '../../../../lib/auth';
-import { shapeEmployee } from '../../../../lib/employees';
-import { shapeLoan } from '../../../../lib/loans';
-import { deductionOps, isCrewPosition } from '../../../../lib/loans-apply';
-import { planDeductions, todayYmdManila } from '../../../../lib/loan-rules';
+import { prisma } from '@/lib/prisma';
+import { requireAdmin } from '@/lib/auth';
+import { shapeEmployee } from '@/lib/employees';
+import { shapeLoan } from '@/lib/loans';
+import { deductionOps, isCrewPosition } from '@/lib/loans-apply';
+import { planDeductions, todayYmdManila } from '@/lib/loan-rules';
 
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;

@@ -1,29 +1,29 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Sidebar, TopBar } from './components/Nav.jsx';
-import { Confirm, Toasts } from './components/ui.jsx';
-import { IdleTimeout } from './components/IdleTimeout.jsx';
-import { BIR_TABLE_INIT, CREW_RATE_FALLBACK, PAGIBIG_INIT, PHILHEALTH_INIT, SSS_TABLE_INIT } from './data/seed';
-import { deliveriesToLog } from './lib/payroll';
-import { uid, cutoffLabel, currentCutoffPeriod } from './lib/utils';
-import { staffRunKey, todayYmdManila } from './lib/loan-rules';
-import { FONTS, F_BODY, T } from './theme';
-import { AttendanceView } from './views/AttendanceView.jsx';
-import { CheckerView } from './views/CheckerView.jsx';
-import { DashboardView } from './views/DashboardView.jsx';
-import { EmployeesView } from './views/EmployeesView.jsx';
-import { LoansView } from './views/LoansView.jsx';
-import { LoginView } from './views/LoginView.jsx';
-import { LegalView } from './views/LegalView.jsx';
-import { ForcedPasswordChange } from './views/AccountView.jsx';
-import TwoFactorSetup from './views/TwoFactorSetup.jsx';
-import { AccountPage } from './views/AccountPage.jsx';
-import { FAQView } from './views/FAQView.jsx';
-import { ReportsView } from './views/ReportsView.jsx';
-import { SettingsView } from './views/SettingsView.jsx';
-import { PayrollView } from './views/PayrollView.jsx';
-import { TruckPayrollView } from './views/TruckPayrollView.jsx';
+import { Sidebar, TopBar } from '@/components/Nav.jsx';
+import { Confirm, Toasts } from '@/components/ui.jsx';
+import { IdleTimeout } from '@/components/IdleTimeout.jsx';
+import { BIR_TABLE_INIT, CREW_RATE_FALLBACK, PAGIBIG_INIT, PHILHEALTH_INIT, SSS_TABLE_INIT } from '@/data/seed';
+import { deliveriesToLog } from '@/lib/payroll';
+import { uid, cutoffLabel, currentCutoffPeriod } from '@/lib/utils';
+import { staffRunKey, todayYmdManila } from '@/lib/loan-rules';
+import { FONTS, F_BODY, T } from '@/theme';
+import { AttendanceView } from '@/views/AttendanceView.jsx';
+import { CheckerView } from '@/views/CheckerView.jsx';
+import { DashboardView } from '@/views/DashboardView.jsx';
+import { EmployeesView } from '@/views/EmployeesView.jsx';
+import { LoansView } from '@/views/LoansView.jsx';
+import { LoginView } from '@/views/LoginView.jsx';
+import { LegalView } from '@/views/LegalView.jsx';
+import { ForcedPasswordChange } from '@/views/AccountView.jsx';
+import TwoFactorSetup from '@/views/TwoFactorSetup.jsx';
+import { AccountPage } from '@/views/AccountPage.jsx';
+import { FAQView } from '@/views/FAQView.jsx';
+import { ReportsView } from '@/views/ReportsView.jsx';
+import { SettingsView } from '@/views/SettingsView.jsx';
+import { PayrollView } from '@/views/PayrollView.jsx';
+import { TruckPayrollView } from '@/views/TruckPayrollView.jsx';
 
 export default function PrimeDepotPayroll() {
   // Authentication state. `user` is null when signed out; `authChecking` covers

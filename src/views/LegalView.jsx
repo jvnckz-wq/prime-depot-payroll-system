@@ -2,8 +2,8 @@
 
 import React from 'react';
 
-import { Btn, Eyebrow, Panel } from '../components/ui.jsx';
-import { F_BODY, F_HEAD, T } from '../theme';
+import { Btn, Eyebrow, Panel } from '@/components/ui.jsx';
+import { F_BODY, F_HEAD, T } from '@/theme';
 
 // Terms and Conditions + Privacy Policy.
 //

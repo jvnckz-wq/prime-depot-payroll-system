@@ -5,12 +5,12 @@
 // before anyone presses Save, and the server enforces it again.
 
 import React, { useMemo, useState } from 'react';
-import { Btn, Field, Modal, SearchSelect, inputCls, inputStyle } from '../../components/ui.jsx';
-import { LOAN_PURPOSES, balanceOf, isOpen, payoffPlan, shortDate } from '../../lib/loan-rules';
-import { peso } from '../../lib/utils';
-import { F_BODY, T } from '../../theme';
-import { todayLocalYmd } from './parts.jsx';
-import { printLoanSlip } from './loanSlip';
+import { Btn, Field, Modal, SearchSelect, inputCls, inputStyle } from '@/components/ui.jsx';
+import { LOAN_PURPOSES, balanceOf, isOpen, payoffPlan, shortDate } from '@/lib/loan-rules';
+import { peso } from '@/lib/utils';
+import { F_BODY, T } from '@/theme';
+import { todayLocalYmd } from '@/views/loans/parts.jsx';
+import { printLoanSlip } from '@/views/loans/loanSlip';
 
 const Box = ({ tone, children }) => {
   const s = tone === 'warn'

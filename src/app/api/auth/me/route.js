@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../../lib/prisma';
-import { destroyAllSessions, getCurrentUser, logSecurityEvent, requireUser } from '../../../../lib/auth';
-import { MAX_AVATAR_BYTES, hasImageMagic, maxBase64Length } from '../../../../lib/uploads';
+import { prisma } from '@/lib/prisma';
+import { destroyAllSessions, getCurrentUser, logSecurityEvent, requireUser } from '@/lib/auth';
+import { MAX_AVATAR_BYTES, hasImageMagic, maxBase64Length } from '@/lib/uploads';
 
 // Called once when the app loads, so a page refresh doesn't sign anyone out.
 // Returns null rather than a 401 — "nobody is signed in" is a normal answer

@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle, Copy, KeyRound, Plus, UserCheck, UserX } from 'lucide-react';
-import { Av, Badge, Btn, Confirm, Eyebrow, Field, Modal, Skeleton, inputCls, inputStyle } from '../components/ui.jsx';
-import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
+import { Av, Badge, Btn, Confirm, Eyebrow, Field, Modal, Skeleton, inputCls, inputStyle } from '@/components/ui.jsx';
+import { F_BODY, F_HEAD, F_MONO, T } from '@/theme';
 
 /// Account management, Operations Head only.
 ///

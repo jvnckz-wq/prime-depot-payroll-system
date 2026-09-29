@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../../lib/prisma';
-import { logSecurityEvent, requireAdmin } from '../../../../lib/auth';
-import { deductionOps } from '../../../../lib/loans-apply';
-import { cutoffOf, planDeductions, staffRunKey, withPlan } from '../../../../lib/loan-rules';
-import { computeStaffPayroll } from '../../../../lib/payroll';
-import { loadStaffPayrollInputs, staffAvailable, toDate } from '../../../../lib/payroll-inputs';
+import { prisma } from '@/lib/prisma';
+import { logSecurityEvent, requireAdmin } from '@/lib/auth';
+import { deductionOps } from '@/lib/loans-apply';
+import { cutoffOf, planDeductions, staffRunKey, withPlan } from '@/lib/loan-rules';
+import { computeStaffPayroll } from '@/lib/payroll';
+import { loadStaffPayrollInputs, staffAvailable, toDate } from '@/lib/payroll-inputs';
 
 // A released cutoff is stored as a snapshot: once written, its figures never
 // move even if rates, statutory tables, or employee records change later.

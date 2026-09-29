@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../../lib/prisma';
+import { prisma } from '@/lib/prisma';
 import {
   createSession, destroyAllSessions, hashPassword, logSecurityEvent,
   releaseAttempt, requireUser, reserveAttempt, validatePassword, verifyPassword,
-} from '../../../../lib/auth';
-import { totpStep } from '../../../../lib/twofactor';
+} from '@/lib/auth';
+import { totpStep } from '@/lib/twofactor';
 
 // Changing your own password. Available to both roles — this is the one
 // account action a Checker can perform. The admin's first-time change also

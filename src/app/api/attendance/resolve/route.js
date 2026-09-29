@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { prisma, prismaBase } from '../../../../lib/prisma';
-import { withRetry } from '../../../../lib/db-retry';
-import { requireAdmin } from '../../../../lib/auth';
-import { minutesLate } from '../../../../lib/attendance';
+import { prisma, prismaBase } from '@/lib/prisma';
+import { withRetry } from '@/lib/db-retry';
+import { requireAdmin } from '@/lib/auth';
+import { minutesLate } from '@/lib/attendance';
 
 const toMin = (t) => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
 const atTime = (dateStr, hhmm) => (hhmm ? new Date(`${dateStr}T${hhmm}:00.000Z`) : null);

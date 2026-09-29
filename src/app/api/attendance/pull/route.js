@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { timingSafeEqual } from 'node:crypto';
-import { prisma, prismaBase } from '../../../../lib/prisma';
-import { withRetry } from '../../../../lib/db-retry';
-import { pairPunches, buildAttendanceRow } from '../../../../lib/attendance';
+import { prisma, prismaBase } from '@/lib/prisma';
+import { withRetry } from '@/lib/db-retry';
+import { pairPunches, buildAttendanceRow } from '@/lib/attendance';
 
 // Prisma + node crypto need the Node.js runtime, not the Edge runtime.
 export const runtime = 'nodejs';

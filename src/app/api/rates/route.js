@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../lib/prisma';
-import { logSecurityEvent, requireAdmin, requireUser } from '../../../lib/auth';
+import { prisma } from '@/lib/prisma';
+import { logSecurityEvent, requireAdmin, requireUser } from '@/lib/auth';
 
 const num = (d) => (d == null ? 0 : Number(d));
 const shape = (r) => ({

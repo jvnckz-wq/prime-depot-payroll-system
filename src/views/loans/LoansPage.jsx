@@ -5,12 +5,12 @@
 
 import React, { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Pause, Play, Plus } from 'lucide-react';
-import { Btn, EmptyState, H1 } from '../../components/ui.jsx';
-import { balanceOf, carryOf, dueFor, grantedBy, isOpen, nextCutoff, shortDate } from '../../lib/loan-rules';
-import { peso } from '../../lib/utils';
-import { F_BODY, F_MONO, T } from '../../theme';
-import { BalanceBar, D, H, Kpi, Ledger, Person, Pill, SearchBox, Seg } from './parts.jsx';
-import { LoanFormModal } from './LoanFormModal.jsx';
+import { Btn, EmptyState, H1 } from '@/components/ui.jsx';
+import { balanceOf, carryOf, dueFor, grantedBy, isOpen, nextCutoff, shortDate } from '@/lib/loan-rules';
+import { peso } from '@/lib/utils';
+import { F_BODY, F_MONO, T } from '@/theme';
+import { BalanceBar, D, H, Kpi, Ledger, Person, Pill, SearchBox, Seg } from '@/views/loans/parts.jsx';
+import { LoanFormModal } from '@/views/loans/LoanFormModal.jsx';
 
 const STATUS_ORDER = { Deducting: 0, Scheduled: 1, Paused: 2 };
 

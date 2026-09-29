@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../../lib/prisma';
-import { requireAdmin } from '../../../../lib/auth';
-import { buildEmployeeData, shapeEmployee } from '../../../../lib/employees';
+import { prisma } from '@/lib/prisma';
+import { requireAdmin } from '@/lib/auth';
+import { buildEmployeeData, shapeEmployee } from '@/lib/employees';
 
 /// PATCH /api/employees/:id — edit a record, or flip its Active/Inactive status.
 ///

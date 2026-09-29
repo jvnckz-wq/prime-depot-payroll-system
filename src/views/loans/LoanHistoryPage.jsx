@@ -6,11 +6,11 @@
 
 import React, { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Download } from 'lucide-react';
-import { Btn, EmptyState, H1, inputCls, inputStyle } from '../../components/ui.jsx';
-import { isOpen, shortDate } from '../../lib/loan-rules';
-import { exportXLSX, peso } from '../../lib/utils';
-import { F_MONO, T } from '../../theme';
-import { D, H, Ledger, Person, Pill, SearchBox, Seg } from './parts.jsx';
+import { Btn, EmptyState, H1, inputCls, inputStyle } from '@/components/ui.jsx';
+import { isOpen, shortDate } from '@/lib/loan-rules';
+import { exportXLSX, peso } from '@/lib/utils';
+import { F_MONO, T } from '@/theme';
+import { D, H, Ledger, Person, Pill, SearchBox, Seg } from '@/views/loans/parts.jsx';
 
 // The day it was fully paid: when it was closed, or (for records closed before
 // auto-settle existed) the date of its last ledger entry.

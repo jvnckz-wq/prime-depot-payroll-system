@@ -7,11 +7,11 @@
 // The rules behind all three live in src/lib/loan-rules.js.
 
 import React from 'react';
-import { currentCutoffPeriod } from '../lib/utils';
-import { cutoffOf, staffRunKey } from '../lib/loan-rules';
-import { LoansPage } from './loans/LoansPage.jsx';
-import { CashAdvancesPage } from './loans/CashAdvancesPage.jsx';
-import { LoanHistoryPage } from './loans/LoanHistoryPage.jsx';
+import { currentCutoffPeriod } from '@/lib/utils';
+import { cutoffOf, staffRunKey } from '@/lib/loan-rules';
+import { LoansPage } from '@/views/loans/LoansPage.jsx';
+import { CashAdvancesPage } from '@/views/loans/CashAdvancesPage.jsx';
+import { LoanHistoryPage } from '@/views/loans/LoanHistoryPage.jsx';
 
 export const LoansView = ({ navSub = 'loans', staff = [], loans = [], reloadLoans, statutory, cutoffPeriod, toast }) => {
   // The cutoff being paid: the latest imported attendance period, or the

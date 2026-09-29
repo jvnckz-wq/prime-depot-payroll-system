@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../../../lib/prisma';
-import { logSecurityEvent, requireUser } from '../../../../../lib/auth';
-import { totpStep, generateBackupCodes, hashBackupCode } from '../../../../../lib/twofactor';
+import { prisma } from '@/lib/prisma';
+import { logSecurityEvent, requireUser } from '@/lib/auth';
+import { totpStep, generateBackupCodes, hashBackupCode } from '@/lib/twofactor';
 
 // Confirm enrollment: the code must match the secret stored by /setup. On
 // success two-factor turns on and ten one-time backup codes are generated. The

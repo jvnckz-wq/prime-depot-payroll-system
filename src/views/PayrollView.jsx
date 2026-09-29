@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { StaffPayrollView } from './StaffPayrollView.jsx';
-import { TruckPayrollView } from './TruckPayrollView.jsx';
+import { StaffPayrollView } from '@/views/StaffPayrollView.jsx';
+import { TruckPayrollView } from '@/views/TruckPayrollView.jsx';
 
 // Staff and Crew payroll live in the sidebar now (Payroll -> Staff Payroll /
 // Staff History / Crew Payroll), so this wrapper only maps the sidebar choice

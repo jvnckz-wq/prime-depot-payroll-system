@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { prisma, prismaBase } from '../../../lib/prisma';
-import { withRetry } from '../../../lib/db-retry';
-import { requireAdmin } from '../../../lib/auth';
+import { prisma, prismaBase } from '@/lib/prisma';
+import { withRetry } from '@/lib/db-retry';
+import { requireAdmin } from '@/lib/auth';
 import {
   shapeSss, shapePhilhealth, shapePagibig, shapeBir,
   sssToDb, philhealthToDb, pagibigToDb, birToDb,
-} from '../../../lib/statutory';
+} from '@/lib/statutory';
 
 // The active year is the most recent one present in the tables (the seed loads
 // the current year). Edits update that year in place.

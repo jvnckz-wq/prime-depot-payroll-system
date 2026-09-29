@@ -6,16 +6,16 @@
 
 import React, { useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
-import { Btn, EmptyState, Field, H1, Modal, SearchSelect, inputCls, inputStyle } from '../../components/ui.jsx';
+import { Btn, EmptyState, Field, H1, Modal, SearchSelect, inputCls, inputStyle } from '@/components/ui.jsx';
 import {
   advancedInCutoff, balanceOf, cutoffOf, dueFor, grantedBy, isOpen, nextCutoff, periodLabel, prevCutoff, projectedGross,
   shortDate, shortPeriod, workingDaysIn,
-} from '../../lib/loan-rules';
-import { computeStaffPayroll } from '../../lib/payroll';
-import { peso } from '../../lib/utils';
-import { F_BODY, F_MONO, T } from '../../theme';
-import { D, H, Kpi, Person, Pill, todayLocalYmd } from './parts.jsx';
-import { printLoanSlip } from './loanSlip';
+} from '@/lib/loan-rules';
+import { computeStaffPayroll } from '@/lib/payroll';
+import { peso } from '@/lib/utils';
+import { F_BODY, F_MONO, T } from '@/theme';
+import { D, H, Kpi, Person, Pill, todayLocalYmd } from '@/views/loans/parts.jsx';
+import { printLoanSlip } from '@/views/loans/loanSlip';
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 const labelOf = (e) => `${e.name} · ${e.position}`;

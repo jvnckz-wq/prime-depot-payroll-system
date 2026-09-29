@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { prisma, prismaBase } from '../../../../../../lib/prisma';
-import { withRetry } from '../../../../../../lib/db-retry';
+import { prisma, prismaBase } from '@/lib/prisma';
+import { withRetry } from '@/lib/db-retry';
 import {
   releaseAttempt, requireAdmin, reserveAttempt, verifyPassword,
-} from '../../../../../../lib/auth';
+} from '@/lib/auth';
 import {
   generateTotpSecret, hashBackupCode, totpKeyUri, totpQrDataUrl, totpStep,
-} from '../../../../../../lib/twofactor';
+} from '@/lib/twofactor';
 
 // Step one of moving two-factor to a new phone. Proves it is really the owner
 // (current password AND a code from the CURRENT authenticator, or a backup

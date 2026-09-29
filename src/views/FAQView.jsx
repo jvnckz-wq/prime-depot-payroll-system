@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
-import { H1, Panel } from '../components/ui.jsx';
-import { F_BODY, F_HEAD, T } from '../theme';
+import { H1, Panel } from '@/components/ui.jsx';
+import { F_BODY, F_HEAD, T } from '@/theme';
 
 // Practical help for the day-to-day operator, reached from the bottom of the
 // sidebar. Written around the real flows so it also doubles as a quick refresher.

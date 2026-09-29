@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Truck, LogOut, Star, MapPin, Phone } from 'lucide-react';
-import { DeliveryForm } from '../components/DeliveryForm.jsx';
-import { Av, Badge, BigStat, EmptyState, Eyebrow, Panel, Td, Th } from '../components/ui.jsx';
-import { CREW_RATE_FALLBACK } from '../data/seed';
-import { flattenDeliveries } from '../lib/payroll';
-import { peso, telHref, timeLabel } from '../lib/utils';
-import { FONTS, F_BODY, F_HEAD, T } from '../theme';
+import { DeliveryForm } from '@/components/DeliveryForm.jsx';
+import { Av, Badge, BigStat, EmptyState, Eyebrow, Panel, Td, Th } from '@/components/ui.jsx';
+import { CREW_RATE_FALLBACK } from '@/data/seed';
+import { flattenDeliveries } from '@/lib/payroll';
+import { peso, telHref, timeLabel } from '@/lib/utils';
+import { FONTS, F_BODY, F_HEAD, T } from '@/theme';
 /* eslint-disable @next/next/no-img-element -- user avatars are base64 data URIs; next/image adds no value and cannot optimize data URIs */
 
 export const CheckerView = ({ currentUser, deliveries, reloadDeliveries, rates, crewRates = CREW_RATE_FALLBACK, onLogout, toast }) => {

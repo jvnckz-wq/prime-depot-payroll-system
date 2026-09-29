@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../../../lib/prisma';
-import { requireUser } from '../../../../../lib/auth';
-import { generateTotpSecret, totpKeyUri, totpQrDataUrl } from '../../../../../lib/twofactor';
+import { prisma } from '@/lib/prisma';
+import { requireUser } from '@/lib/auth';
+import { generateTotpSecret, totpKeyUri, totpQrDataUrl } from '@/lib/twofactor';
 
 // Begin two-factor enrollment: mint a fresh secret, store it (disabled until a
 // code confirms it), and hand back a QR plus the secret for manual entry.

@@ -5,9 +5,9 @@
 
 import React from 'react';
 import { Search } from 'lucide-react';
-import { loanLedger } from '../../lib/payroll';
-import { peso } from '../../lib/utils';
-import { F_BODY, F_HEAD, F_MONO, T } from '../../theme';
+import { loanLedger } from '@/lib/payroll';
+import { peso } from '@/lib/utils';
+import { F_BODY, F_HEAD, F_MONO, T } from '@/theme';
 
 // Status pill (sentence case, rounded) as in the approved mockups.
 const PILL = {

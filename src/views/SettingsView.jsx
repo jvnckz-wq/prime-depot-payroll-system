@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Check, Save, Trash2, Download } from 'lucide-react';
-import { Badge, Btn, Eyebrow, Field, H1, Money, Panel, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
-import { computePagIBIG, computePhilHealth, computeSSS } from '../lib/payroll';
-import { exportXLSX, peso } from '../lib/utils';
-import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
-import { FleetPanel } from './FleetPanel.jsx';
+import { Badge, Btn, Eyebrow, Field, H1, Money, Panel, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
+import { computePagIBIG, computePhilHealth, computeSSS } from '@/lib/payroll';
+import { exportXLSX, peso } from '@/lib/utils';
+import { F_BODY, F_HEAD, F_MONO, T } from '@/theme';
+import { FleetPanel } from '@/views/FleetPanel.jsx';
 
 export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers, setCheckers, sssTable, setSssTable, philhealthRates, setPhilhealthRates, pagibigRates, setPagibigRates, birTable, setBirTable, toast, navTab }) => {
   const [tab, setTab] = useState(navTab || 'statutory');

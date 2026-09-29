@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../lib/prisma';
-import { requireAdmin } from '../../../lib/auth';
-import { minutesLate, summarizeAttendance } from '../../../lib/attendance';
+import { prisma } from '@/lib/prisma';
+import { requireAdmin } from '@/lib/auth';
+import { minutesLate, summarizeAttendance } from '@/lib/attendance';
 
 const hhmm = (d) => (d ? new Date(d).toISOString().slice(11, 16) : null);
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
