@@ -5,6 +5,7 @@ import { applyLoanDeductions } from '../../../../lib/loans-apply';
 import { summarizeAttendance } from '../../../../lib/attendance';
 import { shapeEmployee } from '../../../../lib/employees';
 import { shapeLoan } from '../../../../lib/loans';
+import { cutoffOf } from '../../../../lib/loan-rules';
 import { computeStaffPayroll } from '../../../../lib/payroll';
 import { shapeBir, shapePagibig, shapePhilhealth, shapeSss } from '../../../../lib/statutory';
 
@@ -201,7 +202,9 @@ export async function POST(request) {
     // Loan ledger first — idempotent, so a retry never double-charges. It also
     // has to happen before the payslips are computed, so each one records the
     // deduction that was actually charged rather than a fresh preview of it.
-    const loanResult = await applyLoanDeductions(prisma, { scope: 'staff', runKey });
+    // cutoffEnd = last day of the calendar cutoff (an import may stop a day or
+    // two early); money given after it is left for the next cutoff.
+    const loanResult = await applyLoanDeductions(prisma, { scope: 'staff', runKey, cutoffEnd: cutoffOf(start).end });
 
     const slips = await computePayslips({ startDate, endDate, runKey });
     if (slips.length === 0) {
@@ -298,10 +301,18 @@ export async function DELETE(request) {
     const runKey = `staff-${period.label}`;
 
     // Reverse this cutoff's loan deductions so balances are restored, then drop
-    // the snapshot and mark the period unreleased.
-    const reversed = await prisma.loanEntry.deleteMany({ where: { payslipId: runKey, type: 'DEDUCTION' } });
-    await prisma.payslip.deleteMany({ where: { payrollPeriodId: period.id } });
-    await prisma.payrollPeriod.update({ where: { id: period.id }, data: { isReleased: false, releasedAt: null } });
+    // the snapshot and mark the period unreleased. A loan that this cutoff paid
+    // off was closed (isSettled) by the same run, so it is re-opened here or it
+    // would sit in History with money still owed. One batch transaction: the
+    // reversal happens completely or not at all.
+    const touched = await prisma.loanEntry.findMany({ where: { payslipId: runKey, type: 'DEDUCTION' }, select: { loanId: true } });
+    const loanIds = [...new Set(touched.map((t) => t.loanId))];
+    const [reversed] = await prisma.$transaction([
+      prisma.loanEntry.deleteMany({ where: { payslipId: runKey, type: 'DEDUCTION' } }),
+      prisma.loan.updateMany({ where: { id: { in: loanIds }, isSettled: true }, data: { isSettled: false, settledAt: null } }),
+      prisma.payslip.deleteMany({ where: { payrollPeriodId: period.id } }),
+      prisma.payrollPeriod.update({ where: { id: period.id }, data: { isReleased: false, releasedAt: null } }),
+    ]);
 
     await logSecurityEvent('PAYROLL_UNFINALIZED', {
       actorId: auth.user.id,

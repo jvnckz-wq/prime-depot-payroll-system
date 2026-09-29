@@ -1,12 +1,23 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useSyncExternalStore } from 'react';
 import { AlertTriangle, Loader2, Eye, EyeOff, CheckCircle2, Circle } from 'lucide-react';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
 // Remembers, on this device, that the person already accepted the Terms — so a
 // returning user finds the box pre-checked instead of ticking it every sign-in.
 const TERMS_KEY = 'pd_terms_agreed';
+
+// Did this device accept the Terms on a past sign-in? Read through
+// useSyncExternalStore: the server snapshot is always false, so the server
+// render and the first client paint match, then React swaps in the stored
+// value without a setState-in-effect. Nothing else writes the key while the
+// login page is open, so the subscription is a no-op.
+const subscribeNoop = () => () => {};
+const readTermsAgreed = () => {
+  try { return localStorage.getItem(TERMS_KEY) === '1'; } catch { return false; } // storage blocked: leave unchecked
+};
+const serverTermsAgreed = () => false;
 
 // Decorative Canva line-art for the crimson half (files live in /public/login).
 // Positions are percentages of the panel: the worker sits centre, tools scatter around it.
@@ -221,7 +232,11 @@ export const LoginView = ({ onSignedIn, onShowLegal }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
-  const [agreed, setAgreed] = useState(false);
+  // The box starts from what this device remembers; once the user ticks or
+  // unticks it, their choice wins (null = not touched yet).
+  const storedAgreed = useSyncExternalStore(subscribeNoop, readTermsAgreed, serverTermsAgreed);
+  const [agreedChoice, setAgreed] = useState(null);
+  const agreed = agreedChoice ?? storedAgreed;
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   // 'login' or 'forgot' — the sign-in panel doubles as the password-reset flow.
@@ -232,12 +247,6 @@ export const LoginView = ({ onSignedIn, onShowLegal }) => {
   const [awaiting2FA, setAwaiting2FA] = useState(false);
   const [tfaCode, setTfaCode] = useState('');
   const [useBackup, setUseBackup] = useState(false);
-
-  // Pre-check the Terms box if this device accepted them on a past sign-in.
-  // Read after mount so server and client render the same first paint.
-  useEffect(() => {
-    try { if (localStorage.getItem(TERMS_KEY) === '1') setAgreed(true); } catch { /* storage blocked — leave unchecked */ }
-  }, []);
 
   const submit = async () => {
     if (busy) return;

@@ -6,6 +6,7 @@ import { DeliveryForm } from '../components/DeliveryForm.jsx';
 import { Av, Badge, Btn, Confirm, EmptyState, Eyebrow, Field, H1, Modal, Panel, Skeleton, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { CREW_RATE_FALLBACK } from '../data/seed';
 import { crewEarnings, deliveriesToLog, flattenDeliveries, loanBalance } from '../lib/payroll';
+import { dueAmount, grantedBy, todayYmdManila } from '../lib/loan-rules';
 import { peso, telHref, timeLabel } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
@@ -233,15 +234,18 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
     }
   };
 
-  // Loans belonging to any driver/pahinante (matched by name), still owing and not paused —
-  // truck crew are paid daily, so this applies today's deduction rather than a cutoff's.
-  const crewPeople = new Set(crewNames);
-  const dueLoans = loans.filter(l => crewPeople.has(l.person) && !l.paused && loanBalance(l) > 0);
-  const dueTotal = dueLoans.reduce((s, l) => s + Math.min(l.perCutoff, loanBalance(l)), 0);
+  // Crew loans (driver/pahinante, from the employee record, not the name) that
+  // still owe something, aren't paused, were given by today, and weren't
+  // already applied today. Truck crew are paid daily, so this applies today's
+  // deduction rather than a cutoff's. Same rules as the server (loan-rules.js).
+  const todayYmd = todayYmdManila();
+  const dueLoans = loans.filter(l => l.isCrew && !l.paused && !l.settled && loanBalance(l) > 0
+    && grantedBy(l, todayYmd) && !l.entries.some(en => en.payslipId === 'crew-' + todayYmd));
+  const dueTotal = dueLoans.reduce((s, l) => s + dueAmount(l), 0);
   const applyDeductions = async () => {
     setConfirmApply(false);
     // Per-day run key: clicking again on the same day is a no-op server-side.
-    const runKey = 'crew-' + new Date().toISOString().slice(0, 10);
+    const runKey = 'crew-' + todayYmd;
     try {
       const res = await fetch('/api/loans/apply-deductions', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -514,6 +518,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
             <div id="truck-payslip">
               <Panel className="overflow-hidden">
                 <div className="px-6 py-5 flex items-center gap-3" style={{ backgroundColor: T.ink }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- static brand logo from /public on a printable payslip; next/image adds no value here */}
                   <img src="/logo.png" alt="Prime Depot" className="w-10 h-10 rounded bg-white p-1 object-contain shrink-0" />
                   <div>
                     <div className="text-white font-bold text-sm" style={{ fontFamily: F_HEAD }}>PRIME DEPOT HARDWARE AND CONSTRUCTION SUPPLY</div>
@@ -657,7 +662,9 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
     );
   }
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // Manila day, not UTC: toISOString() still says yesterday until 8 AM here,
+  // which would show the wrong day and miss that morning's loan deductions.
+  const todayStr = todayYmdManila();
   const dayDate = viewDate || todayStr;
 
   // Per-person totals across ALL trucks for the active day — one row per person,
@@ -670,8 +677,10 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
   // show ₱0.00 on the payslip: the money was taken, but on a different ledger.
   const loanKaltasFor = (name) => {
     const runKey = 'crew-' + dayDate;
+    // Deliveries record crew by name, so this lookup is by name too, limited to
+    // crew loans so an office employee with the same name can never match.
     return (loans || [])
-      .filter(l => l.person === name)
+      .filter(l => l.isCrew && l.person === name)
       .reduce((s, l) => s + (l.entries || [])
         .filter(en => en.type === 'deduction' && en.payslipId === runKey)
         .reduce((a, en) => a + (en.amount || 0), 0), 0);
@@ -886,6 +895,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                 <Panel className="overflow-hidden">
                   <div className="px-6 py-4 flex items-center justify-between" style={{ backgroundColor: T.ink }}>
                     <div className="flex items-center gap-3">
+                      {/* eslint-disable-next-line @next/next/no-img-element -- static brand logo from /public on a printable payslip; next/image adds no value here */}
                       <img src="/logo.png" alt="Prime Depot" className="w-9 h-9 rounded bg-white p-1 object-contain shrink-0" />
                       <div>
                         <div className="text-white font-bold text-sm" style={{ fontFamily: F_HEAD }}>{p.name}</div>

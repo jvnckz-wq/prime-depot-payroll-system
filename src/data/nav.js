@@ -7,7 +7,11 @@ export const ADMIN_NAV = [
     { key: 'crew', label: 'Crew (Truck) Payroll' },
     { key: 'staff-history', label: 'History' },
   ] },
-  { key: 'loans', label: 'Loans', icon: Wallet, group: 'Payroll' },
+  { key: 'loans', label: 'Loans & Advances', icon: Wallet, group: 'Payroll', children: [
+    { key: 'loans', label: 'Loans' },
+    { key: 'advances', label: 'Cash Advances' },
+    { key: 'history', label: 'History' },
+  ] },
   { key: 'employees', label: 'Employees', icon: Users, group: 'Workforce' },
   { key: 'attendance', label: 'Attendance', icon: Clock, group: 'Workforce', children: [
     { key: 'live', label: 'Live' },

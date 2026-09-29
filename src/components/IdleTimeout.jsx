@@ -55,7 +55,6 @@ export function IdleTimeout({ enabled, onExit }) {
       clearTimeout(timer.current);
     };
     // onExit is read through a ref, so only `enabled` needs to re-arm this.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled]);
 
   const backToSignIn = () => {

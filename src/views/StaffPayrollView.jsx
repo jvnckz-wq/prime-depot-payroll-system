@@ -4,8 +4,22 @@ import React, { useState, useEffect } from 'react';
 import { Users, Wallet, ArrowLeft } from 'lucide-react';
 import { Av, Badge, Btn, Confirm, Eyebrow, H1, Modal, Money, Panel, SkeletonBlock, SkeletonRows, StatCard, Td, Th } from '../components/ui.jsx';
 import { computePagIBIG, computeStaffPayroll, loanBalance } from '../lib/payroll';
-import { peso } from '../lib/utils';
+import { cutoffOf, dueAmount, grantedBy, shortDate } from '../lib/loan-rules';
+import { currentCutoffPeriod, peso } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, F_SERIF, T } from '../theme';
+
+// Small note under the Loans / Advance Payment line, e.g.
+// "Hospitalization · balance after this cutoff ₱2,000.00" or
+// "Cash advance given Sep 22, 2026".
+const loanNote = (calc, kind) => {
+  const lines = (calc.deductionLines || []).filter((d) => d.kind === kind);
+  if (!lines.length) return null;
+  if (kind === 'CASH_ADVANCE') {
+    return lines.length === 1 ? `Cash advance given ${shortDate(lines[0].dateGranted, true)}` : `${lines.length} cash advances this cutoff`;
+  }
+  const d = lines[0];
+  return `${d.purpose || 'Loan'} · balance after this cutoff ${peso(Math.max(0, d.balanceAfter))}`;
+};
 
 // One payslip, reused by the single-print view and the batch "Print All" run so
 // the two never drift. Renders the client's exact approved layout.
@@ -60,12 +74,17 @@ const PayslipCard = ({ e, calc, cutoffLabel, attPeriod, att, statutory, classNam
         ['HDMF MP2 Contribution:', e.piOn ? (e.mp2 || 0) : 0, false],
         ['PHIC Contribution:', calc.phic, false],
         ['SSS Contribution:', calc.sss, false],
-        ['Loans:', 0, false],
-        ['Adjustments: Advance Payment', calc.advance, false],
+        // Loans and cash advances on their own lines, as on the client's own
+        // payslip, each with a short note so the employee can see what it is.
+        ['Loans:', calc.loanDeduction ?? 0, false, loanNote(calc, 'LOAN')],
+        ['Adjustments: Advance Payment', calc.advanceDeduction ?? calc.advance, false, loanNote(calc, 'CASH_ADVANCE')],
         ['Tardiness:', calc.tardiness, true],
-      ].map(([l, v, danger], i) => (
-        <div key={i} className="flex justify-between text-sm py-1" style={{ fontFamily: F_BODY }}>
-          <span className={danger ? 'font-bold' : ''} style={{ color: danger ? T.brand : T.ink }}>{l}</span>
+      ].map(([l, v, danger, sub], i) => (
+        <div key={i} className="flex justify-between gap-3 text-sm py-1" style={{ fontFamily: F_BODY }}>
+          <span className={danger ? 'font-bold' : ''} style={{ color: danger ? T.brand : T.ink }}>
+            {l}
+            {sub && <span className="block text-xs" style={{ color: T.soft, fontWeight: 400 }}>{sub}</span>}
+          </span>
           <span className="tabular-nums" style={{ fontFamily: F_MONO, color: danger ? T.brand : T.ink, fontWeight: danger ? 700 : 400 }}>{peso(v)}</span>
         </div>
       ))}
@@ -218,10 +237,16 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
   const totalGross = rows.reduce((s, r) => s + r.calc.gross, 0);
   const totalNet = rows.reduce((s, r) => s + r.calc.net, 0);
 
-  // Loans belonging to staff (matched by name) that still owe something and aren't paused —
-  // these are the ones "Apply Cutoff Deductions" will actually touch.
-  const dueLoans = loans.filter(l => staff.some(s => s.name === l.person) && !l.paused && loanBalance(l) > 0);
-  const dueTotal = dueLoans.reduce((s, l) => s + Math.min(l.perCutoff, loanBalance(l)), 0);
+  // Last day of the calendar cutoff being paid. Money given after it waits for
+  // the next cutoff; the server applies the same rule (src/lib/loan-rules.js).
+  const cutoffEnd = cutoffOf(attPeriod?.start || currentCutoffPeriod().start).end;
+  // Staff loans (matched by employeeId) that "Apply Cutoff Deductions" will
+  // actually touch: open, not paused, given by the cutoff's end, and not yet
+  // applied for this cutoff. A cash advance is due in full.
+  const staffIds = new Set(staff.map(s => s.id));
+  const dueLoans = loans.filter(l => staffIds.has(l.employeeId) && !l.paused && !l.settled && loanBalance(l) > 0
+    && grantedBy(l, cutoffEnd) && !l.entries.some(en => en.payslipId === cutoffKey));
+  const dueTotal = dueLoans.reduce((s, l) => s + dueAmount(l), 0);
   const applyDeductions = async () => {
     setConfirmApply(false);
     // Per-cutoff run key: applying the same cutoff again is a no-op server-side.
@@ -229,7 +254,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
     try {
       const res = await fetch('/api/loans/apply-deductions', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scope: 'staff', runKey }),
+        body: JSON.stringify({ scope: 'staff', runKey, cutoffEnd }),
       });
       const data = await res.json();
       if (!res.ok) { toast(data.error || 'Could not apply deductions.', 'error'); return; }

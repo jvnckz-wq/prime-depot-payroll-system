@@ -838,7 +838,9 @@ model DeviceSync {
   lastScanAt DateTime?                // last cycle that actually carried scans
   matched    Int       @default(0)    // matched rows written on the last cycle (informative)
   createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  // DB default matches the table as created on Neon; Prisma still sets it on
+  // every write through @updatedAt.
+  updatedAt  DateTime  @default(now()) @updatedAt
 
   @@map("device_sync")
 }

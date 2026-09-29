@@ -4,7 +4,7 @@ import { requireAdmin } from '../../../../lib/auth';
 import { applyLoanDeductions } from '../../../../lib/loans-apply';
 
 /// POST /api/loans/apply-deductions
-/// Body: { scope: 'crew' | 'staff', runKey: string }
+/// Body: { scope: 'crew' | 'staff', runKey: string, cutoffEnd?: 'YYYY-MM-DD' }
 ///
 /// Deducts one instalment from every eligible loan in the group. Idempotent on
 /// runKey (see lib/loans-apply.js) — the same deduction core is reused by the
@@ -19,7 +19,11 @@ export async function POST(request) {
     const runKey = typeof body.runKey === 'string' ? body.runKey.trim() : '';
     if (!runKey) return NextResponse.json({ error: 'Missing run key.' }, { status: 400 });
 
-    const result = await applyLoanDeductions(prisma, { scope, runKey });
+    // Last day of the cutoff being paid (staff). Loans given after it are left
+    // for the next cutoff. Crew keys carry their own day.
+    const cutoffEnd = typeof body.cutoffEnd === 'string' ? body.cutoffEnd.trim() : null;
+
+    const result = await applyLoanDeductions(prisma, { scope, runKey, cutoffEnd });
     return NextResponse.json(result);
   } catch (err) {
     console.error('POST /api/loans/apply-deductions failed:', err);

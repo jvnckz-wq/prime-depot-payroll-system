@@ -115,18 +115,40 @@ export function computeStaffPayroll(e, loans = [], statutory, attendance = null,
   //
   // Without a runKey (a bare estimate, no cutoff context), fall back to a
   // preview of what this cutoff would deduct from the running balance.
-  const advance = round2(loans
-    .filter(l => l.person === e.name && !l.paused)
-    .reduce((s, l) => {
-      if (runKey) {
-        const appliedThisCutoff = l.entries
-          .filter(en => en.type === 'deduction' && en.payslipId === runKey)
-          .reduce((a, en) => a + en.amount, 0);
-        return s + appliedThisCutoff;
-      }
+  //
+  // Loans are matched by employeeId, never by name. Loans and cash advances are
+  // kept apart (loanDeduction / advanceDeduction) so the payslip can show them
+  // on their own lines; `advance` stays as their sum for the stored snapshot
+  // and the totals, so net pay is exactly what it was before the split.
+  //
+  // An applied deduction counts even if the loan was paused afterwards: the
+  // money was already taken for this cutoff.
+  let loanDeduction = 0;
+  let advanceDeduction = 0;
+  const deductionLines = [];
+  for (const l of loans) {
+    if (!l || l.employeeId !== e.id) continue;
+    let amount;
+    if (runKey) {
+      amount = (l.entries || [])
+        .filter(en => en.type === 'deduction' && en.payslipId === runKey)
+        .reduce((a, en) => a + en.amount, 0);
+    } else {
+      if (l.paused) continue;
       const bal = loanBalance(l);
-      return bal > 0 ? s + Math.min(l.perCutoff, bal) : s;
-    }, 0));
+      amount = bal > 0 ? (l.kind === 'CASH_ADVANCE' ? bal : Math.min(l.perCutoff, bal)) : 0;
+    }
+    if (amount <= 0) continue;
+    if (l.kind === 'CASH_ADVANCE') advanceDeduction += amount; else loanDeduction += amount;
+    // With a runKey, read the running balance right after THIS cutoff's
+    // deduction (later top-ups or deductions don't rewrite an old payslip).
+    // A preview has not taken the money yet, so subtract it.
+    const balanceAfter = round2(runKey ? balanceThrough(l, runKey) : loanBalance(l) - amount);
+    deductionLines.push({ kind: l.kind, purpose: l.purpose, amount: round2(amount), balanceAfter, dateGranted: l.dateGranted });
+  }
+  loanDeduction = round2(loanDeduction);
+  advanceDeduction = round2(advanceDeduction);
+  const advance = round2(loanDeduction + advanceDeduction);
 
   const lateMins = hasAttendance ? (attendance.lateMins || 0) : 0;
   const tardiness = round2(e.rate * lateMins / 240);
@@ -134,7 +156,7 @@ export function computeStaffPayroll(e, loans = [], statutory, attendance = null,
   const totalEarnings = round2(gross + ot + allowance);
   const totalDeductions = round2(sss + phic + hdmf + advance + tardiness);
   const net = round2(totalEarnings - totalDeductions);
-  return { hasAttendance, days, present: hasAttendance ? attendance.present : days, leaveDays, lateMins, gross, otWeekday, otWeekend, ot, allowance, sss, phic, hdmf, advance, tardiness, totalEarnings, totalDeductions, net };
+  return { hasAttendance, days, present: hasAttendance ? attendance.present : days, leaveDays, lateMins, gross, otWeekday, otWeekend, ot, allowance, sss, phic, hdmf, advance, loanDeduction, advanceDeduction, deductionLines, tardiness, totalEarnings, totalDeductions, net };
 }
 
 // deterministic pseudo-random per employee, so charts are stable across renders
@@ -156,6 +178,16 @@ export function computePagIBIG(monthlySalary, pi) {
   return monthly / 2;
 }
 
+
+// Running balance just after the last ledger entry stamped with `key`.
+function balanceThrough(loan, key) {
+  let b = 0; let at = null;
+  for (const en of loan.entries || []) {
+    b += en.type === 'grant' ? en.amount : -en.amount;
+    if (en.payslipId === key) at = b;
+  }
+  return at ?? b;
+}
 
 export function loanBalance(loan) {
   return loan.entries.reduce((b, e) => e.type === 'grant' ? b + e.amount : b - e.amount, 0);

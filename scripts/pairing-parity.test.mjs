@@ -6,7 +6,9 @@
 // extraction did not change the existing import behaviour. Pure logic — no DB,
 // no real PII (synthetic ids only).
 //
-// Run:  npm run test:pairing      (uses tsx, already in devDependencies)
+// Run:  npm run test:pairing      (plain node; Node 22 detects the ESM syntax
+//       in src/lib/attendance.js. tsx is NOT used here: it loads that .js as
+//       CommonJS and loses the named exports.)
 import assert from 'node:assert/strict';
 import { pairPunches, buildAttendanceRow } from '../src/lib/attendance.js';
 
