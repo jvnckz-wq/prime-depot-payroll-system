@@ -20,7 +20,7 @@ import { ForcedPasswordChange } from '@/views/AccountView.jsx';
 import TwoFactorSetup from '@/views/TwoFactorSetup.jsx';
 import { AccountPage } from '@/views/AccountPage.jsx';
 import { FAQView } from '@/views/FAQView.jsx';
-import { ReportsView } from '@/views/ReportsView.jsx';
+import { ReportsView } from '@/features/reports/ReportsView.jsx';
 import { SettingsView } from '@/views/SettingsView.jsx';
 import { PayrollView } from '@/features/payroll/PayrollView.jsx';
 import { TruckPayrollView } from '@/features/payroll/TruckPayrollView.jsx';
