@@ -19,7 +19,7 @@ import { LegalView } from '@/features/auth/LegalView.jsx';
 import { ForcedPasswordChange } from '@/features/auth/AccountView.jsx';
 import TwoFactorSetup from '@/features/auth/TwoFactorSetup.jsx';
 import { AccountPage } from '@/features/auth/AccountPage.jsx';
-import { FAQView } from '@/views/FAQView.jsx';
+import { FAQView } from '@/features/help/FAQView.jsx';
 import { ReportsView } from '@/features/reports/ReportsView.jsx';
 import { SettingsView } from '@/features/settings/SettingsView.jsx';
 import { PayrollView } from '@/features/payroll/PayrollView.jsx';
