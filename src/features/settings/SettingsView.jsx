@@ -6,7 +6,7 @@ import { Badge, Btn, Eyebrow, Field, H1, Money, Panel, Td, Th, inputCls, inputSt
 import { computePagIBIG, computePhilHealth, computeSSS } from '@/lib/payroll';
 import { exportXLSX, peso } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
-import { FleetPanel } from '@/views/FleetPanel.jsx';
+import { FleetPanel } from '@/features/settings/FleetPanel.jsx';
 
 export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers, setCheckers, sssTable, setSssTable, philhealthRates, setPhilhealthRates, pagibigRates, setPagibigRates, birTable, setBirTable, toast, navTab }) => {
   const [tab, setTab] = useState(navTab || 'statutory');
