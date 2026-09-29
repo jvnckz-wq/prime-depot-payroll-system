@@ -105,7 +105,9 @@ export const BalanceBar = ({ balance, principal }) => {
 };
 
 // The loan's ledger, bank-statement style. The first grant is "Given"; any
-// later grant is a "Top-up" on the same loan.
+// later grant is a "Top-up" on the same loan. A payroll run that could take
+// nothing (no pay left) still writes a P0 entry: it shows as "Not taken", and
+// its remark says where the amount went (carried over, or a crew day with no pay).
 export const Ledger = ({ loan }) => {
   const rows = loanLedger(loan);
   let grants = 0;
@@ -118,15 +120,16 @@ export const Ledger = ({ loan }) => {
         <tbody>
           {rows.map((en, i) => {
             const isGrant = en.type === 'grant';
-            const label = isGrant ? (grants++ === 0 ? 'Given' : 'Top-up') : 'Deducted';
-            const tone = label === 'Given' ? 'slate' : label === 'Top-up' ? 'ink' : 'red';
+            const nothing = !isGrant && en.amount <= 0.004;
+            const label = isGrant ? (grants++ === 0 ? 'Given' : 'Top-up') : nothing ? 'Not taken' : 'Deducted';
+            const tone = label === 'Given' ? 'slate' : label === 'Top-up' ? 'ink' : nothing ? 'amber' : 'red';
             const last = i === rows.length - 1;
             return (
               <tr key={i}>
                 <D style={{ whiteSpace: 'nowrap' }}>{en.date}</D>
                 <D><Pill tone={tone}>{label}</Pill></D>
                 <D>{en.remark}</D>
-                <D right style={{ fontFamily: F_MONO, fontWeight: 600, color: isGrant ? T.soft : T.red, whiteSpace: 'nowrap' }}>{isGrant ? '+' : '-'}{peso(en.amount)}</D>
+                <D right style={{ fontFamily: F_MONO, fontWeight: 600, color: isGrant || nothing ? T.soft : T.red, whiteSpace: 'nowrap' }}>{isGrant ? '+' : nothing ? '' : '-'}{peso(en.amount)}</D>
                 <D right style={{ fontFamily: F_MONO, whiteSpace: 'nowrap', color: last && en.runningBalance <= 0.004 ? T.green : T.ink, fontWeight: last && en.runningBalance <= 0.004 ? 700 : 400 }}>{peso(en.runningBalance)}</D>
               </tr>
             );

@@ -5,6 +5,7 @@
 // the frontend has to change how it reads a loan.
 
 import { POSITION_LABEL } from './employees';
+import { LOAN_PURPOSES, PURPOSE_LABEL } from './loan-rules';
 
 const num = (d) => (d == null ? 0 : Number(d));
 
@@ -15,10 +16,16 @@ const fmtDate = (d) =>
 // Stored dates are UTC midnight; read them back as 'YYYY-MM-DD' with no shift.
 const ymd = (d) => (d ? new Date(d).toISOString().slice(0, 10) : null);
 
-// `type` (LOAN / CASH_ADVANCE) is the kind. For a loan, `note` holds its
-// purpose (Hospitalization, Emergency, Other). Records made before the Sep 2026
-// split may still carry an old label there ("School Allowance", ...); it is
-// shown as-is rather than hidden, so no history is lost.
+// `type` (LOAN / CASH_ADVANCE) is the kind. A loan's purpose is its own column
+// (LoanPurpose enum) since Phase 2; before that it lived in `note`, and the
+// migration copied it over. A record from before the Sep 2026 split may still
+// carry an old label in `note` ("School Allowance", ...): it was mapped to
+// OTHER, and the old label is shown as-is so no history is lost.
+function purposeOf(loan) {
+  const legacy = loan.note && !LOAN_PURPOSES.includes(loan.note) ? loan.note : null;
+  if (loan.purpose) return loan.purpose === 'OTHER' && legacy ? legacy : (PURPOSE_LABEL[loan.purpose] || 'Other');
+  return loan.note || 'Other';
+}
 
 // The frontend ledger uses 'grant' / 'deduction'; loanBalance and loanLedger
 // depend on exactly those strings.
@@ -33,10 +40,12 @@ export function shapeLoan(loan) {
       amount: num(e.amount),
       remark: e.note || (e.type === 'GRANT' ? 'Granted' : 'Deducted'),
       payslipId: e.payslipId || null,
+      // Unpaid part of a payroll deduction, carried to the next run (Phase 2).
+      shortfall: num(e.shortfall),
     }));
 
   const kind = loan.type === 'CASH_ADVANCE' ? 'CASH_ADVANCE' : 'LOAN';
-  const purpose = kind === 'LOAN' ? (loan.note || 'Other') : null;
+  const purpose = kind === 'LOAN' ? purposeOf(loan) : null;
   return {
     id: loan.id,
     // Loans are matched to people by employeeId everywhere. `person` is the
@@ -48,6 +57,10 @@ export function shapeLoan(loan) {
     dateGranted: ymd(loan.dateGranted),
     settledAt: ymd(loan.settledAt),
     isCrew: loan.employee?.position === 'DRIVER' || loan.employee?.position === 'PAHINANTE',
+    // Only an employee marked INACTIVE counts as gone (their loan waits for
+    // final pay instead of being charged P0 every cutoff).
+    active: loan.employee?.status !== 'INACTIVE',
+    createdAt: loan.createdAt ? new Date(loan.createdAt).toISOString() : null,
     person: loan.employee?.name || '—',
     // Role is the person's position (e.g. "Driver") — crew are not tied to a
     // truck, so no "· TRK-02" is attached.

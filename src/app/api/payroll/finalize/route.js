@@ -1,13 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../../lib/prisma';
 import { logSecurityEvent, requireAdmin } from '../../../../lib/auth';
-import { applyLoanDeductions } from '../../../../lib/loans-apply';
-import { summarizeAttendance } from '../../../../lib/attendance';
-import { shapeEmployee } from '../../../../lib/employees';
-import { shapeLoan } from '../../../../lib/loans';
-import { cutoffOf } from '../../../../lib/loan-rules';
+import { deductionOps } from '../../../../lib/loans-apply';
+import { cutoffOf, planDeductions, staffRunKey, withPlan } from '../../../../lib/loan-rules';
 import { computeStaffPayroll } from '../../../../lib/payroll';
-import { shapeBir, shapePagibig, shapePhilhealth, shapeSss } from '../../../../lib/statutory';
+import { loadStaffPayrollInputs, staffAvailable, toDate } from '../../../../lib/payroll-inputs';
 
 // A released cutoff is stored as a snapshot: once written, its figures never
 // move even if rates, statutory tables, or employee records change later.
@@ -28,7 +25,7 @@ import { shapeBir, shapePagibig, shapePhilhealth, shapeSss } from '../../../../l
 // silently different payslip.
 
 const ymdRe = /^\d{4}-\d{2}-\d{2}$/;
-const toDate = (s) => new Date(`${s}T00:00:00.000Z`);
+const ymdOf = (d) => new Date(d).toISOString().slice(0, 10);
 const money = (v) => {
   const n = Number(v);
   return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : 0;
@@ -38,59 +35,17 @@ const intOf = (v) => {
   return Number.isFinite(n) && n > 0 ? n : 0;
 };
 
-/// The active statutory year is the most recent one loaded, matching
-/// GET /api/statutory. Payroll must read the same tables the admin was shown.
-async function loadStatutory() {
-  const latest = await prisma.philhealthConfig.findFirst({ orderBy: { effectiveYear: 'desc' } });
-  const year = latest?.effectiveYear ?? new Date().getFullYear();
-
-  const [sss, ph, pagibig, bir] = await Promise.all([
-    prisma.sssBracket.findMany({ where: { effectiveYear: year } }),
-    prisma.philhealthConfig.findUnique({ where: { effectiveYear: year } }),
-    prisma.pagibigConfig.findUnique({ where: { effectiveYear: year }, include: { brackets: true } }),
-    prisma.birBracket.findMany({ where: { effectiveYear: year } }),
-  ]);
-
-  return {
-    year,
-    statutory: {
-      sss: shapeSss(sss),
-      philhealth: shapePhilhealth(ph),
-      pagibig: shapePagibig(pagibig),
-      bir: shapeBir(bir),
-    },
-  };
-}
-
-/// Build every staff payslip for a cutoff, from the database alone.
+/// Every staff payslip of a cutoff, from the loaded inputs and a set of loans.
 ///
-/// The employee set mirrors what Staff Payroll shows on screen exactly — office
-/// staff (crew are paid through Truck Payroll) with a daily rate above zero.
-/// Deliberately identical to the client's filter rather than "improved" here:
-/// the point of this route is that the stored snapshot matches the reviewed
-/// screen, and a server that quietly included a different set of people would
-/// defeat that just as thoroughly as trusting the browser's arithmetic did.
-async function computePayslips({ startDate, endDate, runKey }) {
-  const [employees, attendanceRows, loanRows, { statutory }] = await Promise.all([
-    prisma.employee.findMany({ orderBy: { id: 'asc' } }),
-    prisma.attendance.findMany({
-      where: { date: { gte: startDate, lte: endDate } },
-      include: { employee: { select: { name: true, position: true } } },
-    }),
-    // Loaded AFTER applyLoanDeductions has run, so a loan already charged for
-    // this cutoff is read back at the exact amount charged rather than being
-    // previewed a second time.
-    prisma.loan.findMany({ include: { employee: true, entries: true }, orderBy: { createdAt: 'asc' } }),
-    loadStatutory(),
-  ]);
-
-  const loans = loanRows.map(shapeLoan);
-  const attendanceById = new Map(summarizeAttendance(attendanceRows).map((s) => [s.id, s]));
-
-  const staff = employees
-    .map(shapeEmployee)
-    .filter((e) => !e.crew && Number(e.rate) > 0);
-
+/// The employee set is exactly what Staff Payroll shows on screen (see
+/// loadStaffPayrollInputs): the stored snapshot must match the reviewed screen,
+/// and a server that quietly included different people would defeat that just
+/// as thoroughly as trusting the browser's arithmetic did.
+///
+/// `loans` is passed in so the same function can build the payslips twice:
+/// once from the ledger as it is now (to compare with the screen) and once
+/// with this cutoff's deductions added (what gets stored).
+function buildSlips({ staff, attendanceById, statutory }, loans, runKey) {
   return staff.map((e) => {
     const calc = computeStaffPayroll(e, loans, statutory, attendanceById.get(e.id), runKey);
     // MP2 is a voluntary top-up that computeStaffPayroll folds into the Pag-IBIG
@@ -111,7 +66,10 @@ async function computePayslips({ startDate, endDate, runKey }) {
       pagibigDeduction: money(Math.max(0, calc.hdmf - mp2)),
       mp2Deduction: money(mp2),
       tardinessDeduction: money(calc.tardiness),
-      loanDeduction: money(calc.advance),
+      // Loans and cash advances are stored apart (Phase 2), as the payslip
+      // shows them. Snapshots from before kept both in loanDeduction.
+      loanDeduction: money(calc.loanDeduction),
+      advanceDeduction: money(calc.advanceDeduction),
       totalDeductions: money(calc.totalDeductions),
       netPay: money(calc.net),
     };
@@ -185,34 +143,44 @@ export async function POST(request) {
     if (typeof label !== 'string' || !label.trim()) {
       return NextResponse.json({ error: 'A cutoff label is required.' }, { status: 400 });
     }
-
-    const startDate = toDate(start);
-    const endDate = toDate(end);
-    if (endDate < startDate) {
+    if (end < start) {
       return NextResponse.json({ error: 'The cutoff end cannot fall before its start.' }, { status: 400 });
     }
-    const runKey = `staff-${label.trim()}`;
+
+    // The attendance range may stop early (Sep 16-29), but it always belongs to
+    // one calendar cutoff, and that cutoff is what the loans are keyed on.
+    const cut = cutoffOf(start);
+    if (end > cut.end) {
+      return NextResponse.json({ error: 'The attendance range crosses into the next cutoff. Release one cutoff at a time.' }, { status: 400 });
+    }
+    const runKey = staffRunKey(start);
+    const startDate = toDate(start);
+    const endDate = toDate(end);
 
     // Guard: don't silently re-release. Un-finalize first if a correction is needed.
     const existing = await prisma.payrollPeriod.findUnique({ where: { startDate_endDate: { startDate, endDate } } });
     if (existing?.isReleased) {
       return NextResponse.json({ error: 'This cutoff is already released. Un-finalize it first to make changes.' }, { status: 409 });
     }
+    // Guard: one release per calendar cutoff. Without it, Sep 16-29 and a later
+    // Sep 16-30 import could both be released: two snapshots of one payroll.
+    const clash = await prisma.payrollPeriod.findFirst({
+      where: { isReleased: true, startDate: { lte: toDate(cut.end) }, endDate: { gte: toDate(cut.start) } },
+    });
+    if (clash) {
+      return NextResponse.json({ error: `${clash.label} is already released for this cutoff. Un-finalize it first, then release the updated attendance.` }, { status: 409 });
+    }
 
-    // Loan ledger first — idempotent, so a retry never double-charges. It also
-    // has to happen before the payslips are computed, so each one records the
-    // deduction that was actually charged rather than a fresh preview of it.
-    // cutoffEnd = last day of the calendar cutoff (an import may stop a day or
-    // two early); money given after it is left for the next cutoff.
-    const loanResult = await applyLoanDeductions(prisma, { scope: 'staff', runKey, cutoffEnd: cutoffOf(start).end });
-
-    const slips = await computePayslips({ startDate, endDate, runKey });
-    if (slips.length === 0) {
+    const inputs = await loadStaffPayrollInputs(prisma, { start, end });
+    if (inputs.staff.length === 0) {
       return NextResponse.json({ error: 'There are no staff payslips to finalize.' }, { status: 400 });
     }
 
-    // The browser's figures are advisory: they are compared, never stored.
-    const drift = verifyAgainstClient(slips, body.payslips);
+    // 1. Compare with the screen BEFORE anything is written. The screen shows
+    //    only deductions already applied, so it is compared with the ledger as
+    //    it is now. (Comparing after deducting made the first Finalize fail
+    //    whenever Apply had not been pressed, with the loans already charged.)
+    const drift = verifyAgainstClient(buildSlips(inputs, inputs.loans, runKey), body.payslips);
     if (drift) {
       return NextResponse.json(
         { error: `${drift} Refresh Staff Payroll, review the updated figures, and release again.` },
@@ -220,57 +188,46 @@ export async function POST(request) {
       );
     }
 
-    // Create or reuse the period, then (re)write its snapshot cleanly.
-    const period = existing
-      ? await prisma.payrollPeriod.update({ where: { id: existing.id }, data: { label: label.trim(), isReleased: true, releasedAt: new Date() } })
-      : await prisma.payrollPeriod.create({ data: { label: label.trim(), startDate, endDate, isReleased: true, releasedAt: new Date() } });
+    // 2. This cutoff's deductions, from pay that is actually there (advances
+    //    first, then the loan installment, net never below P0). Loans already
+    //    applied with "Apply Cutoff Deductions" are skipped, not taken twice.
+    const plan = planDeductions(inputs.loans, { crew: false, runKey, endYmd: cut.end, available: staffAvailable(inputs) });
 
-    await prisma.payslip.deleteMany({ where: { payrollPeriodId: period.id } });
+    // 3. The payslips as they will be once those deductions are in the ledger.
+    const slips = buildSlips(inputs, withPlan(inputs.loans, plan, { runKey, endYmd: cut.end }), runKey);
+    const rows = slips.map(({ employeeName, ...slip }) => ({ ...slip, payrollType: 'STAFF', withholdingTax: 0, otherDeductions: 0 }));
+    // withholdingTax: most staff fall below the taxable threshold; BIR compute is future work.
 
-    let written = 0;
-    let netTotal = 0;
-    for (const slip of slips) {
-      await prisma.payslip.create({
-        data: {
-          payrollPeriodId: period.id,
-          employeeId: slip.employeeId,
-          payrollType: 'STAFF',
-          daysPresent: slip.daysPresent,
-          basicPay: slip.basicPay,
-          overtimeWeekday: slip.overtimeWeekday,
-          overtimeWeekend: slip.overtimeWeekend,
-          allowances: slip.allowances,
-          grossPay: slip.grossPay,
-          sssDeduction: slip.sssDeduction,
-          philhealthDeduction: slip.philhealthDeduction,
-          pagibigDeduction: slip.pagibigDeduction,
-          mp2Deduction: slip.mp2Deduction,
-          withholdingTax: 0, // Most staff fall below the taxable threshold; BIR compute is future work.
-          loanDeduction: slip.loanDeduction,
-          tardinessDeduction: slip.tardinessDeduction,
-          otherDeductions: 0,
-          totalDeductions: slip.totalDeductions,
-          netPay: slip.netPay,
-        },
-      });
-      written++;
-      netTotal += slip.netPay;
-    }
+    // 4. ONE batch transaction: ledger entries, loans closed, the period, and
+    //    every payslip. All of it is stored or none of it is, so a failure can
+    //    never leave a released cutoff with half its payslips.
+    const now = new Date();
+    const results = await prisma.$transaction([
+      ...deductionOps(prisma, plan, { runKey, endYmd: cut.end }),
+      prisma.payrollPeriod.upsert({
+        where: { startDate_endDate: { startDate, endDate } },
+        create: { label: label.trim(), startDate, endDate, isReleased: true, releasedAt: now, payslips: { createMany: { data: rows } } },
+        update: { label: label.trim(), isReleased: true, releasedAt: now, payslips: { deleteMany: {}, createMany: { data: rows } } },
+      }),
+    ]);
+    const period = results[results.length - 1];
+    const netTotal = slips.reduce((s, p) => s + p.netPay, 0);
 
     await logSecurityEvent('PAYROLL_FINALIZED', {
       actorId: auth.user.id,
       actorLabel: auth.user.username,
       targetType: 'payrollPeriod',
       targetId: period.id,
-      detail: `Released ${period.label} — ${written} payslip(s), net ₱${netTotal.toFixed(2)}.`,
+      detail: `Released ${period.label}: ${slips.length} payslip(s), net ₱${netTotal.toFixed(2)}`
+        + (plan.writes.length ? `; loans ₱${plan.total.toFixed(2)} deducted, ₱${plan.unpaidTotal.toFixed(2)} carried over.` : '.'),
     });
 
     return NextResponse.json({
       released: true,
       periodId: period.id,
       label: period.label,
-      payslips: written,
-      loans: loanResult,
+      payslips: slips.length,
+      loans: { applied: plan.applied, skipped: plan.skipped, settled: plan.settled, total: plan.total, short: plan.short, unpaidTotal: plan.unpaidTotal },
     });
   } catch (err) {
     console.error('POST /api/payroll/finalize failed:', err);
@@ -298,17 +255,39 @@ export async function DELETE(request) {
     const period = await prisma.payrollPeriod.findUnique({ where: { startDate_endDate: { startDate, endDate } } });
     if (!period) return NextResponse.json({ error: 'That cutoff has not been released.' }, { status: 404 });
 
-    const runKey = `staff-${period.label}`;
+    // This cutoff's key, plus the older label-based key (from before keys named
+    // the calendar cutoff), so a period released before Phase 2 still reverses.
+    const startYmd = ymdOf(period.startDate);
+    const cut = cutoffOf(startYmd);
+    const keys = [...new Set([staffRunKey(startYmd), `staff-${period.label}`])];
 
-    // Reverse this cutoff's loan deductions so balances are restored, then drop
-    // the snapshot and mark the period unreleased. A loan that this cutoff paid
-    // off was closed (isSettled) by the same run, so it is re-opened here or it
-    // would sit in History with money still owed. One batch transaction: the
-    // reversal happens completely or not at all.
-    const touched = await prisma.loanEntry.findMany({ where: { payslipId: runKey, type: 'DEDUCTION' }, select: { loanId: true } });
+    const touched = await prisma.loanEntry.findMany({ where: { payslipId: { in: keys }, type: 'DEDUCTION' }, select: { loanId: true } });
     const loanIds = [...new Set(touched.map((t) => t.loanId))];
+
+    // Newest first. If a LATER cutoff already deducted from the same loans, its
+    // installment was built on this cutoff's carry-over; removing this one
+    // underneath it would leave that later figure wrong. Undo the later one first.
+    if (loanIds.length) {
+      const later = await prisma.loanEntry.findFirst({
+        where: { loanId: { in: loanIds }, type: 'DEDUCTION', payslipId: { startsWith: 'staff-', notIn: keys }, date: { gt: toDate(cut.end) } },
+        orderBy: { date: 'desc' },
+        select: { payslipId: true },
+      });
+      if (later) {
+        return NextResponse.json({
+          error: `Deductions for ${later.payslipId.slice(6)} were already taken from the same loans, and they include what this cutoff carried over. Un-finalize ${later.payslipId.slice(6)} first.`,
+        }, { status: 409 });
+      }
+    }
+
+    // Reverse this cutoff's loan deductions so balances are restored (P0 entries
+    // too, so any carry-over reverts with them), then drop the snapshot and mark
+    // the period unreleased. A loan that this cutoff paid off was closed
+    // (isSettled) by the same run, so it is re-opened here or it would sit in
+    // History with money still owed. One batch transaction: the reversal
+    // happens completely or not at all.
     const [reversed] = await prisma.$transaction([
-      prisma.loanEntry.deleteMany({ where: { payslipId: runKey, type: 'DEDUCTION' } }),
+      prisma.loanEntry.deleteMany({ where: { payslipId: { in: keys }, type: 'DEDUCTION' } }),
       prisma.loan.updateMany({ where: { id: { in: loanIds }, isSettled: true }, data: { isSettled: false, settledAt: null } }),
       prisma.payslip.deleteMany({ where: { payrollPeriodId: period.id } }),
       prisma.payrollPeriod.update({ where: { id: period.id }, data: { isReleased: false, releasedAt: null } }),

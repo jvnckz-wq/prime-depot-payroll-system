@@ -7,8 +7,8 @@
 // The rules behind all three live in src/lib/loan-rules.js.
 
 import React from 'react';
-import { currentCutoffPeriod, cutoffLabel } from '../lib/utils';
-import { cutoffOf } from '../lib/loan-rules';
+import { currentCutoffPeriod } from '../lib/utils';
+import { cutoffOf, staffRunKey } from '../lib/loan-rules';
 import { LoansPage } from './loans/LoansPage.jsx';
 import { CashAdvancesPage } from './loans/CashAdvancesPage.jsx';
 import { LoanHistoryPage } from './loans/LoanHistoryPage.jsx';
@@ -20,8 +20,9 @@ export const LoansView = ({ navSub = 'loans', staff = [], loans = [], reloadLoan
   // An import can cover part of a cutoff (e.g. Sep 16-29); dates and limits use
   // the full calendar cutoff it falls in.
   const period = cutoffOf(raw.start);
-  // Same run key Staff Payroll stamps on this cutoff's deductions.
-  const runKey = `staff-${cutoffLabel(raw)}`;
+  // Same run key Staff Payroll stamps on this cutoff's deductions (it names
+  // the calendar cutoff, whatever range the import covered).
+  const runKey = staffRunKey(raw.start);
 
   if (navSub === 'advances') {
     return <CashAdvancesPage staff={staff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} period={period} toast={toast} />;

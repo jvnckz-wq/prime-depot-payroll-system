@@ -139,7 +139,10 @@ ok('apply: advance in full + settled, loan one installment, late grant and crew 
     dbLoan({ id: 'late', type: 'CASH_ADVANCE', principal: 2000, perRun: 2000, granted: '2026-10-02' }),
     dbLoan({ id: 'crew', principal: 3000, perRun: 100, position: 'DRIVER' }),
   ]);
-  const r = await applyLoanDeductions(p, { scope: 'staff', runKey: KEY, cutoffEnd: '2026-09-30' });
+  // Phase 2 requires the pay available per person; ample here, so Phase 1's
+  // expectations hold unchanged (loans-phase2 covers the short cases).
+  const available = { 'emp-adv': 10000, 'emp-loan': 10000, 'emp-late': 10000, 'emp-crew': 10000 };
+  const r = await applyLoanDeductions(p, { scope: 'staff', runKey: KEY, cutoffEnd: '2026-09-30', available });
   assert.equal(r.applied, 2);
   assert.equal(r.settled, 1);
   assert.equal(r.total, 4500);
@@ -156,7 +159,7 @@ ok('apply is idempotent per run key', async () => {
     { type: 'GRANT', amount: 5000, date: new Date('2026-09-01T00:00:00Z'), createdAt: new Date(), payslipId: null },
     { type: 'DEDUCTION', amount: 1000, date: new Date('2026-09-30T00:00:00Z'), createdAt: new Date(), payslipId: KEY },
   ] })]);
-  const r = await applyLoanDeductions(p, { scope: 'staff', runKey: KEY, cutoffEnd: '2026-09-30' });
+  const r = await applyLoanDeductions(p, { scope: 'staff', runKey: KEY, cutoffEnd: '2026-09-30', available: { 'emp-loan': 10000 } });
   assert.equal(r.applied, 0);
   assert.equal(r.skipped, 1);
   assert.equal(p.writes.length, 0);

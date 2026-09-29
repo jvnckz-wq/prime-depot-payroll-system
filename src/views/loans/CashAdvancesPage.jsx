@@ -8,7 +8,8 @@ import React, { useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Btn, EmptyState, Field, H1, Modal, SearchSelect, inputCls, inputStyle } from '../../components/ui.jsx';
 import {
-  advancedInCutoff, balanceOf, cutoffOf, dueAmount, grantedBy, isOpen, periodLabel, projectedGross, shortDate, workingDaysIn,
+  advancedInCutoff, balanceOf, cutoffOf, dueFor, grantedBy, isOpen, nextCutoff, periodLabel, prevCutoff, projectedGross,
+  shortDate, shortPeriod, workingDaysIn,
 } from '../../lib/loan-rules';
 import { computeStaffPayroll } from '../../lib/payroll';
 import { peso } from '../../lib/utils';
@@ -36,17 +37,24 @@ const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
   const over = emp && amt > room + 0.004;
 
   // Estimated take-home if they work every working day of the cutoff: pay
-  // after contributions, minus this cutoff's loan installment and any earlier
-  // advance. Uses the same computeStaffPayroll as the payslip.
-  // Cheap to compute, so it is recomputed on every render (no memo).
+  // after contributions, minus everything else this cutoff's payroll will take
+  // (the loan installment with any carry-over, advances already given, and
+  // advances carried in from an earlier cutoff). Uses the same
+  // computeStaffPayroll as the payslip. Cheap, so recomputed on every render.
   let estimate = null;
   if (emp && statutory?.sss) {
     const base = computeStaffPayroll(emp, [], statutory, { present: days, leave: 0, lateMins: 0, otWeekdayMins: 0, otWeekendMins: 0 }).net;
     const loan = loans.find((l) => l.kind === 'LOAN' && l.employeeId === emp.id && isOpen(l) && !l.paused && grantedBy(l, period.end));
-    const installment = loan ? dueAmount(loan) : 0;
-    estimate = { takeHome: round2(base - installment - already), installment };
+    const installment = loan ? dueFor(loan, { endYmd: period.end }) : 0;
+    const carriedIn = round2(loans
+      .filter((l) => l.kind === 'CASH_ADVANCE' && l.employeeId === emp.id && isOpen(l) && l.dateGranted && l.dateGranted < period.start)
+      .reduce((s2, l) => s2 + balanceOf(l), 0));
+    estimate = { takeHome: round2(base - installment - already - carriedIn), installment, carriedIn };
   }
-  const short = estimate && amt > 0 && !over ? round2(amt - Math.max(0, estimate.takeHome)) : 0;
+  // What the payroll could not cover moves to the next cutoff (rule e). Counted
+  // in total, since the advance is taken before the loan installment.
+  const short = estimate && amt > 0 && !over ? round2(Math.max(0, amt - estimate.takeHome)) : 0;
+  const after = shortPeriod(nextCutoff(period.end));
   const first = emp ? emp.name.split(/\s+/)[0] : '';
 
   let problem = '';
@@ -113,8 +121,8 @@ const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
         {short > 0 && (
           <div className="rounded-lg px-3.5 py-3 text-sm" style={{ backgroundColor: T.warnBg, border: '1px solid #EFD3A8', color: '#7A4B12', lineHeight: 1.45 }}>
             <b>Heads up:</b> {first}&apos;s estimated take-home is <b>{peso(Math.max(0, estimate.takeHome))}</b> after contributions
-            {estimate.installment > 0 ? ' and the loan installment' : ''}{already > 0 ? ' and earlier advances' : ''}, if {first} works every remaining day.
-            This advance is <b>{peso(short)}</b> more, so that payslip would come out short.
+            {estimate.installment > 0 ? ' and the loan installment' : ''}{already > 0 || estimate.carriedIn > 0 ? ' and earlier advances' : ''}, if {first} works every remaining day.
+            {' '}<b>{peso(short)}</b> will carry over to the {after} cutoff.
           </div>
         )}
 
@@ -148,8 +156,11 @@ export const CashAdvancesPage = ({ staff, loans, reloadLoans, statutory, period:
   const staffById = new Map(staff.map((e) => [e.id, e]));
   const total = inCutoff.reduce((s, l) => s + l.principal, 0);
   const people = new Set(inCutoff.map((l) => l.employeeId)).size;
+  // Advances from earlier cutoffs that a short payslip left open (rule e).
+  // They are due in full on this cutoff's payroll.
   const earlier = advances.filter((l) => l.dateGranted < period.start && isOpen(l));
   const earlierTotal = earlier.reduce((s, l) => s + balanceOf(l), 0);
+  const prev = shortPeriod(prevCutoff(period.start));
 
   return (
     <div className="p-4 sm:p-6">
@@ -165,8 +176,8 @@ export const CashAdvancesPage = ({ staff, loans, reloadLoans, statutory, period:
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-4">
         <Kpi label="Advanced this cutoff" value={peso(total)} sub={`${people} employee${people === 1 ? '' : 's'}`} />
         <Kpi label="Deducted in full on" value={`${shortDate(period.end)} payroll`} sub="Staff only · crew are paid daily" />
-        <Kpi label="Unpaid from earlier cutoffs" value={peso(earlierTotal)}
-          sub={earlier.length ? `${earlier.length} advance${earlier.length === 1 ? '' : 's'} still open` : 'Nothing left unpaid'} />
+        <Kpi label={`Carried over from ${prev}`} value={peso(earlierTotal)}
+          sub={earlier.length ? `${earlier.length} advance${earlier.length === 1 ? '' : 's'} due on ${shortDate(period.end)}` : 'No short payslips last cutoff'} />
       </div>
 
       <div className="rounded-lg border overflow-hidden" style={{ backgroundColor: T.surface, borderColor: T.line }}>
@@ -183,7 +194,9 @@ export const CashAdvancesPage = ({ staff, loans, reloadLoans, statutory, period:
                   const room = limit == null ? null : round2(limit - advancedInCutoff(advances, l.employeeId, period));
                   const bal = balanceOf(l);
                   const paid = !isOpen(l);
-                  const partly = !paid && bal < l.principal - 0.004;
+                  // A payroll already ran on it and could not take all of it
+                  // (even P0): the rest moved to the next cutoff.
+                  const partly = !paid && l.entries.some((en) => en.type === 'deduction' && en.payslipId);
                   return (
                     <tr key={l.id}>
                       <D><Person name={l.person} role={l.role} /></D>
@@ -193,7 +206,7 @@ export const CashAdvancesPage = ({ staff, loans, reloadLoans, statutory, period:
                       <D right style={{ fontFamily: F_MONO }}>{room == null ? 'n/a' : peso(Math.max(0, room))}</D>
                       <D>
                         {paid ? <Pill tone="green">Deducted</Pill>
-                          : partly ? <Pill tone="amber">{peso(bal)} still owed</Pill>
+                          : partly ? <Pill tone="amber">{peso(bal)} carried over</Pill>
                             : <Pill tone="slate">To deduct {shortDate(period.end)}</Pill>}
                       </D>
                     </tr>

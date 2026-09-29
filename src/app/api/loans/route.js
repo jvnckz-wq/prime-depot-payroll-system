@@ -4,7 +4,7 @@ import { requireAdmin } from '../../../lib/auth';
 import { shapeLoan } from '../../../lib/loans';
 import { isCrewPosition } from '../../../lib/loans-apply';
 import {
-  LOAN_PURPOSES, advancedInCutoff, balanceOf, cutoffOf, isYmd, periodLabel, projectedGross, todayYmdManila, workingDaysIn,
+  LOAN_PURPOSES, PURPOSE_ENUM, advancedInCutoff, balanceOf, cutoffOf, isYmd, periodLabel, projectedGross, todayYmdManila, workingDaysIn,
 } from '../../../lib/loan-rules';
 
 export async function GET() {
@@ -82,7 +82,8 @@ export async function POST(request) {
       if (open) {
         return bad(`${employee.name} already has an active loan (balance ${peso(balanceOf(open))}). Add to it with a top-up instead.`, 409, { activeLoanId: open.id });
       }
-      data = { employeeId, type: 'LOAN', note: purpose, principal, deductionPerRun: perRun, dateGranted: granted };
+      // The purpose has its own column (LoanPurpose) since Phase 2; `note` is free.
+      data = { employeeId, type: 'LOAN', purpose: PURPOSE_ENUM[purpose], principal, deductionPerRun: perRun, dateGranted: granted };
     } else {
       if (isCrewPosition(employee.position)) return bad('Crew are paid daily, so cash advances are for office staff only.');
 
@@ -108,7 +109,7 @@ export async function POST(request) {
     }
 
     const loan = await prisma.loan.create({
-      data: { ...data, entries: { create: [{ date: granted, type: 'GRANT', amount: principal, note: kind === 'LOAN' ? `${data.note} loan` : 'Cash advance' }] } },
+      data: { ...data, entries: { create: [{ date: granted, type: 'GRANT', amount: principal, note: kind === 'LOAN' ? `${body.purpose.trim()} loan` : 'Cash advance' }] } },
       include: { employee: true, entries: true },
     });
     return NextResponse.json({ loan: shapeLoan(loan) });

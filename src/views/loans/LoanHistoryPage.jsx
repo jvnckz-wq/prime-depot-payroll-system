@@ -19,7 +19,7 @@ const paidOn = (l) => l.settledAt || [...l.entries].reverse().find((e) => e.ymd)
 export const LoanHistoryPage = ({ loans }) => {
   const done = useMemo(() => loans
     .filter((l) => l.entries.length > 0 && !isOpen(l))
-    .map((l) => ({ l, paid: paidOn(l), deductions: l.entries.filter((e) => e.type === 'deduction').length }))
+    .map((l) => ({ l, paid: paidOn(l), deductions: l.entries.filter((e) => e.type === 'deduction' && e.amount > 0.004).length }))
     .sort((a, b) => String(b.paid).localeCompare(String(a.paid))), [loans]);
 
   const years = useMemo(() => [...new Set(done.map((r) => String(r.paid || '').slice(0, 4)).filter(Boolean))].sort().reverse(), [done]);

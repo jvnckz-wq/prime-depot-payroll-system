@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../lib/prisma';
 import { requireUser } from '../../../lib/auth';
+import { isYmd, todayYmdManila } from '../../../lib/loan-rules';
 
 const num = (d) => (d == null ? 0 : Number(d));
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
@@ -89,12 +90,32 @@ export async function POST(request) {
     const truckId = typeof body.truckId === 'string' ? body.truckId.trim() : '';
     const driverId = typeof body.driverId === 'string' ? body.driverId.trim() : '';
     const address = typeof body.address === 'string' ? body.address.trim() : '';
-    const date = body.date ? new Date(body.date) : new Date();
 
     if (!truckId) return NextResponse.json({ error: 'Select a truck.' }, { status: 400 });
     if (!driverId) return NextResponse.json({ error: 'Select a driver.' }, { status: 400 });
     if (!address) return NextResponse.json({ error: 'Delivery address is required.' }, { status: 400 });
-    if (isNaN(date.getTime())) return NextResponse.json({ error: 'Invalid date.' }, { status: 400 });
+
+    // The day a trip belongs to is the PHILIPPINE calendar day. The server runs
+    // in UTC, so a plain new Date() still said "yesterday" until 8 AM Manila
+    // time, and every trip logged from 6:30 to 8:00 AM was filed (trip number
+    // and crew pay included) under the day before.
+    //
+    // The form sends no date: a trip is logged the day it happens. A date sent
+    // straight to the API is checked here, because that is the check that
+    // cannot be skipped: never a future day, and a Checker only today (the same
+    // rule as voiding). The Operations Head may still file a missed trip on an
+    // earlier day.
+    const today = todayYmdManila();
+    let dayYmd = today;
+    if (body.date != null && body.date !== '') {
+      const asked = String(body.date).slice(0, 10);
+      if (!isYmd(asked)) return NextResponse.json({ error: 'Invalid date.' }, { status: 400 });
+      if (asked > today) return NextResponse.json({ error: 'A delivery cannot be logged for a future date.' }, { status: 400 });
+      if (auth.user.role !== 'ADMIN' && asked !== today) {
+        return NextResponse.json({ error: "Checkers can only log today's deliveries. Ask the Operations Head to add a missed trip." }, { status: 403 });
+      }
+      dayYmd = asked;
+    }
 
     const items = Array.isArray(body.items) ? body.items : [];
     const clean = items
@@ -114,7 +135,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Item amounts must be zero or more.' }, { status: 400 });
     }
 
-    const day = new Date(ymd(date));
+    const day = new Date(`${dayYmd}T00:00:00.000Z`);
 
     // The next trip number for that truck on that day. Two checkers logging at
     // the same moment can both read the same number, which is why the database

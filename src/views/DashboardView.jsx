@@ -11,7 +11,7 @@ import { F_BODY, T } from '../theme';
 // Measure before paint on the client; fall back to useEffect on the server (no SSR warning).
 const useIsoLayoutEffect = typeof document !== 'undefined' ? useLayoutEffect : useEffect;
 
-export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loans = [], statutory, setTab, cutoffLabel = '', attendanceSummaries = [], unmappedCount = 0 }) => {
+export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loans = [], statutory, setTab, cutoffLabel = '', runKey = '', attendanceSummaries = [], unmappedCount = 0 }) => {
   const loggedToday = Object.keys(deliveries).length;
   const deliveriesLogged = useMemo(() => flattenDeliveries(deliveries).length, [deliveries]);
 
@@ -39,7 +39,8 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
     for (const s of attendanceSummaries) m[s.id] = s;
     return m;
   }, [attendanceSummaries]);
-  const cutoffKey = `staff-${cutoffLabel}`;
+  // Calendar-cutoff ledger key from the parent (same one Staff Payroll uses).
+  const cutoffKey = runKey || `staff-${cutoffLabel}`;
 
   // Net pay this cutoff — sum of every staff payslip's net, using the same shared math the
   // Staff Payroll page uses (same attendance AND same cutoff key), so the headline number

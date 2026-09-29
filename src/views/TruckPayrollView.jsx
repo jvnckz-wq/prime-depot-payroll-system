@@ -6,7 +6,7 @@ import { DeliveryForm } from '../components/DeliveryForm.jsx';
 import { Av, Badge, Btn, Confirm, EmptyState, Eyebrow, Field, H1, Modal, Panel, Skeleton, Td, Th, inputCls, inputStyle } from '../components/ui.jsx';
 import { CREW_RATE_FALLBACK } from '../data/seed';
 import { crewEarnings, deliveriesToLog, flattenDeliveries, loanBalance } from '../lib/payroll';
-import { dueAmount, grantedBy, todayYmdManila } from '../lib/loan-rules';
+import { grantedBy, planDeductions, todayYmdManila } from '../lib/loan-rules';
 import { peso, telHref, timeLabel } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
@@ -241,7 +241,6 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
   const todayYmd = todayYmdManila();
   const dueLoans = loans.filter(l => l.isCrew && !l.paused && !l.settled && loanBalance(l) > 0
     && grantedBy(l, todayYmd) && !l.entries.some(en => en.payslipId === 'crew-' + todayYmd));
-  const dueTotal = dueLoans.reduce((s, l) => s + dueAmount(l), 0);
   const applyDeductions = async () => {
     setConfirmApply(false);
     // Per-day run key: clicking again on the same day is a no-op server-side.
@@ -253,10 +252,14 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
       });
       const data = await res.json();
       if (!res.ok) { toast(data.error || 'Could not apply deductions.', 'error'); return; }
-      if (data.applied === 0) {
+      const notTaken = (data.short || []).length;
+      if (data.applied === 0 && !notTaken) {
         toast(data.skipped ? 'Deductions were already applied for today.' : 'No crew loans were due.');
       } else {
-        toast(`Applied ${peso(data.total)} across ${data.applied} loan(s).`);
+        // Crew are not stacked (Phase 2): a day with too little pay just makes
+        // the loan run a day longer.
+        toast(`Applied ${peso(data.total)} across ${data.applied} loan(s)`
+          + (notTaken ? `; ${notTaken} with too little pay today will run a day longer.` : '.'));
       }
       await reloadLoans();
     } catch {
@@ -693,6 +696,21 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
     return { ...p, kaltas, net: round2(p.total - kaltas) };
   });
 
+  // Preview of "Apply Today's Deductions" with the same planDeductions the
+  // server runs: each crew loan takes its daily amount from what that person
+  // earned today, never more. Matched by name here (what this screen has); the
+  // server matches by employee ID from the delivery records.
+  const earnedToday = new Map(dayPeople.map(p => [p.name, p.total]));
+  const crewLoans = loans.filter(l => l.isCrew);
+  const crewPlan = viewDate ? null : planDeductions(crewLoans, {
+    crew: true, runKey: 'crew-' + todayYmd, endYmd: todayYmd,
+    available: new Map(crewLoans.filter(l => earnedToday.has(l.person)).map(l => [l.employeeId, earnedToday.get(l.person)])),
+  });
+  const crewShortText = crewPlan && crewPlan.short.length
+    ? ` Not enough pay today, so nothing extra is taken and the loan runs a day longer: ${crewPlan.short
+      .map(x => (x.amount > 0 ? `${x.person} (only ${peso(x.amount)} earned)` : `${x.person} (no trips)`)).join(', ')}.`
+    : '';
+
   // One person's line items across every truck they rode that day.
   const personLinesAll = (p) => {
     const lines = [];
@@ -949,7 +967,9 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
 
       <Confirm open={confirmApply} onCancel={() => setConfirmApply(false)} onConfirm={applyDeductions}
         title="Apply today's deductions?"
-        message={`This will deduct ${peso(dueTotal)} total across ${dueLoans.length} active loan(s) for today, each logged with today's date on the Loans & Advances page. This can't be undone from here.`}
+        message={crewPlan
+          ? `Press this after the day's last trip is logged: it takes from what each person earned today. It will deduct ${peso(crewPlan.total)} across ${crewPlan.applied} loan(s).${crewShortText} This can't be undone from here.`
+          : ''}
         confirmLabel="Apply Deductions" />
 
       <Modal open={addRateOpen} onClose={() => setAddRateOpen(false)} title="Add Rate Item" width={440}>

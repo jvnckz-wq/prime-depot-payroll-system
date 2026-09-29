@@ -3,27 +3,42 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Wallet, ArrowLeft } from 'lucide-react';
 import { Av, Badge, Btn, Confirm, Eyebrow, H1, Modal, Money, Panel, SkeletonBlock, SkeletonRows, StatCard, Td, Th } from '../components/ui.jsx';
-import { computePagIBIG, computeStaffPayroll, loanBalance } from '../lib/payroll';
-import { cutoffOf, dueAmount, grantedBy, shortDate } from '../lib/loan-rules';
+import { computePagIBIG, computeStaffPayroll } from '../lib/payroll';
+import { cutoffOf, nextCutoff, planDeductions, shortDate, staffRunKey } from '../lib/loan-rules';
 import { currentCutoffPeriod, peso } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, F_SERIF, T } from '../theme';
 
 // Small note under the Loans / Advance Payment line, e.g.
 // "Hospitalization · balance after this cutoff ₱2,000.00" or
-// "Cash advance given Sep 22, 2026".
-const loanNote = (calc, kind) => {
+// "Cash advance given Sep 22, 2026". When the pay could not cover it (Phase 2),
+// the note says how much moved and to which payroll, so the employee can see
+// the deduction was not simply forgotten.
+const loanNote = (calc, kind, nextEnd) => {
   const lines = (calc.deductionLines || []).filter((d) => d.kind === kind);
   if (!lines.length) return null;
+  const short = lines.reduce((s, d) => s + (d.shortfall || 0), 0);
+  const moved = short > 0.004 ? `${peso(short)} short, moves to the ${shortDate(nextEnd)} payroll` : '';
+  let text;
   if (kind === 'CASH_ADVANCE') {
-    return lines.length === 1 ? `Cash advance given ${shortDate(lines[0].dateGranted, true)}` : `${lines.length} cash advances this cutoff`;
+    text = lines.length === 1 ? `Cash advance given ${shortDate(lines[0].dateGranted, true)}` : `${lines.length} cash advances this cutoff`;
+  } else {
+    text = `${lines[0].purpose || 'Loan'} · balance after this cutoff ${peso(Math.max(0, lines[0].balanceAfter))}`;
   }
-  const d = lines[0];
-  return `${d.purpose || 'Loan'} · balance after this cutoff ${peso(Math.max(0, d.balanceAfter))}`;
+  return moved ? `${text} · ${moved}` : text;
+};
+
+// "Romelyn Villanueva (₱360.00), April Castillo (₱1,500.00) and 2 more"
+const shortNames = (short) => {
+  const named = short.slice(0, 3).map((x) => `${x.person} (${peso(x.unpaid)})`).join(', ');
+  return short.length > 3 ? `${named} and ${short.length - 3} more` : named;
 };
 
 // One payslip, reused by the single-print view and the batch "Print All" run so
 // the two never drift. Renders the client's exact approved layout.
-const PayslipCard = ({ e, calc, cutoffLabel, attPeriod, att, statutory, className = 'max-w-md', ...rest }) => (
+const PayslipCard = ({ e, calc, cutoffLabel, attPeriod, att, statutory, className = 'max-w-md', ...rest }) => {
+  // The payroll after this one, where anything short is carried.
+  const nextEnd = nextCutoff(cutoffOf(attPeriod?.start || currentCutoffPeriod().start).end).end;
+  return (
   <Panel className={`${className} overflow-hidden`} {...rest}>
     <div className="px-6 pt-6 pb-4 text-center" style={{ borderBottom: `2px solid ${T.brand}` }}>
       <div className="font-bold" style={{ fontFamily: F_SERIF, color: T.brand, fontSize: 22, letterSpacing: '0.02em' }}>PRIME DEPOT HARDWARE</div>
@@ -76,8 +91,8 @@ const PayslipCard = ({ e, calc, cutoffLabel, attPeriod, att, statutory, classNam
         ['SSS Contribution:', calc.sss, false],
         // Loans and cash advances on their own lines, as on the client's own
         // payslip, each with a short note so the employee can see what it is.
-        ['Loans:', calc.loanDeduction ?? 0, false, loanNote(calc, 'LOAN')],
-        ['Adjustments: Advance Payment', calc.advanceDeduction ?? calc.advance, false, loanNote(calc, 'CASH_ADVANCE')],
+        ['Loans:', calc.loanDeduction ?? 0, false, loanNote(calc, 'LOAN', nextEnd)],
+        ['Adjustments: Advance Payment', calc.advanceDeduction ?? calc.advance, false, loanNote(calc, 'CASH_ADVANCE', nextEnd)],
         ['Tardiness:', calc.tardiness, true],
       ].map(([l, v, danger, sub], i) => (
         <div key={i} className="flex justify-between gap-3 text-sm py-1" style={{ fontFamily: F_BODY }}>
@@ -102,7 +117,8 @@ const PayslipCard = ({ e, calc, cutoffLabel, attPeriod, att, statutory, classNam
       ))}
     </div>
   </Panel>
-);
+  );
+};
 
 export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, cutoffLabel = '', reloadStaff, loading = false, navView }) => {
   const [view, setView] = useState('list');
@@ -138,9 +154,15 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
   // snapshot, Finalize). allowanceEdits holds the in-progress text before Save.
   const [allowanceEdits, setAllowanceEdits] = useState({});
   const [savingAllowance, setSavingAllowance] = useState(false);
-  // One key per cutoff, used to tag/read this cutoff's loan deductions so the
-  // preview, the payslip, Apply Deductions, and Finalize all agree.
-  const cutoffKey = `staff-${cutoffLabel}`;
+  // Days Present, Tardiness, and Overtime come from the latest imported
+  // attendance. Keyed by employee id (= biometric User ID).
+  const [attById, setAttById] = useState({});
+  const [attPeriod, setAttPeriod] = useState(null);
+  // One key per CALENDAR cutoff, used to tag/read this cutoff's loan
+  // deductions so the preview, the payslip, Apply Deductions, and Finalize all
+  // agree. It never depends on how far the import reached (Sep 16-29 or 16-30),
+  // or a second import would look like a new cutoff and deduct again.
+  const cutoffKey = staffRunKey(attPeriod?.start || currentCutoffPeriod().start);
   const [printAll, setPrintAll] = useState(false);
   useEffect(() => {
     if (!printAll) return;
@@ -149,10 +171,6 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
     return () => clearTimeout(t);
   }, [printAll]);
 
-  // Days Present, Tardiness, and Overtime come from the latest imported
-  // attendance. Keyed by employee id (= biometric User ID).
-  const [attById, setAttById] = useState({});
-  const [attPeriod, setAttPeriod] = useState(null);
   useEffect(() => {
     let cancelled = false;
     fetch('/api/attendance')
@@ -240,28 +258,36 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
   // Last day of the calendar cutoff being paid. Money given after it waits for
   // the next cutoff; the server applies the same rule (src/lib/loan-rules.js).
   const cutoffEnd = cutoffOf(attPeriod?.start || currentCutoffPeriod().start).end;
-  // Staff loans (matched by employeeId) that "Apply Cutoff Deductions" will
-  // actually touch: open, not paused, given by the cutoff's end, and not yet
-  // applied for this cutoff. A cash advance is due in full.
-  const staffIds = new Set(staff.map(s => s.id));
-  const dueLoans = loans.filter(l => staffIds.has(l.employeeId) && !l.paused && !l.settled && loanBalance(l) > 0
-    && grantedBy(l, cutoffEnd) && !l.entries.some(en => en.payslipId === cutoffKey));
-  const dueTotal = dueLoans.reduce((s, l) => s + dueAmount(l), 0);
+  const nextEnd = nextCutoff(cutoffEnd).end;
+  // Preview of what "Apply Cutoff Deductions" will do, with the SAME function
+  // the server runs (planDeductions): each person's pay after contributions and
+  // tardiness, advances first, then the loan, never below P0. The server
+  // recomputes all of it from the database; this is only so the Ops Head sees
+  // who will come out short BEFORE any money moves.
+  const plan = attPeriod
+    ? planDeductions(loans, {
+      crew: false, runKey: cutoffKey, endYmd: cutoffEnd,
+      available: new Map(rows.map(r => [r.emp.id, Math.max(0, computeStaffPayroll(r.emp, [], statutory, r.att).net)])),
+    })
+    : null;
+  const pending = plan ? plan.writes : [];
   const applyDeductions = async () => {
     setConfirmApply(false);
-    // Per-cutoff run key: applying the same cutoff again is a no-op server-side.
-    const runKey = cutoffKey;
+    if (!attPeriod) { toast("Import this cutoff's attendance first.", 'error'); return; }
     try {
+      // The server decides the run key and the pay available; the browser only
+      // says which attendance range is on screen.
       const res = await fetch('/api/loans/apply-deductions', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scope: 'staff', runKey, cutoffEnd }),
+        body: JSON.stringify({ scope: 'staff', start: attPeriod.start, end: attPeriod.end }),
       });
       const data = await res.json();
       if (!res.ok) { toast(data.error || 'Could not apply deductions.', 'error'); return; }
-      if (data.applied === 0) {
+      if (data.applied === 0 && !(data.short || []).length) {
         toast(data.skipped ? `Deductions were already applied for the ${cutoffLabel} cutoff.` : 'No staff loans were due.');
       } else {
-        toast(`Applied ${peso(data.total)} across ${data.applied} loan(s).`);
+        toast(`Applied ${peso(data.total)} across ${data.applied} loan(s)`
+          + (data.unpaidTotal > 0 ? `; ${peso(data.unpaidTotal)} carried over to the ${shortDate(nextEnd)} payroll.` : '.'));
       }
       await reloadLoans();
     } catch {
@@ -291,7 +317,8 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
         pagibigDeduction: Math.max(0, calc.hdmf - mp2Ded),
         mp2Deduction: mp2Ded,
         tardinessDeduction: calc.tardiness,
-        loanDeduction: calc.advance,
+        loanDeduction: calc.loanDeduction,
+        advanceDeduction: calc.advanceDeduction,
         totalDeductions: calc.totalDeductions,
         netPay: calc.net,
       };
@@ -303,7 +330,9 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
       });
       const data = await res.json();
       if (!res.ok) { toast(data.error || 'Could not finalize the cutoff.', 'error'); return; }
-      toast(`Released ${cutoffLabel} — ${data.payslips} payslip(s) snapshotted` + (data.loans?.total ? `, ${peso(data.loans.total)} in loans deducted.` : '.'));
+      toast(`Released ${cutoffLabel}: ${data.payslips} payslip(s) snapshotted`
+        + (data.loans?.total ? `, ${peso(data.loans.total)} in loans deducted` : '')
+        + (data.loans?.unpaidTotal > 0 ? `, ${peso(data.loans.unpaidTotal)} carried over.` : '.'));
       await reloadLoans();
       await loadHistory();
     } catch {
@@ -372,7 +401,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
               <div className="flex items-center gap-2">
                 <Badge tone={attPeriod ? 'green' : 'amber'}>{attPeriod ? `DTR ${attPeriod.start} → ${attPeriod.end}` : 'No attendance imported'}</Badge>
                 <Btn size="sm" variant="outline" disabled={rows.length === 0 || printAll} onClick={() => setPrintAll(true)}>{printAll ? 'Preparing…' : 'Print All Payslips'}</Btn>
-                <Btn size="sm" variant="outline" disabled={dueLoans.length === 0} onClick={() => setConfirmApply(true)}>Apply Cutoff Deductions</Btn>
+                <Btn size="sm" variant="outline" disabled={pending.length === 0} onClick={() => setConfirmApply(true)}>Apply Cutoff Deductions</Btn>
                 <Btn size="sm" loading={finalizing} disabled={!attPeriod || finalizing} onClick={() => setConfirmFinalize(true)}>{finalizing ? 'Finalizing…' : 'Finalize / Release'}</Btn>
               </div>
             </div>
@@ -442,12 +471,19 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
 
       <Confirm open={confirmApply} onCancel={() => setConfirmApply(false)} onConfirm={applyDeductions}
         title="Apply cutoff deductions?"
-        message={`This will deduct ${peso(dueTotal)} total across ${dueLoans.length} active loan(s) for the ${cutoffLabel} cutoff, each logged with today's date on the Loans & Advances page. This can't be undone from here.`}
+        message={plan ? `This will deduct ${peso(plan.total)} across ${plan.applied} loan(s) and cash advance(s) for the ${cutoffLabel} cutoff.`
+          + (plan.short.length
+            ? ` ${plan.short.length} can't be covered in full by this cutoff's pay: ${shortNames(plan.short)}. Net pay stops at ₱0.00, and the unpaid part carries over to the ${shortDate(nextEnd)} payroll.`
+            : '')
+          + " This can't be undone from here." : ''}
         confirmLabel="Apply Deductions" />
 
       <Confirm open={confirmFinalize} onCancel={() => setConfirmFinalize(false)} onConfirm={finalize}
         title={`Finalize and release ${cutoffLabel}?`}
-        message={`This snapshots all ${rows.length} staff payslip(s) for this cutoff (total net ${peso(totalNet)}) and applies their loan deductions. The figures are frozen once released — they won't change even if rates or records change later. You can un-finalize this cutoff from History if a correction is needed.`}
+        message={`This snapshots all ${rows.length} staff payslip(s) for this cutoff and applies their loan deductions.`
+          + (plan && plan.total > 0 ? ` It also takes ${peso(plan.total)} in deductions not applied yet, so the total net released will be ${peso(totalNet - plan.total)}.` : ` Total net ${peso(totalNet)}.`)
+          + (plan && plan.short.length ? ` ${plan.short.length} will carry over to the ${shortDate(nextEnd)} payroll: ${shortNames(plan.short)}.` : '')
+          + " The figures are frozen once released, even if rates or records change later. You can un-finalize this cutoff from History if a correction is needed."}
         confirmLabel="Finalize / Release" />
 
       <Confirm open={!!confirmUnfinalize} onCancel={() => setConfirmUnfinalize(null)} onConfirm={() => unfinalize(confirmUnfinalize)} busy={unfinalizing}

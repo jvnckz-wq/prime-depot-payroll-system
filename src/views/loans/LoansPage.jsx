@@ -6,7 +6,7 @@
 import React, { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Pause, Play, Plus } from 'lucide-react';
 import { Btn, EmptyState, H1 } from '../../components/ui.jsx';
-import { balanceOf, dueAmount, grantedBy, isOpen, nextCutoff, shortDate } from '../../lib/loan-rules';
+import { balanceOf, carryOf, dueFor, grantedBy, isOpen, nextCutoff, shortDate } from '../../lib/loan-rules';
 import { peso } from '../../lib/utils';
 import { F_BODY, F_MONO, T } from '../../theme';
 import { BalanceBar, D, H, Kpi, Ledger, Person, Pill, SearchBox, Seg } from './parts.jsx';
@@ -25,13 +25,16 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
     .filter((l) => l.kind === 'LOAN' && isOpen(l))
     .map((l) => {
       const balance = balanceOf(l);
-      const due = dueAmount(l);
       const appliedNow = !l.isCrew && l.entries.some((en) => en.type === 'deduction' && en.payslipId === runKey);
       const status = l.paused ? 'Paused' : !grantedBy(l, period.end) ? 'Scheduled' : 'Deducting';
       // Staff: the next payroll is this cutoff's, unless it was already taken.
       const nextEnd = appliedNow || status === 'Scheduled' ? nextCutoff(period.end).end : period.end;
+      // Phase 2: a staff installment includes what the last cutoff could not
+      // take (rule e). Crew are not stacked, so their due is the daily amount.
+      const due = dueFor(l, { endYmd: l.isCrew ? null : nextEnd });
+      const carry = l.isCrew ? { amount: 0, fromYmd: null } : carryOf(l, nextEnd);
       const left = l.perCutoff > 0 ? Math.ceil(balance / l.perCutoff - 1e-9) : null;
-      return { l, balance, due, status, nextEnd, left };
+      return { l, balance, due, carry, status, nextEnd, left };
     })
     .sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || b.due - a.due || a.l.person.localeCompare(b.l.person)),
   [loans, period.end, runKey]);
@@ -86,7 +89,7 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
                 <H>Employee</H><H>Purpose</H><H right>Installment</H><H right>Balance / Principal</H><H>Next deduction</H><H>Status</H><H />
               </tr></thead>
               <tbody>
-                {shown.map(({ l, balance, due, status, nextEnd, left }) => {
+                {shown.map(({ l, balance, due, carry, status, nextEnd, left }) => {
                   const expanded = openId === l.id;
                   const unit = l.isCrew ? 'day' : 'cutoff';
                   return (
@@ -106,7 +109,12 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
                           {status === 'Paused' ? <span style={{ color: T.soft }}>None while paused</span> : (
                             <>
                               <div><b className="tabular-nums" style={{ fontFamily: F_MONO }}>{peso(due)}</b> · {l.isCrew ? 'daily' : shortDate(nextEnd)}</div>
-                              {left != null && (
+                              {carry.amount > 0 ? (
+                                // Where the extra comes from, so the Ops Head is not left wondering.
+                                <div className="text-xs" style={{ color: '#7A4B12' }}>
+                                  incl. {peso(carry.amount)} short{carry.fromYmd ? ` from ${shortDate(carry.fromYmd)}` : ''}
+                                </div>
+                              ) : left != null && (
                                 <div className="text-xs" style={{ color: T.soft }}>
                                   {l.isCrew ? `about ${left} working day${left === 1 ? '' : 's'} left` : left === 1 ? 'last deduction' : `${left} cutoffs left`}
                                 </div>

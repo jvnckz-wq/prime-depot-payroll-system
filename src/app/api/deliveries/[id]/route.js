@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma, prismaBase } from '../../../../lib/prisma';
 import { logSecurityEvent, requireUser } from '../../../../lib/auth';
+import { todayYmdManila } from '../../../../lib/loan-rules';
 
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
 
@@ -30,7 +31,9 @@ export async function PATCH(request, { params }) {
     if (!delivery) return NextResponse.json({ error: 'Delivery not found.' }, { status: 404 });
 
     const isAdmin = auth.user.role === 'ADMIN';
-    const isToday = ymd(delivery.date) === ymd(new Date());
+    // "Today" in Manila, the same day the trip was filed under (see POST). A UTC
+    // today used to lock a Checker out of this morning's trips until 8 AM.
+    const isToday = ymd(delivery.date) === todayYmdManila();
 
     if (!isAdmin && !isToday) {
       return NextResponse.json(

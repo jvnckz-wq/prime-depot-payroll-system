@@ -5,6 +5,7 @@ import { AlertTriangle, Check } from 'lucide-react';
 import { Badge, Btn, EmptyState, Eyebrow, H1, Panel, Skeleton, Td, Th } from '../components/ui.jsx';
 import { CREW_RATE_FALLBACK, positionLabel } from '../data/seed';
 import { computeStaffPayroll, crewEarnings, deliveriesToLog } from '../lib/payroll';
+import { todayYmdManila } from '../lib/loan-rules';
 import { exportXLSX, peso } from '../lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '../theme';
 
@@ -32,14 +33,15 @@ function crewEarningsRange(apiDeliveries, crewRates) {
     .sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === 'Driver' ? -1 : 1));
 }
 
-export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel = '', attendanceSummaries = [], crewRates = CREW_RATE_FALLBACK, navTab }) => {
+export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel = '', runKey = '', attendanceSummaries = [], crewRates = CREW_RATE_FALLBACK, navTab }) => {
   const [tab, setTab] = useState(navTab || 'register');
   // eslint-disable-next-line react-hooks/set-state-in-effect -- sync the report from the sidebar selection
   useEffect(() => { if (navTab) setTab(navTab); }, [navTab]);
 
   // Crew Earnings has its own date range — a day, a week, or any span — fetched
   // independently of the "today only" live feed the rest of the app uses.
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // Manila day, matching the date deliveries are filed under.
+  const todayStr = todayYmdManila();
   const [from, setFrom] = useState(todayStr);
   const [to, setTo] = useState(todayStr);
   const [rangeApi, setRangeApi] = useState([]);
@@ -68,7 +70,8 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
     for (const s of attendanceSummaries) m[s.id] = s;
     return m;
   }, [attendanceSummaries]);
-  const cutoffKey = `staff-${cutoffLabel}`;
+  // Calendar-cutoff ledger key from the parent (same one Staff Payroll uses).
+  const cutoffKey = runKey || `staff-${cutoffLabel}`;
 
   // Only paid staff (₱0 daily rate = no salary set) appear here, matching the
   // Staff Payroll page — they aren't part of the register, remittance, or 13th month.

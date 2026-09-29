@@ -6,7 +6,8 @@ import { Confirm, Toasts } from './components/ui.jsx';
 import { IdleTimeout } from './components/IdleTimeout.jsx';
 import { BIR_TABLE_INIT, CREW_RATE_FALLBACK, PAGIBIG_INIT, PHILHEALTH_INIT, SSS_TABLE_INIT } from './data/seed';
 import { deliveriesToLog } from './lib/payroll';
-import { uid, cutoffLabel } from './lib/utils';
+import { uid, cutoffLabel, currentCutoffPeriod } from './lib/utils';
+import { staffRunKey, todayYmdManila } from './lib/loan-rules';
 import { FONTS, F_BODY, T } from './theme';
 import { AttendanceView } from './views/AttendanceView.jsx';
 import { CheckerView } from './views/CheckerView.jsx';
@@ -99,11 +100,11 @@ export default function PrimeDepotPayroll() {
 
   const reloadDeliveries = React.useCallback(async () => {
     try {
-      // Live views show today only. "Today" is the server's date — the same
-      // basis a freshly logged delivery is stored under — so a delivery logged
-      // now always appears, and a brand-new day starts empty until the first
-      // trip is logged. Past days live in Truck Payroll's History.
-      const today = new Date().toISOString().slice(0, 10);
+      // Live views show today only. "Today" is the Manila calendar day, the
+      // same day the server files a new delivery under, so a trip logged now
+      // always appears and the day turns over at midnight here (it used to be
+      // UTC, which turned over at 8 AM). Past days live in Truck Payroll's History.
+      const today = todayYmdManila();
       const res = await fetch(`/api/deliveries?from=${today}&to=${today}`);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
@@ -217,6 +218,9 @@ export default function PrimeDepotPayroll() {
     return () => { cancelled = true; };
   }, [user]);
   const cutoffText = cutoffLabel(cutoffPeriod);
+  // The ledger key of this cutoff's staff deductions. It names the calendar
+  // cutoff (not the import range) and matches Staff Payroll and Finalize.
+  const staffKey = staffRunKey(cutoffPeriod?.start || currentCutoffPeriod().start);
 
   const [toasts, setToasts] = useState([]);
 
@@ -320,14 +324,14 @@ export default function PrimeDepotPayroll() {
         <TopBar user={user} onOpenAccount={() => setTab('account')} onLogout={() => setConfirmLogout(true)} onOpenNav={() => setNavOpen(true)} />
         <main className="flex-1 overflow-y-auto">
           <div key={tab} className="pd-view-in">
-          {tab === 'dashboard' && <DashboardView deliveries={deliveries} staff={staff} totalEmployees={allStaff.filter(e => e.status !== 'Inactive').length} loans={loans} statutory={statutory} setTab={setTab} cutoffLabel={cutoffText} attendanceSummaries={attSummaries} unmappedCount={unmappedCount} />}
+          {tab === 'dashboard' && <DashboardView deliveries={deliveries} staff={staff} totalEmployees={allStaff.filter(e => e.status !== 'Inactive').length} loans={loans} statutory={statutory} setTab={setTab} cutoffLabel={cutoffText} runKey={staffKey} attendanceSummaries={attSummaries} unmappedCount={unmappedCount} />}
           {tab === 'employees' && <EmployeesView staff={allStaff} reloadStaff={reloadStaff} toast={toast} prefill={employeePrefill} onPrefillConsumed={() => setEmployeePrefill(null)} />}
           {tab === 'attendance' && <AttendanceView navSub={subs.attendance} staff={allStaff} toast={toast} onRegister={(id, name) => { setEmployeePrefill({ id, name }); setTab('employees'); }} />}
           {tab === 'payroll' && <PayrollView navSub={subs.payroll} staff={staff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} toast={toast} cutoffLabel={cutoffText} reloadStaff={reloadStaff} staffLoading={staffLoading} deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} crewRates={crewRates} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} />}
           {tab === 'deliveries' && <TruckPayrollView mode="logging" deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} crewRates={crewRates} loans={loans} reloadLoans={reloadLoans} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} toast={toast} />}
           {tab === 'loans' && <LoansView navSub={subs.loans} staff={allStaff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} cutoffPeriod={cutoffPeriod} toast={toast} />}
           {tab === 'faqs' && <FAQView />}
-          {tab === 'reports' && <ReportsView navTab={subs.reports} staff={staff} deliveries={deliveries} loans={loans} statutory={statutory} cutoffLabel={cutoffText} attendanceSummaries={attSummaries} crewRates={crewRates} />}
+          {tab === 'reports' && <ReportsView navTab={subs.reports} staff={staff} deliveries={deliveries} loans={loans} statutory={statutory} cutoffLabel={cutoffText} runKey={staffKey} attendanceSummaries={attSummaries} crewRates={crewRates} />}
           {tab === 'settings' && <SettingsView navTab={subs.settings} currentUser={user} onUserChange={u => setUser(prev => ({ ...prev, ...u }))} onSignedOut={() => { setUser(null); setTab('dashboard'); }} checkers={checkers} setCheckers={setCheckers} sssTable={sssTable} setSssTable={setSssTable} philhealthRates={philhealthRates} setPhilhealthRates={setPhilhealthRates} pagibigRates={pagibigRates} setPagibigRates={setPagibigRates} birTable={birTable} setBirTable={setBirTable} toast={toast} />}
           </div>
         </main>

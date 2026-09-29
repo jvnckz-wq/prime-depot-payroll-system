@@ -1,4 +1,5 @@
 import { CREW_POSITIONS } from '../data/seed';
+import { dueFor } from './loan-rules';
 
 // The one place that decides which payroll an employee belongs to. Position is
 // the only input: Driver and Pahinante are paid piece-rate (pakyawan) through
@@ -129,22 +130,26 @@ export function computeStaffPayroll(e, loans = [], statutory, attendance = null,
   for (const l of loans) {
     if (!l || l.employeeId !== e.id) continue;
     let amount;
+    // Phase 2: the part this cutoff could not take (pay ran out) is on the
+    // same ledger entry, so the payslip can say it moved to the next cutoff.
+    let shortfall = 0;
     if (runKey) {
-      amount = (l.entries || [])
-        .filter(en => en.type === 'deduction' && en.payslipId === runKey)
-        .reduce((a, en) => a + en.amount, 0);
+      const mine = (l.entries || []).filter(en => en.type === 'deduction' && en.payslipId === runKey);
+      amount = mine.reduce((a, en) => a + en.amount, 0);
+      shortfall = mine.reduce((a, en) => a + (en.shortfall || 0), 0);
     } else {
       if (l.paused) continue;
-      const bal = loanBalance(l);
-      amount = bal > 0 ? (l.kind === 'CASH_ADVANCE' ? bal : Math.min(l.perCutoff, bal)) : 0;
+      amount = dueFor(l);
     }
-    if (amount <= 0) continue;
+    // A P0 entry that carried everything over still gets its line: the
+    // employee sees why nothing was taken and where it went.
+    if (amount <= 0 && shortfall <= 0) continue;
     if (l.kind === 'CASH_ADVANCE') advanceDeduction += amount; else loanDeduction += amount;
     // With a runKey, read the running balance right after THIS cutoff's
     // deduction (later top-ups or deductions don't rewrite an old payslip).
     // A preview has not taken the money yet, so subtract it.
     const balanceAfter = round2(runKey ? balanceThrough(l, runKey) : loanBalance(l) - amount);
-    deductionLines.push({ kind: l.kind, purpose: l.purpose, amount: round2(amount), balanceAfter, dateGranted: l.dateGranted });
+    deductionLines.push({ kind: l.kind, purpose: l.purpose, amount: round2(amount), shortfall: round2(shortfall), balanceAfter, dateGranted: l.dateGranted });
   }
   loanDeduction = round2(loanDeduction);
   advanceDeduction = round2(advanceDeduction);
