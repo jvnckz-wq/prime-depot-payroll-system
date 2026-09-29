@@ -15,7 +15,7 @@
  * nulled automatically).
  *
  * Run locally (same as reset-password.ts):
- *   npx tsx scripts/clear-demo-employees.ts
+ *   npx tsx scripts/admin/clear-demo-employees.ts
  *
  * NOTE: do NOT run `prisma db seed` or `prisma migrate reset` afterwards, or the
  * demo employees will be recreated.
@@ -23,7 +23,7 @@
 import { config } from 'dotenv';
 config({ path: '.env.local' });
 
-import { PrismaClient } from '../src/generated/prisma/client';
+import { PrismaClient } from '../../src/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 
 const adapter = new PrismaPg({

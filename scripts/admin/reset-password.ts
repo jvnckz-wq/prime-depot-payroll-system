@@ -1,8 +1,8 @@
 // ============================================================================
 // Emergency password reset.
 //
-//   npx tsx scripts/reset-password.ts <username> <new-password>
-//   npx tsx scripts/reset-password.ts admin MyNewPass123
+//   npx tsx scripts/admin/reset-password.ts <username> <new-password>
+//   npx tsx scripts/admin/reset-password.ts admin MyNewPass123
 //
 // This is the recovery path of last resort — the answer to "the only
 // administrator forgot their password and nobody can let them back in."
@@ -19,7 +19,7 @@
 import { config } from 'dotenv';
 config({ path: '.env.local' });
 
-import { PrismaClient } from '../src/generated/prisma/client';
+import { PrismaClient } from '../../src/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import bcrypt from 'bcryptjs';
 
@@ -32,7 +32,7 @@ async function main() {
   const [username, newPassword] = process.argv.slice(2);
 
   if (!username || !newPassword) {
-    console.error('Usage: npx tsx scripts/reset-password.ts <username> <new-password>');
+    console.error('Usage: npx tsx scripts/admin/reset-password.ts <username> <new-password>');
     process.exitCode = 1;
     return;
   }

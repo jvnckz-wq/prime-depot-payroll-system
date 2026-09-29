@@ -12,7 +12,7 @@
  * date, so they are unaffected.
  *
  * Run locally (same as the other scripts):
- *   npx tsx scripts/dedupe-attendance-batches.ts
+ *   npx tsx scripts/admin/dedupe-attendance-batches.ts
  *
  * After this, the import route also prevents new duplicates automatically
  * (re-importing a period replaces its previous batch).
@@ -20,7 +20,7 @@
 import { config } from 'dotenv';
 config({ path: '.env.local' });
 
-import { PrismaClient } from '../src/generated/prisma/client';
+import { PrismaClient } from '../../src/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 
 const adapter = new PrismaPg({

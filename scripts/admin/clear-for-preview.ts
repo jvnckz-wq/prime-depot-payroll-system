@@ -16,7 +16,7 @@
  * (endpoint "small-heart"). Only ever runs against a Neon test branch.
  *
  * Run locally:
- *   npx tsx scripts/clear-for-preview.ts
+ *   npx tsx scripts/admin/clear-for-preview.ts
  *
  * When done previewing: restore .env.local from your backup and delete the
  * Neon branch. Your live data was never touched.
@@ -24,7 +24,7 @@
 import { config } from 'dotenv';
 config({ path: '.env.local' });
 
-import { PrismaClient } from '../src/generated/prisma/client';
+import { PrismaClient } from '../../src/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 
 const conn = process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL ?? '';
