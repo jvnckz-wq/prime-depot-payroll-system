@@ -7,7 +7,7 @@ import { POSITIONS, positionLabel } from '@/data/seed';
 import { isCrewPosition } from '@/lib/payroll';
 import { WEEKDAYS, describeEarlyShift } from '@/lib/attendance';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
-import { FinalPayView } from '@/views/FinalPayView.jsx';
+import { FinalPayView } from '@/features/payroll/FinalPayView.jsx';
 
 // Registration fields required by the client spec: ID number, name, position,
 // daily rate, plus personal information (address, contact number, birthdate).

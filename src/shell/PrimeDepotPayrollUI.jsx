@@ -22,8 +22,8 @@ import { AccountPage } from '@/views/AccountPage.jsx';
 import { FAQView } from '@/views/FAQView.jsx';
 import { ReportsView } from '@/views/ReportsView.jsx';
 import { SettingsView } from '@/views/SettingsView.jsx';
-import { PayrollView } from '@/views/PayrollView.jsx';
-import { TruckPayrollView } from '@/views/TruckPayrollView.jsx';
+import { PayrollView } from '@/features/payroll/PayrollView.jsx';
+import { TruckPayrollView } from '@/features/payroll/TruckPayrollView.jsx';
 
 export default function PrimeDepotPayroll() {
   // Authentication state. `user` is null when signed out; `authChecking` covers
