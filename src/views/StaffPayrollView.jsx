@@ -402,22 +402,54 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
 
       {subTab === 'current' && (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
-            <StatCard label="Total Gross" value={peso(totalGross)} tone="blue" icon={Wallet} />
-            <StatCard label="Total Net Pay" value={peso(totalNet)} tone="green" icon={Wallet} />
-            <StatCard label="Employees Computed" value={rows.length} icon={Users} />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-5">
+            <StatCard compact label="Total Gross" value={peso(totalGross)} tone="blue" icon={Wallet} />
+            <StatCard compact label="Total Net Pay" value={peso(totalNet)} tone="green" icon={Wallet} />
+            <StatCard compact label="Employees Computed" value={rows.length} icon={Users} />
           </div>
           <Panel className="overflow-hidden">
             <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
               <Eyebrow>Payslips — {cutoffLabel}</Eyebrow>
-              <div className="flex items-center gap-2">
+              {/* Phone: the DTR range on its own line and one full-width button
+                  per row, so none of the money buttons has its label broken
+                  into pieces. From sm up: one row, as before. */}
+              <div className="grid grid-cols-1 gap-2 w-full sm:flex sm:items-center sm:w-auto">
                 <Badge tone={attPeriod ? 'green' : 'amber'}>{attPeriod ? `DTR ${attPeriod.start} → ${attPeriod.end}` : 'No attendance imported'}</Badge>
-                <Btn size="sm" variant="outline" disabled={rows.length === 0 || printAll} onClick={() => setPrintAll(true)}>{printAll ? 'Preparing…' : 'Print All Payslips'}</Btn>
-                <Btn size="sm" variant="outline" disabled={pending.length === 0} onClick={() => setConfirmApply(true)}>Apply Cutoff Deductions</Btn>
-                <Btn size="sm" loading={finalizing} disabled={!attPeriod || finalizing} onClick={() => setConfirmFinalize(true)}>{finalizing ? 'Finalizing…' : 'Finalize / Release'}</Btn>
+                <Btn size="sm" fullMobile variant="outline" disabled={rows.length === 0 || printAll} onClick={() => setPrintAll(true)}>{printAll ? 'Preparing…' : 'Print All Payslips'}</Btn>
+                <Btn size="sm" fullMobile variant="outline" disabled={pending.length === 0} onClick={() => setConfirmApply(true)}>Apply Cutoff Deductions</Btn>
+                <Btn size="sm" fullMobile loading={finalizing} disabled={!attPeriod || finalizing} onClick={() => setConfirmFinalize(true)}>{finalizing ? 'Finalizing…' : 'Finalize / Release'}</Btn>
               </div>
             </div>
-            <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
+            {/* Phone: one card per payslip, Net Pay first. Tapping the card
+                opens the payslip, the same as View. */}
+            <div className="md:hidden">
+              {loading ? <SkeletonBlock /> : rows.map(({ emp, calc }) => (
+                <button key={emp.id} type="button" onClick={() => { setSelectedId(emp.id); setView('slip'); }}
+                  className="pd-clickable w-full text-left px-4 py-3 flex items-center gap-3"
+                  style={{ borderBottom: `1px solid ${T.lineSoft}`, fontFamily: F_BODY }}>
+                  <Av name={emp.name} size={32} />
+                  <span className="flex-1 min-w-0">
+                    <span className="block font-semibold truncate" style={{ color: T.ink }}>{emp.name}</span>
+                    <span className="block text-xs pd-num" style={{ color: T.soft }}>
+                      <span className="whitespace-nowrap">{calc.days} days</span>{' · '}
+                      <span className="whitespace-nowrap">gross {peso(calc.gross)}</span>
+                      {calc.ot > 0 && <>{' · '}<span className="whitespace-nowrap">OT +{peso(calc.ot)}</span></>}
+                    </span>
+                    <span className="block text-xs pd-num" style={{ color: T.red }}>Deductions -{peso(calc.totalDeductions)}</span>
+                  </span>
+                  <span className="text-right shrink-0">
+                    <span className="block text-xs" style={{ color: T.soft }}>Net pay</span>
+                    <span className="block font-bold pd-num whitespace-nowrap" style={{ fontFamily: F_MONO, color: T.ink }}>{peso(calc.net)}</span>
+                  </span>
+                </button>
+              ))}
+              {!loading && rows.length > 0 && (
+                <div className="px-4 py-3 flex justify-between text-sm" style={{ fontFamily: F_BODY }}>
+                  <b>Total net</b><b className="pd-num" style={{ fontFamily: F_MONO, color: T.amber }}>{peso(totalNet)}</b>
+                </div>
+              )}
+            </div>
+            <div className="hidden md:block overflow-x-auto pd-scroll-shadow"><table className="w-full">
               <thead><tr><Th>Employee</Th><Th center>Days</Th><Th right>Gross</Th><Th right>OT</Th><Th right>Deductions</Th><Th right>Net Pay</Th><Th>Payslip</Th></tr></thead>
               <tbody>
                 {loading ? <SkeletonRows cols={7} rows={5} /> : rows.map(({ emp, calc }) => (

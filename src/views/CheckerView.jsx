@@ -73,7 +73,7 @@ export const CheckerView = ({ currentUser, deliveries, reloadDeliveries, rates, 
 
       <div className="max-w-6xl mx-auto p-3.5 sm:p-5">
         <Panel className="p-4 mb-4">
-          <div className="flex flex-wrap justify-around gap-3">
+          <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:justify-around sm:gap-3">
             <BigStat value={allTrips.length} label="Deliveries Logged" />
             <BigStat value={trucksActive} label="Trucks Active" tone={T.blue} />
             <BigStat value={bonusTrucks} label="Trucks at Bonus" tone={T.amber} />

@@ -60,11 +60,30 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
     } catch { toast('Could not reach the server.', 'error'); } finally { setBusyId(null); }
   };
 
+  // "Next deduction" text, shared by the table (desktop) and the cards (phone).
+  const nextCell = ({ l, due, carry, status, nextEnd, left }) => (
+    status === 'Paused' ? <span style={{ color: T.soft }}>None while paused</span> : (
+      <>
+        <div><b className="tabular-nums" style={{ fontFamily: F_MONO }}>{peso(due)}</b> · {l.isCrew ? 'daily' : shortDate(nextEnd)}</div>
+        {carry.amount > 0 ? (
+          // Where the extra comes from, so the Ops Head is not left wondering.
+          <div className="text-xs" style={{ color: '#7A4B12' }}>
+            incl. {peso(carry.amount)} short{carry.fromYmd ? ` from ${shortDate(carry.fromYmd)}` : ''}
+          </div>
+        ) : left != null && (
+          <div className="text-xs" style={{ color: T.soft }}>
+            {l.isCrew ? `about ${left} working day${left === 1 ? '' : 's'} left` : left === 1 ? 'last deduction' : `${left} cutoffs left`}
+          </div>
+        )}
+      </>
+    )
+  );
+
   return (
     <div className="p-4 sm:p-6">
       <H1 action={<Btn variant="amber" icon={Plus} onClick={() => setForm({ employeeId: null })}>New Loan</Btn>}>Loans</H1>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3.5 mb-4">
         <Kpi label="Outstanding balance" value={peso(outstanding)} sub={`${rows.length} active loan${rows.length === 1 ? '' : 's'}`} />
         <Kpi label={`To deduct on ${shortDate(period.end)} payroll`} value={peso(toDeduct.reduce((s, r) => s + r.due, 0))}
           sub={`${toDeduct.length} staff loan${toDeduct.length === 1 ? '' : 's'}${pausedCount ? ` · ${pausedCount} paused` : ''}`} />
@@ -83,7 +102,49 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
           <EmptyState title={rows.length ? 'No loans match this filter' : 'No active loans'}
             desc={rows.length ? 'Try another name or filter.' : 'Loans that are fully paid are in History.'} />
         ) : (
-          <div className="overflow-x-auto pd-scroll-shadow">
+          <>
+          {/* Phone: one card per loan with the money in view (balance, next
+              deduction, status). Tap the card for its ledger; the action
+              buttons are separate so a tap on the card never pauses or tops up. */}
+          <div className="md:hidden">
+            {shown.map(({ l, balance, due, carry, status, nextEnd, left }) => {
+              const expanded = openId === l.id;
+              const unit = l.isCrew ? 'day' : 'cutoff';
+              return (
+                <div key={l.id} style={{ borderBottom: `1px solid ${T.lineSoft}`, backgroundColor: expanded ? '#FCFBFA' : undefined }}>
+                  <button type="button" className="pd-clickable w-full text-left px-3.5 pt-3 pb-2" aria-expanded={expanded}
+                    onClick={() => setOpenId(expanded ? null : l.id)} style={{ fontFamily: F_BODY }}>
+                    <div className="flex items-start justify-between gap-2">
+                      <Person name={l.person} role={l.role} />
+                      <Pill tone={status === 'Paused' ? 'amber' : status === 'Scheduled' ? 'slate' : 'green'}>{status}</Pill>
+                    </div>
+                    <div className="mt-2 text-xs" style={{ color: T.soft }}>
+                      {l.purpose} · <span className="pd-num whitespace-nowrap">{peso(l.perCutoff)} / {unit}</span>
+                    </div>
+                    <div className="mt-1.5 flex items-end justify-between gap-3">
+                      <div className="text-sm min-w-0" style={{ color: T.ink }}>
+                        {nextCell({ l, due, carry, status, nextEnd, left })}
+                      </div>
+                      <BalanceBar balance={balance} principal={l.principal} />
+                    </div>
+                  </button>
+                  <div className="px-3.5 pb-3 flex items-center gap-2 flex-wrap">
+                    {status === 'Paused'
+                      ? <Btn variant="outline" icon={Play} loading={busyId === l.id} onClick={() => setPaused(l, false)}>Resume</Btn>
+                      : <Btn variant="outline" onClick={() => setForm({ employeeId: l.employeeId })}>Top-up</Btn>}
+                    {expanded && status !== 'Paused' && (
+                      <Btn variant="ghost" icon={Pause} loading={busyId === l.id} onClick={() => setPaused(l, true)}>Pause deductions</Btn>
+                    )}
+                    <span className="ml-auto text-xs flex items-center gap-1" style={{ color: T.soft }}>
+                      {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}{expanded ? 'Hide ledger' : 'Ledger'}
+                    </span>
+                  </div>
+                  {expanded && <div className="px-3.5 pb-3.5"><Ledger loan={l} /></div>}
+                </div>
+              );
+            })}
+          </div>
+          <div className="hidden md:block overflow-x-auto pd-scroll-shadow">
             <table className="w-full">
               <thead><tr>
                 <H>Employee</H><H>Purpose</H><H right>Installment</H><H right>Balance / Principal</H><H>Next deduction</H><H>Status</H><H />
@@ -106,21 +167,7 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
                         <D right style={{ fontFamily: F_MONO, whiteSpace: 'nowrap' }}>{peso(l.perCutoff)} / {unit}</D>
                         <D right><BalanceBar balance={balance} principal={l.principal} /></D>
                         <D style={{ whiteSpace: 'nowrap' }}>
-                          {status === 'Paused' ? <span style={{ color: T.soft }}>None while paused</span> : (
-                            <>
-                              <div><b className="tabular-nums" style={{ fontFamily: F_MONO }}>{peso(due)}</b> · {l.isCrew ? 'daily' : shortDate(nextEnd)}</div>
-                              {carry.amount > 0 ? (
-                                // Where the extra comes from, so the Ops Head is not left wondering.
-                                <div className="text-xs" style={{ color: '#7A4B12' }}>
-                                  incl. {peso(carry.amount)} short{carry.fromYmd ? ` from ${shortDate(carry.fromYmd)}` : ''}
-                                </div>
-                              ) : left != null && (
-                                <div className="text-xs" style={{ color: T.soft }}>
-                                  {l.isCrew ? `about ${left} working day${left === 1 ? '' : 's'} left` : left === 1 ? 'last deduction' : `${left} cutoffs left`}
-                                </div>
-                              )}
-                            </>
-                          )}
+                          {nextCell({ l, due, carry, status, nextEnd, left })}
                         </D>
                         <D><Pill tone={status === 'Paused' ? 'amber' : status === 'Scheduled' ? 'slate' : 'green'}>{status}</Pill></D>
                         <D right>
@@ -151,6 +198,7 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 

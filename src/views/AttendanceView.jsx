@@ -536,13 +536,13 @@ export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
             })()}
           </div>
 
-          <div className="flex flex-wrap" style={{ gap: 10, padding: '16px 18px' }}>
+          <div className="grid grid-cols-3 sm:flex sm:flex-wrap" style={{ gap: 10, padding: '16px 18px' }}>
             {[
               [liveData.isToday ? 'Present today' : 'Present', liveData.stats.present, T.ink, false],
               ['Late', liveData.stats.late, T.red, false],
               [liveData.isToday ? 'Not yet in' : 'Absent / no scan', liveData.stats.notYetIn, T.soft, true],
             ].map(([label, n, color, dashed]) => (
-              <div key={label} style={{ background: dashed ? 'transparent' : T.surface, border: `1px ${dashed ? 'dashed' : 'solid'} ${T.line}`, borderRadius: 12, padding: '12px 16px', minWidth: 128 }}>
+              <div key={label} className="sm:min-w-32" style={{ background: dashed ? 'transparent' : T.surface, border: `1px ${dashed ? 'dashed' : 'solid'} ${T.line}`, borderRadius: 12, padding: '12px 14px' }}>
                 <div style={{ fontFamily: F_HEAD, fontWeight: 700, fontSize: 23, lineHeight: 1, color, fontVariantNumeric: 'tabular-nums' }}>{n}</div>
                 <div style={{ fontFamily: F_HEAD, fontWeight: 600, fontSize: 11.5, color: T.soft, textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 6 }}>{label}</div>
               </div>

@@ -182,7 +182,7 @@ export const CashAdvancesPage = ({ staff, loans, reloadLoans, statutory, period:
         </div>
       }>Cash Advances</H1>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3.5 mb-4">
         <Kpi label="Advanced this cutoff" value={peso(total)} sub={`${people} employee${people === 1 ? '' : 's'}`} />
         <Kpi label="Deducted in full on" value={`${shortDate(period.end)} payroll`} sub="Staff only · crew are paid daily" />
         <Kpi label={`Carried over from ${prev}`} value={peso(earlierTotal)}
@@ -193,7 +193,33 @@ export const CashAdvancesPage = ({ staff, loans, reloadLoans, statutory, period:
         {inCutoff.length === 0 ? (
           <EmptyState title={`No cash advances for ${periodLabel(period)}`} desc="Advances given in this cutoff are deducted in full on its payroll." />
         ) : (
-          <div className="overflow-x-auto pd-scroll-shadow">
+          <>
+          {/* Phone: one card per advance (who, when, how much, status). */}
+          <div className="md:hidden">
+            {inCutoff.map((l) => {
+              const bal = balanceOf(l);
+              const paid = !isOpen(l);
+              const partly = !paid && l.entries.some((en) => en.type === 'deduction' && en.payslipId);
+              const emp = staffById.get(l.employeeId);
+              const limit = emp ? projectedGross(emp.rate, period) : null;
+              const room = limit == null ? null : round2(limit - advancedInCutoff(advances, l.employeeId, period));
+              return (
+                <div key={l.id} className="px-3.5 py-3" style={{ borderBottom: `1px solid ${T.lineSoft}`, fontFamily: F_BODY }}>
+                  <div className="flex items-start justify-between gap-2">
+                    <Person name={l.person} role={l.role} />
+                    <span className="font-bold pd-num whitespace-nowrap" style={{ fontFamily: F_MONO, color: T.ink }}>{peso(l.principal)}</span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-2 text-xs" style={{ color: T.soft }}>
+                    <span>Given {shortDate(l.dateGranted, true)}{room == null ? '' : ` · room left ${peso(Math.max(0, room))}`}</span>
+                    {paid ? <Pill tone="green">Deducted</Pill>
+                      : partly ? <Pill tone="amber">{peso(bal)} carried over</Pill>
+                        : <Pill tone="slate">To deduct {shortDate(period.end)}</Pill>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="hidden md:block overflow-x-auto pd-scroll-shadow">
             <table className="w-full">
               <thead><tr><H>Employee</H><H>Date given</H><H right>Amount</H><H right>Limit (projected gross)</H><H right>Room left</H><H>Status</H></tr></thead>
               <tbody>
@@ -224,6 +250,7 @@ export const CashAdvancesPage = ({ staff, loans, reloadLoans, statutory, period:
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 

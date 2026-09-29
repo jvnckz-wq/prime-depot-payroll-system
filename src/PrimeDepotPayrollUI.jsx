@@ -37,7 +37,7 @@ export default function PrimeDepotPayroll() {
   // expands and its active child is highlighted; each view reads its value here.
   const [subs, setSubs] = useState({ payroll: 'staff', loans: 'loans', attendance: 'live', reports: 'register', settings: 'statutory' });
   const navSelect = React.useCallback((key, child) => { setTab(key); if (child) setSubs(s => ({ ...s, [key]: child })); }, []);
-  // Mobile navigation drawer. Below `md` the sidebar is off-canvas, so this is
+  // Mobile navigation drawer. Below `lg` (1024px) the sidebar is off-canvas, so this is
   // the only way to reach the other sections.
   const [navOpen, setNavOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);

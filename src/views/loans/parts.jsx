@@ -40,13 +40,19 @@ export const Person = ({ name, role }) => (
   </div>
 );
 
+// On a phone each KPI is one short row (label and note on the left, value on
+// the right), so all three fit above the list; from sm up it is the card from
+// the mockups.
 export const Kpi = ({ label, value, unit, sub }) => (
-  <div className="rounded-lg border px-4 py-3.5" style={{ backgroundColor: T.surface, borderColor: T.line }}>
-    <div className="text-xs font-semibold uppercase" style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.06em' }}>{label}</div>
-    <div className="mt-1.5 tabular-nums" style={{ fontFamily: F_HEAD, color: T.ink, fontSize: 24, fontWeight: 700 }}>
+  <div className="rounded-lg border px-4 py-2.5 sm:py-3.5 flex items-center justify-between gap-3 sm:block" style={{ backgroundColor: T.surface, borderColor: T.line }}>
+    <div className="min-w-0">
+      <div className="text-xs font-semibold uppercase" style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.06em' }}>{label}</div>
+      {sub && <div className="text-xs mt-0.5 sm:hidden" style={{ fontFamily: F_BODY, color: T.soft }}>{sub}</div>}
+    </div>
+    <div className="sm:mt-1.5 tabular-nums text-lg sm:text-2xl whitespace-nowrap shrink-0" style={{ fontFamily: F_HEAD, color: T.ink, fontWeight: 700 }}>
       {value}{unit && <span style={{ fontSize: 14, fontWeight: 500, color: T.soft }}> {unit}</span>}
     </div>
-    {sub && <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft }}>{sub}</div>}
+    {sub && <div className="text-xs mt-0.5 hidden sm:block" style={{ fontFamily: F_BODY, color: T.soft }}>{sub}</div>}
   </div>
 );
 
@@ -67,7 +73,7 @@ export const Seg = ({ value, onChange, options }) => (
 );
 
 export const SearchBox = ({ value, onChange, placeholder = 'Search employee…' }) => (
-  <label className="flex items-center gap-2 rounded-lg border px-3 py-2 flex-1" style={{ borderColor: T.line, maxWidth: 340 }}>
+  <label className="flex items-center gap-2 rounded-lg border px-3 py-2 flex-1 min-w-48" style={{ borderColor: T.line, maxWidth: 340 }}>
     <Search size={14} color={T.soft} aria-hidden="true" />
     <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={placeholder}
       className="w-full text-sm outline-none bg-transparent" style={{ fontFamily: F_BODY, color: T.ink }} />

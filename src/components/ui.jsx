@@ -54,37 +54,40 @@ export const Th = ({ children, right = false, center = false, colSpan }) => (
     {children}
   </th>
 );
+// Numbers never break across lines ("+₱54.69" used to split at the sign).
 export const Td = ({ children, right = false, center = false, mono = false, colSpan, style = {} }) => (
-  <td colSpan={colSpan} className={`px-3 py-2 text-sm ${center ? 'text-center' : right ? 'text-right' : 'text-left'}${mono ? ' pd-num' : ''}`}
+  <td colSpan={colSpan} className={`px-3 py-2 text-sm ${center ? 'text-center' : right ? 'text-right' : 'text-left'}${mono ? ' pd-num whitespace-nowrap' : ''}`}
     style={{ fontFamily: mono ? F_MONO : F_BODY, color: T.ink, borderBottom: `1px solid ${T.lineSoft}`, ...style }}>
     {children}
   </td>
 );
 
-export const StatCard = ({ label, value, tone = 'neutral', icon: Icon, onClick }) => {
+// compact: on a phone the card becomes one short row (label left, value
+// right), so three of them fit above the fold instead of filling the screen.
+export const StatCard = ({ label, value, tone = 'neutral', icon: Icon, onClick, compact = false }) => {
   const fg = { green: T.green, amber: T.amber, red: T.red, blue: T.blue, neutral: T.ink }[tone];
   const clickable = typeof onClick === 'function';
   return (
     <Panel
-      className={`p-4${clickable ? ' cursor-pointer pd-card-hover' : ''}`}
+      className={`${compact ? 'px-4 py-2.5 sm:p-4 flex items-center justify-between gap-3 sm:block' : 'p-4'}${clickable ? ' cursor-pointer pd-card-hover' : ''}`}
       onClick={onClick}
       role={clickable ? 'button' : undefined}
       tabIndex={clickable ? 0 : undefined}
       onKeyDown={clickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
     >
-      <div className="flex items-center justify-between mb-2">
+      <div className={`flex items-center justify-between ${compact ? 'sm:mb-2' : 'mb-2'}`}>
         <Eyebrow>{label}</Eyebrow>
-        {Icon && <Icon size={16} color={T.soft} />}
+        {Icon && <Icon size={16} color={T.soft} className={compact ? 'hidden sm:block' : ''} />}
       </div>
-      <div className="text-2xl font-bold pd-num" style={{ fontFamily: F_MONO, color: fg }}>{value}</div>
+      <div className={`${compact ? 'text-lg sm:text-2xl whitespace-nowrap' : 'text-2xl'} font-bold pd-num`} style={{ fontFamily: F_MONO, color: fg }}>{value}</div>
     </Panel>
   );
 };
 
 export const BigStat = ({ value, label, tone = T.ink }) => (
   <div className="text-center px-2">
-    <div className="text-3xl font-bold leading-none tabular-nums" style={{ fontFamily: F_MONO, color: tone }}>{value}</div>
-    <div className="text-xs mt-2 whitespace-nowrap font-semibold uppercase" style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.04em' }}>{label}</div>
+    <div className="text-2xl sm:text-3xl font-bold leading-none tabular-nums" style={{ fontFamily: F_MONO, color: tone }}>{value}</div>
+    <div className="text-xs mt-2 sm:whitespace-nowrap font-semibold uppercase" style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.04em' }}>{label}</div>
   </div>
 );
 
@@ -144,10 +147,12 @@ export const SkeletonBlock = ({ lines = 4, avatar = true }) => (
   </div>
 );
 
-export const Btn = ({ children, onClick, variant = 'dark', icon: Icon, size = 'md', disabled = false, full = false, loading = false }) => {
+// fullMobile: full width on phones only (stacked action bars), natural width from sm up.
+export const Btn = ({ children, onClick, variant = 'dark', icon: Icon, size = 'md', disabled = false, full = false, fullMobile = false, loading = false }) => {
   const isDisabled = disabled || loading;
   const iconSize = size === 'sm' ? 12 : 14;
-  const sizes = { sm: 'px-2.5 py-1.5 text-xs', md: 'px-3 py-2 text-sm' };
+  // md buttons are 44px tall on phones (touch), compact from sm up.
+  const sizes = { sm: 'px-2.5 py-1.5 text-xs', md: 'px-3 py-2 text-sm min-h-11 sm:min-h-0' };
   const variants = {
     dark: { backgroundColor: T.ink, color: '#fff' },
     outline: { backgroundColor: 'transparent', color: T.ink, border: `1.5px solid ${T.line}` },
@@ -156,7 +161,7 @@ export const Btn = ({ children, onClick, variant = 'dark', icon: Icon, size = 'm
   };
   return (
     <button onClick={onClick} disabled={isDisabled} data-variant={variant}
-      className={`pd-btn inline-flex items-center gap-1.5 rounded font-semibold ${sizes[size]} ${full ? 'w-full justify-center' : ''}`}
+      className={`pd-btn inline-flex items-center gap-1.5 rounded font-semibold ${sizes[size]} ${full ? 'w-full justify-center' : fullMobile ? 'w-full justify-center sm:w-auto' : ''}`}
       style={{ fontFamily: F_HEAD, opacity: isDisabled ? 0.5 : 1, cursor: isDisabled ? 'not-allowed' : 'pointer', ...variants[variant] }}>
       {loading ? <Loader2 size={iconSize} className="pd-spin" /> : (Icon && <Icon size={iconSize} />)}
       {children}
@@ -170,7 +175,9 @@ export const Field = ({ label, children }) => (
     {children}
   </div>
 );
-export const inputCls = "w-full px-3 py-2 rounded text-sm outline-none border";
+// min-h-11 = 44px on phones (a comfortable touch target for a checker
+// working one-handed); desktop keeps the compact height.
+export const inputCls = "w-full px-3 py-2 rounded text-sm outline-none border min-h-11 sm:min-h-0";
 export const inputStyle = { fontFamily: F_BODY, borderColor: T.line, color: T.ink };
 
 // Lightweight searchable dropdown (combobox). Type to filter, click to pick.

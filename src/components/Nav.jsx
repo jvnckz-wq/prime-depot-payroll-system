@@ -65,6 +65,8 @@ const NavRow = ({ item, tab, subs, onSelect }) => {
 };
 
 // Shared by the desktop rail and the mobile drawer so the two can never drift.
+// The rail shows from `lg` (1024px) up; below that (phones AND tablets) it is a
+// drawer, so a tablet gets the full width for payroll tables.
 const NavList = ({ tab, subs, onSelect }) => (
   <nav aria-label="Main" className="pd-no-scrollbar flex-1 py-3 overflow-y-auto">
     {ADMIN_NAV_GROUPS.map(({ group, items }) => (
@@ -175,7 +177,7 @@ export const Sidebar = ({ tab, subs = {}, onSelect, open = false, onClose }) => 
   return (
     <>
       {/* Desktop rail */}
-      <aside className="hidden md:flex flex-col shrink-0 h-full"
+      <aside className="hidden lg:flex flex-col shrink-0 h-full"
         style={{ width: SIDEBAR_W, backgroundColor: T.sidebar, borderRight: `1px solid ${T.sidebarLine}` }}>
         {header(false)}
         <NavList tab={tab} subs={subs} onSelect={onSelect} />
@@ -184,7 +186,7 @@ export const Sidebar = ({ tab, subs = {}, onSelect, open = false, onClose }) => 
 
       {/* Mobile drawer */}
       {open && (
-        <div className="md:hidden fixed inset-0 z-50">
+        <div className="lg:hidden fixed inset-0 z-50">
           <div className="pd-overlay absolute inset-0" style={{ backgroundColor: 'rgba(10,14,19,0.6)' }} onClick={onClose} />
           <div
             ref={panelRef}
@@ -227,7 +229,7 @@ export const TopBar = ({ user, onOpenAccount, onLogout, onOpenNav }) => {
   return (
     <header className="flex items-center gap-3 px-4 md:px-6" style={{ height: 56, borderBottom: `1px solid ${T.line}`, backgroundColor: T.surface }}>
       <button onClick={onOpenNav} aria-label="Open navigation menu"
-        className="pd-btn md:hidden -ml-2 rounded flex items-center justify-center shrink-0"
+        className="pd-btn lg:hidden -ml-2 rounded flex items-center justify-center shrink-0"
         data-variant="ghost" style={{ width: 44, height: 44, color: T.ink }}>
         <Menu size={20} />
       </button>
