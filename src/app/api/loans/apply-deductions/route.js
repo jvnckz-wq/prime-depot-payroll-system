@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../../lib/prisma';
-import { requireAdmin } from '../../../../lib/auth';
-import { applyLoanDeductions } from '../../../../lib/loans-apply';
-import { cutoffOf, isYmd, staffRunKey, todayYmdManila } from '../../../../lib/loan-rules';
-import { crewAvailableOn, loadStaffPayrollInputs, staffAvailable, toDate } from '../../../../lib/payroll-inputs';
+import { prisma } from '@/lib/server/db/prisma';
+import { requireAdmin } from '@/lib/server/security/auth';
+import { applyLoanDeductions } from '@/lib/server/services/loans-apply';
+import { cutoffOf, isYmd, staffRunKey, todayYmdManila } from '@/lib/loan-rules';
+import { crewAvailableOn, loadStaffPayrollInputs, staffAvailable, toDate } from '@/lib/server/services/payroll-inputs';
 
 const bad = (error, status = 400) => NextResponse.json({ error }, { status });
 
@@ -17,7 +17,7 @@ const bad = (error, status = 400) => NextResponse.json({ error }, { status });
 /// or left for the loan to run a day longer (crew). What is available is
 /// computed HERE from the database, never taken from the browser.
 ///
-/// Idempotent on the run key (see lib/loans-apply.js). The same core is reused
+/// Idempotent on the run key (see lib/server/services/loans-apply.js). The same core is reused
 /// by Finalize/Release, so the two can never disagree.
 export async function POST(request) {
   const auth = await requireAdmin();

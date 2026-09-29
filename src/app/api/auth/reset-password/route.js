@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createHash } from 'crypto';
-import { prisma } from '../../../../lib/prisma';
-import { destroyAllSessions, hashPassword, logSecurityEvent, validatePassword } from '../../../../lib/auth';
+import { prisma } from '@/lib/server/db/prisma';
+import { destroyAllSessions, hashPassword, logSecurityEvent, validatePassword } from '@/lib/server/security/auth';
 
 // Complete a password reset: recovery email + emailed code + new password. On success
 // the password is replaced, every existing session is destroyed (so anyone who

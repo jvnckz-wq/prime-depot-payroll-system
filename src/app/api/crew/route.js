@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../lib/prisma';
-import { requireUser } from '../../../lib/auth';
+import { prisma } from '@/lib/server/db/prisma';
+import { requireUser } from '@/lib/server/security/auth';
 
 /// GET /api/crew — drivers and pahinante, names only.
 ///

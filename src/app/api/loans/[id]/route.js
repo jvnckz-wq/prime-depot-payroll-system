@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../../lib/prisma';
-import { requireAdmin } from '../../../../lib/auth';
-import { shapeLoan } from '../../../../lib/loans';
-import { isYmd, todayYmdManila } from '../../../../lib/loan-rules';
+import { prisma } from '@/lib/server/db/prisma';
+import { requireAdmin } from '@/lib/server/security/auth';
+import { shapeLoan } from '@/lib/server/services/loans';
+import { isYmd, todayYmdManila } from '@/lib/loan-rules';
 
 const balanceOf = (entries) =>
   entries.reduce((b, e) => (e.type === 'GRANT' ? b + Number(e.amount) : b - Number(e.amount)), 0);

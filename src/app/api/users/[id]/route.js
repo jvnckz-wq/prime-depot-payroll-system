@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
-import { prisma } from '../../../../lib/prisma';
-import { destroyAllSessions, hashPassword, logSecurityEvent, requireAdmin } from '../../../../lib/auth';
+import { prisma } from '@/lib/server/db/prisma';
+import { destroyAllSessions, hashPassword, logSecurityEvent, requireAdmin } from '@/lib/server/security/auth';
 
 function generateTempPassword() {
   const letters = 'abcdefghjkmnpqrstuvwxyz';

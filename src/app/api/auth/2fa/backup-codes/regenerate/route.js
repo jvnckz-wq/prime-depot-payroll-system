@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../../../../lib/prisma';
+import { prisma } from '@/lib/server/db/prisma';
 import {
   logSecurityEvent, releaseAttempt, requireAdmin, reserveAttempt, verifyPassword,
-} from '../../../../../../lib/auth';
-import { generateBackupCodes, hashBackupCode, totpStep } from '../../../../../../lib/twofactor';
+} from '@/lib/server/security/auth';
+import { generateBackupCodes, hashBackupCode, totpStep } from '@/lib/server/security/twofactor';
 
 // Replace all backup codes with a fresh set of ten. Operations Head only, and
 // only with two-factor on (requireAdmin already refuses otherwise). Proving the

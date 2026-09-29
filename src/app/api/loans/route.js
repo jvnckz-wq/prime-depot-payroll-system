@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../lib/prisma';
-import { requireAdmin } from '../../../lib/auth';
-import { shapeLoan } from '../../../lib/loans';
-import { isCrewPosition } from '../../../lib/loans-apply';
+import { prisma } from '@/lib/server/db/prisma';
+import { requireAdmin } from '@/lib/server/security/auth';
+import { shapeLoan } from '@/lib/server/services/loans';
+import { isCrewPosition } from '@/lib/server/services/loans-apply';
 import {
   LOAN_PURPOSES, PURPOSE_ENUM, advancedInCutoff, balanceOf, cutoffOf, isYmd, periodLabel, projectedGross, todayYmdManila, workingDaysIn,
-} from '../../../lib/loan-rules';
+} from '@/lib/loan-rules';
 
 export async function GET() {
   // Loans are Operations Head only — a Checker never sees anyone's balances.

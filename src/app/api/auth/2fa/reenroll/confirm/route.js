@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../../../../lib/prisma';
+import { prisma } from '@/lib/server/db/prisma';
 import {
   logSecurityEvent, releaseAttempt, requireAdmin, reserveAttempt,
-} from '../../../../../../lib/auth';
-import { totpStep } from '../../../../../../lib/twofactor';
+} from '@/lib/server/security/auth';
+import { totpStep } from '@/lib/server/security/twofactor';
 
 // Step two of moving two-factor to a new phone. The secret returned by /start
 // comes back here with a code the new app produced. Only if that code matches

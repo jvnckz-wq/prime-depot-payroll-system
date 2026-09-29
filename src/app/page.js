@@ -1,4 +1,4 @@
-import PrimeDepotPayroll from '../PrimeDepotPayrollUI.jsx';
+import PrimeDepotPayroll from '@/shell/PrimeDepotPayrollUI.jsx';
 
 export default function Home() {
   return <PrimeDepotPayroll />;

@@ -1,0 +1,341 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { Sidebar, TopBar } from '@/shell/Nav.jsx';
+import { Confirm, Toasts } from '@/components/ui.jsx';
+import { IdleTimeout } from '@/shell/IdleTimeout.jsx';
+import { BIR_TABLE_INIT, CREW_RATE_FALLBACK, PAGIBIG_INIT, PHILHEALTH_INIT, SSS_TABLE_INIT } from '@/data/seed';
+import { deliveriesToLog } from '@/lib/payroll';
+import { uid, cutoffLabel, currentCutoffPeriod } from '@/lib/utils';
+import { staffRunKey, todayYmdManila } from '@/lib/loan-rules';
+import { FONTS, F_BODY, T } from '@/components/theme';
+import { AttendanceView } from '@/features/attendance/AttendanceView.jsx';
+import { CheckerView } from '@/features/deliveries/CheckerView.jsx';
+import { DashboardView } from '@/features/dashboard/DashboardView.jsx';
+import { EmployeesView } from '@/features/employees/EmployeesView.jsx';
+import { LoansView } from '@/features/loans/LoansView.jsx';
+import { LoginView } from '@/features/auth/LoginView.jsx';
+import { LegalView } from '@/features/auth/LegalView.jsx';
+import { ForcedPasswordChange } from '@/features/auth/AccountView.jsx';
+import TwoFactorSetup from '@/features/auth/TwoFactorSetup.jsx';
+import { AccountPage } from '@/features/auth/AccountPage.jsx';
+import { FAQView } from '@/features/help/FAQView.jsx';
+import { ReportsView } from '@/features/reports/ReportsView.jsx';
+import { SettingsView } from '@/features/settings/SettingsView.jsx';
+import { PayrollView } from '@/features/payroll/PayrollView.jsx';
+import { TruckPayrollView } from '@/features/payroll/TruckPayrollView.jsx';
+
+export default function PrimeDepotPayroll() {
+  // Authentication state. `user` is null when signed out; `authChecking` covers
+  // the moment between page load and the session lookup returning, so the login
+  // screen doesn't flash for someone who is already signed in.
+  const [user, setUser] = useState(null);
+  const [authChecking, setAuthChecking] = useState(true);
+  const [legalPage, setLegalPage] = useState(null); // 'terms' | 'privacy' | null
+  const [tab, setTab] = useState('dashboard');
+  // Sub-tab per section, driven from the nested sidebar. The active section
+  // expands and its active child is highlighted; each view reads its value here.
+  const [subs, setSubs] = useState({ payroll: 'staff', loans: 'loans', attendance: 'live', reports: 'register', settings: 'statutory' });
+  const navSelect = React.useCallback((key, child) => { setTab(key); if (child) setSubs(s => ({ ...s, [key]: child })); }, []);
+  // Mobile navigation drawer. Below `lg` (1024px) the sidebar is off-canvas, so this is
+  // the only way to reach the other sections.
+  const [navOpen, setNavOpen] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const closeNav = React.useCallback(() => setNavOpen(false), []);
+  // Hand-off from Attendance's "Register" on an unmapped biometric ID: carries
+  // the id + name into the Employees Add form, consumed once on arrival.
+  const [employeePrefill, setEmployeePrefill] = useState(null);
+  // Employees now come from the database instead of the in-memory seed. The
+  // seed list is kept only as a fallback so the UI still renders if the API is
+  // unreachable — a payroll screen that silently shows nothing is worse than
+  // one that shows stale reference data with an error toast.
+  // The full roster from the database — office staff AND crew. Kept whole here;
+  // the payroll-facing views take the office subset below.
+  const [allStaff, setAllStaff] = useState([]);
+  const [staffLoading, setStaffLoading] = useState(true);
+  // Office staff only. Crew are paid through Truck Payroll (pakyawan), so Staff
+  // Payroll, Attendance, Loans, and the dashboard's payroll math must exclude
+  // them. The Employees module and the headcount use the full roster instead.
+  const staff = React.useMemo(() => allStaff.filter((e) => !e.crew), [allStaff]);
+
+  // Restore the session on load, so a refresh doesn't sign anyone out.
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then(data => { if (!cancelled) { setUser(data.user); setAuthChecking(false); } })
+      .catch(() => { if (!cancelled) setAuthChecking(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Employee data is admin-only, so there is nothing to fetch until an admin is
+  // signed in with two-factor on (the admin APIs refuse until then). Extracted
+  // into a callback so a register or edit can refresh the list the same way —
+  // one source of truth, straight from the database.
+  const reloadStaff = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/employees');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      setAllStaff(data.employees);
+    } catch (err) {
+      console.error('Could not load employees:', err);
+      // No seed fallback — an empty list with an error logged is honest; stale
+      // fake employees on a payroll screen are worse than showing nothing.
+    } finally {
+      setStaffLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user || user.role !== 'ADMIN' || !user.totpEnabled) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
+    reloadStaff();
+  }, [user, reloadStaff]);
+
+  // Deliveries come from the database. The seed stays as a fallback for the
+  // same reason the employee list does: a payroll screen showing nothing is
+  // harder to diagnose than one showing stale data with an error logged.
+  const [deliveries, setDeliveries] = useState({});
+
+  const reloadDeliveries = React.useCallback(async () => {
+    try {
+      // Live views show today only. "Today" is the Manila calendar day, the
+      // same day the server files a new delivery under, so a trip logged now
+      // always appears and the day turns over at midnight here (it used to be
+      // UTC, which turned over at 8 AM). Past days live in Truck Payroll's History.
+      const today = todayYmdManila();
+      const res = await fetch(`/api/deliveries?from=${today}&to=${today}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      setDeliveries(deliveriesToLog(data.deliveries));
+    } catch (err) {
+      console.error('Could not load deliveries:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    // The server refuses data endpoints until a temporary password is replaced.
+    if (!user || user.mustChangePassword) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
+    reloadDeliveries();
+  }, [user, reloadDeliveries]);
+
+  // Piece rates come from the database so each row carries an id — that id is
+  // what lets an edit or a retire target the right record. The seed list stays
+  // as a fallback: the delivery form cannot function at all without rates, so
+  // showing the last known table beats showing an empty dropdown.
+  const [rates, setRates] = useState([]);
+  // Crew pakyawan rates (daily minimums + palima bonus). These used to be
+  // constants in the bundle; they now arrive with the piece rates, from the
+  // database. CREW_RATE_FALLBACK covers a failed request so the delivery cards
+  // show plausible figures instead of zeroes.
+  const [crewRates, setCrewRates] = useState(CREW_RATE_FALLBACK);
+
+  useEffect(() => {
+    if (!user || user.mustChangePassword) return;
+    let cancelled = false;
+    fetch('/api/rates')
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+      .then(data => {
+        if (cancelled) return;
+        const active = data.rates.filter(r => r.isActive);
+        if (active.length) setRates(active);
+        if (data.crewRates) setCrewRates(data.crewRates);
+      })
+      .catch(err => console.error('Could not load piece rates:', err));
+    return () => { cancelled = true; };
+  }, [user]);
+
+  const [loans, setLoans] = useState([]);
+  // Loans and their ledgers live in the database. Admin-only, so nothing loads
+  // until an admin is signed in; reloadLoans is reused after every grant, pause,
+  // settle, or deduction run so the ledgers always reflect the stored truth.
+  const reloadLoans = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/loans');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      setLoans(data.loans);
+    } catch (err) {
+      console.error('Could not load loans:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user || user.role !== 'ADMIN' || !user.totpEnabled) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
+    reloadLoans();
+  }, [user, reloadLoans]);
+
+  const [checkers, setCheckers] = useState([]);
+  const [sssTable, setSssTable] = useState(SSS_TABLE_INIT);
+  const [philhealthRates, setPhilhealthRates] = useState(PHILHEALTH_INIT);
+  const [pagibigRates, setPagibigRates] = useState(PAGIBIG_INIT);
+  const [birTable, setBirTable] = useState(BIR_TABLE_INIT);
+  const statutory = { sss: sssTable, philhealth: philhealthRates, pagibig: pagibigRates, bir: birTable };
+
+  // Statutory tables live in the database (admin-editable). Seed values above
+  // are only a fallback if the load fails.
+  const reloadStatutory = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/statutory');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const d = await res.json();
+      if (d.sss?.length) setSssTable(d.sss);
+      if (d.philhealth) setPhilhealthRates(d.philhealth);
+      if (d.pagibig?.brackets?.length) setPagibigRates(d.pagibig);
+      if (d.bir?.length) setBirTable(d.bir);
+    } catch (err) {
+      console.error('Could not load statutory tables:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user || user.role !== 'ADMIN' || !user.totpEnabled) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
+    reloadStatutory();
+  }, [user, reloadStatutory]);
+
+  // The current cutoff comes from the most recent imported attendance period,
+  // so every screen's label matches the data actually being paid. Falls back to
+  // the calendar cutoff (1–15 / 16–end) when nothing has been imported yet.
+  const [cutoffPeriod, setCutoffPeriod] = useState(null);
+  const [attSummaries, setAttSummaries] = useState([]);
+  const [unmappedCount, setUnmappedCount] = useState(0);
+  useEffect(() => {
+    if (!user || user.role !== 'ADMIN' || !user.totpEnabled) return;
+    let cancelled = false;
+    fetch('/api/attendance')
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+      .then(d => {
+        if (cancelled) return;
+        setCutoffPeriod(d.period || null);
+        setAttSummaries(d.summaries || []);
+        setUnmappedCount(d.unmappedCount || 0);
+      })
+      .catch(err => console.error('Could not load current cutoff:', err));
+    return () => { cancelled = true; };
+  }, [user]);
+  const cutoffText = cutoffLabel(cutoffPeriod);
+  // The ledger key of this cutoff's staff deductions. It names the calendar
+  // cutoff (not the import range) and matches Staff Payroll and Finalize.
+  const staffKey = staffRunKey(cutoffPeriod?.start || currentCutoffPeriod().start);
+
+  const [toasts, setToasts] = useState([]);
+
+  const toast = (msg, type = 'success') => {
+    const id = uid();
+    setToasts(t => [...t, { id, msg, type }]);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3200);
+  };
+
+  const logout = async () => {
+    try { await fetch('/api/auth/logout', { method: 'POST' }); } catch { /* sign out locally regardless */ }
+    setUser(null);
+    setTab('dashboard');
+    setAllStaff([]);
+    setLoans([]);
+  };
+
+  // Terms and Privacy are readable without signing in — someone should be able
+  // to read what they are agreeing to before they agree to it.
+  if (legalPage) {
+    return <>
+      <style>{FONTS}</style>
+      <LegalView initialTab={legalPage} onBack={() => setLegalPage(null)} />
+    </>;
+  }
+
+  if (authChecking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: T.sidebar }}>
+        <style>{FONTS}</style>
+        <div className="pd-spin" aria-label="Loading" role="status" style={{ width: 30, height: 30, borderRadius: '50%', border: '3px solid rgba(255,255,255,0.22)', borderTopColor: '#FFFFFF' }} />
+      </div>
+    );
+  }
+
+  if (!user) return <>
+    <style>{FONTS}</style>
+    <LoginView onSignedIn={setUser} onShowLegal={setLegalPage} />
+  </>;
+
+  // A temporary password gets replaced before anything else is reachable.
+  if (user.mustChangePassword) return <>
+    <style>{FONTS}</style>
+    <Toasts toasts={toasts} />
+    <ForcedPasswordChange user={user} onDone={(email) => setUser(u => ({ ...u, mustChangePassword: false, ...(email ? { email } : {}) }))} />
+  </>;
+
+  // An admin cannot reach the app until two-factor is set up. Enforced from the
+  // first login onwards, including for an existing admin (totpEnabled is false
+  // until they enroll). This screen is the friendly half; requireAdmin on the
+  // server refuses every admin API until then.
+  if (user.role === 'ADMIN' && !user.totpEnabled) return <>
+    <style>{FONTS}</style>
+    <Toasts toasts={toasts} />
+    <TwoFactorSetup user={user} onDone={() => setUser(u => ({ ...u, totpEnabled: true }))} />
+  </>;
+
+  if (user.role === 'CHECKER') return <>
+    <style>{FONTS}</style>
+    <Toasts toasts={toasts} />
+    <IdleTimeout enabled onExit={logout} />
+    <CheckerView currentUser={user} onUserChange={u => setUser(prev => ({ ...prev, ...u }))} onSignedOut={() => { setUser(null); setTab('dashboard'); }} deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} crewRates={crewRates} onLogout={logout} toast={toast} />
+  </>;
+
+  // Account settings takes over the whole screen (its own left rail + Back),
+  // so the app sidebar and top bar are hidden while it is open.
+  if (tab === 'account') return <>
+    <style>{FONTS}</style>
+    <Toasts toasts={toasts} />
+    <IdleTimeout enabled onExit={logout} />
+    <AccountPage
+      user={user}
+      toast={toast}
+      onBack={() => setTab('dashboard')}
+      onUserChange={u => setUser(prev => ({ ...prev, ...u }))}
+      onSignedOut={() => { setUser(null); setTab('dashboard'); }}
+    />
+  </>;
+
+  return (
+    <div className="flex h-screen w-full overflow-hidden" style={{ backgroundColor: T.bg, fontFamily: F_BODY }}>
+      <style>{FONTS}</style>
+      <Toasts toasts={toasts} />
+      <IdleTimeout enabled onExit={logout} />
+      <Confirm
+        open={confirmLogout}
+        title="Log out?"
+        message="You will be signed out of Prime Depot and need to sign in again to get back in."
+        confirmLabel="Log out"
+        onCancel={() => setConfirmLogout(false)}
+        onConfirm={() => { setConfirmLogout(false); logout(); }}
+      />
+      <Sidebar
+        tab={tab}
+        subs={subs}
+        onSelect={navSelect}
+        open={navOpen}
+        onClose={closeNav}
+      />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <TopBar user={user} onOpenAccount={() => setTab('account')} onLogout={() => setConfirmLogout(true)} onOpenNav={() => setNavOpen(true)} />
+        <main className="flex-1 overflow-y-auto">
+          <div key={tab} className="pd-view-in">
+          {tab === 'dashboard' && <DashboardView deliveries={deliveries} staff={staff} totalEmployees={allStaff.filter(e => e.status !== 'Inactive').length} loans={loans} statutory={statutory} setTab={setTab} cutoffLabel={cutoffText} runKey={staffKey} attendanceSummaries={attSummaries} unmappedCount={unmappedCount} />}
+          {tab === 'employees' && <EmployeesView staff={allStaff} reloadStaff={reloadStaff} toast={toast} prefill={employeePrefill} onPrefillConsumed={() => setEmployeePrefill(null)} />}
+          {tab === 'attendance' && <AttendanceView navSub={subs.attendance} staff={allStaff} toast={toast} onRegister={(id, name) => { setEmployeePrefill({ id, name }); setTab('employees'); }} />}
+          {tab === 'payroll' && <PayrollView navSub={subs.payroll} staff={staff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} toast={toast} cutoffLabel={cutoffText} reloadStaff={reloadStaff} staffLoading={staffLoading} deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} crewRates={crewRates} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} />}
+          {tab === 'deliveries' && <TruckPayrollView mode="logging" deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} crewRates={crewRates} loans={loans} reloadLoans={reloadLoans} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} toast={toast} />}
+          {tab === 'loans' && <LoansView navSub={subs.loans} staff={allStaff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} cutoffPeriod={cutoffPeriod} toast={toast} />}
+          {tab === 'faqs' && <FAQView />}
+          {tab === 'reports' && <ReportsView navTab={subs.reports} staff={staff} deliveries={deliveries} loans={loans} statutory={statutory} cutoffLabel={cutoffText} runKey={staffKey} attendanceSummaries={attSummaries} crewRates={crewRates} />}
+          {tab === 'settings' && <SettingsView navTab={subs.settings} currentUser={user} onUserChange={u => setUser(prev => ({ ...prev, ...u }))} onSignedOut={() => { setUser(null); setTab('dashboard'); }} checkers={checkers} setCheckers={setCheckers} sssTable={sssTable} setSssTable={setSssTable} philhealthRates={philhealthRates} setPhilhealthRates={setPhilhealthRates} pagibigRates={pagibigRates} setPagibigRates={setPagibigRates} birTable={birTable} setBirTable={setBirTable} toast={toast} />}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
