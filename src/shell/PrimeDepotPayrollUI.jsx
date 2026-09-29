@@ -12,7 +12,7 @@ import { FONTS, F_BODY, T } from '@/components/theme';
 import { AttendanceView } from '@/features/attendance/AttendanceView.jsx';
 import { CheckerView } from '@/features/deliveries/CheckerView.jsx';
 import { DashboardView } from '@/views/DashboardView.jsx';
-import { EmployeesView } from '@/views/EmployeesView.jsx';
+import { EmployeesView } from '@/features/employees/EmployeesView.jsx';
 import { LoansView } from '@/features/loans/LoansView.jsx';
 import { LoginView } from '@/views/LoginView.jsx';
 import { LegalView } from '@/views/LegalView.jsx';
