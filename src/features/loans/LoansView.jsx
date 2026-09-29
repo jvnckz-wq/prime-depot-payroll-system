@@ -9,9 +9,9 @@
 import React from 'react';
 import { currentCutoffPeriod } from '@/lib/utils';
 import { cutoffOf, staffRunKey } from '@/lib/loan-rules';
-import { LoansPage } from '@/views/loans/LoansPage.jsx';
-import { CashAdvancesPage } from '@/views/loans/CashAdvancesPage.jsx';
-import { LoanHistoryPage } from '@/views/loans/LoanHistoryPage.jsx';
+import { LoansPage } from '@/features/loans/LoansPage.jsx';
+import { CashAdvancesPage } from '@/features/loans/CashAdvancesPage.jsx';
+import { LoanHistoryPage } from '@/features/loans/LoanHistoryPage.jsx';
 
 export const LoansView = ({ navSub = 'loans', staff = [], loans = [], reloadLoans, statutory, cutoffPeriod, toast }) => {
   // The cutoff being paid: the latest imported attendance period, or the

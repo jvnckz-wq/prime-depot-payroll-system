@@ -14,8 +14,8 @@ import {
 import { computeStaffPayroll } from '@/lib/payroll';
 import { peso } from '@/lib/utils';
 import { F_BODY, F_MONO, T } from '@/components/theme';
-import { D, H, Kpi, Person, Pill, todayLocalYmd } from '@/views/loans/parts.jsx';
-import { printLoanSlip } from '@/views/loans/loanSlip';
+import { D, H, Kpi, Person, Pill, todayLocalYmd } from '@/features/loans/parts.jsx';
+import { printLoanSlip } from '@/features/loans/loanSlip';
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 const labelOf = (e) => `${e.name} · ${e.position}`;

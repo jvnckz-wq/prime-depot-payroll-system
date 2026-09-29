@@ -9,7 +9,7 @@
 const assert = require('node:assert/strict');
 const { computeStaffPayroll } = require('../src/lib/payroll.js');
 const R = require('../src/lib/loan-rules.js');
-const { loanSlipHtml } = require('../src/views/loans/loanSlip.js');
+const { loanSlipHtml } = require('../src/features/loans/loanSlip.js');
 
 const tests = [];
 const ok = (name, fn) => tests.push([name, fn]);

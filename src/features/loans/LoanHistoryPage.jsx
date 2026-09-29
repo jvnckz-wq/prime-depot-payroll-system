@@ -10,7 +10,7 @@ import { Btn, EmptyState, H1, inputCls, inputStyle } from '@/components/ui.jsx';
 import { isOpen, shortDate } from '@/lib/loan-rules';
 import { exportXLSX, peso } from '@/lib/utils';
 import { F_MONO, T } from '@/components/theme';
-import { D, H, Ledger, Person, Pill, SearchBox, Seg } from '@/views/loans/parts.jsx';
+import { D, H, Ledger, Person, Pill, SearchBox, Seg } from '@/features/loans/parts.jsx';
 
 // The day it was fully paid: when it was closed, or (for records closed before
 // auto-settle existed) the date of its last ledger entry.

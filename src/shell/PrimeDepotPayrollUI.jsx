@@ -13,7 +13,7 @@ import { AttendanceView } from '@/views/AttendanceView.jsx';
 import { CheckerView } from '@/views/CheckerView.jsx';
 import { DashboardView } from '@/views/DashboardView.jsx';
 import { EmployeesView } from '@/views/EmployeesView.jsx';
-import { LoansView } from '@/views/LoansView.jsx';
+import { LoansView } from '@/features/loans/LoansView.jsx';
 import { LoginView } from '@/views/LoginView.jsx';
 import { LegalView } from '@/views/LegalView.jsx';
 import { ForcedPasswordChange } from '@/views/AccountView.jsx';

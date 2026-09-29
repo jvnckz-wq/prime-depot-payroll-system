@@ -9,8 +9,8 @@ import { Btn, Field, Modal, SearchSelect, inputCls, inputStyle } from '@/compone
 import { LOAN_PURPOSES, balanceOf, isOpen, payoffPlan, shortDate } from '@/lib/loan-rules';
 import { peso } from '@/lib/utils';
 import { F_BODY, T } from '@/components/theme';
-import { todayLocalYmd } from '@/views/loans/parts.jsx';
-import { printLoanSlip } from '@/views/loans/loanSlip';
+import { todayLocalYmd } from '@/features/loans/parts.jsx';
+import { printLoanSlip } from '@/features/loans/loanSlip';
 
 const Box = ({ tone, children }) => {
   const s = tone === 'warn'
