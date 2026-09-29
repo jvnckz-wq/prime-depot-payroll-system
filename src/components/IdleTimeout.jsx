@@ -4,13 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Btn, Modal } from './ui.jsx';
 import { F_BODY, T } from '../theme';
 
-// Auto sign-out after a period of inactivity. Payroll is sensitive data, so a
-// machine left unattended must not stay signed in. There is deliberately NO
-// "stay signed in" grace: the moment the idle limit is reached the server
-// session is destroyed, and a notice explains what happened. Nothing can be
-// clicked to resume without signing in again — so there is no window an
-// onlooker could use to keep the session alive.
-const IDLE_MS = 15 * 60 * 1000; // idle allowed before automatic sign-out
+const IDLE_MS = 15 * 60 * 1000;
 const ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'];
 
 export function IdleTimeout({ enabled, onExit }) {
