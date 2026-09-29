@@ -5,7 +5,7 @@ import { ArrowLeft } from 'lucide-react';
 import { Btn, Confirm, Field, Panel } from '@/components/ui.jsx';
 import { balanceOf, planDeductions, shortDate, todayYmdManila } from '@/lib/loan-rules';
 import { peso } from '@/lib/utils';
-import { F_BODY, F_HEAD, F_MONO, F_SERIF, T } from '@/theme';
+import { F_BODY, F_HEAD, F_MONO, F_SERIF, T } from '@/components/theme';
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 const nf = (v) => (Number.isFinite(parseFloat(v)) ? parseFloat(v) : 0);

@@ -6,7 +6,7 @@ import { Badge, Btn, Confirm, Eyebrow, Field, H1, Modal, Money, Panel, Td, Th, i
 import { POSITIONS, positionLabel } from '@/data/seed';
 import { isCrewPosition } from '@/lib/payroll';
 import { WEEKDAYS, describeEarlyShift } from '@/lib/attendance';
-import { F_BODY, F_HEAD, F_MONO, T } from '@/theme';
+import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { FinalPayView } from '@/views/FinalPayView.jsx';
 
 // Registration fields required by the client spec: ID number, name, position,

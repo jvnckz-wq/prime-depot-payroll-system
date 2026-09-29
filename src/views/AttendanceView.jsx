@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, ClipboardList, ArrowLeft, Pencil, Upload, Loader2 } from 'lucide-react';
 import { Av, Badge, BigStat, Btn, EmptyState, Eyebrow, Field, H1, Modal, Panel, SkeletonBlock, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
-import { F_BODY, F_HEAD, F_MONO, T } from '@/theme';
+import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 
 // Compact "Xs/Xm/Xh ago" from an absolute ISO time (the device's last heartbeat).
 const agoFrom = (iso) => {

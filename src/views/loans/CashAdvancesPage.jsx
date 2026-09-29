@@ -13,7 +13,7 @@ import {
 } from '@/lib/loan-rules';
 import { computeStaffPayroll } from '@/lib/payroll';
 import { peso } from '@/lib/utils';
-import { F_BODY, F_MONO, T } from '@/theme';
+import { F_BODY, F_MONO, T } from '@/components/theme';
 import { D, H, Kpi, Person, Pill, todayLocalYmd } from '@/views/loans/parts.jsx';
 import { printLoanSlip } from '@/views/loans/loanSlip';
 

@@ -8,7 +8,7 @@ import { CREW_RATE_FALLBACK } from '@/data/seed';
 import { crewEarnings, deliveriesToLog, flattenDeliveries, loanBalance } from '@/lib/payroll';
 import { grantedBy, planDeductions, todayYmdManila } from '@/lib/loan-rules';
 import { peso, telHref, timeLabel } from '@/lib/utils';
-import { F_BODY, F_HEAD, F_MONO, T } from '@/theme';
+import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 
 // #H15 — one component, two modes. mode="payslips" shows the crew's per-person
 // pay for the day (lives under Payroll > Crew, beside Staff Payroll);

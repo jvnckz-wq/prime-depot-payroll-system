@@ -3,7 +3,7 @@
 import React from 'react';
 
 import { Btn, Eyebrow, Panel } from '@/components/ui.jsx';
-import { F_BODY, F_HEAD, T } from '@/theme';
+import { F_BODY, F_HEAD, T } from '@/components/theme';
 
 // Terms and Conditions + Privacy Policy.
 //

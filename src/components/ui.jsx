@@ -4,7 +4,7 @@ import React from 'react';
 // Package is the fallback icon for EmptyState when a caller doesn't pass one.
 import { X, Check, Package, Loader2 } from 'lucide-react';
 import { peso } from '@/lib/utils';
-import { F_BODY, F_HEAD, F_MONO, T } from '@/theme';
+import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 
 export const Badge = ({ children, tone = 'neutral' }) => {
   const map = {

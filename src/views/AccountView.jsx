@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, CheckCircle2, Circle, Eye, EyeOff, KeyRound, Lock, ShieldCheck } from 'lucide-react';
 import { Btn, Confirm, Eyebrow, Field, Panel, inputCls, inputStyle } from '@/components/ui.jsx';
-import { F_BODY, F_HEAD, F_MONO, T } from '@/theme';
+import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 
 // Password strength rules shown live as the user types. These MUST stay in step
 // with validatePassword() on the server (lib/auth.js) — the server is the real

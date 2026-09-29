@@ -6,7 +6,7 @@ import { Av, Badge, Btn, Confirm, Eyebrow, H1, Modal, Money, Panel, SkeletonBloc
 import { computeStaffPayroll } from '@/lib/payroll';
 import { cutoffOf, nextCutoff, planDeductions, shortDate, staffRunKey } from '@/lib/loan-rules';
 import { currentCutoffPeriod, peso } from '@/lib/utils';
-import { F_BODY, F_HEAD, F_MONO, F_SERIF, T } from '@/theme';
+import { F_BODY, F_HEAD, F_MONO, F_SERIF, T } from '@/components/theme';
 
 // Small note under the Loans / Advance Payment line, e.g.
 // "Hospitalization · balance after this cutoff ₱2,000.00" or

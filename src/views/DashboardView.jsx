@@ -6,7 +6,7 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, L
 import { Av, Eyebrow, H1, Panel, StatCard, Td, Th } from '@/components/ui.jsx';
 import { computeStaffPayroll, flattenDeliveries, loanBalance } from '@/lib/payroll';
 import { peso } from '@/lib/utils';
-import { F_BODY, T } from '@/theme';
+import { F_BODY, T } from '@/components/theme';
 
 // Measure before paint on the client; fall back to useEffect on the server (no SSR warning).
 const useIsoLayoutEffect = typeof document !== 'undefined' ? useLayoutEffect : useEffect;
