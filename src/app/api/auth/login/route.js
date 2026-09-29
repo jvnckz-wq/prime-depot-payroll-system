@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/server/db/prisma';
 import {
   burnPasswordComparison, createSession, logSecurityEvent, verifyPassword,
-} from '@/lib/auth';
+} from '@/lib/server/security/auth';
 
 // Rate limiting: 5 failed attempts per (IP + username) per 15 minutes.
 //

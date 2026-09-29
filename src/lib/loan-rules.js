@@ -231,7 +231,7 @@ function remarkFor(key, w) {
 // Pure: no database, no React. The server runs it to write the ledger, and the
 // browser runs the very same function to preview the run before it happens.
 //
-//   loans      shaped loans (lib/loans.js shapeLoan)
+//   loans      shaped loans (lib/server/services/loans.js shapeLoan)
 //   crew       true = the crew group (daily), false = staff (per cutoff)
 //   runKey     the idempotency stamp; a loan already stamped is skipped
 //   endYmd     last day the run pays for (cutoff end, or the crew day)

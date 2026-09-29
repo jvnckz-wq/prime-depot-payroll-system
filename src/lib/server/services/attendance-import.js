@@ -14,7 +14,7 @@
 // and computing tardiness happen in the import route.
 
 import * as XLSX from 'xlsx';
-import { pairPunches } from './attendance';
+import { pairPunches } from '../../attendance';
 
 // An Excel time is a fraction of a 24-hour day. 0.2361 → 05:40.
 function fracToHHMM(f) {

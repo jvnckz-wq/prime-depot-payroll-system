@@ -20,7 +20,7 @@ import 'server-only';
 import { cookies, headers } from 'next/headers';
 import { createHash, randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
-import { prisma } from './prisma';
+import { prisma } from '../db/prisma';
 
 const COOKIE_NAME = 'pd_session';
 const SESSION_DAYS = 7;

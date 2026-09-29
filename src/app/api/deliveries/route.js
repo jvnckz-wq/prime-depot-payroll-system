@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { requireUser } from '@/lib/auth';
+import { prisma } from '@/lib/server/db/prisma';
+import { requireUser } from '@/lib/server/security/auth';
 import { isYmd, todayYmdManila } from '@/lib/loan-rules';
 
 const num = (d) => (d == null ? 0 : Number(d));

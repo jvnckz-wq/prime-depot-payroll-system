@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { requireAdmin } from '@/lib/auth';
+import { prisma } from '@/lib/server/db/prisma';
+import { requireAdmin } from '@/lib/server/security/auth';
 
 /// GET /api/rates/audit — the piece-rate / crew-rate change history.
 ///

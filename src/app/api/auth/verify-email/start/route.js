@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createHash, randomInt } from 'crypto';
-import { prisma } from '@/lib/prisma';
-import { requireUser, validatePassword, verifyPassword } from '@/lib/auth';
-import { sendEmailVerificationCode } from '@/lib/email';
+import { prisma } from '@/lib/server/db/prisma';
+import { requireUser, validatePassword, verifyPassword } from '@/lib/server/security/auth';
+import { sendEmailVerificationCode } from '@/lib/server/integrations/email';
 
 // Step 1 of registering a recovery email: email a one-time code to the address
 // the admin typed, so step 2 can prove the inbox is real and theirs before

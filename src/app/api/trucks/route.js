@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { requireAdmin, requireUser } from '@/lib/auth';
+import { prisma } from '@/lib/server/db/prisma';
+import { requireAdmin, requireUser } from '@/lib/server/security/auth';
 
 // A truck is a vehicle and nothing else. Crew belongs to each delivery.
 const shape = (t) => ({

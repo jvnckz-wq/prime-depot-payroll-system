@@ -5,7 +5,7 @@
 // the frontend has to change how it reads a loan.
 
 import { POSITION_LABEL } from './employees';
-import { LOAN_PURPOSES, PURPOSE_LABEL } from './loan-rules';
+import { LOAN_PURPOSES, PURPOSE_LABEL } from '../../loan-rules';
 
 const num = (d) => (d == null ? 0 : Number(d));
 

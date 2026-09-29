@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createHash } from 'crypto';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/server/db/prisma';
 import {
   createSession, destroyAllSessions, hashPassword, logSecurityEvent,
   requireUser, validatePassword, verifyPassword,
-} from '@/lib/auth';
+} from '@/lib/server/security/auth';
 
 // Step 2 of registering a recovery email. The email (and, from the first-time
 // gate, the new password) is saved ONLY here, and only once the emailed code

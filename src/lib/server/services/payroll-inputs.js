@@ -6,12 +6,12 @@
 // place means the payslip that is stored, the deduction that is taken, and the
 // Staff Payroll screen all start from the same numbers.
 
-import { summarizeAttendance } from './attendance';
+import { summarizeAttendance } from '../../attendance';
 import { shapeEmployee } from './employees';
 import { shapeLoan } from './loans';
-import { computeStaffPayroll, crewEarnings, deliveriesToLog } from './payroll';
+import { computeStaffPayroll, crewEarnings, deliveriesToLog } from '../../payroll';
 import { shapeBir, shapePagibig, shapePhilhealth, shapeSss } from './statutory';
-import { CREW_RATE_FALLBACK } from '../data/seed';
+import { CREW_RATE_FALLBACK } from '../../../data/seed';
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 export const toDate = (ymd) => new Date(`${ymd}T00:00:00.000Z`);

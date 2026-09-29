@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { prisma, prismaBase } from '@/lib/prisma';
-import { withRetry } from '@/lib/db-retry';
-import { requireAdmin } from '@/lib/auth';
-import { MAX_IMPORT_BYTES, base64TooLarge } from '@/lib/uploads';
-import { parseZktecoXls } from '@/lib/attendance-import';
+import { prisma, prismaBase } from '@/lib/server/db/prisma';
+import { withRetry } from '@/lib/server/db/db-retry';
+import { requireAdmin } from '@/lib/server/security/auth';
+import { MAX_IMPORT_BYTES, base64TooLarge } from '@/lib/server/security/uploads';
+import { parseZktecoXls } from '@/lib/server/services/attendance-import';
 import { buildAttendanceRow } from '@/lib/attendance';
 
 const atTime = (dateStr, hhmm) => (hhmm ? new Date(`${dateStr}T${hhmm}:00.000Z`) : null);

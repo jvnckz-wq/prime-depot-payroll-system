@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { requireAdmin, logSecurityEvent } from '@/lib/auth';
+import { prisma } from '@/lib/server/db/prisma';
+import { requireAdmin, logSecurityEvent } from '@/lib/server/security/auth';
 
 const num = (d) => (d == null ? 0 : Number(d));
 const money = (n) => '₱' + Number(n || 0).toFixed(2);

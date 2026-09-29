@@ -58,7 +58,7 @@ export async function withRetry(fn, { tries = 3, baseDelay = 300 } = {}) {
 // async), NOT a genuine PrismaPromise. That is fine for a normal `await`, but
 // the array form prisma.$transaction([...]) rejects plain Promises with
 // "All elements of the array need to be Prisma Client promises". For array
-// batches, build the ops from the raw `prismaBase` client (see lib/prisma.js)
+// batches, build the ops from the raw `prismaBase` client (see lib/server/db/prisma.js)
 // and wrap the whole $transaction() call in withRetry() instead.
 export function wrapWithRetry(client) {
   return new Proxy(client, {

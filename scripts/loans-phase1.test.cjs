@@ -11,7 +11,7 @@
 const assert = require('node:assert/strict');
 const { computeStaffPayroll } = require('../src/lib/payroll.js');
 const R = require('../src/lib/loan-rules.js');
-const { applyLoanDeductions, runEndOf } = require('../src/lib/loans-apply.js');
+const { applyLoanDeductions, runEndOf } = require('../src/lib/server/services/loans-apply.js');
 
 // Collected first, then run one by one so async checks finish in order.
 const tests = [];

@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { prisma, prismaBase } from '@/lib/prisma';
-import { withRetry } from '@/lib/db-retry';
+import { prisma, prismaBase } from '@/lib/server/db/prisma';
+import { withRetry } from '@/lib/server/db/db-retry';
 import {
   completeTwoFactor, destroySession, getPendingTwoFactorLogin, logSecurityEvent,
-} from '@/lib/auth';
-import { hashBackupCode, totpStep } from '@/lib/twofactor';
+} from '@/lib/server/security/auth';
+import { hashBackupCode, totpStep } from '@/lib/server/security/twofactor';
 
 // Second step of a two-factor login. The pending session (set by /login after a
 // correct password) proves the password was right; here the code proves

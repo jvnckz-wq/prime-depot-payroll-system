@@ -16,7 +16,7 @@
 // ship the connection string to the browser, so it must only ever be imported
 // by API routes and server components.
 import 'server-only';
-import { PrismaClient } from '../generated/prisma/client';
+import { PrismaClient } from '../../../generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { wrapWithRetry } from './db-retry';
 

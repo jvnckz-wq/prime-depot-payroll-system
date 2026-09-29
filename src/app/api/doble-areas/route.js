@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { requireAdmin, requireUser } from '@/lib/auth';
+import { prisma } from '@/lib/server/db/prisma';
+import { requireAdmin, requireUser } from '@/lib/server/security/auth';
 
 // Checkers need this list: the delivery form matches the address they type
 // against it and flags a double-rate trip automatically.

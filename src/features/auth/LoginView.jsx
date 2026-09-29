@@ -33,7 +33,7 @@ const ART = [
 ];
 
 // Password rules shown live on the reset screen. Kept in step with
-// validatePassword() on the server (lib/auth.js) — same five checks.
+// validatePassword() on the server (lib/server/security/auth.js) — same five checks.
 const PW_RULES = [
   ['At least 8 characters', (p) => p.length >= 8],
   ['One uppercase letter', (p) => /[A-Z]/.test(p)],

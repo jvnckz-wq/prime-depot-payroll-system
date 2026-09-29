@@ -13,8 +13,8 @@
 const assert = require('node:assert/strict');
 const { computeStaffPayroll } = require('../src/lib/payroll.js');
 const R = require('../src/lib/loan-rules.js');
-const { applyLoanDeductions } = require('../src/lib/loans-apply.js');
-const { crewAvailableOn, loadStaffPayrollInputs, staffAvailable } = require('../src/lib/payroll-inputs.js');
+const { applyLoanDeductions } = require('../src/lib/server/services/loans-apply.js');
+const { crewAvailableOn, loadStaffPayrollInputs, staffAvailable } = require('../src/lib/server/services/payroll-inputs.js');
 
 const tests = [];
 const ok = (name, fn) => tests.push([name, fn]);

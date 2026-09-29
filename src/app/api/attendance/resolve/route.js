@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { prisma, prismaBase } from '@/lib/prisma';
-import { withRetry } from '@/lib/db-retry';
-import { requireAdmin } from '@/lib/auth';
+import { prisma, prismaBase } from '@/lib/server/db/prisma';
+import { withRetry } from '@/lib/server/db/db-retry';
+import { requireAdmin } from '@/lib/server/security/auth';
 import { minutesLate } from '@/lib/attendance';
 
 const toMin = (t) => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };

@@ -6,7 +6,7 @@ import { Btn, Confirm, Eyebrow, Field, Panel, inputCls, inputStyle } from '@/com
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 
 // Password strength rules shown live as the user types. These MUST stay in step
-// with validatePassword() on the server (lib/auth.js) — the server is the real
+// with validatePassword() on the server (lib/server/security/auth.js) — the server is the real
 // gate, so if these drift the meter would say "Strong" on a password the API
 // rejects. A show/hide toggle and a strength bar round out the reference design.
 const PASSWORD_RULES = [

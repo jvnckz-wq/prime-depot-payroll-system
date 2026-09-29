@@ -6,7 +6,7 @@
 // function the browser also runs to preview a run. This module only loads the
 // loans and turns the plan into database writes.
 
-import { isYmd, planDeductions } from './loan-rules';
+import { isYmd, planDeductions } from '../../loan-rules';
 import { shapeLoan } from './loans';
 
 export const isCrewPosition = (position) =>
@@ -58,7 +58,7 @@ export async function loadRunLoans(prisma, runKey) {
 
 // Deduct from every eligible loan in scope, from pay that is actually there.
 // `available` maps employeeId -> pay left after contributions and tardiness
-// (staff) or that day's earnings (crew); see src/lib/payroll-inputs.js.
+// (staff) or that day's earnings (crew); see src/lib/server/services/payroll-inputs.js.
 //
 // Idempotent on runKey: a loan already stamped with it is skipped, so a
 // double-click, a retry, or a re-finalize can never deduct twice. Everything is

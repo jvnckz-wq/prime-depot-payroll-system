@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { requireAdmin } from '@/lib/auth';
-import { buildEmployeeData, shapeEmployee } from '@/lib/employees';
+import { prisma } from '@/lib/server/db/prisma';
+import { requireAdmin } from '@/lib/server/security/auth';
+import { buildEmployeeData, shapeEmployee } from '@/lib/server/services/employees';
 
 export async function GET() {
   // Employee records — including addresses, contact numbers, and birthdates —
