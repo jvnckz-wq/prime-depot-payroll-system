@@ -10,7 +10,7 @@ import { uid, cutoffLabel, currentCutoffPeriod } from '@/lib/utils';
 import { staffRunKey, todayYmdManila } from '@/lib/loan-rules';
 import { FONTS, F_BODY, T } from '@/components/theme';
 import { AttendanceView } from '@/features/attendance/AttendanceView.jsx';
-import { CheckerView } from '@/views/CheckerView.jsx';
+import { CheckerView } from '@/features/deliveries/CheckerView.jsx';
 import { DashboardView } from '@/views/DashboardView.jsx';
 import { EmployeesView } from '@/views/EmployeesView.jsx';
 import { LoansView } from '@/features/loans/LoansView.jsx';

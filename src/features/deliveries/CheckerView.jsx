@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Truck, LogOut, Star, MapPin, Phone } from 'lucide-react';
-import { DeliveryForm } from '@/components/DeliveryForm.jsx';
+import { DeliveryForm } from '@/features/deliveries/DeliveryForm.jsx';
 import { Av, Badge, BigStat, EmptyState, Eyebrow, Panel, Td, Th } from '@/components/ui.jsx';
 import { CREW_RATE_FALLBACK } from '@/data/seed';
 import { flattenDeliveries } from '@/lib/payroll';
