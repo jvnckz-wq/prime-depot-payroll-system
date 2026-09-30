@@ -22,6 +22,7 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     if (!fixedCrewId && !crewId && crews.length) setCrewId(crews[0].id);
   }, [crews, fixedCrewId, crewId]);
 
@@ -50,6 +51,7 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
   useEffect(() => {
     if (!rates.length) return;
     const valid = new Set(rates.map(rateKey));
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     setLineRows(rows => rows.every(r => valid.has(r.item))
       ? rows
       : rows.map(r => (valid.has(r.item) ? r : { ...r, item: rateKey(rates[0]) })));

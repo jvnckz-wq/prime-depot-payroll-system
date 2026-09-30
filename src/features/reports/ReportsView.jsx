@@ -30,6 +30,7 @@ function crewEarningsRange(apiDeliveries, crewRates) {
 
 export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel = '', runKey = '', attendanceSummaries = [], crewRates = CREW_RATE_FALLBACK, navTab }) => {
   const [tab, setTab] = useState(navTab || 'register');
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- sync the report from the sidebar selection
   useEffect(() => { if (navTab) setTab(navTab); }, [navTab]);
 
   const todayStr = todayYmdManila();
@@ -39,6 +40,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
   const [loadingRange, setLoadingRange] = useState(false);
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     setLoadingRange(true);
     const t = setTimeout(() => {
       fetch(`/api/deliveries?from=${from}&to=${to}`)

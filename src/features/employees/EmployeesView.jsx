@@ -64,11 +64,12 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
 
   useEffect(() => {
     if (!prefill) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     setEditing(null);
     setForm({ ...BLANK_EMP, id: prefill.id != null ? String(prefill.id) : '', name: prefill.name || '' });
     setModal(true);
     if (onPrefillConsumed) onPrefillConsumed();
-  }, [prefill]); 
+  }, [prefill]); // eslint-disable-line react-hooks/exhaustive-deps
   const save = async () => {
     if (!form.id.trim()) { toast('ID number is required — it links this employee to the biometric logs.', 'error'); return; }
     if (!form.name.trim()) { toast('Name is required.', 'error'); return; }

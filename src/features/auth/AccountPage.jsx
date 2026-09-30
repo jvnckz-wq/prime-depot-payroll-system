@@ -9,6 +9,7 @@ import { Btn, Confirm, Field, Modal, inputCls, inputStyle } from '@/components/u
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { ChangePasswordPanel, EMAIL_RE, PasswordInput } from '@/features/auth/AccountView.jsx';
 import { AccountsPanel } from '@/features/settings/AccountsPanel.jsx';
+/* eslint-disable @next/next/no-img-element -- avatars and TOTP QR codes are base64 data URIs; next/image cannot optimize data URIs and adds no value */
 
 const REGEN_URL = '/api/auth/2fa/backup-codes/regenerate';
 const REENROLL_START_URL = '/api/auth/2fa/reenroll/start';
@@ -42,7 +43,7 @@ const Row = ({ label, children, last = false }) => (
   <div className="flex items-center gap-4 sm:gap-6 flex-wrap py-4"
     style={{ borderBottom: last ? 'none' : `1px solid ${T.lineSoft}` }}>
     <div className="text-sm font-semibold flex-1 min-w-0" style={{ fontFamily: F_HEAD, color: T.ink }}>{label}</div>
-    <div className="flex items-center gap-3 flex-shrink-0">{children}</div>
+    <div className="flex items-center gap-3 shrink-0">{children}</div>
   </div>
 );
 
@@ -51,7 +52,7 @@ const SubRow = ({ label, children }) => (
   <div className="flex items-center gap-4 flex-wrap py-3 pl-4"
     style={{ borderLeft: `2px solid ${T.lineSoft}`, marginLeft: 2 }}>
     <div className="text-sm font-semibold flex-1 min-w-0" style={{ fontFamily: F_HEAD, color: T.ink }}>{label}</div>
-    <div className="flex items-center gap-3 flex-shrink-0">{children}</div>
+    <div className="flex items-center gap-3 shrink-0">{children}</div>
   </div>
 );
 
@@ -411,6 +412,7 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut }) 
     } catch { /* leave the count hidden */ }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect -- run once on mount for the admin's 2FA card
   useEffect(() => { if (isAdmin && user.totpEnabled) loadBackupCount(); }, []);
 
   const patch = async (body, okMessage) => {
