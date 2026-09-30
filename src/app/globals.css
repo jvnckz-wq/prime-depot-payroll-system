@@ -4,7 +4,6 @@
   --background: #F6F4F3;
   --foreground: #1B2430;
 
-  /* Prime Depot palette — mirrors theme.js T so CSS interaction rules can reference it */
   --pd-brand: #C8161D;
   --pd-brand-dark: #9C1117;
   --pd-ink: #1B2430;
@@ -15,7 +14,6 @@
   --pd-skeleton-base: #E9E4E2;
   --pd-skeleton-hi: #F5F2F0;
 
-  /* Motion tokens (subtle / professional) */
   --pd-dur-fast: 120ms;
   --pd-dur-base: 160ms;
   --pd-dur-slow: 240ms;
@@ -35,33 +33,21 @@ body {
   font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
 }
 
-/* Tabular figures for numeric columns (payslips, tables, stat cards) */
 .pd-num { font-variant-numeric: tabular-nums; }
 
-/* Focus-visible rings — replaces the removed input outlines (accessibility) */
 :where(a, button, [role="button"], input, select, textarea, [tabindex]):focus-visible {
   outline: 2px solid var(--pd-brand);
   outline-offset: 2px;
 }
 
-/* Clickable affordance — native <button> defaults to the arrow cursor; make every
-   clickable thing obviously clickable (pointer + hover); disabled ones show not-allowed. */
 button:not(:disabled) { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
 .pd-clickable { cursor: pointer; transition: filter var(--pd-dur-base) var(--pd-ease); }
 .pd-clickable:hover { filter: brightness(0.97); }
 
-/* Hide a scrollbar while keeping the element scrollable — drops the ugly always-on white
-   bar on the crimson sidebar (mouse-wheel / trackpad still scroll). */
 .pd-no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .pd-no-scrollbar::-webkit-scrollbar { width: 0; height: 0; }
 
-/* Horizontal-scroll affordance for wide tables on small screens. A subtle inner
-   shadow appears on whichever edge still has content to scroll toward, and
-   vanishes at the ends — so the rightmost column (e.g. Net Pay) is never
-   obscured. Pure CSS, no JS: the white "cover" gradients (background-attachment:
-   local) scroll with the content and mask the shadows at the start/end. When the
-   table already fits (desktop), nothing shows. */
 .pd-scroll-shadow {
   background:
     linear-gradient(to right, #FFFFFF 30%, rgba(255, 255, 255, 0)) 0 0 / 32px 100% no-repeat,
@@ -71,7 +57,6 @@ button:disabled { cursor: not-allowed; }
   background-attachment: local, local, scroll, scroll;
 }
 
-/* Buttons — hover + pressed feedback (works over inline colors via filter/transform) */
 .pd-btn {
   transition: filter var(--pd-dur-base) var(--pd-ease),
     background-color var(--pd-dur-base) var(--pd-ease),
@@ -80,9 +65,6 @@ button:disabled { cursor: not-allowed; }
     transform var(--pd-dur-fast) var(--pd-ease),
     box-shadow var(--pd-dur-base) var(--pd-ease);
 }
-/* Filled buttons (dark ink, amber) lift on a soft shadow and darken slightly —
-   a tactile, premium press-ready feel. All pd-btn get the lift + shadow; only
-   the filled variants darken (outline/ghost fill crimson instead, below). */
 .pd-btn:not(:disabled):hover {
   transform: translateY(-1px);
   box-shadow: 0 5px 14px rgba(27, 36, 48, 0.18);
@@ -96,9 +78,6 @@ button:disabled { cursor: not-allowed; }
   box-shadow: none;
   filter: brightness(0.88);
 }
-/* White / outline (and ghost) buttons fill with crimson and flip their text to
-   white on hover. The Btn component sets its colours inline, which outrank a
-   normal stylesheet rule, so these overrides are marked !important to win. */
 .pd-btn[data-variant="outline"]:not(:disabled):hover,
 .pd-btn[data-variant="ghost"]:not(:disabled):hover {
   filter: none;
@@ -107,7 +86,6 @@ button:disabled { cursor: not-allowed; }
   color: #fff !important;
 }
 
-/* Cards — subtle lift for clickable ones */
 .pd-card-hover {
   transition: box-shadow var(--pd-dur-base) var(--pd-ease),
     transform var(--pd-dur-base) var(--pd-ease),
@@ -118,7 +96,6 @@ button:disabled { cursor: not-allowed; }
   transform: translateY(-1px);
 }
 
-/* Sidebar nav items — hover tint (inactive items only; active keeps its inline bg) */
 .pd-nav-item {
   transition: background-color var(--pd-dur-base) var(--pd-ease),
     color var(--pd-dur-base) var(--pd-ease),
@@ -126,18 +103,14 @@ button:disabled { cursor: not-allowed; }
 }
 .pd-nav-item:hover { background-color: rgba(255, 255, 255, 0.10); color: #FFFFFF !important; }
 
-/* Account dropdown items — light hover on a white panel (text keeps its colour). */
 .pd-menu-item { transition: background-color 0.12s ease; }
 .pd-menu-item:hover { background-color: #F1EEEC; }
 
-/* Table rows — hover highlight (opt-in via .pd-table; rolled out per view in a later batch) */
 .pd-table tbody tr { transition: background-color var(--pd-dur-fast) var(--pd-ease); }
 .pd-table tbody tr:hover { background-color: var(--pd-line-soft); }
 
-/* Progress bar fill — animated width */
 .pd-progress-fill { transition: width var(--pd-dur-slow) var(--pd-ease); }
 
-/* ---- Entrances (enter-only; exit animations come with the optional Motion path) ---- */
 @keyframes pd-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes pd-scale-in {
   from { opacity: 0; transform: scale(0.97); }
@@ -161,7 +134,6 @@ button:disabled { cursor: not-allowed; }
 .pd-toast { animation: pd-slide-up var(--pd-dur-slow) var(--pd-ease); }
 .pd-view-in { animation: pd-view-in var(--pd-dur-slow) var(--pd-ease); }
 
-/* Dashboard KPI stagger — translateY-only so it layers cleanly under the view fade */
 @keyframes pd-rise-stagger { from { transform: translateY(8px); } to { transform: translateY(0); } }
 .pd-stagger > * { animation: pd-rise-stagger var(--pd-dur-slow) var(--pd-ease) both; }
 .pd-stagger > *:nth-child(1) { animation-delay: 40ms; }
@@ -169,7 +141,6 @@ button:disabled { cursor: not-allowed; }
 .pd-stagger > *:nth-child(3) { animation-delay: 160ms; }
 .pd-stagger > *:nth-child(4) { animation-delay: 220ms; }
 
-/* Loading states — spinner + skeleton shimmer */
 @keyframes pd-spin { to { transform: rotate(360deg); } }
 .pd-spin { animation: pd-spin 0.7s linear infinite; }
 @keyframes pd-shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
@@ -179,7 +150,6 @@ button:disabled { cursor: not-allowed; }
   animation: pd-shimmer 1.4s ease infinite;
 }
 
-/* Respect the OS "reduce motion" setting — kills animations + transitions app-wide */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -191,24 +161,13 @@ button:disabled { cursor: not-allowed; }
   }
 }
 
-/* #A2 — hide the browser's built-in password reveal / clear controls. Edge and
-   some Chromium builds inject their own eye button, which showed up as a SECOND
-   eye beside our custom show/hide toggle and toggled independently of it (the
-   "duplicate + inverted" icon). Our PasswordInput is the single source of truth. */
 input::-ms-reveal,
 input::-ms-clear {
   display: none;
 }
 
-/* Clickable table rows (e.g. the dashboard payroll snapshot → Payroll). */
 .pd-clickable-row { transition: background-color 0.12s ease; }
 .pd-clickable-row:hover { background-color: var(--pd-bg, #F4F5F7); }
-
-/* Plain text / tab / table-action buttons (everything that is NOT a pd-btn or a
-   sidebar item) turn crimson on hover, and press in slightly when clicked. The
-   colour is set inline on many of these (Void red, Restore green, tab ink/soft),
-   which outranks a normal rule, so the hover colour is marked !important to win.
-   pd-btn and pd-nav-item keep their own richer hover and are excluded. */
 button:not(.pd-btn):not(.pd-nav-item):not(:disabled) {
   transition: color 0.12s ease, background-color 0.12s ease, transform 0.08s ease, opacity 0.12s ease;
 }
@@ -219,8 +178,6 @@ button:not(.pd-btn):not(.pd-nav-item):not(:disabled):active {
   transform: translateY(0.5px);
 }
 
-/* Live status pill — the pulsing "ping" ring on the Attendance auto-refresh badge.
-   Disabled automatically by the prefers-reduced-motion block above. */
 .pd-live-ping { animation: pd-live-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite; }
 @keyframes pd-live-ping {
   0%   { transform: scale(1); opacity: 0.5; }

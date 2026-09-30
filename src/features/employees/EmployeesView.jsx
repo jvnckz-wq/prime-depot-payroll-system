@@ -9,11 +9,6 @@ import { WEEKDAYS, describeEarlyShift } from '@/lib/attendance';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { FinalPayView } from '@/features/payroll/FinalPayView.jsx';
 
-// Registration fields required by the client spec: ID number, name, position,
-// daily rate, plus personal information (address, contact number, birthdate).
-// Date hired is carried too — the 13th-month computation prorates by months
-// worked, which is impossible without it. Personal info is captured here but
-// deliberately never printed on a payslip.
 const BLANK_EMP = {
   id: '', name: '', position: 'Administrative Staff', rate: '', declaredSalary: '',
   status: 'Active', sssOn: false, phOn: false, piOn: false, mp2: 0, leaveCredits: 5,
@@ -33,9 +28,6 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
   const [busy, setBusy] = useState(false);
   const ff = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  // Every row comes from the database now — office staff and crew alike. The old
-  // hardcoded crew rows are gone: crew are real employee records, registered and
-  // edited right here. Their pay is still computed in Truck Payroll (pakyawan).
   const rows = useMemo(() => staff
     .filter(r => r.name.toLowerCase().includes(q.toLowerCase()))
     .filter(r => statusFilter === 'all'
@@ -67,37 +59,24 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
       : [...f.earlyShiftDays, key],
   }));
 
-  // The ID is the biometric scanner's User ID (a plain number like 7), entered
-  // by hand — it is what links attendance logs to this record. Not generated,
-  // so the Add form starts blank rather than pre-filling a made-up code.
   const openAdd = () => { setEditing(null); setForm({ ...BLANK_EMP }); setModal(true); };
   const openEdit = (r) => { setEditing(r); setForm({ ...BLANK_EMP, ...r, rate: String(r.rate), declaredSalary: String(r.declaredSalary || '') }); setModal(true); };
 
-  // Arriving from "Register" on an unmapped biometric ID: open the Add form with
-  // that ID (and the name read from the file) already filled in, then clear the
-  // hand-off so re-opening Employees later doesn't pop the form again.
   useEffect(() => {
     if (!prefill) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     setEditing(null);
     setForm({ ...BLANK_EMP, id: prefill.id != null ? String(prefill.id) : '', name: prefill.name || '' });
     setModal(true);
     if (onPrefillConsumed) onPrefillConsumed();
-  }, [prefill]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [prefill]); 
   const save = async () => {
-    // Instant, friendly checks. The server validates authoritatively too — this
-    // just saves a round-trip on the obvious mistakes.
     if (!form.id.trim()) { toast('ID number is required — it links this employee to the biometric logs.', 'error'); return; }
     if (!form.name.trim()) { toast('Name is required.', 'error'); return; }
     const dupe = staff.some(s => String(s.id).toLowerCase() === form.id.trim().toLowerCase() && (!editing || s.id !== editing.id));
     if (dupe) { toast(`ID ${form.id.trim()} is already used by another employee.`, 'error'); return; }
 
-    // Crew are pakyawan + no-work-no-pay: they carry no declared monthly salary
-    // and no leave credits, so both are forced to 0 regardless of any stale form
-    // value (the fields are hidden for crew in the UI).
     const crew = isCrewPosition(form.position);
 
-    // Hand the server named fields only — never the whole form object.
     const payload = {
       id: form.id.trim(), name: form.name.trim(), position: form.position,
       rate: parseFloat(form.rate) || 0, declaredSalary: crew ? 0 : (parseFloat(form.declaredSalary) || 0),
@@ -111,8 +90,6 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
 
     setBusy(true);
     try {
-      // Edit targets the existing ID in the URL; the ID is fixed once set, so it
-      // is never renamed through the body.
       const res = await fetch(editing ? `/api/employees/${encodeURIComponent(editing.id)}` : '/api/employees', {
         method: editing ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -146,16 +123,11 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
     }
   };
 
-  // Deactivating a staff member goes through their final-pay slip: the slip opens
-  // first (review, print), and this finalises the deactivation from there.
   const finalizeDeactivate = async (r) => {
     await toggleStatus(r);
     setFinalPayFor(null);
   };
 
-  // Row actions differ by type and status. Crew (pakyawan) have no final pay, so
-  // they deactivate straight through the confirm dialog. Staff deactivate via the
-  // final-pay slip; once resigned, their final pay stays one click away.
   const renderActions = (r) => {
     const isCrew = typeof r.crew === 'boolean' ? r.crew : isCrewPosition(r.position);
     if (r.status === 'Active') {
@@ -170,8 +142,6 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
         </>
       );
     }
-    // Resigned: no Edit (nothing to change once they have left). Staff keep their
-    // final-pay record one click away; anyone can be reactivated.
     return (
       <>
         {!isCrew && (
@@ -415,5 +385,3 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
     </div>
   );
 };
-
-/* ============================= ATTENDANCE ============================= */

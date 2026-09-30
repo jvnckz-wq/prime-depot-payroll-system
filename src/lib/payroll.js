@@ -1,22 +1,10 @@
 import { CREW_POSITIONS } from '../data/seed';
 import { dueFor } from './loan-rules';
 
-// The one place that decides which payroll an employee belongs to. Position is
-// the only input: Driver and Pahinante are paid piece-rate (pakyawan) through
-// the Truck Payroll module, everyone else runs through Staff Payroll. Keeping
-// this in a single function means a future rule change is a one-line edit
-// instead of a hunt through every view.
 export function isCrewPosition(position) {
   return CREW_POSITIONS.includes(position);
 }
 
-/// Flattens the per-truck delivery log into a list of trips.
-///
-/// Voided trips are excluded by DEFAULT. Every earnings calculation flows
-/// through here, so making the safe answer the default one means a correction
-/// can never quietly leave money in a payslip — a caller has to ask for voided
-/// rows explicitly, and the only callers that do are the ones drawing the
-/// manifest on screen.
 export function flattenDeliveries(deliveries, filterCrewId, { includeVoided = false } = {}) {
   const out = [];
   Object.entries(deliveries).forEach(([crewId, log]) => {
@@ -28,19 +16,10 @@ export function flattenDeliveries(deliveries, filterCrewId, { includeVoided = fa
   return filterCrewId ? out.filter(t => t.crewId === filterCrewId) : out;
 }
 
-/// Converts what /api/deliveries returns into the per-truck shape the payslip
-/// and manifest views already read.
-///
-/// The API returns one record per trip with its items nested, which is the
-/// right shape for a database. The views were built around a flat list where
-/// the first row of a trip carries the trip-level details and later rows leave
-/// them blank. Translating here keeps that translation in one place instead of
-/// scattering it through four views.
 export function deliveriesToLog(apiDeliveries) {
   const out = {};
   for (const d of apiDeliveries || []) {
     if (!out[d.truckId]) out[d.truckId] = { date: d.date, items: [], kaltas: [] };
-    // Keep the most recent date seen for this truck.
     if (d.date > out[d.truckId].date) out[d.truckId].date = d.date;
 
     (d.items || []).forEach((it, i) => {
@@ -68,27 +47,12 @@ export function deliveriesToLog(apiDeliveries) {
   return out;
 }
 
-// shared payroll math so the Payslip list, the individual slip, and Reports always agree
-// Semi-monthly staff pay. When an attendance summary for the cutoff is passed
-// in, Days Present, Tardiness, and Overtime all come from the biometric record;
-// otherwise the row falls back to a plain estimate (flagged hasAttendance:false)
-// so views that don't load attendance — like the dashboard KPIs — still work.
-//
-// The money rules mirror the client's payroll sheet exactly:
-//   Gross        = daily rate × Days Present
-//   Hourly rate  = daily rate ÷ 8
-//   OT (weekday) = hourly × (OT minutes ÷ 60) × 1.25
-//   OT (weekend) = hourly × (OT minutes ÷ 60) × 1.30   (Sat/Sun)
-//   Tardiness    = hourly × (late minutes ÷ 60) × 2     = rate × late ÷ 240
 const DEFAULT_CUTOFF_DAYS = 11;
 
-// Round to centavos. Applied to every money line so the amounts a payslip shows
-// always add up to the totals it shows — no floating-point drift, no ₱0.01 gaps.
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 
 export function computeStaffPayroll(e, loans = [], statutory, attendance = null, runKey = null) {
   const hasAttendance = !!attendance;
-  // Paid leave is paid like a present day, so it counts toward the paid days.
   const leaveDays = hasAttendance ? (attendance.leave || 0) : 0;
   const days = hasAttendance ? (attendance.present + leaveDays) : DEFAULT_CUTOFF_DAYS;
   const gross = round2(e.rate * days);
@@ -111,14 +75,6 @@ export function computeStaffPayroll(e, loans = [], statutory, attendance = null,
   const tardinessDue = round2(e.rate * lateMins / 240);
   const totalEarnings = round2(gross + ot + allowance);
 
-  // When the pay is too small for everything (Phase 3 assumption, pending the
-  // client): the mandatory contributions (SSS, PhilHealth, Pag-IBIG MP1) are
-  // still deducted and remitted in full, and whatever the pay cannot cover is
-  // COVERED BY THE COMPANY for that cutoff, shown as its own addition. Nothing
-  // becomes a debt the employee did not agree to. Then, from what is left:
-  // tardiness, then the voluntary MP2 savings (never paid by the company), then
-  // cash advances and loans (see loan-rules planDeductions). Net stops at P0.
-  // With enough pay, every figure is exactly what it was before.
   let room = round2(totalEarnings - sss - phic - mp1);
   const companyCover = room < 0 ? round2(-room) : 0;
   room = Math.max(0, room);
@@ -127,32 +83,12 @@ export function computeStaffPayroll(e, loans = [], statutory, attendance = null,
   const mp2 = round2(Math.min(mp2Set, room));
   const hdmf = round2(mp1 + mp2);
 
-  // Loan deduction for THIS cutoff.
-  //
-  // With a cutoff runKey (Staff Payroll, Reports, Dashboard, Finalize all pass
-  // one), show ONLY what has actually been applied for this cutoff — the ledger
-  // entries tagged with this runKey. Nothing is deducted on the payslip until
-  // "Apply Cutoff Deductions" (or Finalize) is pressed; there is no forward
-  // preview that makes money look already taken before it is.
-  //
-  // Without a runKey (a bare estimate, no cutoff context), fall back to a
-  // preview of what this cutoff would deduct from the running balance.
-  //
-  // Loans are matched by employeeId, never by name. Loans and cash advances are
-  // kept apart (loanDeduction / advanceDeduction) so the payslip can show them
-  // on their own lines; `advance` stays as their sum for the stored snapshot
-  // and the totals, so net pay is exactly what it was before the split.
-  //
-  // An applied deduction counts even if the loan was paused afterwards: the
-  // money was already taken for this cutoff.
   let loanDeduction = 0;
   let advanceDeduction = 0;
   const deductionLines = [];
   for (const l of loans) {
     if (!l || l.employeeId !== e.id) continue;
     let amount;
-    // Phase 2: the part this cutoff could not take (pay ran out) is on the
-    // same ledger entry, so the payslip can say it moved to the next cutoff.
     let shortfall = 0;
     if (runKey) {
       const mine = (l.entries || []).filter(en => en.type === 'deduction' && en.payslipId === runKey);
@@ -162,13 +98,8 @@ export function computeStaffPayroll(e, loans = [], statutory, attendance = null,
       if (l.paused) continue;
       amount = dueFor(l);
     }
-    // A P0 entry that carried everything over still gets its line: the
-    // employee sees why nothing was taken and where it went.
     if (amount <= 0 && shortfall <= 0) continue;
     if (l.kind === 'CASH_ADVANCE') advanceDeduction += amount; else loanDeduction += amount;
-    // With a runKey, read the running balance right after THIS cutoff's
-    // deduction (later top-ups or deductions don't rewrite an old payslip).
-    // A preview has not taken the money yet, so subtract it.
     const balanceAfter = round2(runKey ? balanceThrough(l, runKey) : loanBalance(l) - amount);
     deductionLines.push({ kind: l.kind, purpose: l.purpose, amount: round2(amount), shortfall: round2(shortfall), balanceAfter, dateGranted: l.dateGranted });
   }
@@ -181,17 +112,15 @@ export function computeStaffPayroll(e, loans = [], statutory, attendance = null,
   return { hasAttendance, days, present: hasAttendance ? attendance.present : days, leaveDays, lateMins, gross, otWeekday, otWeekend, ot, allowance, sss, phic, mp1, mp2, hdmf, companyCover, advance, loanDeduction, advanceDeduction, deductionLines, tardiness, tardinessDue, totalEarnings, totalDeductions, net };
 }
 
-// deterministic pseudo-random per employee, so charts are stable across renders
-
 export function computeSSS(monthlySalary, table) {
   if (!monthlySalary || monthlySalary <= 0 || !table.length) return 0;
   const bracket = table.find(b => b.ceiling !== null && monthlySalary < b.ceiling) || table[table.length - 1];
-  return bracket.share / 2; // semi-monthly cutoff
+  return bracket.share / 2;
 }
 export function computePhilHealth(monthlySalary, ph) {
   if (!monthlySalary || monthlySalary <= 0) return 0;
   const base = Math.max(ph.floor, Math.min(ph.ceiling, monthlySalary));
-  return base * (ph.rate / 100) / 2 / 2; // 50/50 er/ee split, then ÷2 for the cutoff
+  return base * (ph.rate / 100) / 2 / 2;
 }
 export function computePagIBIG(monthlySalary, pi) {
   if (!monthlySalary || monthlySalary <= 0 || !pi.brackets.length) return 0;
@@ -200,8 +129,6 @@ export function computePagIBIG(monthlySalary, pi) {
   return monthly / 2;
 }
 
-
-// Running balance just after the last ledger entry stamped with `key`.
 function balanceThrough(loan, key) {
   let b = 0; let at = null;
   for (const en of loan.entries || []) {
@@ -214,7 +141,6 @@ function balanceThrough(loan, key) {
 export function loanBalance(loan) {
   return loan.entries.reduce((b, e) => e.type === 'grant' ? b + e.amount : b - e.amount, 0);
 }
-// Same entries, but each annotated with the balance immediately after it — for a bank-statement-style display.
 export function loanLedger(loan) {
   let running = 0;
   return loan.entries.map(e => {
@@ -223,20 +149,9 @@ export function loanLedger(loan) {
   });
 }
 
-/// Earnings grouped by PERSON rather than by truck.
-///
-/// The truck payslip answers "what did this truck cost today". It cannot
-/// answer "what do we owe Echo", because a pahinante can ride with one driver
-/// in the morning and another in the afternoon — their pay ends up split
-/// across two truck payslips with nothing tying the halves together. Checking
-/// every truck to find one helper's total is exactly the kind of manual
-/// cross-referencing this system exists to remove.
-///
-/// Voided trips are excluded: flattenDeliveries drops them before we start.
 export function crewEarnings(deliveries, { driverDaily, helperDaily, bonusHead, bonusTrips }) {
   const trips = flattenDeliveries(deliveries);
 
-  // people[name] accumulates one person's work across every truck and day.
   const people = new Map();
   const get = (name, role) => {
     if (!people.has(name)) {
@@ -245,8 +160,6 @@ export function crewEarnings(deliveries, { driverDaily, helperDaily, bonusHead, 
         pieceRate: 0,
         trucks: new Set(),
         days: new Set(),
-        // Keyed truck|date, so the palima bonus can be judged the way it is
-        // actually awarded: per truck, per day.
         tripKeys: new Set(),
         tripCount: 0,
       });
@@ -254,7 +167,6 @@ export function crewEarnings(deliveries, { driverDaily, helperDaily, bonusHead, 
     return people.get(name);
   };
 
-  // Trip totals per truck+date, needed for the bonus threshold.
   const truckDayTrips = new Map();
   trips.forEach((t) => {
     if (!t.seq) return;
@@ -263,8 +175,6 @@ export function crewEarnings(deliveries, { driverDaily, helperDaily, bonusHead, 
     truckDayTrips.get(key).add(t.seq);
   });
 
-  // Walk every line item. Trip-level details (driver, helpers) only appear on
-  // the first row of a trip, so they are carried forward.
   let currentDriver = null, currentHelpers = [], currentKey = null;
   Object.entries(deliveries).forEach(([crewId, log]) => {
     (log.items || []).forEach((it) => {
@@ -283,7 +193,6 @@ export function crewEarnings(deliveries, { driverDaily, helperDaily, bonusHead, 
         });
       }
       if (currentDriver) get(currentDriver, 'Driver').pieceRate += it.d || 0;
-      // A trip's helper amount is shared by whoever was actually on it.
       const n = currentHelpers.length;
       if (n) currentHelpers.forEach((h) => { get(h, 'Pahinante').pieceRate += (it.h || 0) / n; });
     });
@@ -292,8 +201,6 @@ export function crewEarnings(deliveries, { driverDaily, helperDaily, bonusHead, 
   return [...people.values()]
     .map((p) => {
       const daily = (p.role === 'Driver' ? driverDaily : helperDaily) * p.days.size;
-      // Bonus is per truck per day, so somebody who qualified on two different
-      // trucks in one day earns it twice — which is what actually happened.
       const bonus = [...p.tripKeys]
         .filter((k) => (truckDayTrips.get(k)?.size || 0) >= bonusTrips)
         .length * bonusHead;

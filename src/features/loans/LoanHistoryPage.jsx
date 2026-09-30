@@ -1,9 +1,5 @@
 'use client';
 
-// History: fully paid loans and cash advances that were deducted. Read-only.
-// A mistake is corrected with a new ledger entry that says why, never by
-// editing or deleting the record (the same void-not-delete rule as deliveries).
-
 import React, { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Download } from 'lucide-react';
 import { Btn, EmptyState, H1, inputCls, inputStyle } from '@/components/ui.jsx';
@@ -12,8 +8,6 @@ import { exportXLSX, peso } from '@/lib/utils';
 import { F_MONO, T } from '@/components/theme';
 import { D, H, Ledger, Person, Pill, SearchBox, Seg } from '@/features/loans/parts.jsx';
 
-// The day it was fully paid: when it was closed, or (for records closed before
-// auto-settle existed) the date of its last ledger entry.
 const paidOn = (l) => l.settledAt || [...l.entries].reverse().find((e) => e.ymd)?.ymd || l.dateGranted || null;
 
 export const LoanHistoryPage = ({ loans }) => {

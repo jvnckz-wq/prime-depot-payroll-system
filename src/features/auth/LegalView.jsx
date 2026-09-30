@@ -5,22 +5,6 @@ import React from 'react';
 import { Btn, Eyebrow, Panel } from '@/components/ui.jsx';
 import { F_BODY, F_HEAD, T } from '@/components/theme';
 
-// Terms and Conditions + Privacy Policy.
-//
-// A note on what these are for. This is not a public app — nobody signs up, and
-// only two accounts exist. So the Terms here are not consumer terms; they are
-// the conditions of use for the two people entrusted with the system.
-//
-// The Privacy Policy matters more, and its audience is not the user reading the
-// screen — it is the EMPLOYEES whose personal information the system holds.
-// Under the Data Privacy Act of 2012 (RA 10173), people whose data is processed
-// are entitled to know what is collected, why, how long it is kept, who can see
-// it, and what rights they have over it. That is what the second half sets out.
-//
-// This text is written for an academic system. A live deployment handling real
-// employee records should have it reviewed by someone qualified, and the
-// company details filled in.
-
 const Section = ({ n, title, children }) => (
   <div className="mb-6">
     <div className="flex items-baseline gap-2 mb-1.5">

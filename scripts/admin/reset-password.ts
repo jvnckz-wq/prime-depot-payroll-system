@@ -1,21 +1,3 @@
-// ============================================================================
-// Emergency password reset.
-//
-//   npx tsx scripts/admin/reset-password.ts <username> <new-password>
-//   npx tsx scripts/admin/reset-password.ts admin MyNewPass123
-//
-// This is the recovery path of last resort — the answer to "the only
-// administrator forgot their password and nobody can let them back in."
-//
-// It is deliberately NOT part of the web application. Running it requires
-// access to the project files and the database credentials, which is the
-// correct level of difficulty: anyone who already has that could change the
-// database directly anyway, so this adds convenience, not exposure.
-//
-// Every existing session for the account is destroyed, so if the password is
-// being reset because someone else knew it, that person is signed out too.
-// ============================================================================
-
 import { config } from 'dotenv';
 config({ path: '.env.local' });
 
@@ -56,11 +38,7 @@ async function main() {
     where: { id: user.id },
     data: {
       passwordHash: await bcrypt.hash(newPassword, 12),
-      // Left false so you can get straight back in and keep working. You chose
-      // this password yourself, so there is nothing temporary to replace.
       mustChangePassword: false,
-      // Re-enabled in case the account was disabled — being locked out by a
-      // disabled account is the same problem this script exists to solve.
       isActive: true,
     },
   });

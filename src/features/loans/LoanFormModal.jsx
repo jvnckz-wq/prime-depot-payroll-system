@@ -1,9 +1,5 @@
 'use client';
 
-// New Loan and Top-up share one form. Picking an employee who already has an
-// active loan turns it into a Top-up: the one-active-loan rule is visible
-// before anyone presses Save, and the server enforces it again.
-
 import React, { useMemo, useState } from 'react';
 import { Btn, Field, Modal, SearchSelect, inputCls, inputStyle } from '@/components/ui.jsx';
 import { LOAN_PURPOSES, balanceOf, isOpen, payoffPlan, shortDate } from '@/lib/loan-rules';
@@ -24,8 +20,6 @@ const Line = ({ label, value, total }) => (
   </div>
 );
 
-// Label shown in the employee picker. Position is added so two people with
-// the same name can still be told apart.
 const labelOf = (e) => `${e.name} · ${e.position}`;
 
 export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmployeeId = null, onSaved, toast }) => {
@@ -44,7 +38,6 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmp
   const topUp = !!active;
   const unit = emp?.crew ? 'day' : 'cutoff';
   const balance = active ? balanceOf(active) : 0;
-  // A top-up keeps the current installment unless it is changed here.
   const perValue = per === '' && active ? String(active.perCutoff) : per;
 
   const amt = Number(amount);
@@ -58,9 +51,6 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmp
   else if (!(perNum > 0)) problem = `Enter the deduction per ${unit}.`;
   else if (perNum > newBalance) problem = `The deduction per ${unit} cannot be more than the ${topUp ? 'new balance' : 'loan'}.`;
 
-  // withSlip: "Save & print slip" saves first, then prints the acknowledgment
-  // the employee signs (consent to the salary deduction). Printing only after
-  // a successful save means a slip can never exist for money not on record.
   const save = async (withSlip = false) => {
     if (problem) { toast(problem, 'error'); return; }
     setBusy(true);

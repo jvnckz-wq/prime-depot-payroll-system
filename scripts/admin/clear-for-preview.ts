@@ -1,26 +1,3 @@
-/**
- * clear-for-preview.ts
- *
- * Empties EMPLOYEES and IMPORTS (attendance) so you can see the system in a
- * blank state. KEEPS your admin login, statutory tables, crew rates, trucks,
- * and delivery-area rates — so you can still log in and the pages don't break.
- *
- * Deletes, in FK-safe order:
- *   deliveries (+ their items)  →  employees (cascades attendance, loans,
- *   loan entries, payslips)  →  import batches (cascades unmapped logs).
- *
- * KEEPS: User (login), Session, statutory tables (SSS/PhilHealth/Pag-IBIG/BIR),
- *        CrewRate, Truck, RateItem, DoubleRateArea, PayrollPeriod.
- *
- * SAFETY: refuses to run if the connection points at the LIVE database
- * (endpoint "small-heart"). Only ever runs against a Neon test branch.
- *
- * Run locally:
- *   npx tsx scripts/admin/clear-for-preview.ts
- *
- * When done previewing: restore .env.local from your backup and delete the
- * Neon branch. Your live data was never touched.
- */
 import { config } from 'dotenv';
 config({ path: '.env.local' });
 
@@ -29,8 +6,6 @@ import { PrismaPg } from '@prisma/adapter-pg';
 
 const conn = process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL ?? '';
 
-// ---- SAFETY GUARD -----------------------------------------------------------
-// Never let this run against the live/production database.
 const LIVE_MARKER = 'small-heart';
 const host = (conn.match(/@([^/?]+)/)?.[1]) ?? '(unknown host)';
 
@@ -54,7 +29,6 @@ const adapter = new PrismaPg({ connectionString: conn });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  // Show what's here before we touch anything.
   const [emps, atts, batches, dels] = await Promise.all([
     prisma.employee.count(),
     prisma.attendance.count(),
@@ -72,17 +46,15 @@ async function main() {
     return;
   }
 
-  // FK-safe order.
-  const d1 = await prisma.delivery.deleteMany({});      // frees the driver FK; items cascade
+  const d1 = await prisma.delivery.deleteMany({});
   console.log(`Deleted ${d1.count} delivery record(s).`);
 
-  const e1 = await prisma.employee.deleteMany({});      // cascades attendance, loans, payslips
+  const e1 = await prisma.employee.deleteMany({});  
   console.log(`Deleted ${e1.count} employee(s) (attendance, loans, payslips cascaded).`);
 
-  const b1 = await prisma.importBatch.deleteMany({});   // cascades unmapped logs
+  const b1 = await prisma.importBatch.deleteMany({}); 
   console.log(`Deleted ${b1.count} import batch(es).`);
 
-  // Any stragglers (should already be gone via cascade).
   await prisma.attendance.deleteMany({});
   await prisma.unmappedLog.deleteMany({});
 

@@ -8,13 +8,11 @@ const IDLE_MS = 15 * 60 * 1000;
 const ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'];
 
 export function IdleTimeout({ enabled, onExit }) {
-  // `expired` shows the notice; once true the session is already gone.
   const [expired, setExpired] = useState(false);
   const timer = useRef(null);
   const lastArm = useRef(0);
   const expiredRef = useRef(false);
   useEffect(() => { expiredRef.current = expired; }, [expired]);
-  // Latest onExit through a ref, so the shell re-rendering never re-arms the clock.
   const onExitRef = useRef(onExit);
   useEffect(() => { onExitRef.current = onExit; }, [onExit]);
 
@@ -23,8 +21,6 @@ export function IdleTimeout({ enabled, onExit }) {
 
     const onIdle = async () => {
       setExpired(true);
-      // End the real session on the server right away — the notice is only an
-      // explanation, not a gate.
       try { await fetch('/api/auth/logout', { method: 'POST' }); } catch { /* sign out locally regardless */ }
     };
 
@@ -34,9 +30,9 @@ export function IdleTimeout({ enabled, onExit }) {
     };
 
     const onActivity = () => {
-      if (expiredRef.current) return; // already signed out — ignore
+      if (expiredRef.current) return;
       const now = Date.now();
-      if (now - lastArm.current < 1000) return; // re-arm at most once a second
+      if (now - lastArm.current < 1000) return;
       lastArm.current = now;
       arm();
     };
@@ -48,7 +44,6 @@ export function IdleTimeout({ enabled, onExit }) {
       ACTIVITY_EVENTS.forEach((e) => window.removeEventListener(e, onActivity));
       clearTimeout(timer.current);
     };
-    // onExit is read through a ref, so only `enabled` needs to re-arm this.
   }, [enabled]);
 
   const backToSignIn = () => {

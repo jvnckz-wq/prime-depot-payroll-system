@@ -1,15 +1,3 @@
-// Numeric checks for Loans & Advances, Phase 2: deduct only from pay that is
-// there (net never below P0), cash advance before the loan installment, the
-// staff carry-over (rule e) read from the ledger, crew not stacked, one ledger
-// key per calendar cutoff, and the server-side payroll inputs.
-//
-// Pure logic plus tiny in-memory stand-ins for Prisma. Synthetic ids only; the
-// staff figures use the 2026 statutory tables from the seed, so the numbers are
-// the ones the real payslip shows.
-//
-// Run:  npm run test:loans2
-// (CommonJS + require so tsx can load the app's extensionless ESM imports.)
-
 const assert = require('node:assert/strict');
 const { computeStaffPayroll } = require('../src/lib/payroll.js');
 const R = require('../src/lib/loan-rules.js');

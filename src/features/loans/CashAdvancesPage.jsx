@@ -1,9 +1,5 @@
 'use client';
 
-// Cash Advances: grouped by cutoff, staff only, taken in full on that cutoff's
-// payroll. The form shows the hard limit (projected gross) and warns when the
-// advance is more than the estimated take-home, before anyone presses Save.
-
 import React, { useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Btn, EmptyState, Field, H1, Modal, SearchSelect, inputCls, inputStyle } from '@/components/ui.jsx';
@@ -37,11 +33,6 @@ const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
   const amt = Number(amount);
   const over = emp && amt > room + 0.004;
 
-  // Estimated take-home if they work every working day of the cutoff: pay
-  // after contributions, minus everything else this cutoff's payroll will take
-  // (the loan installment with any carry-over, advances already given, and
-  // advances carried in from an earlier cutoff). Uses the same
-  // computeStaffPayroll as the payslip. Cheap, so recomputed on every render.
   let estimate = null;
   if (emp && statutory?.sss) {
     const base = computeStaffPayroll(emp, [], statutory, { present: days, leave: 0, lateMins: 0, otWeekdayMins: 0, otWeekendMins: 0 }).net;
@@ -52,8 +43,6 @@ const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
       .reduce((s2, l) => s2 + balanceOf(l), 0));
     estimate = { takeHome: round2(base - installment - already - carriedIn), installment, carriedIn };
   }
-  // What the payroll could not cover moves to the next cutoff (rule e). Counted
-  // in total, since the advance is taken before the loan installment.
   const short = estimate && amt > 0 && !over ? round2(Math.max(0, amt - estimate.takeHome)) : 0;
   const after = shortPeriod(nextCutoff(period.end));
   const first = emp ? emp.name.split(/\s+/)[0] : '';
@@ -63,7 +52,6 @@ const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
   else if (!(amt > 0)) problem = 'Enter an amount.';
   else if (over) problem = `Over the limit. At most ${peso(room)} can be advanced for ${periodLabel(period)}.`;
 
-  // withSlip: save, then print the acknowledgment the employee signs.
   const save = async (withSlip = false) => {
     if (problem) { toast(problem, 'error'); return; }
     setBusy(true);
@@ -150,7 +138,6 @@ export const CashAdvancesPage = ({ staff, loans, reloadLoans, statutory, period:
   const advances = useMemo(() => loans.filter((l) => l.kind === 'CASH_ADVANCE' && l.dateGranted), [loans]);
   const [adding, setAdding] = useState(false);
 
-  // Cutoffs to pick from: the current one plus every cutoff that has an advance.
   const options = useMemo(() => {
     const m = new Map([[current.start, current]]);
     for (const l of advances) { const p = cutoffOf(l.dateGranted); m.set(p.start, p); }
@@ -165,8 +152,6 @@ export const CashAdvancesPage = ({ staff, loans, reloadLoans, statutory, period:
   const staffById = new Map(staff.map((e) => [e.id, e]));
   const total = inCutoff.reduce((s, l) => s + l.principal, 0);
   const people = new Set(inCutoff.map((l) => l.employeeId)).size;
-  // Advances from earlier cutoffs that a short payslip left open (rule e).
-  // They are due in full on this cutoff's payroll.
   const earlier = advances.filter((l) => l.dateGranted < period.start && isOpen(l));
   const earlierTotal = earlier.reduce((s, l) => s + balanceOf(l), 0);
   const prev = shortPeriod(prevCutoff(period.start));
@@ -229,8 +214,6 @@ export const CashAdvancesPage = ({ staff, loans, reloadLoans, statutory, period:
                   const room = limit == null ? null : round2(limit - advancedInCutoff(advances, l.employeeId, period));
                   const bal = balanceOf(l);
                   const paid = !isOpen(l);
-                  // A payroll already ran on it and could not take all of it
-                  // (even P0): the rest moved to the next cutoff.
                   const partly = !paid && l.entries.some((en) => en.type === 'deduction' && en.payslipId);
                   return (
                     <tr key={l.id}>

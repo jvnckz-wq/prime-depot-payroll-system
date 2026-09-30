@@ -4,9 +4,6 @@ import React from 'react';
 import { StaffPayrollView } from '@/features/payroll/StaffPayrollView.jsx';
 import { TruckPayrollView } from '@/features/payroll/TruckPayrollView.jsx';
 
-// Staff and Crew payroll live in the sidebar now (Payroll -> Staff Payroll /
-// Staff History / Crew Payroll), so this wrapper only maps the sidebar choice
-// to the right inner view. navSub: 'staff' | 'staff-history' | 'crew'.
 export const PayrollView = (props) => {
   const navSub = props.navSub || 'staff';
   const isCrew = navSub === 'crew';

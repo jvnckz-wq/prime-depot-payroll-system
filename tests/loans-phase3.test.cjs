@@ -1,11 +1,3 @@
-// Numeric checks for Loans & Advances, Phase 3 (assumptions pending the client):
-// the company covers contributions the pay cannot, voluntary MP2 and tardiness
-// only take what is left, the final pay takes everything owed (advances first,
-// never below P0, the rest stays owed), and the acknowledgment slip says what
-// the employee is agreeing to. Pure logic; 2026 statutory tables from the seed.
-//
-// Run:  npm run test:loans3
-
 const assert = require('node:assert/strict');
 const { computeStaffPayroll } = require('../src/lib/payroll.js');
 const R = require('../src/lib/loan-rules.js');

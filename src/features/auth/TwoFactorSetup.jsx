@@ -6,9 +6,6 @@ import { Btn, Field, inputCls, inputStyle } from '@/components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { GateShell } from '@/features/auth/AccountView.jsx';
 
-// Enforced two-factor enrollment, shown to an admin who has not set it up yet.
-// Step 1: scan the QR (or key it in) and confirm a code. Step 2: save the
-// one-time backup codes. Only after finishing does the app become reachable.
 export default function TwoFactorSetup({ user, onDone }) {
   const [step, setStep] = useState('setup');
   const [loading, setLoading] = useState(true);
@@ -19,12 +16,8 @@ export default function TwoFactorSetup({ user, onDone }) {
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  // The server refuses setup once two-factor is on (it will not replace a
-  // working secret). Seen only when this page is out of date, e.g. setup was
-  // finished in another tab; there is nothing to set up, so let them through.
   const [alreadyOn, setAlreadyOn] = useState(false);
 
-  // Fetch a fresh secret + QR when the screen opens.
   useEffect(() => {
     let cancelled = false;
     (async () => {

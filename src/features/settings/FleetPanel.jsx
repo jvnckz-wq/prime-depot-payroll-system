@@ -5,11 +5,6 @@ import { AlertTriangle } from 'lucide-react';
 import { Badge, Btn, Confirm, Eyebrow, Field, Modal, Panel, SkeletonRows, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 
-/// Fleet management (trucks), Operations Head only.
-///
-/// Neither list can be deleted, only retired. Past deliveries point at a truck
-/// and were priced against an area — removing either would leave old records
-/// referring to something that no longer exists.
 export const FleetPanel = ({ toast }) => {
   const [trucks, setTrucks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -34,7 +29,6 @@ export const FleetPanel = ({ toast }) => {
     }
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect -- deps intentionally limited to avoid re-running this load; intentional: load/sync state on mount or when deps change
   useEffect(() => { load(); }, []);
 
   const openAddTruck = () => {
@@ -51,9 +45,6 @@ export const FleetPanel = ({ toast }) => {
     setTruckModal(true);
   };
 
-  // One handler for both. Adding sends the whole record; editing sends only the
-  // details that can change — the truck ID is the key past deliveries point at,
-  // so it stays fixed once created.
   const saveTruck = async () => {
     setTruckError(''); setBusy(true);
     try {

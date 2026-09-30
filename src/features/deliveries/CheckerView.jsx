@@ -8,12 +8,8 @@ import { CREW_RATE_FALLBACK } from '@/data/seed';
 import { flattenDeliveries } from '@/lib/payroll';
 import { peso, telHref, timeLabel } from '@/lib/utils';
 import { FONTS, F_BODY, F_HEAD, T } from '@/components/theme';
-/* eslint-disable @next/next/no-img-element -- user avatars are base64 data URIs; next/image adds no value and cannot optimize data URIs */
 
 export const CheckerView = ({ currentUser, deliveries, reloadDeliveries, rates, crewRates = CREW_RATE_FALLBACK, onLogout, toast }) => {
-  // The delivery form needs the fleet list to pick which truck a delivery is
-  // for. Crew (driver/pahinante) are chosen inside the form from /api/crew, per
-  // delivery — nothing here ties a person to a truck.
   const [trucks, setTrucks] = useState([]);
   useEffect(() => {
     let cancelled = false;
@@ -24,9 +20,6 @@ export const CheckerView = ({ currentUser, deliveries, reloadDeliveries, rates, 
     return () => { cancelled = true; };
   }, []);
 
-  // Logging writes straight to the database. The trip number, the frozen peso
-  // amounts, and the record of who entered it are all decided server-side —
-  // the browser only reports what was chosen.
   const logDelivery = async (payload) => {
     try {
       const res = await fetch('/api/deliveries', {
@@ -140,6 +133,3 @@ export const CheckerView = ({ currentUser, deliveries, reloadDeliveries, rates, 
     </div>
   );
 };
-
-
-/* ============================= APP ============================= */

@@ -1,22 +1,6 @@
-// Parser for the ZKTeco biometric attendance export (.xls / BIFF8).
-//
-// The export has three kinds of sheet:
-//   - "Attendance Statistic Table" — one row per enrolled user (User ID + Name),
-//     including users who never punched. This is the roster.
-//   - "Shift Setting Table" — the monthly shift grid (not needed here).
-//   - "1,2,3", "4,5,6", … — detail sheets, three users laid out SIDE BY SIDE in
-//     column blocks. Each block is a "Time Card": one row per day, with the
-//     punch times as Excel day-fractions in Before-Noon In/Out, After-Noon
-//     In/Out, and Overtime In/Out columns.
-//
-// parseZktecoXls returns the period, the full roster, and every day's first and
-// last punch per user. It makes no payroll decisions — matching to employees
-// and computing tardiness happen in the import route.
-
 import * as XLSX from 'xlsx';
 import { pairPunches } from '../../attendance';
 
-// An Excel time is a fraction of a 24-hour day. 0.2361 → 05:40.
 function fracToHHMM(f) {
   if (typeof f !== 'number' || !isFinite(f) || f <= 0 || f >= 1) return null;
   let mins = Math.round(f * 1440);
@@ -31,7 +15,6 @@ const ymd = (d) => d.toISOString().slice(0, 10);
 export function parseZktecoXls(buffer) {
   const wb = XLSX.read(buffer, { type: 'buffer', cellDates: false });
 
-  // --- Period, from the statistic header "Date:05-01-2026~05-15-2026" ---
   const statName = wb.SheetNames.find((n) => /statistic/i.test(n));
   const stat = statName ? XLSX.utils.sheet_to_json(wb.Sheets[statName], { header: 1, raw: false }) : [];
   let period = null;
@@ -47,10 +30,8 @@ export function parseZktecoXls(buffer) {
   }
   if (!period) throw new Error('Could not read the reporting period from the file. Is this a ZKTeco attendance export?');
 
-  // --- Roster: every enrolled user (User ID + Name), even zero-punch ones ---
   const roster = [];
   const seen = new Set();
-  // The statistic table has a header row with "User ID"; data follows below it.
   let dataStarted = false;
   for (const row of stat) {
     const first = String((row && row[0]) || '').trim();
@@ -64,8 +45,6 @@ export function parseZktecoXls(buffer) {
     }
   }
 
-  // --- Punches, from the detail sheets ---
-  // userId -> { name, days: { 'YYYY-MM-DD': { timeIn, timeOut } } }
   const punchMap = new Map();
   const detailSheets = wb.SheetNames.filter((n) => /^[\d,\s]+$/.test(n));
 
@@ -78,12 +57,10 @@ export function parseZktecoXls(buffer) {
         const userId = String(rowArr[c + 1] ?? '').trim();
         if (!/^\d+$/.test(userId)) continue;
         const name = String((A[r - 1] && A[r - 1][c + 1]) ?? '').trim();
-        const base = c - 8; // day-label column for this block
+        const base = c - 8; 
         if (!punchMap.has(userId)) punchMap.set(userId, { name, days: {} });
         const rec = punchMap.get(userId);
 
-        // Walk the day rows of this block. A month rollover shows up as the day
-        // number decreasing, so track it against the period's start month.
         let month = period.start.getUTCMonth();
         let year = period.start.getUTCFullYear();
         let prevDay = 0;
@@ -101,9 +78,6 @@ export function parseZktecoXls(buffer) {
             .sort();
           if (!times.length) continue;
 
-          // Pairing lives in one shared function (used by the live device push
-          // too) so both paths agree on identical punches. Sunday is the
-          // half-day, so it pairs by first/last instead of the noon split.
           const { timeIn, timeOut } = pairPunches(times);
 
           const dateStr = ymd(new Date(Date.UTC(year, month, day)));

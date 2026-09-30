@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-// Package is the fallback icon for EmptyState when a caller doesn't pass one.
 import { X, Check, Package, Loader2 } from 'lucide-react';
 import { peso } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
@@ -54,7 +53,6 @@ export const Th = ({ children, right = false, center = false, colSpan }) => (
     {children}
   </th>
 );
-// Numbers never break across lines ("+₱54.69" used to split at the sign).
 export const Td = ({ children, right = false, center = false, mono = false, colSpan, style = {} }) => (
   <td colSpan={colSpan} className={`px-3 py-2 text-sm ${center ? 'text-center' : right ? 'text-right' : 'text-left'}${mono ? ' pd-num whitespace-nowrap' : ''}`}
     style={{ fontFamily: mono ? F_MONO : F_BODY, color: T.ink, borderBottom: `1px solid ${T.lineSoft}`, ...style }}>
@@ -62,8 +60,6 @@ export const Td = ({ children, right = false, center = false, mono = false, colS
   </td>
 );
 
-// compact: on a phone the card becomes one short row (label left, value
-// right), so three of them fit above the fold instead of filling the screen.
 export const StatCard = ({ label, value, tone = 'neutral', icon: Icon, onClick, compact = false }) => {
   const fg = { green: T.green, amber: T.amber, red: T.red, blue: T.blue, neutral: T.ink }[tone];
   const clickable = typeof onClick === 'function';
@@ -118,13 +114,11 @@ export const ProgressBar = ({ pct, tone = T.green }) => (
   </div>
 );
 
-// Shimmering placeholder used while data loads (see .pd-skeleton in globals.css).
 export const Skeleton = ({ w = '100%', h = 12, r = 6, className = '', style = {} }) => (
   <span className={`pd-skeleton ${className}`} aria-hidden="true"
     style={{ display: 'inline-block', width: w, height: h, borderRadius: r, ...style }} />
 );
 
-// Skeleton placeholders for tables (rows of cells) and panels (stacked lines).
 export const SkeletonRows = ({ cols = 4, rows = 3 }) =>
   Array.from({ length: rows }).map((_, r) => (
     <tr key={`skr-${r}`}>
@@ -147,11 +141,9 @@ export const SkeletonBlock = ({ lines = 4, avatar = true }) => (
   </div>
 );
 
-// fullMobile: full width on phones only (stacked action bars), natural width from sm up.
 export const Btn = ({ children, onClick, variant = 'dark', icon: Icon, size = 'md', disabled = false, full = false, fullMobile = false, loading = false }) => {
   const isDisabled = disabled || loading;
   const iconSize = size === 'sm' ? 12 : 14;
-  // md buttons are 44px tall on phones (touch), compact from sm up.
   const sizes = { sm: 'px-2.5 py-1.5 text-xs', md: 'px-3 py-2 text-sm min-h-11 sm:min-h-0' };
   const variants = {
     dark: { backgroundColor: T.ink, color: '#fff' },
@@ -175,17 +167,9 @@ export const Field = ({ label, children }) => (
     {children}
   </div>
 );
-// min-h-11 = 44px on phones (a comfortable touch target for a checker
-// working one-handed); desktop keeps the compact height.
 export const inputCls = "w-full px-3 py-2 rounded text-sm outline-none border min-h-11 sm:min-h-0";
 export const inputStyle = { fontFamily: F_BODY, borderColor: T.line, color: T.ink };
 
-// Lightweight searchable dropdown (combobox). Type to filter, click to pick.
-// Used for the Batangas municipality and barangay pickers on the delivery form,
-// where a plain select of a thousand barangays would be unusable and a free
-// text box would let the same place be spelled three different ways. When
-// allowCustom is set, a value not in the list can still be chosen (a barangay
-// missing from the dataset should never block a delivery from being logged).
 export const SearchSelect = ({ value, onChange, options, placeholder, disabled = false, allowCustom = false }) => {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
@@ -271,5 +255,3 @@ export const Toasts = ({ toasts }) => (
     ))}
   </div>
 );
-
-/* ============================= NAV ============================= */

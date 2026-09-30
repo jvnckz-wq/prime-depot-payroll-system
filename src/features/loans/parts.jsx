@@ -1,15 +1,11 @@
 'use client';
 
-// Small building blocks shared by the Loans, Cash Advances and History pages,
-// so the three screens look and read the same way.
-
 import React from 'react';
 import { Search } from 'lucide-react';
 import { loanLedger } from '@/lib/payroll';
 import { peso } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 
-// Status pill (sentence case, rounded) as in the approved mockups.
 const PILL = {
   green: [T.greenBg, T.green],
   amber: [T.warnBg, T.warn],
@@ -40,9 +36,6 @@ export const Person = ({ name, role }) => (
   </div>
 );
 
-// On a phone each KPI is one short row (label and note on the left, value on
-// the right), so all three fit above the list; from sm up it is the card from
-// the mockups.
 export const Kpi = ({ label, value, unit, sub }) => (
   <div className="rounded-lg border px-4 py-2.5 sm:py-3.5 flex items-center justify-between gap-3 sm:block" style={{ backgroundColor: T.surface, borderColor: T.line }}>
     <div className="min-w-0">
@@ -56,7 +49,6 @@ export const Kpi = ({ label, value, unit, sub }) => (
   </div>
 );
 
-// Segmented filter (All / Staff / Crew, All / Loans / Cash Advances).
 export const Seg = ({ value, onChange, options }) => (
   <div className="flex rounded-lg border overflow-hidden" style={{ borderColor: T.line }} role="tablist">
     {options.map(([key, label]) => {
@@ -80,7 +72,6 @@ export const SearchBox = ({ value, onChange, placeholder = 'Search employee…' 
   </label>
 );
 
-// Table header cell with the tinted header row from the mockups.
 export const H = ({ children, right = false, center = false }) => (
   <th className={`text-xs font-semibold uppercase px-3.5 py-2.5 whitespace-nowrap ${center ? 'text-center' : right ? 'text-right' : 'text-left'}`}
     style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.05em', backgroundColor: '#FAF8F7', borderBottom: `1px solid ${T.line}` }}>
@@ -94,7 +85,6 @@ export const D = ({ children, right = false, center = false, style = {}, colSpan
   </td>
 );
 
-// Balance with a thin progress bar (share already paid back).
 export const BalanceBar = ({ balance, principal }) => {
   const pct = principal > 0 ? Math.min(100, Math.max(0, ((principal - balance) / principal) * 100)) : 100;
   return (
@@ -110,10 +100,6 @@ export const BalanceBar = ({ balance, principal }) => {
   );
 };
 
-// The loan's ledger, bank-statement style. The first grant is "Given"; any
-// later grant is a "Top-up" on the same loan. A payroll run that could take
-// nothing (no pay left) still writes a P0 entry: it shows as "Not taken", and
-// its remark says where the amount went (carried over, or a crew day with no pay).
 export const Ledger = ({ loan }) => {
   const rows = loanLedger(loan);
   let grants = 0;
@@ -146,5 +132,4 @@ export const Ledger = ({ loan }) => {
   );
 };
 
-// Local 'YYYY-MM-DD' for a date input's default (the browser's own day).
 export const todayLocalYmd = () => new Date().toLocaleDateString('en-CA');

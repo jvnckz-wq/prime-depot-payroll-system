@@ -10,34 +10,14 @@ import { grantedBy, planDeductions, todayYmdManila } from '@/lib/loan-rules';
 import { peso, telHref, timeLabel } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 
-// #H15 — one component, two modes. mode="payslips" shows the crew's per-person
-// pay for the day (lives under Payroll > Crew, beside Staff Payroll);
-// mode="logging" shows the piece-rate table + Log Delivery + the deliveries list
-// (the separate "Deliveries" page). Splitting by mode keeps all the shared
-// day/history/crewEarnings logic in one place instead of duplicating it.
 export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, rates, setRates, crewRates = CREW_RATE_FALLBACK, loans, reloadLoans, crewNames = [], toast, mode = 'logging' }) => {
   const payslipsMode = mode === 'payslips';
-  // Display-only label for the helper role. The internal role value stays
-  // 'Pahinante' everywhere (crewEarnings sets it, and comparisons like
-  // p.role === 'Driver' still rely on it) — only what the user reads is English.
   const roleLabel = (r) => (r === 'Pahinante' ? 'Helper' : r);
-  // Round to centavos — shared by the payslip math and the piece-rate table.
   const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
-  // A rate row is "custom" when either double rate is NOT exactly single×2. Most
-  // rows follow the ×2 rule, so their double cells are locked (auto-derived);
-  // only a genuine exception (e.g. an item whose driver rate does not double) is
-  // unlocked for hand-editing. Detecting it from the data means an existing
-  // exception loaded from the database opens in Custom mode instead of being
-  // silently overwritten back to ×2.
   const isCustomDouble = (r) => (r.s || []).some((v, k) => round2(r.d?.[k] ?? 0) !== round2((v || 0) * 2));
-  // Drop the transient _custom UI flag before a rate row leaves the editor —
-  // it must never reach the parent `rates` state or the save payload.
   const stripCustom = ({ _custom, ...rest }) => rest;
   const [selected, setSelected] = useState(null);
 
-  // Fleet list for the truck cards, the crew-filter dropdown, and the delivery
-  // form's truck picker. Crew are not tied to a truck, so this is trucks only —
-  // who drove each trip comes from the delivery records themselves.
   const [trucks, setTrucks] = useState([]);
   useEffect(() => {
     let cancelled = false;
@@ -60,20 +40,13 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
   const [voidTarget, setVoidTarget] = useState(null);
   const [voidReason, setVoidReason] = useState('');
   const [voiding, setVoiding] = useState(false);
-  // Operations Head double-rate correction: preview target + apply-in-progress.
   const [dblTarget, setDblTarget] = useState(null);
   const [dblBusy, setDblBusy] = useState(false);
-  // Whose individual payslip is open in the modal — keeps the per-person slips
-  // out of the long scroll while staying one tap away inside Truck Payroll.
   const [slipPerson, setSlipPerson] = useState(null);
-  // History: null viewDate = today (the live data from the parent). A chosen
-  // past date is fetched on its own and shown read-only.
   const [viewDate, setViewDate] = useState(null);
   const [histDeliveries, setHistDeliveries] = useState({});
   const [histLoading, setHistLoading] = useState(false);
 
-  // Corrections are voids, never deletions. The reason travels with it so the
-  // Operations Head can see not just that something changed, but why.
   const submitVoid = async () => {
     if (!voidTarget) return;
     setVoiding(true);
@@ -87,8 +60,6 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
       if (!res.ok) { toast(data.error || 'Could not void the delivery.', 'error'); return; }
       await reloadDeliveries();
       setVoidTarget(null); setVoidReason('');
-      // A released cutoff still allows the correction, but says plainly that a
-      // payslip already handed out no longer matches the record behind it.
       toast(data.warning || 'Delivery voided. It no longer counts toward pay.', data.warning ? 'error' : 'success');
     } catch {
       toast('Could not reach the server.', 'error');
@@ -109,11 +80,6 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
     } catch { toast('Could not reach the server.', 'error'); }
   };
 
-  // Double rate is a manual mark. The Operations Head can still correct a trip
-  // here before the cutoff closes: openDouble asks the server to PREVIEW the new
-  // amounts (nothing is written yet), the confirmation shows before and after,
-  // and applyDouble commits it. The server re-prices every line so the flag and
-  // the money always match.
   const openDouble = async (it) => {
     const to = !it.dbl;
     setDblTarget({ deliveryId: it.deliveryId, seq: it.seq, to, loading: true, before: null, after: null });
@@ -146,15 +112,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
     } catch { toast('Could not reach the server.', 'error'); }
     finally { setDblBusy(false); }
   };
-  // already recorded on a logged delivery are frozen at the moment they were
-  // logged, so raising a rate today never rewrites what someone earned last
-  // week — the new figure applies only to deliveries logged from here on.
   const saveRates = async () => {
-    // A double rate below its single rate is almost always a typo (the fumble
-    // the lock is meant to prevent). Auto rows can never trip this — single×2 is
-    // always ≥ single — so only a hand-edited Custom row can, and it is blocked
-    // before it reaches the database. An equal double (double = single) is
-    // allowed: some items genuinely do not raise the rate in a double area.
     const bad = ratesDraft.find(r => (r.s || []).some((v, k) => round2(r.d?.[k] ?? 0) < round2(v || 0)));
     if (bad) {
       toast(`"${bad.cat}": a double rate can't be lower than its single rate. Check the Custom values.`, 'error');
@@ -162,8 +120,6 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
     }
     setSavingRates(true);
     try {
-      // Compare without the transient _custom UI flag, which never existed on
-      // the saved rate — otherwise every row would look changed on every save.
       const changed = ratesDraft.filter((r, i) => JSON.stringify(stripCustom(r)) !== JSON.stringify(rates[i]));
       for (const r of changed) {
         if (!r.id) continue;
@@ -234,16 +190,11 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
     }
   };
 
-  // Crew loans (driver/pahinante, from the employee record, not the name) that
-  // still owe something, aren't paused, were given by today, and weren't
-  // already applied today. Truck crew are paid daily, so this applies today's
-  // deduction rather than a cutoff's. Same rules as the server (loan-rules.js).
   const todayYmd = todayYmdManila();
   const dueLoans = loans.filter(l => l.isCrew && !l.paused && !l.settled && loanBalance(l) > 0
     && grantedBy(l, todayYmd) && !l.entries.some(en => en.payslipId === 'crew-' + todayYmd));
   const applyDeductions = async () => {
     setConfirmApply(false);
-    // Per-day run key: clicking again on the same day is a no-op server-side.
     const runKey = 'crew-' + todayYmd;
     try {
       const res = await fetch('/api/loans/apply-deductions', {
@@ -256,8 +207,6 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
       if (data.applied === 0 && !notTaken) {
         toast(data.skipped ? 'Deductions were already applied for today.' : 'No crew loans were due.');
       } else {
-        // Crew are not stacked (Phase 2): a day with too little pay just makes
-        // the loan run a day longer.
         toast(`Applied ${peso(data.total)} across ${data.applied} loan(s)`
           + (notTaken ? `; ${notTaken} with too little pay today will run a day longer.` : '.'));
       }
@@ -267,9 +216,6 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
     }
   };
 
-  // Logging writes straight to the database. The trip number, the frozen peso
-  // amounts, and the record of who entered it are all decided server-side —
-  // the browser only reports what was chosen.
   const logDelivery = async (payload) => {
     try {
       const res = await fetch('/api/deliveries', {
@@ -289,8 +235,6 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
     }
   };
 
-  // The active delivery source: today's live data, or a fetched past day when
-  // browsing History. History is view-only — no logging, voiding, or deductions.
   const D = viewDate ? histDeliveries : deliveries;
   const readOnly = !!viewDate;
   const loadHistory = async (date) => {
@@ -315,16 +259,10 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
   if (selected) {
     const crew = trucks.find(c => c.id === selected) || { id: selected, vehicle: '', plate: '' };
     const log = D[selected];
-    // Everything below is computed by crewEarnings — the SAME function the
-    // Crew Earnings report uses. When the manifest and the report were worked
-    // out separately they disagreed, because a fix applied to one never
-    // reached the other. One function means one answer.
     const crewTotals = log
       ? crewEarnings({ [selected]: log }, crewRates)
       : [];
 
-    // Kaltas recorded against this truck, attributed by name where the entry
-    // says who it belongs to.
     const kaltasFor = (name) => (log?.kaltas || [])
       .filter(k => !k.name || k.name === name)
       .reduce((sum, k) => sum + (k.name ? (k.amount || 0) : 0), 0);
@@ -337,17 +275,6 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
     const bonusEligible = tripCount >= crewRates.bonusTrips;
     const grandNet = people.reduce((sum, p) => sum + p.net, 0);
 
-    // ---- Printable Truck Payslip: itemized ledger, split Driver / Pahinante 1 / Pahinante 2 ----
-    //
-    // The three columns are SLOTS, not people. There is no assigned crew, so a
-    // slot has no permanent occupant — each row names whoever actually rode
-    // that trip. Column totals are therefore meaningless as a payout figure
-    // (slot 1 can be Perlas in the morning and Roderick in the afternoon),
-    // which is why the totals below the table are per person instead.
-    // --- Printable payslips ---
-    // Trips grouped by delivery sequence. Voided items are dropped here, so a
-    // trip whose every line was voided leaves the payable side entirely while
-    // still showing (struck through) on the on-screen manifest above.
     const trips = [];
     if (log) {
       let cur = null;
@@ -362,12 +289,8 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
     }
     const payTrips = trips.filter(t => t.items.length);
 
-    // Whoever actually drove this truck (used on the on-screen manifest header).
     const driversWorked = drivers.map(d => d.name);
 
-    // Excel-style day totals — Driver / Pahinante (combined) — mirroring the
-    // client's TRUCK_PAYROLL sheet. Every figure comes from crewEarnings, so the
-    // truck payslip can never disagree with the per-person slips or the report.
     const sumBy = (arr, k) => arr.reduce((s, p) => s + (p[k] || 0), 0);
     const noNameKaltas = (log?.kaltas || [])
       .filter(k => !(k.name || k.who))
@@ -665,23 +588,11 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
     );
   }
 
-  // Manila day, not UTC: toISOString() still says yesterday until 8 AM here,
-  // which would show the wrong day and miss that morning's loan deductions.
   const todayStr = todayYmdManila();
   const dayDate = viewDate || todayStr;
 
-  // Per-person totals across ALL trucks for the active day — one row per person,
-  // so a pahinante who rode two trucks appears once, not per truck. Kaltas is the
-  // sum of two things: manual kaltas recorded against a truck (damage, shortage),
-  // and the loan deductions actually APPLIED for this day. The loan side lives in
-  // the Loans ledger, not in the delivery record — "Apply Today's Deductions"
-  // stamps each deduction with runKey `crew-<date>` (same idea as Staff Payroll's
-  // applied-only rule). Reading only log.kaltas is why a deducted loan used to
-  // show ₱0.00 on the payslip: the money was taken, but on a different ledger.
   const loanKaltasFor = (name) => {
     const runKey = 'crew-' + dayDate;
-    // Deliveries record crew by name, so this lookup is by name too, limited to
-    // crew loans so an office employee with the same name can never match.
     return (loans || [])
       .filter(l => l.isCrew && l.person === name)
       .reduce((s, l) => s + (l.entries || [])
@@ -696,10 +607,6 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
     return { ...p, kaltas, net: round2(p.total - kaltas) };
   });
 
-  // Preview of "Apply Today's Deductions" with the same planDeductions the
-  // server runs: each crew loan takes its daily amount from what that person
-  // earned today, never more. Matched by name here (what this screen has); the
-  // server matches by employee ID from the delivery records.
   const earnedToday = new Map(dayPeople.map(p => [p.name, p.total]));
   const crewLoans = loans.filter(l => l.isCrew);
   const crewPlan = viewDate ? null : planDeductions(crewLoans, {
@@ -711,7 +618,6 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
       .map(x => (x.amount > 0 ? `${x.person} (only ${peso(x.amount)} earned)` : `${x.person} (no trips)`)).join(', ')}.`
     : '';
 
-  // One person's line items across every truck they rode that day.
   const personLinesAll = (p) => {
     const lines = [];
     Object.entries(D).forEach(([truckId, log]) => {
@@ -1019,5 +925,3 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
     </div>
   );
 };
-
-/* ============================= STAFF PAYROLL (list + printable payslip) ============================= */

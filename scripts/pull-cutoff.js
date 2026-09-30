@@ -1,23 +1,8 @@
-// Pull a whole cutoff from the ZKTeco device and finalize it for payroll.
-//
-// Run this on the warehouse laptop at cutoff, instead of exporting and importing
-// a .xls. It reads the FULL period from the device (including scans made while
-// the laptop was off, since the device stores them), then posts them to
-// /api/attendance/pull, which writes present + absences using the exact same
-// logic as the .xls import. The result shows up in Employee DTR and Import
-// History like any import, and stays fully editable.
-//
-//   node scripts/pull-cutoff.js                 # pick the cutoff from a menu
-//   node scripts/pull-cutoff.js 2026-09-16 2026-09-30   # or pass dates
-//
-// Nothing is written until you confirm. CommonJS on purpose (matches node-zklib).
-
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 const ZKLib = require('node-zklib');
 
-// ---- config -------------------------------------------------------------
 const env = readEnv(path.join(process.cwd(), '.env'));
 const DEVICE_IP = env.DEVICE_IP || '192.168.1.201';
 const DEVICE_PORT = Number(env.DEVICE_PORT || 4370);
@@ -25,7 +10,6 @@ const PUSH_URL = env.PUSH_URL || 'http://localhost:3000/api/attendance/push';
 const PULL_URL = env.PULL_URL || PUSH_URL.replace(/\/push\/?$/, '/pull');
 const TOKEN = env.DEVICE_SYNC_TOKEN || '';
 
-// ---- Manila time helpers (device time is stored local; format explicitly) ---
 const hhmmFmt = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hour12: false });
 const dateFmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' });
 const manilaHHMM = (d) => hhmmFmt.format(d);
@@ -48,7 +32,6 @@ function readEnv(file) {
   return out;
 }
 
-// ---- cutoff maths (1-15 and 16-end each month) --------------------------
 function cutoffOf(y, mi0, half) {
   const mm = String(mi0 + 1).padStart(2, '0');
   if (half === 'A') return { from: `${y}-${mm}-01`, to: `${y}-${mm}-15` };
@@ -73,7 +56,6 @@ const label = (c) => {
   return `${f} - ${t}`;
 };
 
-// ---- read the whole period from the device ------------------------------
 async function readPeriod(from, to) {
   const zk = new ZKLib(DEVICE_IP, DEVICE_PORT, 10000, 4000);
   await zk.createSocket();
@@ -89,14 +71,14 @@ async function readPeriod(from, to) {
     .map((u) => ({ userId: String(u.userId ?? u.uid ?? '').trim(), name: u.name || null }))
     .filter((u) => u.userId);
 
-  const sets = {}; // userId -> date -> Set of HH:MM
+  const sets = {};
   for (const rec of (logs && logs.data) || []) {
     const bid = String(rec.deviceUserId ?? rec.uid ?? rec.id ?? '').trim();
     if (!bid) continue;
     const when = new Date(rec.recordTime);
     if (isNaN(when.getTime())) continue;
     const ds = manilaDate(when);
-    if (ds < from || ds > to) continue; // string compare works for YYYY-MM-DD
+    if (ds < from || ds > to) continue; 
     (sets[bid] ||= {});
     (sets[bid][ds] ||= new Set()).add(manilaHHMM(when));
   }
@@ -108,7 +90,6 @@ async function readPeriod(from, to) {
   return { roster, punches };
 }
 
-// ---- main ---------------------------------------------------------------
 async function main() {
   console.log('Prime Depot cutoff pull');
   console.log(`  device : ${DEVICE_IP}:${DEVICE_PORT}`);
@@ -118,7 +99,6 @@ async function main() {
   const ask = (q) => new Promise((res) => rl.question(q, res));
 
   try {
-    // Period: from args, or a menu.
     let from = process.argv[2];
     let to = process.argv[3];
     if (!(validYmd(from) && validYmd(to))) {

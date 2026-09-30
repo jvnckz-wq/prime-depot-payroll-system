@@ -1,8 +1,5 @@
 'use client';
 
-// Loans: one row per active loan, click a row to open its ledger. Paid-off
-// loans close by themselves and move to History, so there is no "Mark Paid".
-
 import React, { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Pause, Play, Plus } from 'lucide-react';
 import { Btn, EmptyState, H1 } from '@/components/ui.jsx';
@@ -18,7 +15,7 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
   const [q, setQ] = useState('');
   const [who, setWho] = useState('all');
   const [openId, setOpenId] = useState(null);
-  const [form, setForm] = useState(null); // null | { employeeId }
+  const [form, setForm] = useState(null);
   const [busyId, setBusyId] = useState(null);
 
   const rows = useMemo(() => loans
@@ -27,10 +24,7 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
       const balance = balanceOf(l);
       const appliedNow = !l.isCrew && l.entries.some((en) => en.type === 'deduction' && en.payslipId === runKey);
       const status = l.paused ? 'Paused' : !grantedBy(l, period.end) ? 'Scheduled' : 'Deducting';
-      // Staff: the next payroll is this cutoff's, unless it was already taken.
       const nextEnd = appliedNow || status === 'Scheduled' ? nextCutoff(period.end).end : period.end;
-      // Phase 2: a staff installment includes what the last cutoff could not
-      // take (rule e). Crew are not stacked, so their due is the daily amount.
       const due = dueFor(l, { endYmd: l.isCrew ? null : nextEnd });
       const carry = l.isCrew ? { amount: 0, fromYmd: null } : carryOf(l, nextEnd);
       const left = l.perCutoff > 0 ? Math.ceil(balance / l.perCutoff - 1e-9) : null;
@@ -60,13 +54,11 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
     } catch { toast('Could not reach the server.', 'error'); } finally { setBusyId(null); }
   };
 
-  // "Next deduction" text, shared by the table (desktop) and the cards (phone).
   const nextCell = ({ l, due, carry, status, nextEnd, left }) => (
     status === 'Paused' ? <span style={{ color: T.soft }}>None while paused</span> : (
       <>
         <div><b className="tabular-nums" style={{ fontFamily: F_MONO }}>{peso(due)}</b> · {l.isCrew ? 'daily' : shortDate(nextEnd)}</div>
         {carry.amount > 0 ? (
-          // Where the extra comes from, so the Ops Head is not left wondering.
           <div className="text-xs" style={{ color: '#7A4B12' }}>
             incl. {peso(carry.amount)} short{carry.fromYmd ? ` from ${shortDate(carry.fromYmd)}` : ''}
           </div>

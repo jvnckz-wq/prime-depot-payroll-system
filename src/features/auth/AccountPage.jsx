@@ -9,16 +9,11 @@ import { Btn, Confirm, Field, Modal, inputCls, inputStyle } from '@/components/u
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { ChangePasswordPanel, EMAIL_RE, PasswordInput } from '@/features/auth/AccountView.jsx';
 import { AccountsPanel } from '@/features/settings/AccountsPanel.jsx';
-/* eslint-disable @next/next/no-img-element -- avatars and TOTP QR codes are base64 data URIs; next/image cannot optimize data URIs and adds no value */
 
-// Endpoints the two-factor management calls. The recovery-email, password,
-// picture, name, and sessions actions all use endpoints that already exist; the
-// two below are added in the backend batch that follows this UI.
 const REGEN_URL = '/api/auth/2fa/backup-codes/regenerate';
 const REENROLL_START_URL = '/api/auth/2fa/reenroll/start';
 const REENROLL_CONFIRM_URL = '/api/auth/2fa/reenroll/confirm';
 
-/// Shows the account holder's picture, or their initials when none is set.
 const Avatar = ({ user, size = 64 }) => {
   const initials = (user.displayName || user.username)
     .split(/[\s,]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
@@ -36,7 +31,6 @@ const Avatar = ({ user, size = 64 }) => {
   );
 };
 
-// j•••@gmail.com, enough to recognise your own address, not enough to read out.
 const maskEmail = (email) => {
   if (!email) return '';
   const [local, domain] = email.split('@');
@@ -44,8 +38,6 @@ const maskEmail = (email) => {
   return `${local.slice(0, 1)}\u2022\u2022\u2022@${domain}`;
 };
 
-/// One settings line: a bold label on the left, and a value plus its action on
-/// the right. The shared shape is what keeps the whole page aligned.
 const Row = ({ label, children, last = false }) => (
   <div className="flex items-center gap-4 sm:gap-6 flex-wrap py-4"
     style={{ borderBottom: last ? 'none' : `1px solid ${T.lineSoft}` }}>
@@ -65,9 +57,6 @@ const SubRow = ({ label, children }) => (
 
 const roleName = (role) => (role === 'ADMIN' ? 'Operations Head' : 'Checker');
 
-/// Recovery email change, current password, then a code sent to the new address
-/// must be entered before it replaces the old one, so a mistyped or someone
-/// else's address can never be saved. Shown in a dialog off the Account page.
 const RecoveryEmailModal = ({ open, user, toast, onClose, onUserChange }) => {
   const [email, setEmail] = useState(user.email || '');
   const [password, setPassword] = useState('');
@@ -189,8 +178,6 @@ const RecoveryEmailModal = ({ open, user, toast, onClose, onUserChange }) => {
   );
 };
 
-/// The one-time list of new backup codes, with copy and download. Shown once,
-/// after enabling or regenerating, and never retrievable again.
 const BackupCodeList = ({ codes, toast }) => {
   const copyAll = () => {
     if (navigator?.clipboard) navigator.clipboard.writeText(codes.join('\n')).then(() => toast('Codes copied.'), () => {});
@@ -222,8 +209,6 @@ const BackupCodeList = ({ codes, toast }) => {
   );
 };
 
-/// Regenerate backup codes, proves it is really you (current password plus a
-/// current authenticator or backup code), then issues ten fresh codes.
 const RegenerateModal = ({ open, toast, onClose, onDone }) => {
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
@@ -288,9 +273,6 @@ const RegenerateModal = ({ open, toast, onClose, onDone }) => {
   );
 };
 
-/// Re-enroll a new authenticator (a replaced or lost phone). Step one proves it
-/// is you; step two enrols the new app and only then swaps the secret, so a
-/// half-finished re-enrol never locks the account out.
 const ReenrollModal = ({ open, toast, onClose }) => {
   const [step, setStep] = useState('auth');
   const [password, setPassword] = useState('');
@@ -401,8 +383,6 @@ const ReenrollModal = ({ open, toast, onClose }) => {
   );
 };
 
-/// The whole account, on one full-screen surface: a left rail with the sections
-/// and a Back out to the app, and the settings themselves on the right.
 export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut }) => {
   const isAdmin = user.role === 'ADMIN';
   const [section, setSection] = useState('account');
@@ -422,8 +402,6 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut }) 
   const [confirmRemovePic, setConfirmRemovePic] = useState(false);
   const fileRef = useRef(null);
 
-  // How many one-time backup codes are still unused. Comes from /me; stays null
-  // (and the count simply isn't shown) until that field is available.
   const loadBackupCount = async () => {
     try {
       const res = await fetch('/api/auth/me');
@@ -433,7 +411,6 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut }) 
     } catch { /* leave the count hidden */ }
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect -- run once on mount for the admin's 2FA card
   useEffect(() => { if (isAdmin && user.totpEnabled) loadBackupCount(); }, []);
 
   const patch = async (body, okMessage) => {

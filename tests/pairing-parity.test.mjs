@@ -1,19 +1,6 @@
-// Numeric parity test for the shared attendance pairing.
-//
-// Phase 0 promise: the .xls import and the live device push must agree on
-// identical punches. Both now call the SAME two functions (pairPunches +
-// buildAttendanceRow), so this test locks that in and also proves the
-// extraction did not change the existing import behaviour. Pure logic — no DB,
-// no real PII (synthetic ids only).
-//
-// Run:  npm run test:pairing      (plain node; Node 22 detects the ESM syntax
-//       in src/lib/attendance.js. tsx is NOT used here: it loads that .js as
-//       CommonJS and loses the named exports.)
 import assert from 'node:assert/strict';
 import { pairPunches, buildAttendanceRow } from '../src/lib/attendance.js';
 
-// The pre-refactor inline pairing from attendance-import.js, kept verbatim as
-// the reference for the behaviour-preserving check.
 function oldInlinePair(times) {
   const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
   const sorted = times.filter(Boolean).slice().sort();
@@ -29,7 +16,6 @@ function oldInlinePair(times) {
 let passed = 0;
 const check = (name, fn) => { fn(); passed++; console.log('  ok -', name); };
 
-// 1. The extracted pairing equals the old inline logic on every shape.
 check('pairing matches the pre-refactor logic', () => {
   const cases = [
     ['06:28', '17:32'],                     // normal full day
@@ -44,13 +30,10 @@ check('pairing matches the pre-refactor logic', () => {
   }
 });
 
-// 2. A Sunday half-day (two morning punches, none after noon) keeps the late-
-//    morning punch as the time-out — no special case needed.
 check('a half-day keeps the pre-noon time-out', () => {
   assert.deepEqual(pairPunches(['06:31', '11:58']), { timeIn: '06:31', timeOut: '11:58' });
 });
 
-// 3. file-import row == device-push row on identical punches.
 const emp = { id: '1001', position: 'Driver', earlyShiftDays: [] }; // crew -> 06:30 call
 const date = '2026-05-18'; // Monday
 const raw = ['06:44', '17:20'];

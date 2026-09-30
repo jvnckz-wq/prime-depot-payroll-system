@@ -11,9 +11,6 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
   const [crewId, setCrewId] = useState(fixedCrewId || (crews[0] && crews[0].id) || '');
   const crew = crews.find(c => c.id === crewId) || crews[0];
 
-  // Names alone are not enough to record who was paid — two people can share
-  // one, and a delivery has to point at a person. The crew roster is fetched
-  // so every selection carries an employee id.
   const [pool, setPool] = useState({ drivers: [], helpers: [] });
   useEffect(() => {
     let cancelled = false;
@@ -24,61 +21,35 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
     return () => { cancelled = true; };
   }, []);
 
-  // Trucks may arrive from the database a moment after this form mounts — the
-  // Checker page renders it inline, not in a modal. Once they land, select the
-  // first truck so the dropdown is never left blank.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     if (!fixedCrewId && !crewId && crews.length) setCrewId(crews[0].id);
   }, [crews, fixedCrewId, crewId]);
 
-  // Location fields. Province is pre-filled Batangas (editable for the rare
-  // out-of-province drop); municipality and barangay come from the PSGC list so
-  // the same place is always spelled the same way.
   const [province, setProvince] = useState('Batangas');
   const [municipality, setMunicipality] = useState('');
   const [barangay, setBarangay] = useState('');
   const [customer, setCustomer] = useState('');
-  // Specific address/landmark and the receiver's contact number: the detail a
-  // driver actually navigates and calls by. Both are free text and never affect
-  // pay (the combined municipality/barangay line is built at submit time).
   const [landmark, setLandmark] = useState('');
   const [contactNo, setContactNo] = useState('');
-  // Double rate is a manual mark now, set by whoever logs the trip (they know
-  // the terrain and distance). It drives which rate column each line uses.
   const [dbl, setDbl] = useState(false);
   const [lineRows, setLineRows] = useState([{ item: rates[0] ? (rates[0].id || `${rates[0].cat}|${rates[0].unit}`) : '', qty: '' }]);
-  // Driver, truck, and helpers are each chosen per delivery. Nothing in the
-  // client's account ties a driver to a truck, so nothing here assumes it.
   const [driverId, setDriverId] = useState('');
   const [helper1Id, setHelper1Id] = useState('');
   const [helper2Id, setHelper2Id] = useState('');
 
-  // A rate is identified by its database id, never by its name. The client's
-  // real table has two rows called "Aggregates" — one per elf, one per mini
-  // dump — priced differently. Matching on the name would return whichever
-  // came first and quietly pay the wrong amount.
   const rateKey = (r) => (r ? (r.id || `${r.cat}|${r.unit}`) : '');
   const rateByKey = (k) => rates.find(r => rateKey(r) === k) || rates[0];
-  // Units are shown in the dropdown for the same reason: without them, two
-  // rows read as the same choice.
   const rateLabel = (r) => (r.unit ? `${r.cat} — per ${r.unit}` : r.cat);
 
-  // #D11 — Add item picks the first rate not already listed; if every rate is
-  // already on the delivery there is nothing left to add.
   const addRow = () => setLineRows(r => {
     const used = new Set(r.map(x => x.item));
     const next = rates.find(rt => !used.has(rateKey(rt)));
     return next ? [...r, { item: rateKey(next), qty: '' }] : r;
   });
 
-  // The rate table arrives from the database a moment after the form mounts,
-  // and the seed rows used until then have different keys. Without this, the
-  // item dropdown would be left pointing at a key that no longer exists.
   useEffect(() => {
     if (!rates.length) return;
     const valid = new Set(rates.map(rateKey));
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     setLineRows(rows => rows.every(r => valid.has(r.item))
       ? rows
       : rows.map(r => (valid.has(r.item) ? r : { ...r, item: rateKey(rates[0]) })));
@@ -86,17 +57,9 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
   const removeRow = (i) => setLineRows(r => r.filter((_, idx) => idx !== i));
   const updateRow = (i, patch) => setLineRows(r => r.map((row, idx) => idx === i ? { ...row, ...patch } : row));
 
-  // #D11 — keys already chosen on other rows, so each item is offered only once.
   const usedKeys = new Set(lineRows.map(r => r.item));
 
-  // Peso amounts are worked out here and sent with the delivery, then frozen on
-  // the record. Recomputing them later from the rate table would mean an edit
-  // to a rate silently rewrote what someone already earned.
   const computed = lineRows.map(row => {
-    // The Checker renders this form inline, so it can mount a moment before the
-    // rate table has loaded — `rate` (and its d/s pairs) can be undefined on the
-    // first render. Guard it so the form shows zeroes until the rates arrive
-    // instead of crashing on `rate.s`.
     const rate = rateByKey(row.item);
     const pair = rate ? (dbl ? rate.d : rate.s) : null;
     const dR = pair ? pair[0] : 0;
@@ -106,19 +69,12 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
   });
   const totalD = computed.reduce((s, r) => s + r.d, 0), totalH = computed.reduce((s, r) => s + r.h, 0);
 
-  // Guards against a double tap sending the same trip twice — a real risk on a
-  // slow warehouse connection, and a double trip means double pay. The button is
-  // disabled while a save is in flight, and the form only clears once the save
-  // actually succeeds (so a failed attempt keeps everything for a retry).
   const [busy, setBusy] = useState(false);
   const submit = async () => {
     if (busy) return;
     if (!driverId || !crewId || !customer.trim() || !contactNo.trim() || !province || !municipality || !barangay || !landmark.trim() || computed.every(r => !r.qty)) return;
     setBusy(true);
     try {
-      // One combined line for display, kept in `address` so every existing screen
-      // still shows a single address; the parts are sent separately too, so the
-      // backend can store them for per-area reporting once those columns exist.
       const address = `${barangay}, ${municipality}, ${province}`;
       const ok = await onSubmit({
         truckId: crewId,
@@ -133,8 +89,6 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
       });
       if (ok !== false) {
         setProvince('Batangas'); setMunicipality(''); setBarangay(''); setCustomer(''); setLandmark(''); setContactNo(''); setLineRows([{ item: rateKey(rates[0]), qty: '' }]);
-        // Crew stays selected — the next load that day is usually the same three
-        // people, and re-picking them every time would be its own annoyance.
       }
     } finally {
       setBusy(false);
@@ -240,8 +194,6 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
           the quantity field too narrow to read what had just been typed. */}
       <div className="flex flex-col gap-2 mb-3">
         {lineRows.map((row, i) => {
-          // Same guard as the `computed` map above: the rate table can still be
-          // loading on the Checker's first render, so `rate` may be undefined.
           const rate = rateByKey(row.item);
           const pair = rate ? (dbl ? rate.d : rate.s) : null;
           const dR = pair ? pair[0] : 0;
@@ -316,5 +268,3 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
     </div>
   );
 };
-
-/* ============================= TRUCK PAYROLL ============================= */

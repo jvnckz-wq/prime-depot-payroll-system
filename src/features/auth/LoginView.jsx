@@ -4,23 +4,14 @@ import React, { useState, useEffect, useSyncExternalStore } from 'react';
 import { AlertTriangle, Loader2, Eye, EyeOff, CheckCircle2, Circle } from 'lucide-react';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 
-// Remembers, on this device, that the person already accepted the Terms — so a
-// returning user finds the box pre-checked instead of ticking it every sign-in.
 const TERMS_KEY = 'pd_terms_agreed';
 
-// Did this device accept the Terms on a past sign-in? Read through
-// useSyncExternalStore: the server snapshot is always false, so the server
-// render and the first client paint match, then React swaps in the stored
-// value without a setState-in-effect. Nothing else writes the key while the
-// login page is open, so the subscription is a no-op.
 const subscribeNoop = () => () => {};
 const readTermsAgreed = () => {
   try { return localStorage.getItem(TERMS_KEY) === '1'; } catch { return false; } // storage blocked: leave unchecked
 };
 const serverTermsAgreed = () => false;
 
-// Decorative Canva line-art for the crimson half (files live in /public/login).
-// Positions are percentages of the panel: the worker sits centre, tools scatter around it.
 const ART = [
   { src: 'saw',         left: '30%',  top: '-16%', w: '45%', rot: 20, op: 0.5 },
   { src: 'hammer',      left: '66%',  top: '3%',  w: '45%', rot: 0,  op: 0.5 },
@@ -32,8 +23,6 @@ const ART = [
   { src: 'worker',      left: '27%',  top: '25%', w: '45%', rot: 0,   op: 0.9 },
 ];
 
-// Password rules shown live on the reset screen. Kept in step with
-// validatePassword() on the server (lib/server/security/auth.js) — same five checks.
 const PW_RULES = [
   ['At least 8 characters', (p) => p.length >= 8],
   ['One uppercase letter', (p) => /[A-Z]/.test(p)],
@@ -43,10 +32,6 @@ const PW_RULES = [
 ];
 const pwMeetsAll = (p) => PW_RULES.every(([, test]) => test(p));
 
-// The "forgot password" flow, shown inside the sign-in panel. Two steps:
-// request a code (username → email), then verify it and set a new password.
-// The API answers the request step generically, so this screen never reveals
-// whether an account or a recovery email exists.
 function ForgotPassword({ onBack }) {
   const [step, setStep] = useState('request');
   const [email, setEmail] = useState('');
@@ -57,8 +42,6 @@ function ForgotPassword({ onBack }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  // Seconds until another code may be requested. Mirrors the server's 60s
-  // resend throttle, so the "Resend" link is only offered once it will work.
   const [cooldown, setCooldown] = useState(0);
 
   const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -74,8 +57,6 @@ function ForgotPassword({ onBack }) {
     border: `1px solid ${error ? T.brand : 'transparent'}`,
   };
 
-  // Handles the first send and every resend. A resend keeps the user on the
-  // verify step and just refreshes the notice and the cooldown.
   const request = async () => {
     if (busy) return;
     setError('');
@@ -88,8 +69,6 @@ function ForgotPassword({ onBack }) {
         body: JSON.stringify({ email: addr }),
       });
       const data = await res.json();
-      // The server answers the same way whether or not the address is on file,
-      // so the notice is worded to be true either way.
       setNotice(data.message || 'If that account has a recovery email on file, a reset code has been sent.');
       setStep('verify');
       setCooldown(60);
@@ -232,18 +211,13 @@ export const LoginView = ({ onSignedIn, onShowLegal }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
-  // The box starts from what this device remembers; once the user ticks or
-  // unticks it, their choice wins (null = not touched yet).
   const storedAgreed = useSyncExternalStore(subscribeNoop, readTermsAgreed, serverTermsAgreed);
   const [agreedChoice, setAgreed] = useState(null);
   const agreed = agreedChoice ?? storedAgreed;
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  // 'login' or 'forgot' — the sign-in panel doubles as the password-reset flow.
   const [mode, setMode] = useState('login');
   const [resetDone, setResetDone] = useState('');
-  // After a correct password on a 2FA account, the panel switches to a code step
-  // instead of signing straight in.
   const [awaiting2FA, setAwaiting2FA] = useState(false);
   const [tfaCode, setTfaCode] = useState('');
   const [useBackup, setUseBackup] = useState(false);
@@ -272,7 +246,6 @@ export const LoginView = ({ onSignedIn, onShowLegal }) => {
         setPassword('');
         return;
       }
-      // Remember the acceptance on this device for next time.
       try { localStorage.setItem(TERMS_KEY, '1'); } catch { /* storage blocked — no memory, box just re-ticks next time */ }
       if (data.twoFactorRequired) { setAwaiting2FA(true); setPassword(''); return; }
       onSignedIn(data.user);
@@ -283,11 +256,8 @@ export const LoginView = ({ onSignedIn, onShowLegal }) => {
     }
   };
 
-  // Enter submits, which is what anyone typing a password expects.
   const onKeyDown = (e) => { if (e.key === 'Enter') submit(); };
 
-  // Second step for a 2FA account: send the authenticator code (or a backup
-  // code) to complete the pending session.
   const verify2FA = async () => {
     if (busy) return;
     setError('');
@@ -300,8 +270,6 @@ export const LoginView = ({ onSignedIn, onShowLegal }) => {
       });
       const data = await res.json();
       if (!res.ok) {
-        // The pending sign-in is gone (expired, or ended after too many wrong
-        // codes), so the only way on is the password again.
         if (res.status === 401 || res.status === 429) { setAwaiting2FA(false); setUseBackup(false); }
         setError(data.error || 'Could not verify the code.');
         setTfaCode('');

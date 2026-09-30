@@ -5,7 +5,6 @@ import { AlertTriangle, ClipboardList, ArrowLeft, Pencil, Upload, Loader2 } from
 import { Av, Badge, BigStat, Btn, EmptyState, Eyebrow, Field, H1, Modal, Panel, SkeletonBlock, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 
-// Compact "Xs/Xm/Xh ago" from an absolute ISO time (the device's last heartbeat).
 const agoFrom = (iso) => {
   if (!iso) return null;
   const s = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 1000));
@@ -24,15 +23,10 @@ const callTimeLabel = (emp) => {
 const asUTC = (iso) => new Date(iso + 'T00:00:00Z');
 const fmtDay = (iso) => asUTC(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 const fmtPeriod = (p) => (p ? `${fmtDay(p.start)} – ${asUTC(p.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}` : '—');
-// Step a YYYY-MM-DD string by whole days (UTC, matching how dates are stored).
 const shiftYmd = (iso, delta) => { const d = asUTC(iso); d.setUTCDate(d.getUTCDate() + delta); return d.toISOString().slice(0, 10); };
-// Enum position -> readable label: ADMINISTRATIVE_STAFF -> Administrative Staff.
 const prettyPosition = (p) => (p ? String(p).toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : null);
-// Live board table cells, matched to the mockup: 18px edge alignment with the
-// header and stats above, tight type, tabular figures set per cell.
 const liveThBase = { fontFamily: F_HEAD, fontSize: 11.5, fontWeight: 600, color: T.soft, textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'left', padding: '13px 18px', borderTop: `1px solid ${T.line}`, borderBottom: `1px solid ${T.line}` };
 const liveTdBase = { fontFamily: F_BODY, fontSize: 14.5, color: T.ink, padding: '14px 18px', borderBottom: `1px solid ${T.lineSoft}`, verticalAlign: 'middle' };
-// Cutoff maths for the "Pull from device" selector (1-15 and 16-end each month).
 const manilaTodayStr = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 const cutoffOf = (y, mi0, half) => {
   const mm = String(mi0 + 1).padStart(2, '0');
@@ -99,9 +93,6 @@ export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
     finally { if (!silent) setLoading(false); }
   };
 
-  // Live board: today's scans plus the device connection status. The pill reads
-  // the server's heartbeat (liveData.sync), so it tells a real device sync from
-  // a browser that is merely still polling.
   const loadLive = async ({ silent = false } = {}) => {
     if (!silent) setLiveLoading(true);
     try {
@@ -112,8 +103,6 @@ export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
     finally { if (!silent) setLiveLoading(false); }
   };
 
-  // "Pull from device": queue a request; the sync agent executes it and marks it
-  // done. We only poll while one is active.
   const currentCutoff = recentCutoffs(manilaTodayStr(), 1)[0];
   const canGoNext = pullSel.from < currentCutoff.from;
   const pullActive = !!pullReq && (pullReq.status === 'PENDING' || pullReq.status === 'RUNNING');
@@ -137,16 +126,11 @@ export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
     } catch { setPullError('Could not queue the pull.'); }
     finally { setPullBusy(false); }
   };
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- sync the sub-tab from the sidebar selection
   useEffect(() => { if (navSub) setSubTab(navSub); }, [navSub]);
-  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- intentional: load the active tab's data on mount and when the tab or selected day changes
   useEffect(() => { if (subTab === 'live') loadLive(); else if (subTab === 'dtr' || subTab === 'history') load(); }, [subTab, liveDate]);
 
-  // Show any in-progress pull when opening the DTR tab.
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot fetch of pull status when the DTR tab opens
   useEffect(() => { if (subTab === 'dtr') fetchPull(); }, [subTab]);
 
-  // Poll a queued pull until it finishes, then refresh the DTR to show the result.
   useEffect(() => {
     if (pullReq?.status !== 'PENDING' && pullReq?.status !== 'RUNNING') return undefined;
     const id = setInterval(async () => {
@@ -162,21 +146,18 @@ export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
     return () => clearInterval(id);
   }, [pullReq?.status]);
 
-  // Live auto-refresh: always-on ~15s poll while this page is open. A "latest" ref
-  // lets the interval call the newest load() without re-creating the timer each render.
   const loadRef = useRef(load);
   useEffect(() => { loadRef.current = () => (subTab === 'live' ? (liveDate === null ? loadLive({ silent: true }) : undefined) : load({ silent: true })); });
   const editingRef = useRef(false);
   useEffect(() => { editingRef.current = !!editDay; }, [editDay]);
   useEffect(() => {
     const id = setInterval(() => {
-      if (typeof document !== 'undefined' && document.hidden) return; // skip when tab hidden (resumes automatically)
-      if (editingRef.current) return; // do not refresh under an open correction
+      if (typeof document !== 'undefined' && document.hidden) return; 
+      if (editingRef.current) return;
       loadRef.current({ silent: true });
     }, 15000);
     return () => clearInterval(id);
   }, []);
-  // tick once a second so the "Updated Xs ago" label stays current
   useEffect(() => {
     const id = setInterval(() => setAgoTick((t) => t + 1), 1000);
     return () => clearInterval(id);
@@ -202,7 +183,6 @@ export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
     } catch (err) { console.error('Could not load unmapped IDs:', err); }
     finally { setUnmappedLoading(false); }
   };
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
   useEffect(() => { if (subTab === 'unmapped') loadUnmapped(); }, [subTab]);
 
   const resolveId = async (biometricId) => {
@@ -224,7 +204,6 @@ export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     if (view === 'dtr' && selectedId) loadDtr(selectedId);
   }, [view, selectedId]);
 
@@ -298,8 +277,6 @@ export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
     importFile(e.dataTransfer?.files?.[0]);
   };
 
-  // Locked day-by-day DTR for one employee within a past import's period — the
-  // same DTR the live tab shows, but read-only (corrections happen on the live DTR).
   const openHistDtr = async (s) => {
     if (!viewBatch) return;
     const period = `${viewBatch.periodStart} \u2192 ${viewBatch.periodEnd}`;
@@ -318,8 +295,6 @@ export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
     }
   };
 
-  // Read-only look-back at a past import: fetch that batch's period summaries.
-  // Nothing here can be edited — corrections still happen on the live DTR.
   const openBatch = async (b) => {
     if (!b.periodStart || !b.periodEnd) { toast('This import has no date range to view.', 'error'); return; }
     setViewBatch(b);
@@ -338,7 +313,6 @@ export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
     }
   };
 
-  // ===== DTR view =====
   if (view === 'dtr' && selectedId) {
     const emp = staff.find(s => s.id === selectedId);
     const summary = data.summaries.find(s => s.id === selectedId);
@@ -457,7 +431,6 @@ export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
     );
   }
 
-  // ===== List view =====
   return (
     <div className="p-4 sm:p-6">
       <input ref={fileRef} type="file" accept=".xls,.xlsx" onChange={onFile} style={{ display: 'none' }} />

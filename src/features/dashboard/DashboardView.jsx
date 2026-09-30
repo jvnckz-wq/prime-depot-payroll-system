@@ -8,15 +8,12 @@ import { computeStaffPayroll, flattenDeliveries, loanBalance } from '@/lib/payro
 import { peso } from '@/lib/utils';
 import { F_BODY, T } from '@/components/theme';
 
-// Measure before paint on the client; fall back to useEffect on the server (no SSR warning).
 const useIsoLayoutEffect = typeof document !== 'undefined' ? useLayoutEffect : useEffect;
 
 export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loans = [], statutory, setTab, cutoffLabel = '', runKey = '', attendanceSummaries = [], unmappedCount = 0 }) => {
   const loggedToday = Object.keys(deliveries).length;
   const deliveriesLogged = useMemo(() => flattenDeliveries(deliveries).length, [deliveries]);
 
-  // Keep the payroll snapshot exactly as tall as the charts column on desktop so the two
-  // panels align and no space is wasted; the table scrolls internally past that height.
   const chartsColRef = useRef(null);
   const [snapshotHeight, setSnapshotHeight] = useState(undefined);
   useIsoLayoutEffect(() => {
@@ -31,32 +28,20 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
     return () => { ro.disconnect(); mq.removeEventListener('change', sync); };
   }, []);
 
-  // Index the imported attendance so the dashboard uses the SAME real days the
-  // Staff Payroll page does — otherwise the headline net would be an estimate
-  // and wouldn't match the payslips.
   const attById = useMemo(() => {
     const m = {};
     for (const s of attendanceSummaries) m[s.id] = s;
     return m;
   }, [attendanceSummaries]);
-  // Calendar-cutoff ledger key from the parent (same one Staff Payroll uses).
   const cutoffKey = runKey || `staff-${cutoffLabel}`;
 
-  // Net pay this cutoff — sum of every staff payslip's net, using the same shared math the
-  // Staff Payroll page uses (same attendance AND same cutoff key), so the headline number
-  // always agrees with the payslips down to the loan deductions.
   const netThisCutoff = useMemo(
     () => staff.filter(e => Number(e.rate) > 0).reduce((s, e) => { const c = computeStaffPayroll(e, loans, statutory, attById[e.id], cutoffKey); return c.hasAttendance ? s + c.net : s; }, 0),
     [staff, loans, statutory, attById, cutoffKey]
   );
-  // Active loans & advances — total outstanding balance across every unpaid ledger.
   const activeLoans = useMemo(() => loans.reduce((s, l) => s + Math.max(0, loanBalance(l)), 0), [loans]);
   const activeLoanCount = loans.filter(l => loanBalance(l) > 0).length;
 
-  // Present / Late / Absent per recent cutoff, so imports can be compared
-  // side by side. Fetched on mount (the dashboard remounts on tab switch, so a
-  // new import shows up once you return here). Falls back to the current cutoff
-  // if the trend hasn't loaded yet.
   const [attTrend, setAttTrend] = useState([]);
   useEffect(() => {
     let cancelled = false;
@@ -79,14 +64,11 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
     return [{ label: cutoffLabel || 'This cutoff', Present: present, Late: late, Absent: absent }];
   }, [attTrend, attendanceSummaries, cutoffLabel]);
 
-  // Payslip snapshot — first rows of the current staff payroll, matching the mockup table.
   const snapshot = useMemo(
     () => staff.filter(e => Number(e.rate) > 0).map(e => ({ e, c: computeStaffPayroll(e, loans, statutory, attById[e.id], cutoffKey) })).filter(({ c }) => c.hasAttendance).map(({ e, c }) => ({ name: e.name, gross: c.gross, net: c.net })),
     [staff, loans, statutory, attById, cutoffKey]
   );
 
-  // Real payroll trend: net released per released cut-off, oldest → newest.
-  // Replaces the old seed series, so the chart only shows what's actually been paid.
   const [releases, setReleases] = useState([]);
   useEffect(() => {
     let cancelled = false;
@@ -228,5 +210,3 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
     </div>
   );
 };
-
-/* ============================= EMPLOYEES ============================= */

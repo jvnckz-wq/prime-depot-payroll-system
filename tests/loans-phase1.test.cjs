@@ -1,13 +1,3 @@
-// Numeric checks for the Loans & Cash Advances split (Phase 1).
-//
-// Pure logic, no database: applyLoanDeductions runs against a tiny in-memory
-// stand-in for Prisma that records what would be written. Synthetic ids only.
-// The staff figures reuse the 2026 statutory tables and rates from the seed, so
-// the expected numbers match what the real payslip shows.
-//
-// Run:  npm run test:loans
-// (CommonJS + require so tsx can load the app's extensionless ESM imports.)
-
 const assert = require('node:assert/strict');
 const { computeStaffPayroll } = require('../src/lib/payroll.js');
 const R = require('../src/lib/loan-rules.js');

@@ -1,17 +1,8 @@
-// Maps the statutory tables between their relational database rows and the flat
-// shapes the Settings editor and the compute* functions already use. The field
-// names differ (DB salaryTo/employeeShare ↔ frontend ceiling/share), so this is
-// the single place that translation lives.
-
 const num = (d) => (d == null ? null : Number(d));
-
-// ---- DB → frontend ---------------------------------------------------------
 
 export function shapeSss(rows) {
   return [...rows]
     .sort((a, b) => Number(a.salaryTo) - Number(b.salaryTo))
-    // The open-ended top band is stored with a sentinel ceiling; surface it as
-    // null so the editor shows "and up", matching the seed fallback.
     .map((r) => ({
       from: num(r.salaryFrom),
       ceiling: Number(r.salaryTo) >= 999999999 ? null : num(r.salaryTo),
@@ -39,10 +30,6 @@ export function shapeBir(rows) {
     .map((r) => ({ over: num(r.incomeFrom), notOver: r.incomeTo == null ? null : num(r.incomeTo), base: num(r.baseTax), rate: num(r.percentOverExcess) }));
 }
 
-// ---- frontend → DB ---------------------------------------------------------
-
-// salaryFrom uses the row's own `from` when present, else the previous
-// bracket's ceiling; the open-ended top maps back to the sentinel ceiling.
 export function sssToDb(table, year) {
   return table.map((r, i) => ({
     effectiveYear: year,

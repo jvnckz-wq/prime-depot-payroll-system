@@ -1,11 +1,6 @@
 import 'server-only';
 import nodemailer from 'nodemailer';
 
-// Email sending, kept behind one helper so the rest of the app never touches
-// the transport. Credentials come from the environment — a Gmail address and an
-// App Password (NOT the account password), set as EMAIL_USER and
-// EMAIL_APP_PASSWORD in .env.local. If either is missing the app still runs;
-// the caller simply learns email is not configured and handles it gracefully.
 let cached = null;
 
 function getTransporter() {
@@ -24,11 +19,6 @@ export function isEmailConfigured() {
   return !!(process.env.EMAIL_USER && process.env.EMAIL_APP_PASSWORD);
 }
 
-/// Send the Operations Head a one-time password-reset code.
-///
-/// Throws if email is not configured or the send fails, so the route can log it
-/// server-side — but the route still answers the user generically, so a failure
-/// never reveals whether an address was on file.
 export async function sendPasswordResetCode(to, code) {
   const t = getTransporter();
   if (!t) throw new Error('Email is not configured (set EMAIL_USER and EMAIL_APP_PASSWORD).');
@@ -57,11 +47,6 @@ export async function sendPasswordResetCode(to, code) {
   });
 }
 
-/// Send a one-time code to confirm a recovery email during first-time setup.
-/// Same transport as the reset code, but its own message so the recipient knows
-/// they are confirming an address, not resetting a password. Throws on failure
-/// so the route can surface it (here the user is the authenticated admin, so a
-/// clear error is appropriate — there is nothing to hide behind a generic reply).
 export async function sendEmailVerificationCode(to, code) {
   const t = getTransporter();
   if (!t) throw new Error('Email is not configured (set EMAIL_USER and EMAIL_APP_PASSWORD).');

@@ -1,22 +1,3 @@
-/**
- * De-duplicates attendance import batches.
- *
- * Re-importing the same cutoff used to leave the previous batch behind as an
- * empty record (the attendance rows move to the newest import). This cleans up
- * that history: for every period, it KEEPS the most recent completed batch and
- * deletes the older duplicates.
- *
- * SAFE: deleting a batch does NOT delete attendance — the foreign key is
- * SET NULL, so the daily records stay. Only the redundant batch record and its
- * stale unmapped logs (cascade) are removed. Payroll and DTR read attendance by
- * date, so they are unaffected.
- *
- * Run locally (same as the other scripts):
- *   npx tsx scripts/admin/dedupe-attendance-batches.ts
- *
- * After this, the import route also prevents new duplicates automatically
- * (re-importing a period replaces its previous batch).
- */
 import { config } from 'dotenv';
 config({ path: '.env.local' });
 
@@ -31,18 +12,17 @@ const prisma = new PrismaClient({ adapter });
 const ymd = (d: Date | null) => (d ? new Date(d).toISOString().slice(0, 10) : '—');
 
 async function main() {
-  // Newest first, so the FIRST batch seen for a period is the keeper.
   const batches = await prisma.importBatch.findMany({
     where: { status: 'COMPLETED' },
     orderBy: { importedAt: 'desc' },
     select: { id: true, periodStart: true, periodEnd: true, importedAt: true, filename: true },
   });
 
-  const keepByPeriod = new Map<string, string>(); // periodKey -> kept batch id
+  const keepByPeriod = new Map<string, string>(); 
   const toDelete: { id: string; period: string }[] = [];
 
   for (const b of batches) {
-    if (!b.periodStart || !b.periodEnd) continue; // no period — leave it alone
+    if (!b.periodStart || !b.periodEnd) continue; 
     const key = `${ymd(b.periodStart)}|${ymd(b.periodEnd)}`;
     if (keepByPeriod.has(key)) {
       toDelete.push({ id: b.id, period: `${ymd(b.periodStart)} to ${ymd(b.periodEnd)}` });

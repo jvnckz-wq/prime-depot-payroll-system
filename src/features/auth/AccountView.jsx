@@ -5,10 +5,6 @@ import { AlertTriangle, CheckCircle2, Circle, Eye, EyeOff, KeyRound, Lock, Shiel
 import { Btn, Confirm, Eyebrow, Field, Panel, inputCls, inputStyle } from '@/components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 
-// Password strength rules shown live as the user types. These MUST stay in step
-// with validatePassword() on the server (lib/server/security/auth.js) — the server is the real
-// gate, so if these drift the meter would say "Strong" on a password the API
-// rejects. A show/hide toggle and a strength bar round out the reference design.
 const PASSWORD_RULES = [
   { key: 'len', label: 'Minimum of 8 characters', test: (p) => p.length >= 8 },
   { key: 'upper', label: 'At least one Upper case character', test: (p) => /[A-Z]/.test(p) },
@@ -17,16 +13,10 @@ const PASSWORD_RULES = [
   { key: 'symbol', label: 'At least one of these symbols: ! # @ ? ^ *', test: (p) => /[^A-Za-z0-9]/.test(p) },
 ];
 
-// True only when every rule passes — used as the submit gate and "Strong" state.
 const passwordMeetsAll = (p) => PASSWORD_RULES.every((r) => r.test(p));
 
-// Recovery-email shape. Kept identical to the server checks in
-// verify-email/start and verify-email/complete so the field never accepts
-// locally what the API would reject.
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Password field with a show/hide (eye) toggle. Flipping the type keeps the
-// value; the toggle is skipped by Tab so it never steals focus from the form.
 export function PasswordInput({ value, onChange, placeholder, autoComplete }) {
   const [show, setShow] = useState(false);
   return (
@@ -56,8 +46,6 @@ export function PasswordInput({ value, onChange, placeholder, autoComplete }) {
   );
 }
 
-// Live strength bar + requirements checklist, modelled on the reference design.
-// Each rule turns green with a filled check the moment it is satisfied.
 function PasswordStrength({ value }) {
   const passed = PASSWORD_RULES.filter((r) => r.test(value)).length;
   const pct = (passed / PASSWORD_RULES.length) * 100;
@@ -103,8 +91,6 @@ function PasswordStrength({ value }) {
   );
 }
 
-/// The change-password form itself. Used both inside Settings and on the
-/// forced-change screen, so the rules and messages stay identical in both.
 export const ChangePasswordPanel = ({ onDone, toast, compact = false, twoFactor = false }) => {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -194,9 +180,6 @@ export const ChangePasswordPanel = ({ onDone, toast, compact = false, twoFactor 
   );
 };
 
-/// The crimson full-screen shell the first-time gates live in. Shared by the
-/// password step, the email-verification step, and the two-factor setup screen
-/// so they all read as one continuous onboarding flow.
 export const GateShell = ({ username, title, subtitle, icon = 'key', children }) => (
   <div className="min-h-screen flex items-center justify-center px-4 py-10" style={{ backgroundColor: T.sidebar }}>
     <div className="w-full max-w-sm">
@@ -218,11 +201,6 @@ export const GateShell = ({ username, title, subtitle, icon = 'key', children })
   </div>
 );
 
-/// The admin's first-time gate. Unlike a Checker's, it also registers a
-/// recovery email, and it will not take that email on trust. Step 1 sets the
-/// password and the address; step 2 makes the admin type a code emailed to that
-/// address, proving the inbox is real and theirs. Nothing is saved until the
-/// code checks out, so a mistyped or fake address can never be registered.
 const AdminGateVerify = ({ user, onDone }) => {
   const [step, setStep] = useState('setup');
   const [current, setCurrent] = useState('');
@@ -234,8 +212,6 @@ const AdminGateVerify = ({ user, onDone }) => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  // Mirrors the server's 60s resend throttle so the "Resend" link only appears
-  // once it will actually send a new code.
   useEffect(() => {
     if (cooldown <= 0) return undefined;
     const t = setTimeout(() => setCooldown((s) => s - 1), 1000);
@@ -244,8 +220,6 @@ const AdminGateVerify = ({ user, onDone }) => {
 
   const addr = email.trim().toLowerCase();
 
-  // Step 1 and every resend. On the first send we validate the passwords up
-  // front, so we never email a code only to fail on the password afterwards.
   const sendCode = async (isResend = false) => {
     if (busy) return;
     setError('');
@@ -269,8 +243,6 @@ const AdminGateVerify = ({ user, onDone }) => {
     finally { setBusy(false); }
   };
 
-  // Step 2. The password change and the email registration happen only here,
-  // once the emailed code matches the address it was sent to.
   const verify = async () => {
     if (busy) return;
     setError('');
@@ -376,10 +348,6 @@ const AdminGateVerify = ({ user, onDone }) => {
   );
 };
 
-/// Shown immediately after signing in with a temporary password. There is no
-/// way past it other than choosing a real password — a temporary one handed
-/// over verbally should never survive the first session. The admin also
-/// registers a verified recovery email here; a Checker just sets a password.
 export const ForcedPasswordChange = ({ user, onDone }) => {
   if (user.role === 'ADMIN') return <AdminGateVerify user={user} onDone={onDone} />;
   return (
@@ -390,9 +358,6 @@ export const ForcedPasswordChange = ({ user, onDone }) => {
   );
 };
 
-/// "My Account" — profile and security, the one Settings section a Checker
-/// can reach. Laid out the way people expect from any account page: who you
-/// are at the top, what protects that account below it.
 export const AccountView = ({ user, toast, onUserChange, onSignedOut }) => {
   const [name, setName] = useState(user.displayName);
   const [savingName, setSavingName] = useState(false);

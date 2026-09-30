@@ -5,15 +5,6 @@ import { AlertTriangle, Copy, KeyRound, Plus, UserCheck, UserX } from 'lucide-re
 import { Av, Badge, Btn, Confirm, Eyebrow, Field, Modal, Skeleton, inputCls, inputStyle } from '@/components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 
-/// Account management, Operations Head only.
-///
-/// The whole flow exists because there is no public registration: the admin
-/// creates an account, the system generates a temporary password, the admin
-/// hands it over in person, and the new user is forced to replace it on first
-/// sign-in.
-///
-/// Presented as a row list (one account per row) rather than a dense table, so
-/// it reads at a glance on the account settings screen.
 export const AccountsPanel = ({ currentUser, toast }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,7 +12,7 @@ export const AccountsPanel = ({ currentUser, toast }) => {
   const [form, setForm] = useState({ username: '', displayName: '', role: 'CHECKER' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [handover, setHandover] = useState(null); // { username, tempPassword, isReset }
+  const [handover, setHandover] = useState(null);
   const [confirm, setConfirm] = useState(null);
 
   const load = async () => {
@@ -37,7 +28,6 @@ export const AccountsPanel = ({ currentUser, toast }) => {
     }
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect -- deps intentionally limited to avoid re-running this load; intentional: load/sync state on mount or when deps change
   useEffect(() => { load(); }, []);
 
   const create = async () => {

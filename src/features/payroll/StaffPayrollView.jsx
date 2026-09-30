@@ -8,11 +8,6 @@ import { cutoffOf, nextCutoff, planDeductions, shortDate, staffRunKey } from '@/
 import { currentCutoffPeriod, peso } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, F_SERIF, T } from '@/components/theme';
 
-// Small note under the Loans / Advance Payment line, e.g.
-// "Hospitalization · balance after this cutoff ₱2,000.00" or
-// "Cash advance given Sep 22, 2026". When the pay could not cover it (Phase 2),
-// the note says how much moved and to which payroll, so the employee can see
-// the deduction was not simply forgotten.
 const loanNote = (calc, kind, nextEnd) => {
   const lines = (calc.deductionLines || []).filter((d) => d.kind === kind);
   if (!lines.length) return null;
@@ -27,16 +22,12 @@ const loanNote = (calc, kind, nextEnd) => {
   return moved ? `${text} · ${moved}` : text;
 };
 
-// "Romelyn Villanueva (₱360.00), April Castillo (₱1,500.00) and 2 more"
 const shortNames = (short) => {
   const named = short.slice(0, 3).map((x) => `${x.person} (${peso(x.unpaid)})`).join(', ');
   return short.length > 3 ? `${named} and ${short.length - 3} more` : named;
 };
 
-// One payslip, reused by the single-print view and the batch "Print All" run so
-// the two never drift. Renders the client's exact approved layout.
 const PayslipCard = ({ e, calc, cutoffLabel, attPeriod, att, statutory, className = 'max-w-md', ...rest }) => {
-  // The payroll after this one, where anything short is carried.
   const nextEnd = nextCutoff(cutoffOf(attPeriod?.start || currentCutoffPeriod().start).end).end;
   return (
   <Panel className={`${className} overflow-hidden`} {...rest}>
@@ -145,7 +136,6 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
   const [unfinalizing, setUnfinalizing] = useState(false);
   const [viewPeriod, setViewPeriod] = useState(null);
   const [viewPeriodLoading, setViewPeriodLoading] = useState(false);
-  // Locked read-only view of a released cut-off's stored payslips.
   const openPeriod = async (p) => {
     setViewPeriod({ period: p, payslips: [] });
     setViewPeriodLoading(true);
@@ -161,24 +151,14 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
       setViewPeriodLoading(false);
     }
   };
-  // Other Allowances is edited on the payslip and SAVED to the employee record,
-  // so it persists across refreshes and shows everywhere (Dashboard, payslip,
-  // snapshot, Finalize). allowanceEdits holds the in-progress text before Save.
   const [allowanceEdits, setAllowanceEdits] = useState({});
   const [savingAllowance, setSavingAllowance] = useState(false);
-  // Days Present, Tardiness, and Overtime come from the latest imported
-  // attendance. Keyed by employee id (= biometric User ID).
   const [attById, setAttById] = useState({});
   const [attPeriod, setAttPeriod] = useState(null);
-  // One key per CALENDAR cutoff, used to tag/read this cutoff's loan
-  // deductions so the preview, the payslip, Apply Deductions, and Finalize all
-  // agree. It never depends on how far the import reached (Sep 16-29 or 16-30),
-  // or a second import would look like a new cutoff and deduct again.
   const cutoffKey = staffRunKey(attPeriod?.start || currentCutoffPeriod().start);
   const [printAll, setPrintAll] = useState(false);
   useEffect(() => {
     if (!printAll) return;
-    // Wait for the batch container to render, print, then tear it back down.
     const t = setTimeout(() => { window.print(); setPrintAll(false); }, 150);
     return () => clearTimeout(t);
   }, [printAll]);
@@ -198,7 +178,6 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
     return () => { cancelled = true; };
   }, []);
 
-  // Released cut-offs for the History tab — real stored snapshots, not estimates.
   const loadHistory = async () => {
     setHistoryLoading(true);
     try {
@@ -212,9 +191,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
       setHistoryLoading(false);
     }
   };
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
   useEffect(() => { loadHistory(); }, []);
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- sync Current/History from the sidebar selection
   useEffect(() => { if (navView) setSubTab(navView); }, [navView]);
 
   const unfinalize = async (p) => {
@@ -238,8 +215,6 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
     }
   };
 
-  // Persist the payslip's Other Allowances onto the employee record so it sticks
-  // across refreshes and flows into the Dashboard, the snapshot, and Finalize.
   const saveAllowance = async (e) => {
     const val = parseFloat(allowanceEdits[e.id]);
     if (!Number.isFinite(val) || val < 0) { toast('Enter an allowance of zero or more.', 'error'); return; }
@@ -261,21 +236,12 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
     }
   };
 
-  // A ₱0 daily rate means no salary is set yet, so that person isn't part of
-  // this payroll run — keep them out of the list, the totals, and the snapshot.
   const rows = staff.filter(e => Number(e.rate) > 0).map(e => ({ emp: e, calc: computeStaffPayroll(e, loans, statutory, attById[e.id], cutoffKey), att: attById[e.id] || null })).filter(r => r.calc.hasAttendance);
   const totalGross = rows.reduce((s, r) => s + r.calc.gross, 0);
   const totalNet = rows.reduce((s, r) => s + r.calc.net, 0);
 
-  // Last day of the calendar cutoff being paid. Money given after it waits for
-  // the next cutoff; the server applies the same rule (src/lib/loan-rules.js).
   const cutoffEnd = cutoffOf(attPeriod?.start || currentCutoffPeriod().start).end;
   const nextEnd = nextCutoff(cutoffEnd).end;
-  // Preview of what "Apply Cutoff Deductions" will do, with the SAME function
-  // the server runs (planDeductions): each person's pay after contributions and
-  // tardiness, advances first, then the loan, never below P0. The server
-  // recomputes all of it from the database; this is only so the Ops Head sees
-  // who will come out short BEFORE any money moves.
   const plan = attPeriod
     ? planDeductions(loans, {
       crew: false, runKey: cutoffKey, endYmd: cutoffEnd,
@@ -287,8 +253,6 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
     setConfirmApply(false);
     if (!attPeriod) { toast("Import this cutoff's attendance first.", 'error'); return; }
     try {
-      // The server decides the run key and the pay available; the browser only
-      // says which attendance range is on screen.
       const res = await fetch('/api/loans/apply-deductions', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ scope: 'staff', start: attPeriod.start, end: attPeriod.end }),
@@ -307,9 +271,6 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
     }
   };
 
-  // Finalize / Release: freeze every staff payslip for this cutoff as a snapshot
-  // and apply the loan deductions in one step. What's on screen is exactly what
-  // gets stored — the figures never move afterward, even if rates change later.
   const finalize = async () => {
     setConfirmFinalize(false);
     if (!attPeriod) { toast("Import this cutoff's attendance before finalizing.", 'error'); return; }
@@ -595,5 +556,3 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
     </div>
   );
 };
-
-/* ============================= LOANS ============================= */

@@ -1,20 +1,3 @@
-// ============================================================================
-// Emergency: turn OFF two-factor authentication for an account.
-//
-//   npx tsx scripts/admin/disable-2fa.ts <username>
-//   npx tsx scripts/admin/disable-2fa.ts admin
-//
-// This is the break-glass path for "the only administrator lost their phone AND
-// their backup codes and cannot get past the two-factor prompt." It clears the
-// secret, the enabled flag, and any backup codes, so the next sign-in needs
-// only the password — and the app will then walk them through fresh 2FA setup.
-//
-// Like reset-password.ts, this is deliberately NOT in the web app: running it
-// requires the project files and the database credentials, which is the right
-// level of difficulty. Every existing session is destroyed as well, so a stale
-// login cannot linger with 2FA removed.
-// ============================================================================
-
 import { config } from 'dotenv';
 config({ path: '.env.local' });
 
@@ -48,8 +31,6 @@ async function main() {
   });
   await prisma.session.deleteMany({ where: { userId: user.id } });
 
-  // Leave a trace in the app's own audit trail: an emergency 2FA removal is
-  // exactly the kind of event someone will later need to account for.
   await prisma.auditLog.create({
     data: {
       action: 'TWO_FACTOR_DISABLED',

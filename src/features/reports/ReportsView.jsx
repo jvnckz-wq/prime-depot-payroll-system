@@ -9,11 +9,6 @@ import { todayYmdManila } from '@/lib/loan-rules';
 import { exportXLSX, peso } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 
-// Crew earnings over a date range. crewEarnings is built for a single day (one
-// date per truck), so a range is handled the safe way: split the raw rows by
-// date, run the shared per-day function on each, then merge the per-person
-// results. Reusing crewEarnings unchanged keeps this in step with the truck
-// payslips and the manifest.
 function crewEarningsRange(apiDeliveries, crewRates) {
   const byDate = {};
   for (const d of apiDeliveries) (byDate[d.date] ||= []).push(d);
@@ -35,12 +30,8 @@ function crewEarningsRange(apiDeliveries, crewRates) {
 
 export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel = '', runKey = '', attendanceSummaries = [], crewRates = CREW_RATE_FALLBACK, navTab }) => {
   const [tab, setTab] = useState(navTab || 'register');
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- sync the report from the sidebar selection
   useEffect(() => { if (navTab) setTab(navTab); }, [navTab]);
 
-  // Crew Earnings has its own date range — a day, a week, or any span — fetched
-  // independently of the "today only" live feed the rest of the app uses.
-  // Manila day, matching the date deliveries are filed under.
   const todayStr = todayYmdManila();
   const [from, setFrom] = useState(todayStr);
   const [to, setTo] = useState(todayStr);
@@ -48,9 +39,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
   const [loadingRange, setLoadingRange] = useState(false);
   useEffect(() => {
     let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     setLoadingRange(true);
-    // Debounce: coalesce rapid from/to edits into a single request (~400ms after the last change).
     const t = setTimeout(() => {
       fetch(`/api/deliveries?from=${from}&to=${to}`)
         .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
@@ -61,31 +50,19 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
     return () => { cancelled = true; clearTimeout(t); };
   }, [from, to]);
 
-  // Register + remittance now use the SAME real-attendance payslip math as the
-  // Staff Payroll page and the payslips (same cutoff key → same loan deductions),
-  // so a report can never disagree with the payslip it summarises. Falls back to
-  // an 11-day cutoff automatically when no attendance has been imported yet.
   const attById = useMemo(() => {
     const m = {};
     for (const s of attendanceSummaries) m[s.id] = s;
     return m;
   }, [attendanceSummaries]);
-  // Calendar-cutoff ledger key from the parent (same one Staff Payroll uses).
   const cutoffKey = runKey || `staff-${cutoffLabel}`;
 
-  // Only paid staff (₱0 daily rate = no salary set) appear here, matching the
-  // Staff Payroll page — they aren't part of the register, remittance, or 13th month.
   const payrollRows = useMemo(
     () => staff.filter(e => Number(e.rate) > 0).map(e => ({ emp: e, calc: computeStaffPayroll(e, loans, statutory, attById[e.id], cutoffKey) })).filter(r => r.calc.hasAttendance),
     [staff, loans, statutory, attById, cutoffKey]
   );
-  // Both the Payroll Register and Government Remittance follow the corrected
-  // payroll: no attendance for the cutoff means no pay and no withheld share, so
-  // those staff drop off these reports too. (Other report tabs are unchanged.)
   const remitRows = payrollRows;
   const T13 = staff.filter(e => Number(e.rate) > 0).map(e => ({ name: e.name, months: 12, basic: e.rate * 22 * 12, pay: Math.round(e.rate * 22 * 12 / 12 * 100) / 100 }));
-  // Earnings are reported per PERSON across the chosen range. Voided trips are
-  // already excluded upstream.
   const crewRows = useMemo(() => crewEarningsRange(rangeApi, crewRates), [rangeApi, crewRates]);
 
   const exportRegister = () => exportXLSX('Payroll-Register.xlsx', [{ name: 'Register', rows: payrollRows.map(r => ({ Employee: r.emp.name, Days: r.calc.days, Gross: r.calc.gross, OT: r.calc.ot, Deductions: r.calc.totalDeductions, 'Net Pay': r.calc.net })) }]);
@@ -198,5 +175,3 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
     </div>
   );
 };
-
-/* ============================= SETTINGS ============================= */

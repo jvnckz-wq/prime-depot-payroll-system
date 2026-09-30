@@ -2,20 +2,16 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown, HelpCircle, LogOut, Menu, User, X } from 'lucide-react';
-import { ADMIN_NAV, ADMIN_NAV_GROUPS } from '@/shell/nav';
+import { ADMIN_NAV, ADMIN_NAV_GROUPS } from '@/shell/nav-items';
 import { F_BODY, F_HEAD, T } from '@/components/theme';
-/* eslint-disable @next/next/no-img-element -- user avatars are base64 data URIs; next/image adds no value and cannot optimize data URIs */
 
 const SIDEBAR_W = 236;
 
-/* ============================= NAV LIST ============================= */
-// py-3 against a 20px line box lands each row at exactly the 44px minimum
-// touch target, which the old py-2.5 rows missed.
 const NavRow = ({ item, tab, subs, onSelect }) => {
   const Icon = item.icon;
   const kids = item.children || null;
   const active = tab === item.key;
-  const isOpen = !!kids && active; // the active section is the expanded one
+  const isOpen = !!kids && active;
   const activeChild = kids ? (subs[item.key] || kids[0].key) : null;
   return (
     <div>
@@ -64,9 +60,6 @@ const NavRow = ({ item, tab, subs, onSelect }) => {
   );
 };
 
-// Shared by the desktop rail and the mobile drawer so the two can never drift.
-// The rail shows from `lg` (1024px) up; below that (phones AND tablets) it is a
-// drawer, so a tablet gets the full width for payroll tables.
 const NavList = ({ tab, subs, onSelect }) => (
   <nav aria-label="Main" className="pd-no-scrollbar flex-1 py-3 overflow-y-auto">
     {ADMIN_NAV_GROUPS.map(({ group, items }) => (
@@ -87,8 +80,6 @@ const NavList = ({ tab, subs, onSelect }) => (
   </nav>
 );
 
-// Pinned to the very bottom of the sidebar, where the profile used to sit. The
-// account + Log out now live in the top-right avatar menu instead.
 const FaqButton = ({ tab, onClick }) => {
   const active = tab === 'faqs';
   return (
@@ -113,16 +104,10 @@ const FaqButton = ({ tab, onClick }) => {
 };
 
 /* ============================= SIDEBAR ============================= */
-// One component, two presentations: a static rail from `md` up, and an
-// off-canvas drawer below it. The drawer replaces the old bottom bar, which
-// rendered only the first five of eight destinations — Loans, Reports and
-// Settings had no route at all on a phone.
 export const Sidebar = ({ tab, subs = {}, onSelect, open = false, onClose }) => {
   const panelRef = useRef(null);
   const restoreRef = useRef(null);
 
-  // While the drawer is open it owns the keyboard: Escape closes, Tab cycles
-  // inside it, and focus returns to whatever opened it on the way out.
   useEffect(() => {
     if (!open) return undefined;
     restoreRef.current = document.activeElement;
@@ -171,15 +156,14 @@ export const Sidebar = ({ tab, subs = {}, onSelect, open = false, onClose }) => 
     </div>
   );
 
-  // Selecting a destination on mobile should also dismiss the drawer.
   const select = (key, child) => { onSelect(key, child); onClose?.(); };
 
   return (
     <>
-      {/* Desktop rail */}
+      {/* Desktop rail. The logo lives in the full-width top bar above it, so
+          the rail starts straight with the menu. */}
       <aside className="hidden lg:flex flex-col shrink-0 h-full"
         style={{ width: SIDEBAR_W, backgroundColor: T.sidebar, borderRight: `1px solid ${T.sidebarLine}` }}>
-        {header(false)}
         <NavList tab={tab} subs={subs} onSelect={onSelect} />
         <FaqButton tab={tab} onClick={() => onSelect('faqs')} />
       </aside>
@@ -207,11 +191,6 @@ export const Sidebar = ({ tab, subs = {}, onSelect, open = false, onClose }) => 
 };
 
 /* ============================= TOP BAR ============================= */
-// Previously this repeated the page title that every view already prints as an
-// <H1> right below it, plus the role badge the sidebar already shows — so all
-// of its content was a duplicate of something else on screen. It now carries
-// only what is not stated anywhere else: where you are in the nav hierarchy,
-// and which pay period every figure on the page belongs to.
 export const TopBar = ({ user, onOpenAccount, onLogout, onOpenNav }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -233,6 +212,14 @@ export const TopBar = ({ user, onOpenAccount, onLogout, onOpenNav }) => {
         data-variant="ghost" style={{ width: 44, height: 44, color: T.ink }}>
         <Menu size={20} />
       </button>
+
+      <span className="flex items-center gap-2.5 min-w-0">
+        <img src="/logo.png" alt="" className="shrink-0 rounded-md p-1" style={{ width: 32, height: 32, border: `1px solid ${T.line}` }} />
+        <span className="leading-tight min-w-0">
+          <span className="block text-sm font-bold truncate" style={{ fontFamily: F_HEAD, color: T.ink }}>Prime Depot</span>
+          <span className="block text-xs truncate" style={{ fontFamily: F_BODY, color: T.soft }}>Payroll System</span>
+        </span>
+      </span>
 
       <div className="relative ml-auto" ref={ref}>
         <button
@@ -269,5 +256,3 @@ export const TopBar = ({ user, onOpenAccount, onLogout, onOpenNav }) => {
     </header>
   );
 };
-
-/* ============================= LOGIN ============================= */

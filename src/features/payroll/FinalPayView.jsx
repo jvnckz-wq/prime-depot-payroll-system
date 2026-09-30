@@ -12,9 +12,6 @@ const nf = (v) => (Number.isFinite(parseFloat(v)) ? parseFloat(v) : 0);
 
 const EXIT_TYPES = ['Resignation', 'Termination', 'End of Contract', 'Retirement', 'AWOL'];
 
-// A labelled amount row on the final-pay slip. Defined at module scope (not
-// inside FinalPayView) so it is a stable component identity across renders —
-// it only depends on its props and the module-level theme tokens.
 const Row = ({ label, value, bold }) => (
   <div className="flex justify-between text-sm py-1" style={{ fontFamily: F_BODY }}>
     <span style={{ color: T.ink }}>{label}</span>
@@ -22,11 +19,6 @@ const Row = ({ label, value, bold }) => (
   </div>
 );
 
-// Final pay = (a) unpaid salary + (b) pro-rated 13th month + (c) unused leave
-// credits, matching the client's FINAL PAY sheet. Phase 3 (an assumption until
-// the client confirms): loans and cash advances still owed are deducted from
-// it, advances first, never below P0, and whatever it cannot cover stays owed.
-// Someone who owes nothing gets exactly the client's sheet, with no extra lines.
 export const FinalPayView = ({ employee, onBack, toast, onDeactivate, editable = false }) => {
   const [loading, setLoading] = useState(true);
   const [exitType, setExitType] = useState('Resignation');
@@ -40,7 +32,7 @@ export const FinalPayView = ({ employee, onBack, toast, onDeactivate, editable =
   const [periodLabel, setPeriodLabel] = useState('');
   const [loans, setLoans] = useState([]);
   const [finalKey, setFinalKey] = useState('');
-  const [confirm, setConfirm] = useState(null); // 'record' | 'undo'
+  const [confirm, setConfirm] = useState(null);
   const [busy, setBusy] = useState(false);
   const [reload, setReload] = useState(0);
 
@@ -52,8 +44,6 @@ export const FinalPayView = ({ employee, onBack, toast, onDeactivate, editable =
         if (cancelled) return;
         setLoans(d.loans || []);
         setFinalKey(d.finalKey || '');
-        // A reload after Record/Undo only refreshes the loans; the form's
-        // edited figures are left as the Operations Head typed them.
         if (reload) return;
         setRate(d.employee?.rate ?? employee.rate ?? 0);
         setDays(d.days ?? 0);
@@ -65,7 +55,7 @@ export const FinalPayView = ({ employee, onBack, toast, onDeactivate, editable =
       .catch(err => { console.error('Final pay load failed:', err); if (toast) toast('Could not load final-pay details.', 'error'); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [employee.id, reload]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [employee.id, reload]); 
 
   const grossA = round2(nf(rate) * nf(days));
   const netA = round2(grossA + nf(otAllow));
@@ -73,9 +63,6 @@ export const FinalPayView = ({ employee, onBack, toast, onDeactivate, editable =
   const c = round2(nf(rate) * nf(leaveDays));
   const total = round2(netA + b + c);
 
-  // d. Loans and cash advances. Once recorded, the sheet shows what was
-  // actually taken (the ledger); before that, a preview from the SAME
-  // planDeductions the server runs when "Record deduction" is pressed.
   const recordedEntries = loans.flatMap(l => (l.entries || []).filter(e => e.type === 'deduction' && e.payslipId === finalKey).map(e => ({ l, e })));
   const recorded = recordedEntries.length > 0;
   const preview = !recorded && finalKey && loans.length

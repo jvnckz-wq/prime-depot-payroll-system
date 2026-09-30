@@ -1,23 +1,9 @@
-// Acknowledgment slip for a loan, a top-up, or a cash advance (Phase 3).
-//
-// A deduction from wages should rest on the employee's written consent (Labor
-// Code Art. 113; verify the exact basis before citing it). This slip is that
-// consent on paper: what was received, how it will be deducted, what happens
-// when a payroll is short, and that any balance left comes out of final pay.
-// The employee signs it; the Operations Head keeps it.
-//
-// It prints from a hidden iframe with its own small stylesheet, so it looks the
-// same whatever page is open underneath and never picks up the app's layout.
-
 import { pesoText, shortDate } from '../../lib/loan-rules';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const TITLES = { LOAN: 'LOAN ACKNOWLEDGMENT', TOPUP: 'LOAN TOP-UP ACKNOWLEDGMENT', CASH_ADVANCE: 'CASH ADVANCE ACKNOWLEDGMENT' };
 
-// The consent paragraph, in plain words the employee can check against the
-// numbers above it. Crew are paid daily and are never stacked (Phase 2), so
-// their "short day" sentence differs from staff.
 function consentText(s) {
   const who = `I, <b>${esc(s.name)}</b>,`;
   const finalPay = 'If I leave the company before this is fully paid, I authorize Prime Depot Hardware to deduct the remaining balance from my final pay.';

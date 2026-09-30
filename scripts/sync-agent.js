@@ -1,26 +1,7 @@
-// Live attendance sync agent for the ZKTeco ZK3969.
-//
-// Runs on the laptop beside the device. Every poll it connects to the device,
-// reads the day's punches, converts each to Manila wall-clock HH:MM, groups
-// them per biometric User ID, and hands the full day to
-// POST /api/attendance/push. The server is the single source of pairing truth
-// (stateless re-pair: it pairs and rewrites that day's rows); this agent only
-// reads, converts, and forwards.
-//
-// SAFE BY DEFAULT: dry run. It prints what it WOULD send and writes nothing.
-// Add --live to actually post. Live mode needs DEVICE_SYNC_TOKEN in .env.
-//
-//   node scripts/sync-agent.js            # dry run (no writes)
-//   node scripts/sync-agent.js --live     # real sync
-//
-// Run it from the repo root so it can read .env. CommonJS on purpose: it
-// matches node-zklib (a CommonJS package) and needs no build step.
-
 const fs = require('fs');
 const path = require('path');
 const ZKLib = require('node-zklib');
 
-// ---- config -------------------------------------------------------------
 const env = readEnv(path.join(process.cwd(), '.env'));
 const LIVE = process.argv.includes('--live');
 const DEVICE_IP = env.DEVICE_IP || '192.168.1.201';
@@ -30,11 +11,6 @@ const PULL_URL = env.PULL_URL || PUSH_URL.replace(/\/push\/?$/, '/pull');
 const TOKEN = env.DEVICE_SYNC_TOKEN || '';
 const POLL_MS = Number(env.SYNC_POLL_MS || 15000);
 
-// ---- Manila time helpers ------------------------------------------------
-// The device stores local time; node-zklib returns it as a UTC instant
-// (verified against a real scan: 02:30Z == 10:30 AM Manila). Formatting with
-// an explicit Asia/Manila zone gives the correct wall clock regardless of the
-// laptop's own timezone setting.
 const hhmmFmt = new Intl.DateTimeFormat('en-GB', {
   timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hour12: false,
 });
@@ -44,7 +20,6 @@ const dateFmt = new Intl.DateTimeFormat('en-CA', {
 const manilaHHMM = (d) => hhmmFmt.format(d);
 const manilaDate = (d) => dateFmt.format(d); // YYYY-MM-DD
 
-// ---- tiny .env reader (no dependency) -----------------------------------
 function readEnv(file) {
   const out = {};
   try {
@@ -66,7 +41,6 @@ function readEnv(file) {
   return out;
 }
 
-// ---- read + group one day's punches from the device ---------------------
 async function readToday() {
   const zk = new ZKLib(DEVICE_IP, DEVICE_PORT, 10000, 4000);
   await zk.createSocket();
@@ -78,14 +52,14 @@ async function readToday() {
   }
 
   const today = manilaDate(new Date());
-  const byUser = new Map(); // biometricId -> Set of 'HH:MM'
+  const byUser = new Map(); 
 
   for (const rec of (logs && logs.data) || []) {
     const bid = String(rec.deviceUserId ?? rec.uid ?? rec.id ?? '').trim();
     if (!bid) continue;
     const when = new Date(rec.recordTime);
     if (isNaN(when.getTime())) continue;
-    if (manilaDate(when) !== today) continue; // only today's punches
+    if (manilaDate(when) !== today) continue; 
     if (!byUser.has(bid)) byUser.set(bid, new Set());
     byUser.get(bid).add(manilaHHMM(when));
   }
@@ -97,7 +71,6 @@ async function readToday() {
   return { date: today, scans };
 }
 
-// ---- push (live only) ---------------------------------------------------
 async function push(payload) {
   const res = await fetch(PUSH_URL, {
     method: 'POST',
@@ -110,7 +83,6 @@ async function push(payload) {
   return { status: res.status, body };
 }
 
-// ---- read a whole cutoff from the device (for a queued web pull) ---------
 async function readPeriod(from, to) {
   const zk = new ZKLib(DEVICE_IP, DEVICE_PORT, 10000, 4000);
   await zk.createSocket();
@@ -125,14 +97,14 @@ async function readPeriod(from, to) {
     .map((u) => ({ userId: String(u.userId ?? u.uid ?? '').trim(), name: u.name || null }))
     .filter((u) => u.userId);
 
-  const sets = {}; // userId -> date -> Set of HH:MM
+  const sets = {}; 
   for (const rec of (logs && logs.data) || []) {
     const bid = String(rec.deviceUserId ?? rec.uid ?? rec.id ?? '').trim();
     if (!bid) continue;
     const when = new Date(rec.recordTime);
     if (isNaN(when.getTime())) continue;
     const ds = manilaDate(when);
-    if (ds < from || ds > to) continue; // YYYY-MM-DD string compare
+    if (ds < from || ds > to) continue; 
     (sets[bid] ||= {});
     (sets[bid][ds] ||= new Set()).add(manilaHHMM(when));
   }
@@ -144,8 +116,7 @@ async function readPeriod(from, to) {
   return { roster, punches };
 }
 
-// ---- handle a queued "Pull from device" from the web button -------------
-let handledPull = null; // last request id handled, to avoid re-running within a cycle
+let handledPull = null; 
 async function handlePull(req, stamp) {
   if (!req || !req.id || req.id === handledPull) return;
   handledPull = req.id;
@@ -166,7 +137,6 @@ async function handlePull(req, stamp) {
     }
   } catch (e) {
     console.log(`[${stamp}] Pull could not complete: ${e.message}`);
-    // Tell the app so the request shows "Failed" instead of hanging on "Pulling".
     try {
       await fetch(PULL_URL, {
         method: 'POST',
@@ -177,10 +147,9 @@ async function handlePull(req, stamp) {
   }
 }
 
-// ---- one cycle ----------------------------------------------------------
 let busy = false;
 async function cycle() {
-  if (busy) return; // skip if the previous read is still running
+  if (busy) return; 
   busy = true;
   const stamp = new Date().toLocaleTimeString();
   try {
@@ -199,8 +168,6 @@ async function cycle() {
       return;
     }
 
-    // LIVE: post every cycle, even with no scans, so the server gets a heartbeat
-    // and the Live tab can tell "connected" from "the agent is dead."
     const { status, body } = await push(payload);
     if (status === 200 && body && body.ok) {
       if (payload.scans.length) {
@@ -220,7 +187,6 @@ async function cycle() {
   }
 }
 
-// ---- startup ------------------------------------------------------------
 console.log('Prime Depot sync agent');
 console.log(`  device : ${DEVICE_IP}:${DEVICE_PORT}`);
 console.log(`  target : ${PUSH_URL}`);

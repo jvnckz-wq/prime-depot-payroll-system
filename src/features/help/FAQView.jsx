@@ -5,8 +5,6 @@ import { ChevronDown } from 'lucide-react';
 import { H1, Panel } from '@/components/ui.jsx';
 import { F_BODY, F_HEAD, T } from '@/components/theme';
 
-// Practical help for the day-to-day operator, reached from the bottom of the
-// sidebar. Written around the real flows so it also doubles as a quick refresher.
 const FAQS = [
   {
     q: 'How do I get attendance into a cutoff for payroll?',
