@@ -1,7 +1,6 @@
 const assert = require('node:assert/strict');
 const { computeStaffPayroll } = require('../src/lib/payroll.js');
 const R = require('../src/lib/loan-rules.js');
-const { loanSlipHtml } = require('../src/features/loans/loanSlip.js');
 
 const tests = [];
 const ok = (name, fn) => tests.push([name, fn]);
@@ -78,21 +77,18 @@ ok('final pay smaller than the debt: never below P0, the rest stays owed (nothin
   assert.equal(R.planDeductions(after, { runKey: KEY, endYmd: '2026-09-30', available: { 'emp-a': 3200 }, full: true }).writes.length, 0);
 });
 
-// --- acknowledgment slip ----------------------------------------------------
-ok('slip states the consent in plain numbers (loan, crew loan, cash advance) and escapes names', () => {
-  const loan = loanSlipHtml({ kind: 'LOAN', name: 'Jessa <Pintor>', position: 'Administrative Staff', employeeId: '21', date: '2026-09-29',
-    amount: 6000, purpose: 'Hospitalization', perRun: 1000, plan: { count: 6, first: '2026-09-30', last: '2026-12-15' }, ref: 'abc' });
-  assert.match(loan, /LOAN ACKNOWLEDGMENT/);
-  assert.match(loan, /Jessa &lt;Pintor&gt;/);
-  assert.match(loan, /deduct <b>₱1,000\.00<\/b> from my salary every payroll cutoff, starting with the <b>Sep 30, 2026<\/b> payroll/);
-  assert.match(loan, /unpaid part will be deducted on the next payroll/);
-  assert.match(loan, /remaining balance from my final pay/);
-  const crew = loanSlipHtml({ kind: 'LOAN', name: 'Andro', employeeId: '31', crew: true, date: '2026-09-29', amount: 3000, purpose: 'Emergency', perRun: 100, plan: { count: 30, first: '2026-09-30', last: '2026-10-31' } });
-  assert.match(crew, /every working day, starting Sep 29, 2026/);
-  assert.match(crew, /nothing is deducted and the loan runs one day longer/);
-  const adv = loanSlipHtml({ kind: 'CASH_ADVANCE', name: 'Jaclyn', employeeId: '13', date: '2026-09-29', amount: 8000, deductOn: '2026-09-30' });
-  assert.match(adv, /CASH ADVANCE ACKNOWLEDGMENT/);
-  assert.match(adv, /full amount from my salary on the <b>Sep 30, 2026<\/b> payroll/);
+ok('loan limit is P50,000 in total and the payoff plan stays instant on huge input', () => {
+  assert.equal(R.LOAN_MAX_BALANCE, 50000);
+  assert.equal(R.loanRoomLeft(0), 50000);
+  assert.equal(R.loanRoomLeft(35000), 15000);
+  assert.equal(R.loanRoomLeft(60000), 0);
+  assert.deepEqual(R.payoffPlan(6000, 1000, '2026-09-29'), { count: 6, first: '2026-09-30', last: '2026-12-15' });
+  assert.deepEqual(R.payoffPlan(3000, 1000, '2026-12-20'), { count: 3, first: '2026-12-31', last: '2027-01-31' });
+  const started = Date.now();
+  const huge = R.payoffPlan(123128131, 1000, '2026-09-30');
+  assert.equal(huge.count, 123129);
+  assert.equal(huge.last, '7157-01-31');
+  assert.ok(Date.now() - started < 50);
 });
 
 (async () => {

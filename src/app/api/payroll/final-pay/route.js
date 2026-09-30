@@ -23,8 +23,7 @@ const loadFinalLoans = (employeeId) => prisma.loan.findMany({
 /// POST /api/payroll/final-pay  { employeeId, finalPayTotal }
 ///
 /// Deducts what the employee still owes from their final pay (Phase 3
-/// assumption, pending the client; the signed acknowledgment slip carries the
-/// employee's consent). Same rules as payroll: cash advances first, then loans,
+/// assumption, pending the client). Same rules as payroll: cash advances first, then loans,
 /// never more than the final pay (net stops at P0). Here the WHOLE balance is
 /// due, paused or not. Whatever the final pay cannot cover stays on the ledger
 /// as the unpaid balance: nothing is written off by the system.

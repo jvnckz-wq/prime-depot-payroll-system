@@ -4,7 +4,7 @@ import { requireAdmin } from '@/lib/server/security/auth';
 import { shapeLoan } from '@/lib/server/services/loans';
 import { isCrewPosition } from '@/lib/server/services/loans-apply';
 import {
-  LOAN_PURPOSES, PURPOSE_ENUM, advancedInCutoff, balanceOf, cutoffOf, isYmd, periodLabel, projectedGross, todayYmdManila, workingDaysIn,
+  LOAN_MAX_BALANCE, LOAN_PURPOSES, PURPOSE_ENUM, advancedInCutoff, balanceOf, cutoffOf, isYmd, periodLabel, projectedGross, todayYmdManila, workingDaysIn,
 } from '@/lib/loan-rules';
 
 export async function GET() {
@@ -71,6 +71,7 @@ export async function POST(request) {
       const unit = isCrewPosition(employee.position) ? 'day' : 'cutoff';
       if (!Number.isFinite(perRun) || perRun <= 0) return bad(`Enter the deduction per ${unit}.`);
       if (perRun > principal) return bad(`The deduction per ${unit} cannot be more than the loan itself.`);
+      if (principal > LOAN_MAX_BALANCE) return bad(`A loan can be at most ${peso(LOAN_MAX_BALANCE)}.`);
 
       // One active loan per employee. Extra money is a top-up on that loan so
       // there is one balance and one installment to follow.

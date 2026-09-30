@@ -113,15 +113,30 @@ export function dueAmount(loan) {
   return dueFor(loan);
 }
 
+export const LOAN_MAX_BALANCE = 50000;
+
+export const loanRoomLeft = (balance = 0) => round2(Math.max(0, LOAN_MAX_BALANCE - (Number(balance) || 0)));
+
+function cutoffIndex(ymd) {
+  const { y, m, d } = parts(ymd);
+  return y * 24 + (m - 1) * 2 + (d <= 15 ? 0 : 1);
+}
+
+function cutoffAt(index) {
+  const y = Math.floor(index / 24);
+  const rest = index - y * 24;
+  const m = Math.floor(rest / 2) + 1;
+  return cutoffOf(`${y}-${pad2(m)}-${rest % 2 === 0 ? '01' : '16'}`);
+}
+
 export function payoffPlan(balance, perRun, fromYmd) {
   const bal = Number(balance) || 0;
   const per = Number(perRun) || 0;
   if (bal <= 0 || per <= 0 || !isYmd(fromYmd)) return null;
   const count = Math.ceil(round2(bal / per) - 1e-9);
-  let cut = cutoffOf(fromYmd);
-  const first = cut.end;
-  for (let i = 1; i < count; i++) cut = nextCutoff(cut.end);
-  return { count, first, last: cut.end };
+  const first = cutoffOf(fromYmd).end;
+  const last = cutoffAt(cutoffIndex(fromYmd) + count - 1).end;
+  return { count, first, last };
 }
 
 export function advancedInCutoff(loans, employeeId, period) {

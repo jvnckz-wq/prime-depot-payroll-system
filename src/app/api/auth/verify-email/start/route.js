@@ -3,6 +3,7 @@ import { createHash, randomInt } from 'crypto';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireUser, validatePassword, verifyPassword } from '@/lib/server/security/auth';
 import { sendEmailVerificationCode } from '@/lib/server/integrations/email';
+import { isEmail } from '@/lib/email-format';
 
 // Step 1 of registering a recovery email: email a one-time code to the address
 // the admin typed, so step 2 can prove the inbox is real and theirs before
@@ -20,7 +21,6 @@ import { sendEmailVerificationCode } from '@/lib/server/integrations/email';
 // person setting it.
 const CODE_TTL_MS = 10 * 60 * 1000;
 const RESEND_COOLDOWN_MS = 60 * 1000; // at most one email per minute per account
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // The code is hashed together with the target email, so a stored code only ever
 // validates for the exact address it was sent to.
@@ -60,7 +60,7 @@ export async function POST(request) {
       }
     }
 
-    if (!EMAIL_RE.test(email)) {
+    if (!isEmail(email)) {
       return NextResponse.json({ error: 'Enter a valid recovery email address.' }, { status: 400 });
     }
     if (!changingPassword && email === record.email) {

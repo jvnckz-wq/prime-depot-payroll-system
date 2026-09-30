@@ -11,7 +11,6 @@ import { computeStaffPayroll } from '@/lib/payroll';
 import { peso } from '@/lib/utils';
 import { F_BODY, F_MONO, T } from '@/components/theme';
 import { D, H, Kpi, Person, Pill, todayLocalYmd } from '@/features/loans/parts.jsx';
-import { printLoanSlip } from '@/features/loans/loanSlip';
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 const labelOf = (e) => `${e.name} · ${e.position}`;
@@ -52,7 +51,7 @@ const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
   else if (!(amt > 0)) problem = 'Enter an amount.';
   else if (over) problem = `Over the limit. At most ${peso(room)} can be advanced for ${periodLabel(period)}.`;
 
-  const save = async (withSlip = false) => {
+  const save = async () => {
     if (problem) { toast(problem, 'error'); return; }
     setBusy(true);
     try {
@@ -63,12 +62,6 @@ const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
       const data = await res.json();
       if (!res.ok) { toast(data.error || 'Could not save the cash advance.', 'error'); return; }
       toast(`Cash advance of ${peso(amt)} saved for ${emp.name}.`);
-      if (withSlip) {
-        printLoanSlip({
-          kind: 'CASH_ADVANCE', name: emp.name, position: emp.position, employeeId: emp.id,
-          date, amount: amt, deductOn: period.end, ref: data.loan?.id || '',
-        });
-      }
       onSaved?.();
     } catch { toast('Could not reach the server.', 'error'); } finally { setBusy(false); }
   };
@@ -126,8 +119,7 @@ const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
 
         <div className="flex justify-end gap-2 pt-1">
           <Btn variant="outline" onClick={onClose} disabled={busy}>Cancel</Btn>
-          <Btn variant="outline" onClick={() => save(true)} disabled={busy || !!problem}>Save &amp; print slip</Btn>
-          <Btn variant="amber" onClick={() => save(false)} loading={busy} disabled={busy || !!problem}>Save advance</Btn>
+          <Btn variant="amber" onClick={save} loading={busy} disabled={busy || !!problem}>Save advance</Btn>
         </div>
       </div>
     </Modal>

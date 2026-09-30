@@ -7,7 +7,8 @@ import {
 } from 'lucide-react';
 import { Btn, Confirm, Field, Modal, inputCls, inputStyle } from '@/components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
-import { ChangePasswordPanel, EMAIL_RE, PasswordInput } from '@/features/auth/AccountView.jsx';
+import { ChangePasswordPanel, PasswordInput } from '@/features/auth/AccountView.jsx';
+import { isEmail } from '@/lib/email-format';
 import { AccountsPanel } from '@/features/settings/AccountsPanel.jsx';
 /* eslint-disable @next/next/no-img-element -- avatars and TOTP QR codes are base64 data URIs; next/image cannot optimize data URIs and adds no value */
 
@@ -78,7 +79,7 @@ const RecoveryEmailModal = ({ open, user, toast, onClose, onUserChange }) => {
   const sendCode = async () => {
     if (busy) return;
     setError('');
-    if (!EMAIL_RE.test(addr)) { setError('Enter a valid email address.'); return; }
+    if (!isEmail(addr)) { setError('Enter a valid email address.'); return; }
     if (!password) { setError('Enter your current password.'); return; }
     setBusy(true);
     try {

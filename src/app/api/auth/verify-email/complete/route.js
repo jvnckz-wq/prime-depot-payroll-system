@@ -5,13 +5,13 @@ import {
   createSession, destroyAllSessions, hashPassword, logSecurityEvent,
   requireUser, validatePassword, verifyPassword,
 } from '@/lib/server/security/auth';
+import { isEmail } from '@/lib/email-format';
 
 // Step 2 of registering a recovery email. The email (and, from the first-time
 // gate, the new password) is saved ONLY here, and only once the emailed code
 // matches the address it was sent to. A mistyped or fake address can never be
 // registered because it could not have received the code.
 const MAX_ATTEMPTS = 5;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CODE_RE = /^\d{6}$/;
 
 // Must match verify-email/start: the address is bound into the hash, so a code
@@ -49,7 +49,7 @@ export async function POST(request) {
       if (problem) return NextResponse.json({ error: problem }, { status: 400 });
     }
 
-    if (!EMAIL_RE.test(email)) {
+    if (!isEmail(email)) {
       return NextResponse.json({ error: 'Enter a valid recovery email address.' }, { status: 400 });
     }
     if (!CODE_RE.test(code)) {

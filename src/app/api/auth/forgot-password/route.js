@@ -1,100 +1,107 @@
-import { NextResponse, after } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createHash, randomInt } from 'crypto';
 import { prisma } from '@/lib/server/db/prisma';
-import { logSecurityEvent } from '@/lib/server/security/auth';
+import { clientIp, logSecurityEvent, releaseAttempt, reserveAttempt } from '@/lib/server/security/auth';
 import { sendPasswordResetCode } from '@/lib/server/integrations/email';
+import { isEmail, maskEmail, normalizeEmail } from '@/lib/email-format';
 
-// Request a password-reset code by email. Operations Head only — Checkers do
-// not self-reset; the admin resets their password directly.
-//
-// The response is ALWAYS the same, whether or not a matching account with that
-// recovery email exists: same status, same body, and the same timing, because
-// the work a real account needs (issuing the code, sending the email) runs
-// after the response has gone out. Saying "no such account" would let anyone
-// probe which address is registered, and that address is half of what the
-// reset step asks for.
-const CODE_TTL_MS = 10 * 60 * 1000;   // a code is valid for 10 minutes
-const RESEND_COOLDOWN_MS = 60 * 1000; // at most one email per minute per account
+const CODE_TTL_MS = 10 * 60 * 1000;
+const RESEND_COOLDOWN_MS = 60 * 1000;
+const WINDOW_MS = 15 * 60 * 1000;
+const MAX_EMAIL_TRIES = 5;
+const MAX_IP_TRIES = 20;
 
 const hashCode = (code) => createHash('sha256').update(code).digest('hex');
 const sixDigits = () => String(randomInt(100000, 1000000));
+const reply = (body, status = 200) => NextResponse.json(body, { status });
+const TOO_MANY = () => reply({ error: 'Too many tries. Please wait 15 minutes and try again.' }, 429);
 
-// A gentle hint of where the code went — "c•••@g•••.com" — so the operator can
-// confirm the destination without the full address ever being shown.
-function maskEmail(email) {
-  const [local, domain] = String(email).split('@');
-  if (!domain) return '•••';
-  const parts = domain.split('.');
-  const tld = parts.length > 1 ? '.' + parts.slice(1).join('.') : '';
-  return `${(local[0] || '')}•••@${(parts[0][0] || '')}•••${tld}`;
+async function findAccount(username) {
+  if (!username) return null;
+  return prisma.user.findFirst({ where: { username, isActive: true } });
 }
 
-const generic = (masked) => NextResponse.json({
-  ok: true,
-  message: masked
-    ? `If ${masked} is the registered recovery email, a one-time code has been sent to it.`
-    : 'If that account has a recovery email on file, a reset code has been sent to it.',
-});
-
-/// Everything a matching account needs. Runs after the response is sent, so it
-/// must never throw — failures go to the server log only.
 async function issueResetCode(user) {
+  const recent = await prisma.passwordReset.findFirst({
+    where: {
+      userId: user.id, purpose: 'PASSWORD_RESET', usedAt: null,
+      createdAt: { gt: new Date(Date.now() - RESEND_COOLDOWN_MS) },
+    },
+  });
+  if (recent) return 'cooldown';
+
+  const code = sixDigits();
+  await prisma.$transaction([
+    prisma.passwordReset.deleteMany({ where: { userId: user.id, purpose: 'PASSWORD_RESET', usedAt: null } }),
+    prisma.passwordReset.create({
+      data: { userId: user.id, purpose: 'PASSWORD_RESET', codeHash: hashCode(code), expiresAt: new Date(Date.now() + CODE_TTL_MS) },
+    }),
+  ]);
+
   try {
-    // Throttle resends: if an unused code was just issued, do not send another.
-    const recent = await prisma.passwordReset.findFirst({
-      where: {
-        userId: user.id, purpose: 'PASSWORD_RESET', usedAt: null,
-        createdAt: { gt: new Date(Date.now() - RESEND_COOLDOWN_MS) },
-      },
-    });
-    if (recent) return;
-
-    // One live code at a time — drop any earlier unused ones for this account.
-    await prisma.passwordReset.deleteMany({
-      where: { userId: user.id, purpose: 'PASSWORD_RESET', usedAt: null },
-    });
-
-    const code = sixDigits();
-    await prisma.passwordReset.create({
-      data: {
-        userId: user.id,
-        purpose: 'PASSWORD_RESET',
-        codeHash: hashCode(code),
-        expiresAt: new Date(Date.now() + CODE_TTL_MS),
-      },
-    });
-
     await sendPasswordResetCode(user.email, code);
-    await logSecurityEvent('PASSWORD_RESET', {
-      actorId: user.id, actorLabel: user.username,
-      targetType: 'user', targetId: user.id,
-      detail: 'Reset code requested and emailed.',
-    });
   } catch (err) {
-    // Email failed (or is not configured), or the database did. Log it for the
-    // operator; the caller already has its answer.
-    console.error('Password reset code could not be issued:', err);
+    console.error('Password reset email could not be sent:', err);
+    await prisma.passwordReset.deleteMany({ where: { userId: user.id, purpose: 'PASSWORD_RESET', usedAt: null } }).catch(() => {});
+    return 'failed';
   }
+
+  await logSecurityEvent('PASSWORD_RESET', {
+    actorId: user.id, actorLabel: user.username,
+    targetType: 'user', targetId: user.id,
+    detail: 'Reset code requested and emailed.',
+  });
+  return 'sent';
 }
 
 export async function POST(request) {
   try {
     const body = await request.json();
-    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
-    if (!email) return NextResponse.json({ error: 'Enter your recovery email.' }, { status: 400 });
+    const username = typeof body.username === 'string' ? body.username.trim().toLowerCase() : '';
+    if (!username) return reply({ error: 'Enter your username.' }, 400);
 
-    // Look the account up by its recovery email. Only the Operations Head keeps
-    // one (Checkers have none and do not self-reset), so matching on email
-    // naturally limits this to the admin. email is not unique in the schema, so
-    // findFirst — with role + active enforced in the same query.
-    const user = await prisma.user.findFirst({ where: { email, role: 'ADMIN', isActive: true } });
-    if (user) after(() => issueResetCode(user));
+    const ip = (await clientIp().catch(() => null)) || 'unknown';
+    if (!(await reserveAttempt(`forgot-ip|${ip}`, { max: MAX_IP_TRIES, windowMs: WINDOW_MS }))) return TOO_MANY();
 
-    // Masking the address that was typed gives the same text on a hit and a
-    // miss (on a hit it is the address on file), so the reply reveals nothing.
-    return generic(maskEmail(email));
+    const user = await findAccount(username);
+    if (!user) return reply({ error: 'We could not find an active account with that username.' }, 404);
+
+    if (user.role !== 'ADMIN') {
+      return reply({ next: 'ask-admin', message: 'Checker passwords are reset by the Operations Head. Ask them to reset yours in Settings, Accounts.' });
+    }
+    if (!user.email) {
+      return reply({ next: 'no-email', message: 'This account has no recovery email on file, so it cannot be reset here. Contact the system administrator.' });
+    }
+
+    if (body.email === undefined) return reply({ next: 'email' });
+
+    const email = normalizeEmail(body.email);
+    if (!isEmail(email)) return reply({ error: 'Enter a valid email address, for example name@gmail.com.' }, 400);
+
+    const key = `forgot-email|${user.id}`;
+    if (!(await reserveAttempt(key, { max: MAX_EMAIL_TRIES, windowMs: WINDOW_MS }))) return TOO_MANY();
+
+    if (email !== normalizeEmail(user.email)) {
+      await logSecurityEvent('PASSWORD_RESET', {
+        actorLabel: username, targetType: 'user', targetId: user.id,
+        detail: 'Reset attempt with a recovery email that does not match.',
+      });
+      return reply({ error: 'That is not the recovery email for this account.' }, 400);
+    }
+
+    await releaseAttempt(key).catch(() => {});
+    const result = await issueResetCode(user);
+    if (result === 'failed') return reply({ error: 'The code could not be emailed right now. Please try again in a few minutes.' }, 502);
+
+    const masked = maskEmail(user.email);
+    return reply({
+      next: 'code',
+      message: result === 'cooldown'
+        ? `A code was already sent to ${masked} less than a minute ago. Check that inbox, including Spam.`
+        : `A 6-digit code was sent to ${masked}. It expires in 10 minutes.`,
+    });
   } catch (err) {
     console.error('POST /api/auth/forgot-password failed:', err);
-    return generic(null); // never leak internal errors here either
+    return reply({ error: 'Something went wrong. Please try again.' }, 500);
   }
 }

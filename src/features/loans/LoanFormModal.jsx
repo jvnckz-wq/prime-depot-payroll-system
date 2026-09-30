@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Btn, Field, Modal, SearchSelect, inputCls, inputStyle } from '@/components/ui.jsx';
-import { LOAN_PURPOSES, balanceOf, isOpen, payoffPlan, shortDate } from '@/lib/loan-rules';
+import { LOAN_MAX_BALANCE, LOAN_PURPOSES, balanceOf, isOpen, loanRoomLeft, payoffPlan, shortDate } from '@/lib/loan-rules';
 import { peso } from '@/lib/utils';
 import { F_BODY, T } from '@/components/theme';
 import { todayLocalYmd } from '@/features/loans/parts.jsx';
-import { printLoanSlip } from '@/features/loans/loanSlip';
 
 const Box = ({ tone, children }) => {
   const s = tone === 'warn'
@@ -23,8 +22,14 @@ const Line = ({ label, value, total }) => (
 const labelOf = (e) => `${e.name} · ${e.position}`;
 
 export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmployeeId = null, onSaved, toast }) => {
-  const people = useMemo(() => staff.filter((e) => e.status !== 'Inactive'), [staff]);
+  const people = useMemo(() => {
+    const active = staff.filter((e) => e.status !== 'Inactive');
+    if (presetEmployeeId) return active.filter((e) => e.id === presetEmployeeId);
+    const withLoan = new Set(loans.filter((l) => l.kind === 'LOAN' && isOpen(l)).map((l) => l.employeeId));
+    return active.filter((e) => !withLoan.has(e.id));
+  }, [staff, loans, presetEmployeeId]);
   const byLabel = useMemo(() => new Map(people.map((e) => [labelOf(e), e])), [people]);
+  const savingRef = useRef(false);
 
   const [empId, setEmpId] = useState(presetEmployeeId);
   const [purpose, setPurpose] = useState(LOAN_PURPOSES[0]);
@@ -42,17 +47,24 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmp
 
   const amt = Number(amount);
   const perNum = Number(perValue);
+  const room = topUp ? loanRoomLeft(balance) : LOAN_MAX_BALANCE;
+  const overLimit = amt > room + 0.004;
   const newBalance = topUp ? balance + (amt > 0 ? amt : 0) : (amt > 0 ? amt : 0);
-  const plan = amt > 0 && perNum > 0 ? payoffPlan(newBalance, perNum, date) : null;
+  const plan = amt > 0 && perNum > 0 && !overLimit ? payoffPlan(newBalance, perNum, date) : null;
 
   let problem = '';
   if (!emp) problem = 'Choose the employee.';
   else if (!(amt > 0)) problem = 'Enter an amount.';
+  else if (overLimit) problem = topUp
+    ? `A loan balance can be at most ${peso(LOAN_MAX_BALANCE)}. At most ${peso(room)} can be added.`
+    : `A loan can be at most ${peso(LOAN_MAX_BALANCE)}.`;
   else if (!(perNum > 0)) problem = `Enter the deduction per ${unit}.`;
   else if (perNum > newBalance) problem = `The deduction per ${unit} cannot be more than the ${topUp ? 'new balance' : 'loan'}.`;
 
-  const save = async (withSlip = false) => {
+  const save = async () => {
     if (problem) { toast(problem, 'error'); return; }
+    if (savingRef.current) return;
+    savingRef.current = true;
     setBusy(true);
     try {
       const res = topUp
@@ -67,17 +79,10 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmp
       const data = await res.json();
       if (!res.ok) { toast(data.error || 'Could not save the loan.', 'error'); return; }
       toast(topUp ? `Added ${peso(amt)} to ${emp.name}'s loan.` : `Loan saved for ${emp.name}.`);
-      if (withSlip) {
-        printLoanSlip({
-          kind: topUp ? 'TOPUP' : 'LOAN', name: emp.name, position: emp.position, employeeId: emp.id, crew: !!emp.crew,
-          date, amount: amt, purpose: topUp ? active.purpose : purpose, perRun: perNum,
-          previousBalance: balance, newBalance, plan, ref: data.loan?.id || active?.id || '',
-        });
-      }
       onSaved?.();
     } catch {
       toast('Could not reach the server.', 'error');
-    } finally { setBusy(false); }
+    } finally { savingRef.current = false; setBusy(false); }
   };
 
   const planText = !plan ? null
@@ -94,7 +99,7 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmp
       <div className="space-y-3.5">
         <Field label="Employee">
           <SearchSelect value={emp ? labelOf(emp) : ''} placeholder="Start typing a name…"
-            options={people.map(labelOf)}
+            options={people.map(labelOf)} disabled={!!presetEmployeeId}
             onChange={(label) => { const e = byLabel.get(label); setEmpId(e ? e.id : null); setPer(''); }} />
         </Field>
 
@@ -114,7 +119,11 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmp
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label={topUp ? 'Additional amount (₱)' : 'Amount (₱)'}>
-            <input type="number" min="0" step="0.01" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className={inputCls} style={inputStyle} />
+            <div className="relative">
+              <input type="number" min="0" max={room} step="0.01" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)}
+                className={inputCls} style={{ ...inputStyle, borderColor: overLimit ? T.brand : T.line, paddingRight: 132 }} aria-invalid={overLimit || undefined} />
+              <span className="absolute right-9 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style={{ color: T.soft }}>max {peso(room)}</span>
+            </div>
           </Field>
           <Field label={`Deduction per ${unit} (₱)`}>
             <input type="number" min="0" step="0.01" inputMode="decimal" value={perValue} onChange={(e) => setPer(e.target.value)} className={inputCls} style={inputStyle} />
@@ -125,7 +134,7 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmp
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} style={inputStyle} />
         </Field>
 
-        {topUp && (
+        {topUp && !overLimit && (
           <Box>
             <Line label="Current balance" value={peso(balance)} />
             <Line label="Top-up" value={`+${peso(amt > 0 ? amt : 0)}`} />
@@ -133,12 +142,17 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmp
           </Box>
         )}
 
+        {overLimit && (
+          <div role="alert" className="rounded-lg px-3.5 py-3 text-sm" style={{ backgroundColor: T.brandBg, color: T.brand, fontFamily: F_BODY, lineHeight: 1.45 }}>
+            <b>Over the limit.</b> {problem}
+          </div>
+        )}
+
         {planText && <Box tone="ok">{planText}</Box>}
 
         <div className="flex justify-end gap-2 pt-1">
           <Btn variant="outline" onClick={onClose} disabled={busy}>Cancel</Btn>
-          <Btn variant="outline" onClick={() => save(true)} disabled={busy || !!problem}>Save &amp; print slip</Btn>
-          <Btn variant="amber" onClick={() => save(false)} loading={busy} disabled={busy || !!problem}>{topUp ? 'Add to loan' : 'Save loan'}</Btn>
+          <Btn variant="amber" onClick={save} loading={busy} disabled={busy || !!problem}>{topUp ? 'Add to loan' : 'Save loan'}</Btn>
         </div>
       </div>
     </Modal>

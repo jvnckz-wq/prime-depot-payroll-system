@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { prisma } from '@/lib/server/db/prisma';
 import { destroyAllSessions, hashPassword, logSecurityEvent, validatePassword } from '@/lib/server/security/auth';
+import { normalizeEmail } from '@/lib/email-format';
 
-// Complete a password reset: recovery email + emailed code + new password. On success
+// Complete a password reset: username + confirmed recovery email + emailed code + new password. On success
 // the password is replaced, every existing session is destroyed (so anyone who
 // knew the old password is locked out), and the code is spent.
 const MAX_ATTEMPTS = 5;
@@ -20,19 +21,15 @@ const INVALID = () => NextResponse.json(
 export async function POST(request) {
   try {
     const body = await request.json();
-    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+    const username = typeof body.username === 'string' ? body.username.trim().toLowerCase() : '';
+    const email = normalizeEmail(body.email);
     const code = typeof body.code === 'string' ? body.code.trim() : '';
     const newPassword = typeof body.newPassword === 'string' ? body.newPassword : '';
 
-    // Reset codes are always six digits. Refusing anything else up front also
-    // keeps a recovery-email confirmation code (hashed as "<code>|<email>")
-    // from ever being accepted here.
-    if (!email || !CODE_RE.test(code)) return INVALID();
+    if (!username || !email || !CODE_RE.test(code)) return INVALID();
 
-    // Same email-based lookup as the request step, so the two stages agree on
-    // which account is being reset. Not unique in the schema, hence findFirst.
-    const user = await prisma.user.findFirst({ where: { email, role: 'ADMIN', isActive: true } });
-    if (!user) return INVALID();
+    const user = await prisma.user.findFirst({ where: { username, role: 'ADMIN', isActive: true } });
+    if (!user || normalizeEmail(user.email) !== email) return INVALID();
 
     const reset = await prisma.passwordReset.findFirst({
       where: { userId: user.id, purpose: 'PASSWORD_RESET', usedAt: null },

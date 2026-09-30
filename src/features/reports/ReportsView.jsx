@@ -6,6 +6,7 @@ import { Badge, Btn, EmptyState, Eyebrow, H1, Panel, Skeleton, Td, Th } from '@/
 import { CREW_RATE_FALLBACK, positionLabel } from '@/data/seed';
 import { computeStaffPayroll, crewEarnings, deliveriesToLog } from '@/lib/payroll';
 import { todayYmdManila } from '@/lib/loan-rules';
+import { deliveryRange } from '@/lib/delivery-range';
 import { exportXLSX, peso } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 
@@ -38,15 +39,23 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
   const [to, setTo] = useState(todayStr);
   const [rangeApi, setRangeApi] = useState([]);
   const [loadingRange, setLoadingRange] = useState(false);
+  const [fetchError, setFetchError] = useState('');
+  const rangeError = deliveryRange(from, to).error || fetchError;
   useEffect(() => {
+    if (deliveryRange(from, to).error) return undefined;
     let cancelled = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     setLoadingRange(true);
+    setFetchError('');
     const t = setTimeout(() => {
       fetch(`/api/deliveries?from=${from}&to=${to}`)
-        .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+        .then(async r => {
+          const data = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(data.error || 'Could not load deliveries for this range.');
+          return data;
+        })
         .then(data => { if (!cancelled) setRangeApi(data.deliveries || []); })
-        .catch(err => console.error('Could not load crew earnings range:', err))
+        .catch(err => { if (!cancelled) { setRangeApi([]); setFetchError(err.message); } })
         .finally(() => { if (!cancelled) setLoadingRange(false); });
     }, 400);
     return () => { cancelled = true; clearTimeout(t); };
@@ -65,7 +74,8 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
   );
   const remitRows = payrollRows;
   const T13 = staff.filter(e => Number(e.rate) > 0).map(e => ({ name: e.name, months: 12, basic: e.rate * 22 * 12, pay: Math.round(e.rate * 22 * 12 / 12 * 100) / 100 }));
-  const crewRows = useMemo(() => crewEarningsRange(rangeApi, crewRates), [rangeApi, crewRates]);
+  const crewRowsAll = useMemo(() => crewEarningsRange(rangeApi, crewRates), [rangeApi, crewRates]);
+  const crewRows = rangeError ? [] : crewRowsAll;
 
   const exportRegister = () => exportXLSX('Payroll-Register.xlsx', [{ name: 'Register', rows: payrollRows.map(r => ({ Employee: r.emp.name, Days: r.calc.days, Gross: r.calc.gross, OT: r.calc.ot, Deductions: r.calc.totalDeductions, 'Net Pay': r.calc.net })) }]);
   const exportRemit = () => exportXLSX('Gov-Remittance.xlsx', [{ name: 'Remittance', rows: remitRows.map(r => ({ Employee: r.emp.name, SSS: r.calc.sss, PhilHealth: r.calc.phic, 'Pag-IBIG': r.calc.hdmf, Total: r.calc.sss + r.calc.phic + r.calc.hdmf })) }]);
@@ -137,8 +147,14 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
               <input type="date" max={todayStr} value={to} onChange={e => setTo(e.target.value)} className="px-3 py-2 rounded border text-sm" style={{ borderColor: T.line, fontFamily: F_MONO, minWidth: 168, colorScheme: 'light', color: T.ink, backgroundColor: T.surface }} />
               {loadingRange && <Skeleton w={72} h={11} />}
             </div>
-            <Btn size="sm" variant="outline" onClick={exportDriver}>Export Excel</Btn>
+            <Btn size="sm" variant="outline" onClick={exportDriver} disabled={!!rangeError}>Export Excel</Btn>
           </div>
+          {rangeError && (
+            <div role="alert" className="mx-4 mt-3 flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm" style={{ backgroundColor: T.brandBg, color: T.brand, fontFamily: F_BODY }}>
+              <AlertTriangle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
+              <span>{rangeError}</span>
+            </div>
+          )}
           <p className="text-xs px-4 pb-3" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
             One row per person, totalled across every truck they rode. A pahinante who worked with two
             different drivers appears once here, not twice.
@@ -160,7 +176,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
                 </tr>
               ))}</tbody>
             </table>
-            {!crewRows.length && <EmptyState title="No crew earnings yet" desc="Totals appear once deliveries are logged." />}
+            {!crewRows.length && !rangeError && <EmptyState title="No crew earnings yet" desc="Totals appear once deliveries are logged." />}
           </div>
         </Panel>
       )}

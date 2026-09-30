@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useSyncExternalStore } from 'react';
 import { AlertTriangle, Loader2, Eye, EyeOff, CheckCircle2, Circle } from 'lucide-react';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
+import { isEmail } from '@/lib/email-format';
 
 const TERMS_KEY = 'pd_terms_agreed';
 
@@ -33,7 +34,8 @@ const PW_RULES = [
 const pwMeetsAll = (p) => PW_RULES.every(([, test]) => test(p));
 
 function ForgotPassword({ onBack }) {
-  const [step, setStep] = useState('request');
+  const [step, setStep] = useState('username');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [pw, setPw] = useState('');
@@ -43,8 +45,6 @@ function ForgotPassword({ onBack }) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [cooldown, setCooldown] = useState(0);
-
-  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   useEffect(() => {
     if (cooldown <= 0) return undefined;
@@ -57,20 +57,42 @@ function ForgotPassword({ onBack }) {
     border: `1px solid ${error ? T.brand : 'transparent'}`,
   };
 
-  const request = async () => {
+  const post = async (payload) => {
+    const res = await fetch('/api/auth/forgot-password', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, data };
+  };
+
+  const checkUsername = async () => {
+    if (busy) return;
+    setError('');
+    const name = username.trim().toLowerCase();
+    if (!name) { setError('Enter your username.'); return; }
+    setBusy(true);
+    try {
+      const { ok, data } = await post({ username: name });
+      if (!ok) { setError(data.error || 'Could not continue. Try again.'); return; }
+      if (data.next === 'email') { setStep('email'); return; }
+      setNotice(data.message || '');
+      setStep('info');
+    } catch { setError('Could not reach the server. Try again.'); }
+    finally { setBusy(false); }
+  };
+
+  const confirmEmail = async () => {
     if (busy) return;
     setError('');
     const addr = email.trim().toLowerCase();
-    if (!EMAIL_RE.test(addr)) { setError('Enter the recovery email you registered.'); return; }
+    if (!isEmail(addr)) { setError('Enter a valid email address, for example name@gmail.com.'); return; }
     setBusy(true);
     try {
-      const res = await fetch('/api/auth/forgot-password', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: addr }),
-      });
-      const data = await res.json();
-      setNotice(data.message || 'If that account has a recovery email on file, a reset code has been sent.');
-      setStep('verify');
+      const { ok, data } = await post({ username: username.trim().toLowerCase(), email: addr });
+      if (!ok) { setError(data.error || 'Could not continue. Try again.'); return; }
+      setNotice(data.message || '');
+      setStep('code');
       setCooldown(60);
     } catch { setError('Could not reach the server. Try again.'); }
     finally { setBusy(false); }
@@ -86,7 +108,7 @@ function ForgotPassword({ onBack }) {
     try {
       const res = await fetch('/api/auth/reset-password', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), code, newPassword: pw }),
+        body: JSON.stringify({ username: username.trim().toLowerCase(), email: email.trim().toLowerCase(), code, newPassword: pw }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Could not reset the password.'); return; }
@@ -95,29 +117,51 @@ function ForgotPassword({ onBack }) {
     finally { setBusy(false); }
   };
 
+  const onEnter = (fn) => (e) => { if (e.key === 'Enter') fn(); };
+  const intro = {
+    username: 'Enter your username to start.',
+    email: 'Confirm the recovery email registered to this account. The code is sent only if it matches.',
+    code: 'Enter the code from your email and choose a new password.',
+    info: '',
+  }[step];
+  const action = { username: [checkUsername, 'Continue'], email: [confirmEmail, 'Send code'], code: [reset, 'Reset password'] }[step];
+
   return (
     <>
       <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: F_HEAD, color: T.ink }}>Reset password</h1>
-      <p className="text-sm mb-6" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
-        {step === 'request'
-          ? 'Enter your recovery email and a one-time code will be sent to it.'
-          : 'Enter the code from your email and choose a new password.'}
-      </p>
+      {intro && (
+        <p className="text-sm mb-6" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>{intro}</p>
+      )}
 
-      {step === 'verify' && notice && (
+      {step === 'info' && (
+        <div role="status" className="flex items-start gap-2 mt-4 mb-2 px-3 py-3 rounded-lg text-sm" style={{ backgroundColor: T.warnBg, fontFamily: F_BODY, color: '#7A4B12', lineHeight: 1.5 }}>
+          <AlertTriangle size={15} className="mt-0.5 shrink-0" aria-hidden="true" /><span>{notice}</span>
+        </div>
+      )}
+
+      {step === 'code' && notice && (
         <div className="mb-4 px-3 py-2.5 rounded-lg text-xs" style={{ backgroundColor: '#EAF2FB', fontFamily: F_BODY, color: '#1B4E8A' }}>
           {notice}
         </div>
       )}
 
-      {step === 'request' ? (
+      {step === 'username' && (
+        <>
+          <label className="block text-sm mb-1.5" style={{ color: T.soft }}>Username</label>
+          <input value={username} onChange={e => setUsername(e.target.value)} onKeyDown={onEnter(checkUsername)} autoComplete="username" autoCapitalize="none" spellCheck={false}
+            disabled={busy} aria-label="Username" className="w-full px-4 py-2.5 rounded-lg text-sm outline-none" style={field} />
+        </>
+      )}
+
+      {step === 'email' && (
         <>
           <label className="block text-sm mb-1.5" style={{ color: T.soft }}>Recovery email</label>
-          <input value={email} onChange={e => setEmail(e.target.value)} type="email" autoComplete="email" autoCapitalize="none" spellCheck={false}
-            placeholder="you@example.com" disabled={busy}
-            className="w-full px-4 py-2.5 rounded-lg text-sm outline-none" style={field} />
+          <input value={email} onChange={e => setEmail(e.target.value)} onKeyDown={onEnter(confirmEmail)} type="email" autoComplete="email" autoCapitalize="none" spellCheck={false}
+            placeholder="name@gmail.com" disabled={busy} aria-label="Recovery email" className="w-full px-4 py-2.5 rounded-lg text-sm outline-none" style={field} />
         </>
-      ) : (
+      )}
+
+      {step === 'code' && (
         <>
           <label className="block text-sm mb-1.5" style={{ color: T.soft }}>Reset code</label>
           <input value={code} onChange={e => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))} inputMode="numeric" maxLength={6} placeholder="6-digit code" disabled={busy}
@@ -133,8 +177,6 @@ function ForgotPassword({ onBack }) {
             </button>
           </div>
 
-          {/* Requirements — same five the server enforces. Collapses to a single
-              line once the password satisfies all of them. */}
           {pw && (
             <div className="mt-2">
               {pwMeetsAll(pw) ? (
@@ -173,24 +215,26 @@ function ForgotPassword({ onBack }) {
       )}
 
       {error && (
-        <div className="flex items-start gap-2 mt-4 px-3 py-2.5 rounded-lg text-xs" style={{ backgroundColor: T.brandBg, fontFamily: F_BODY, color: T.brandDark }}>
+        <div role="alert" className="flex items-start gap-2 mt-4 px-3 py-2.5 rounded-lg text-xs" style={{ backgroundColor: T.brandBg, fontFamily: F_BODY, color: T.brandDark }}>
           <AlertTriangle size={13} className="mt-0.5 shrink-0" /><span>{error}</span>
         </div>
       )}
 
-      <button onClick={step === 'request' ? () => request() : reset} disabled={busy} data-variant="amber"
-        className="pd-btn w-full py-3 rounded-lg text-sm font-semibold inline-flex items-center justify-center gap-1.5 mt-6"
-        style={{ fontFamily: F_HEAD, backgroundColor: T.brand, color: '#fff', opacity: busy ? 0.6 : 1 }}>
-        {busy && <Loader2 size={14} className="pd-spin" />}
-        {busy ? 'Please wait…' : (step === 'request' ? 'Send code' : 'Reset password')}
-      </button>
+      {action && (
+        <button onClick={action[0]} disabled={busy} data-variant="amber"
+          className="pd-btn w-full py-3 rounded-lg text-sm font-semibold inline-flex items-center justify-center gap-1.5 mt-6"
+          style={{ fontFamily: F_HEAD, backgroundColor: T.brand, color: '#fff', opacity: busy ? 0.6 : 1 }}>
+          {busy && <Loader2 size={14} className="pd-spin" />}
+          {busy ? 'Please wait…' : action[1]}
+        </button>
+      )}
 
-      {step === 'verify' && (
+      {step === 'code' && (
         <div className="text-center mt-4 text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
           {cooldown > 0 ? (
             <span>Didn&apos;t receive it? You can resend in {cooldown}s.</span>
           ) : (
-            <button type="button" onClick={() => request()} disabled={busy}
+            <button type="button" onClick={confirmEmail} disabled={busy}
               className="underline" style={{ color: T.brand, opacity: busy ? 0.6 : 1 }}>
               Didn&apos;t receive the code? Resend it
             </button>
@@ -207,7 +251,7 @@ function ForgotPassword({ onBack }) {
   );
 }
 
-export const LoginView = ({ onSignedIn, onShowLegal }) => {
+export const LoginView = ({ onSignedIn, onShowLegal, notice = '' }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -363,6 +407,14 @@ export const LoginView = ({ onSignedIn, onShowLegal }) => {
         ) : (
         <>
           <h1 className="text-2xl font-bold mb-6" style={{ fontFamily: F_HEAD, color: T.ink }}>Sign In</h1>
+
+          {notice && !resetDone && (
+            <div role="status" className="flex items-start gap-2 mb-4 px-3 py-2.5 rounded-lg text-xs"
+              style={{ backgroundColor: T.warnBg, fontFamily: F_BODY, color: '#7A4B12' }}>
+              <AlertTriangle size={13} className="mt-0.5 shrink-0" aria-hidden="true" />
+              <span>{notice}</span>
+            </div>
+          )}
 
           {resetDone && (
             <div className="flex items-start gap-2 mb-4 px-3 py-2.5 rounded-lg text-xs"

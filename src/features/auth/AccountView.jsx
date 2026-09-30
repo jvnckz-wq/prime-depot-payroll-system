@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { AlertTriangle, CheckCircle2, Circle, Eye, EyeOff, KeyRound, Lock, ShieldCheck } from 'lucide-react';
 import { Btn, Confirm, Eyebrow, Field, Panel, inputCls, inputStyle } from '@/components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
+import { isEmail } from '@/lib/email-format';
 
 const PASSWORD_RULES = [
   { key: 'len', label: 'Minimum of 8 characters', test: (p) => p.length >= 8 },
@@ -15,7 +16,6 @@ const PASSWORD_RULES = [
 
 const passwordMeetsAll = (p) => PASSWORD_RULES.every((r) => r.test(p));
 
-export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function PasswordInput({ value, onChange, placeholder, autoComplete }) {
   const [show, setShow] = useState(false);
@@ -227,7 +227,7 @@ const AdminGateVerify = ({ user, onDone }) => {
       if (next !== confirm) { setError('The two new passwords do not match.'); return; }
       if (!passwordMeetsAll(next)) { setError('Your new password does not meet all the requirements below.'); return; }
     }
-    if (!EMAIL_RE.test(addr)) { setError('Enter a valid recovery email.'); return; }
+    if (!isEmail(addr)) { setError('Enter a valid recovery email.'); return; }
     setBusy(true);
     try {
       const res = await fetch('/api/auth/verify-email/start', {

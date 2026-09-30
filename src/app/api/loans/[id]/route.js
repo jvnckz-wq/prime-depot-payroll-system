@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';
 import { shapeLoan } from '@/lib/server/services/loans';
-import { isYmd, todayYmdManila } from '@/lib/loan-rules';
+import { LOAN_MAX_BALANCE, isYmd, todayYmdManila } from '@/lib/loan-rules';
 
 const balanceOf = (entries) =>
   entries.reduce((b, e) => (e.type === 'GRANT' ? b + Number(e.amount) : b - Number(e.amount)), 0);
@@ -47,6 +47,10 @@ export async function PATCH(request, { params }) {
       if (existing.isSettled || balance <= 0) return NextResponse.json({ error: 'This loan is already fully paid. Record a new loan instead.' }, { status: 400 });
       const amount = money(body.topUp.amount);
       if (!Number.isFinite(amount) || amount <= 0) return NextResponse.json({ error: 'Enter a top-up amount greater than zero.' }, { status: 400 });
+      if (balance + amount > LOAN_MAX_BALANCE + 0.004) {
+        const room = Math.max(0, Math.round((LOAN_MAX_BALANCE - balance) * 100) / 100);
+        return NextResponse.json({ error: `A loan balance can be at most ₱${LOAN_MAX_BALANCE.toLocaleString('en-PH')}. At most ₱${room.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} can be added.` }, { status: 400 });
+      }
       const date = body.topUp.date == null || body.topUp.date === '' ? todayYmdManila() : String(body.topUp.date);
       if (!isYmd(date)) return NextResponse.json({ error: 'The date given is not a valid date.' }, { status: 400 });
       const data = { principal: { increment: amount } };

@@ -46,6 +46,23 @@ export default function PrimeDepotPayroll() {
 
   const staff = React.useMemo(() => allStaff.filter((e) => !e.crew), [allStaff]);
 
+  const [loans, setLoans] = useState([]);
+  const [sessionNotice, setSessionNotice] = useState('');
+  const expireSession = React.useCallback(() => {
+    setUser(null);
+    setTab('dashboard');
+    setAllStaff([]);
+    setLoans([]);
+    setSessionNotice('Your session has ended. Please sign in again.');
+  }, []);
+
+  const getJson = React.useCallback(async (url) => {
+    const res = await fetch(url);
+    if (res.status === 401) { expireSession(); return null; }
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  }, [expireSession]);
+
   useEffect(() => {
     let cancelled = false;
     fetch('/api/auth/me')
@@ -57,9 +74,8 @@ export default function PrimeDepotPayroll() {
 
   const reloadStaff = React.useCallback(async () => {
     try {
-      const res = await fetch('/api/employees');
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
+      const data = await getJson('/api/employees');
+      if (!data) return;
       setAllStaff(data.employees);
     } catch (err) {
       console.error('Could not load employees:', err);
@@ -67,7 +83,7 @@ export default function PrimeDepotPayroll() {
     } finally {
       setStaffLoading(false);
     }
-  }, []);
+  }, [getJson]);
 
   useEffect(() => {
     if (!user || user.role !== 'ADMIN' || !user.totpEnabled) return;
@@ -81,14 +97,13 @@ export default function PrimeDepotPayroll() {
     try {
 
       const today = todayYmdManila();
-      const res = await fetch(`/api/deliveries?from=${today}&to=${today}`);
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
+      const data = await getJson(`/api/deliveries?from=${today}&to=${today}`);
+      if (!data) return;
       setDeliveries(deliveriesToLog(data.deliveries));
     } catch (err) {
       console.error('Could not load deliveries:', err);
     }
-  }, []);
+  }, [getJson]);
 
   useEffect(() => {
 
@@ -104,30 +119,27 @@ export default function PrimeDepotPayroll() {
   useEffect(() => {
     if (!user || user.mustChangePassword) return;
     let cancelled = false;
-    fetch('/api/rates')
-      .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
+    getJson('/api/rates')
       .then(data => {
-        if (cancelled) return;
+        if (cancelled || !data) return;
         const active = data.rates.filter(r => r.isActive);
         if (active.length) setRates(active);
         if (data.crewRates) setCrewRates(data.crewRates);
       })
       .catch(err => console.error('Could not load piece rates:', err));
     return () => { cancelled = true; };
-  }, [user]);
-
-  const [loans, setLoans] = useState([]);
+  }, [user, getJson]);
 
   const reloadLoans = React.useCallback(async () => {
     try {
-      const res = await fetch('/api/loans');
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
+      const data = await getJson('/api/loans');
+      if (!data) return;
       setLoans(data.loans);
     } catch (err) {
       console.error('Could not load loans:', err);
     }
-  }, []);
+  }, [getJson]);
 
   useEffect(() => {
     if (!user || user.role !== 'ADMIN' || !user.totpEnabled) return;
@@ -144,9 +156,8 @@ export default function PrimeDepotPayroll() {
 
   const reloadStatutory = React.useCallback(async () => {
     try {
-      const res = await fetch('/api/statutory');
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const d = await res.json();
+      const d = await getJson('/api/statutory');
+      if (!d) return;
       if (d.sss?.length) setSssTable(d.sss);
       if (d.philhealth) setPhilhealthRates(d.philhealth);
       if (d.pagibig?.brackets?.length) setPagibigRates(d.pagibig);
@@ -154,7 +165,7 @@ export default function PrimeDepotPayroll() {
     } catch (err) {
       console.error('Could not load statutory tables:', err);
     }
-  }, []);
+  }, [getJson]);
 
   useEffect(() => {
     if (!user || user.role !== 'ADMIN' || !user.totpEnabled) return;
@@ -168,17 +179,38 @@ export default function PrimeDepotPayroll() {
   useEffect(() => {
     if (!user || user.role !== 'ADMIN' || !user.totpEnabled) return;
     let cancelled = false;
-    fetch('/api/attendance')
-      .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
+    getJson('/api/attendance')
       .then(d => {
-        if (cancelled) return;
+        if (cancelled || !d) return;
         setCutoffPeriod(d.period || null);
         setAttSummaries(d.summaries || []);
         setUnmappedCount(d.unmappedCount || 0);
       })
       .catch(err => console.error('Could not load current cutoff:', err));
     return () => { cancelled = true; };
-  }, [user]);
+  }, [user, getJson]);
+
+  useEffect(() => {
+    if (!user) return undefined;
+    let last = 0;
+    const check = () => {
+      if (document.visibilityState !== 'visible') return;
+      const now = Date.now();
+      if (now - last < 60000) return;
+      last = now;
+      fetch('/api/auth/me')
+        .then(r => r.json())
+        .then(d => { if (!d.user) expireSession(); })
+        .catch(() => {});
+    };
+    document.addEventListener('visibilitychange', check);
+    window.addEventListener('focus', check);
+    return () => {
+      document.removeEventListener('visibilitychange', check);
+      window.removeEventListener('focus', check);
+    };
+  }, [user, expireSession]);
   const cutoffText = cutoffLabel(cutoffPeriod);
 
   const staffKey = staffRunKey(cutoffPeriod?.start || currentCutoffPeriod().start);
@@ -217,7 +249,7 @@ export default function PrimeDepotPayroll() {
 
   if (!user) return <>
     <style>{FONTS}</style>
-    <LoginView onSignedIn={setUser} onShowLegal={setLegalPage} />
+    <LoginView notice={sessionNotice} onSignedIn={(u) => { setSessionNotice(''); setUser(u); }} onShowLegal={setLegalPage} />
   </>;
 
   if (user.mustChangePassword) return <>

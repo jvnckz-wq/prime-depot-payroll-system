@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireUser } from '@/lib/server/security/auth';
 import { isYmd, todayYmdManila } from '@/lib/loan-rules';
+import { deliveryRange } from '@/lib/delivery-range';
 
 const num = (d) => (d == null ? 0 : Number(d));
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
@@ -59,19 +60,18 @@ export async function GET(request) {
   const to = searchParams.get('to');
   const truckId = searchParams.get('truckId');
 
+  const range = deliveryRange(from, to);
+  if (range.error) return NextResponse.json({ error: range.error }, { status: 400 });
+
   const where = {};
-  if (from || to) {
-    where.date = {};
-    if (from) where.date.gte = new Date(from);
-    if (to) where.date.lte = new Date(to);
-  }
+  if (range.gte) where.date = { gte: range.gte, lte: range.lte };
   if (truckId) where.truckId = truckId;
 
   const deliveries = await prisma.delivery.findMany({
     where,
     include: INCLUDE,
     orderBy: [{ date: 'desc' }, { truckId: 'asc' }, { sequenceNo: 'asc' }],
-    take: 500,
+    ...(range.take ? { take: range.take } : {}),
   });
 
   return NextResponse.json({ deliveries: deliveries.map(shape) });
