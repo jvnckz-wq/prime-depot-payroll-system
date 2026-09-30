@@ -55,7 +55,7 @@ export const FinalPayView = ({ employee, onBack, toast, onDeactivate, editable =
       .catch(err => { console.error('Final pay load failed:', err); if (toast) toast('Could not load final-pay details.', 'error'); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [employee.id, reload]); 
+  }, [employee.id, reload]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const grossA = round2(nf(rate) * nf(days));
   const netA = round2(grossA + nf(otAllow));

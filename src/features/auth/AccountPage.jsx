@@ -9,6 +9,7 @@ import { Btn, Confirm, Field, Modal, inputCls, inputStyle } from '@/components/u
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { ChangePasswordPanel, EMAIL_RE, PasswordInput } from '@/features/auth/AccountView.jsx';
 import { AccountsPanel } from '@/features/settings/AccountsPanel.jsx';
+/* eslint-disable @next/next/no-img-element -- avatars and TOTP QR codes are base64 data URIs; next/image cannot optimize data URIs and adds no value */
 
 const REGEN_URL = '/api/auth/2fa/backup-codes/regenerate';
 const REENROLL_START_URL = '/api/auth/2fa/reenroll/start';
@@ -411,6 +412,7 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut }) 
     } catch { /* leave the count hidden */ }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect -- run once on mount for the admin's 2FA card
   useEffect(() => { if (isAdmin && user.totpEnabled) loadBackupCount(); }, []);
 
   const patch = async (body, okMessage) => {

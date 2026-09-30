@@ -191,7 +191,9 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
       setHistoryLoading(false);
     }
   };
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
   useEffect(() => { loadHistory(); }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- sync Current/History from the sidebar selection
   useEffect(() => { if (navView) setSubTab(navView); }, [navView]);
 
   const unfinalize = async (p) => {

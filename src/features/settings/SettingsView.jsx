@@ -10,6 +10,7 @@ import { FleetPanel } from '@/features/settings/FleetPanel.jsx';
 
 export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers, setCheckers, sssTable, setSssTable, philhealthRates, setPhilhealthRates, pagibigRates, setPagibigRates, birTable, setBirTable, toast, navTab }) => {
   const [tab, setTab] = useState(navTab || 'statutory');
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- sync the settings panel from the sidebar selection
   useEffect(() => { if (navTab) setTab(navTab); }, [navTab]);
   const [editSss, setEditSss] = useState(false);
   const [sssDraft, setSssDraft] = useState(sssTable);

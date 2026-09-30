@@ -126,9 +126,12 @@ export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
     } catch { setPullError('Could not queue the pull.'); }
     finally { setPullBusy(false); }
   };
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- sync the sub-tab from the sidebar selection
   useEffect(() => { if (navSub) setSubTab(navSub); }, [navSub]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- intentional: load the active tab's data on mount and when the tab or selected day changes
   useEffect(() => { if (subTab === 'live') loadLive(); else if (subTab === 'dtr' || subTab === 'history') load(); }, [subTab, liveDate]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot fetch of pull status when the DTR tab opens
   useEffect(() => { if (subTab === 'dtr') fetchPull(); }, [subTab]);
 
   useEffect(() => {
@@ -183,6 +186,7 @@ export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
     } catch (err) { console.error('Could not load unmapped IDs:', err); }
     finally { setUnmappedLoading(false); }
   };
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
   useEffect(() => { if (subTab === 'unmapped') loadUnmapped(); }, [subTab]);
 
   const resolveId = async (biometricId) => {
@@ -204,6 +208,7 @@ export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     if (view === 'dtr' && selectedId) loadDtr(selectedId);
   }, [view, selectedId]);
 
