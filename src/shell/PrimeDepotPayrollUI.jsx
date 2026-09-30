@@ -26,18 +26,24 @@ import { PayrollView } from '@/features/payroll/PayrollView.jsx';
 import { TruckPayrollView } from '@/features/payroll/TruckPayrollView.jsx';
 
 export default function PrimeDepotPayroll() {
+
   const [user, setUser] = useState(null);
   const [authChecking, setAuthChecking] = useState(true);
   const [legalPage, setLegalPage] = useState(null);
   const [tab, setTab] = useState('dashboard');
+
   const [subs, setSubs] = useState({ payroll: 'staff', loans: 'loans', attendance: 'live', reports: 'register', settings: 'statutory' });
   const navSelect = React.useCallback((key, child) => { setTab(key); if (child) setSubs(s => ({ ...s, [key]: child })); }, []);
+
   const [navOpen, setNavOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const closeNav = React.useCallback(() => setNavOpen(false), []);
+
   const [employeePrefill, setEmployeePrefill] = useState(null);
+
   const [allStaff, setAllStaff] = useState([]);
   const [staffLoading, setStaffLoading] = useState(true);
+
   const staff = React.useMemo(() => allStaff.filter((e) => !e.crew), [allStaff]);
 
   useEffect(() => {
@@ -57,6 +63,7 @@ export default function PrimeDepotPayroll() {
       setAllStaff(data.employees);
     } catch (err) {
       console.error('Could not load employees:', err);
+
     } finally {
       setStaffLoading(false);
     }
@@ -64,6 +71,7 @@ export default function PrimeDepotPayroll() {
 
   useEffect(() => {
     if (!user || user.role !== 'ADMIN' || !user.totpEnabled) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     reloadStaff();
   }, [user, reloadStaff]);
 
@@ -71,6 +79,7 @@ export default function PrimeDepotPayroll() {
 
   const reloadDeliveries = React.useCallback(async () => {
     try {
+
       const today = todayYmdManila();
       const res = await fetch(`/api/deliveries?from=${today}&to=${today}`);
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -82,11 +91,14 @@ export default function PrimeDepotPayroll() {
   }, []);
 
   useEffect(() => {
+
     if (!user || user.mustChangePassword) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     reloadDeliveries();
   }, [user, reloadDeliveries]);
 
   const [rates, setRates] = useState([]);
+
   const [crewRates, setCrewRates] = useState(CREW_RATE_FALLBACK);
 
   useEffect(() => {
@@ -105,6 +117,7 @@ export default function PrimeDepotPayroll() {
   }, [user]);
 
   const [loans, setLoans] = useState([]);
+
   const reloadLoans = React.useCallback(async () => {
     try {
       const res = await fetch('/api/loans');
@@ -118,6 +131,7 @@ export default function PrimeDepotPayroll() {
 
   useEffect(() => {
     if (!user || user.role !== 'ADMIN' || !user.totpEnabled) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     reloadLoans();
   }, [user, reloadLoans]);
 
@@ -144,6 +158,7 @@ export default function PrimeDepotPayroll() {
 
   useEffect(() => {
     if (!user || user.role !== 'ADMIN' || !user.totpEnabled) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     reloadStatutory();
   }, [user, reloadStatutory]);
 
@@ -165,6 +180,7 @@ export default function PrimeDepotPayroll() {
     return () => { cancelled = true; };
   }, [user]);
   const cutoffText = cutoffLabel(cutoffPeriod);
+
   const staffKey = staffRunKey(cutoffPeriod?.start || currentCutoffPeriod().start);
 
   const [toasts, setToasts] = useState([]);
@@ -176,7 +192,7 @@ export default function PrimeDepotPayroll() {
   };
 
   const logout = async () => {
-    try { await fetch('/api/auth/logout', { method: 'POST' }); } catch { /* sign out locally regardless */ }
+    try { await fetch('/api/auth/logout', { method: 'POST' }); } catch { }
     setUser(null);
     setTab('dashboard');
     setAllStaff([]);

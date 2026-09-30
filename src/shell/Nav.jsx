@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown, HelpCircle, LogOut, Menu, User, X } from 'lucide-react';
 import { ADMIN_NAV, ADMIN_NAV_GROUPS } from '@/shell/nav-items';
 import { F_BODY, F_HEAD, T } from '@/components/theme';
+/* eslint-disable @next/next/no-img-element -- user avatars are base64 data URIs; next/image adds no value and cannot optimize data URIs */
 
 const SIDEBAR_W = 236;
 
@@ -103,7 +104,6 @@ const FaqButton = ({ tab, onClick }) => {
   );
 };
 
-/* ============================= SIDEBAR ============================= */
 export const Sidebar = ({ tab, subs = {}, onSelect, open = false, onClose }) => {
   const panelRef = useRef(null);
   const restoreRef = useRef(null);
@@ -134,7 +134,7 @@ export const Sidebar = ({ tab, subs = {}, onSelect, open = false, onClose }) => 
     return () => {
       document.removeEventListener('keydown', onKeyDown);
       document.body.style.overflow = prevOverflow;
-      // The trigger can unmount with the drawer; only restore if it is still there.
+
       if (restoreRef.current?.isConnected) restoreRef.current.focus();
     };
   }, [open, onClose]);
@@ -160,15 +160,13 @@ export const Sidebar = ({ tab, subs = {}, onSelect, open = false, onClose }) => 
 
   return (
     <>
-      {/* Desktop rail. The logo lives in the full-width top bar above it, so
-          the rail starts straight with the menu. */}
+
       <aside className="hidden lg:flex flex-col shrink-0 h-full"
         style={{ width: SIDEBAR_W, backgroundColor: T.sidebar, borderRight: `1px solid ${T.sidebarLine}` }}>
         <NavList tab={tab} subs={subs} onSelect={onSelect} />
         <FaqButton tab={tab} onClick={() => onSelect('faqs')} />
       </aside>
 
-      {/* Mobile drawer */}
       {open && (
         <div className="lg:hidden fixed inset-0 z-50">
           <div className="pd-overlay absolute inset-0" style={{ backgroundColor: 'rgba(10,14,19,0.6)' }} onClick={onClose} />
@@ -190,7 +188,6 @@ export const Sidebar = ({ tab, subs = {}, onSelect, open = false, onClose }) => 
   );
 };
 
-/* ============================= TOP BAR ============================= */
 export const TopBar = ({ user, onOpenAccount, onLogout, onOpenNav }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -206,18 +203,18 @@ export const TopBar = ({ user, onOpenAccount, onLogout, onOpenNav }) => {
   const roleLabel = user?.role === 'ADMIN' ? 'Operations Head' : 'Checker';
 
   return (
-    <header className="flex items-center gap-3 px-4 md:px-6" style={{ height: 56, borderBottom: `1px solid ${T.line}`, backgroundColor: T.surface }}>
+    <header className="flex items-center gap-3 px-4 md:px-6 shrink-0" style={{ height: 56, borderBottom: `1px solid ${T.sidebarLine}`, backgroundColor: T.sidebar }}>
       <button onClick={onOpenNav} aria-label="Open navigation menu"
         className="pd-btn lg:hidden -ml-2 rounded flex items-center justify-center shrink-0"
-        data-variant="ghost" style={{ width: 44, height: 44, color: T.ink }}>
+        style={{ width: 44, height: 44, color: T.sidebarAccent, background: 'transparent', border: 'none' }}>
         <Menu size={20} />
       </button>
 
       <span className="flex items-center gap-2.5 min-w-0">
-        <img src="/logo.png" alt="" className="shrink-0 rounded-md p-1" style={{ width: 32, height: 32, border: `1px solid ${T.line}` }} />
+        <img src="/logo.png" alt="" className="shrink-0 rounded-md bg-white p-1" style={{ width: 32, height: 32 }} />
         <span className="leading-tight min-w-0">
-          <span className="block text-sm font-bold truncate" style={{ fontFamily: F_HEAD, color: T.ink }}>Prime Depot</span>
-          <span className="block text-xs truncate" style={{ fontFamily: F_BODY, color: T.soft }}>Payroll System</span>
+          <span className="block text-sm font-bold text-white truncate" style={{ fontFamily: F_HEAD }}>Prime Depot</span>
+          <span className="block text-xs truncate" style={{ fontFamily: F_BODY, color: T.sidebarSoft }}>Payroll System</span>
         </span>
       </span>
 
@@ -226,7 +223,7 @@ export const TopBar = ({ user, onOpenAccount, onLogout, onOpenNav }) => {
           onClick={() => setOpen(o => !o)}
           aria-haspopup="menu" aria-expanded={open} aria-label="Account menu"
           className="rounded-full flex items-center justify-center"
-          style={{ width: 36, height: 36, background: T.brand, color: '#fff', fontFamily: F_HEAD, fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer' }}
+          style={{ width: 36, height: 36, background: '#FFFFFF', color: T.brand, fontFamily: F_HEAD, fontWeight: 700, fontSize: 13, border: '2px solid #FFFFFF', cursor: 'pointer' }}
         >
           {user?.avatar
             ? <img src={user.avatar} alt="" className="rounded-full object-cover" style={{ width: 36, height: 36 }} />
@@ -256,3 +253,4 @@ export const TopBar = ({ user, onOpenAccount, onLogout, onOpenNav }) => {
     </header>
   );
 };
+
