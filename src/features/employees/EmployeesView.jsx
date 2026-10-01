@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Save, Clock } from 'lucide-react';
+import { Search, Save, Clock, AlertTriangle } from 'lucide-react';
 import { Badge, Btn, Confirm, Eyebrow, Field, H1, Modal, Money, Panel, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { POSITIONS, positionLabel } from '@/data/seed';
 import { isCrewPosition } from '@/lib/payroll';
@@ -99,7 +99,9 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
       const data = await res.json();
       if (!res.ok) { toast(data.error || 'Could not save the employee.', 'error'); return; }
       setModal(false);
-      toast(editing ? 'Employee updated.' : 'Employee registered.');
+      toast(data.accountDisabled
+        ? `Employee updated. The checker account "${data.accountDisabled}" was disabled.`
+        : (editing ? 'Employee updated.' : 'Employee registered.'));
       await reloadStaff();
     } catch {
       toast('Could not reach the server.', 'error');
@@ -117,7 +119,9 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
       });
       const data = await res.json();
       if (!res.ok) { toast(data.error || 'Could not update the employee.', 'error'); return; }
-      toast(`${r.name} marked ${r.status === 'Active' ? 'inactive' : 'active'}.`);
+      toast(data.accountDisabled
+        ? `${r.name} marked inactive. The checker account "${data.accountDisabled}" was disabled too.`
+        : `${r.name} marked ${r.status === 'Active' ? 'inactive' : 'active'}.`);
       await reloadStaff();
     } catch {
       toast('Could not reach the server.', 'error');
@@ -288,6 +292,16 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
               </select>
             </Field>
           </div>
+          {editing?.account?.active && (form.position !== 'Checker' || form.status === 'Inactive') && (
+            <div role="status" className="flex items-start gap-2 px-3 py-2.5 rounded text-xs"
+              style={{ backgroundColor: T.warnBg, fontFamily: F_BODY, color: T.ink, lineHeight: 1.6 }}>
+              <AlertTriangle size={13} color={T.warn} className="mt-0.5 shrink-0" />
+              <span>
+                This employee has the checker account <span style={{ fontFamily: F_MONO, fontWeight: 600 }}>{editing.account.username}</span>.
+                Saving will disable it, so they can no longer log deliveries. Past delivery records stay.
+              </span>
+            </div>
+          )}
           {/* Crew are pakyawan (piece-rate, no monthly salary) and no-work-no-pay
               (no leave credits), so these two fields do not apply to them. Shown
               for office staff only; forced to 0 for crew on save. items-end keeps

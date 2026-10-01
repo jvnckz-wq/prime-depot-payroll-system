@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/server/db/prisma';
+import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';
 import { applyLoanDeductions } from '@/lib/server/services/loans-apply';
 import { cutoffOf, isYmd, staffRunKey, todayYmdManila } from '@/lib/loan-rules';
@@ -45,7 +45,7 @@ export async function POST(request) {
       // The key names the calendar cutoff, decided here rather than by the browser.
       const runKey = staffRunKey(start);
       const inputs = await loadStaffPayrollInputs(prisma, { start, end, withLoans: false });
-      const result = await applyLoanDeductions(prisma, { scope: 'staff', runKey, cutoffEnd: cut.end, available: staffAvailable(inputs) });
+      const result = await applyLoanDeductions(prismaBase, { scope: 'staff', runKey, cutoffEnd: cut.end, available: staffAvailable(inputs) });
       return NextResponse.json({ ...result, runKey });
     }
 
@@ -56,7 +56,7 @@ export async function POST(request) {
     const day = m[1];
     if (day > todayYmdManila()) return bad('That day has not happened yet.');
 
-    const result = await applyLoanDeductions(prisma, { scope: 'crew', runKey, available: await crewAvailableOn(prisma, day) });
+    const result = await applyLoanDeductions(prismaBase, { scope: 'crew', runKey, available: await crewAvailableOn(prisma, day) });
     return NextResponse.json({ ...result, runKey });
   } catch (err) {
     // Unique (loanId, payslipId): two runs at the same moment. The other one

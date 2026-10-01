@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/server/db/prisma';
+import { prisma, prismaBase } from '@/lib/server/db/prisma';
+import { withRetry } from '@/lib/server/db/db-retry';
 import { requireAdmin } from '@/lib/server/security/auth';
 import { shapeEmployee } from '@/lib/server/services/employees';
 import { shapeLoan } from '@/lib/server/services/loans';
@@ -53,7 +54,7 @@ export async function POST(request) {
     }
     if (plan.writes.length === 0) return NextResponse.json({ error: 'There is nothing owed to deduct.' }, { status: 400 });
 
-    await prisma.$transaction(deductionOps(prisma, plan, { runKey: key, endYmd: today }));
+    await withRetry(() => prismaBase.$transaction(deductionOps(prismaBase, plan, { runKey: key, endYmd: today })));
     return NextResponse.json({ recorded: true, total: plan.total, unpaidTotal: plan.unpaidTotal, settled: plan.settled });
   } catch (err) {
     if (err?.code === 'P2002') return NextResponse.json({ error: 'This deduction was just recorded. Refresh the page.' }, { status: 409 });
@@ -76,10 +77,10 @@ export async function DELETE(request) {
     const touched = await prisma.loanEntry.findMany({ where: { payslipId: key, type: 'DEDUCTION' }, select: { loanId: true } });
     if (!touched.length) return NextResponse.json({ error: 'Nothing was recorded from this final pay.' }, { status: 404 });
     const loanIds = [...new Set(touched.map((t) => t.loanId))];
-    const [removed] = await prisma.$transaction([
-      prisma.loanEntry.deleteMany({ where: { payslipId: key, type: 'DEDUCTION' } }),
-      prisma.loan.updateMany({ where: { id: { in: loanIds }, isSettled: true }, data: { isSettled: false, settledAt: null } }),
-    ]);
+    const [removed] = await withRetry(() => prismaBase.$transaction([
+      prismaBase.loanEntry.deleteMany({ where: { payslipId: key, type: 'DEDUCTION' } }),
+      prismaBase.loan.updateMany({ where: { id: { in: loanIds }, isSettled: true }, data: { isSettled: false, settledAt: null } }),
+    ]));
     return NextResponse.json({ undone: true, entries: removed.count });
   } catch (err) {
     console.error('DELETE /api/payroll/final-pay failed:', err);

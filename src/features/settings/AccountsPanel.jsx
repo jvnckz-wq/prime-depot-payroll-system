@@ -1,15 +1,47 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, Copy, KeyRound, Plus, UserCheck, UserX } from 'lucide-react';
+import { AlertTriangle, Copy, KeyRound, Link2, Plus, UserCheck, UserX } from 'lucide-react';
 import { Av, Badge, Btn, Confirm, Eyebrow, Field, Modal, Skeleton, inputCls, inputStyle } from '@/components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
+import { suggestUsername } from '@/lib/checker-accounts';
 
-export const AccountsPanel = ({ currentUser, toast }) => {
+const NoCheckers = ({ onGoToEmployees }) => (
+  <div className="p-3.5 rounded" style={{ backgroundColor: T.bg }}>
+    <div className="text-sm font-semibold" style={{ fontFamily: F_HEAD, color: T.ink }}>Register the checker first</div>
+    <div className="text-xs mt-1.5" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
+      Every checker account belongs to an employee whose position is Checker. None are available: either no one
+      is registered as Checker yet, or all of them already have an account.
+    </div>
+    {onGoToEmployees && (
+      <div className="mt-3">
+        <Btn size="sm" variant="outline" onClick={onGoToEmployees}>Go to Employees</Btn>
+      </div>
+    )}
+  </div>
+);
+
+const CheckerSelect = ({ checkers, value, onChange }) => (
+  <Field label="Checker">
+    <select value={value} onChange={e => onChange(e.target.value)} className={inputCls} style={inputStyle}>
+      <option value="">Choose a checker</option>
+      {checkers.map(c => <option key={c.id} value={c.id}>{c.name} (ID {c.id})</option>)}
+    </select>
+    <div className="text-xs mt-1.5" style={{ fontFamily: F_BODY, color: T.soft }}>
+      Only employees whose position is Checker and who have no account yet.
+    </div>
+  </Field>
+);
+
+export const AccountsPanel = ({ currentUser, toast, onGoToEmployees }) => {
   const [users, setUsers] = useState([]);
+  const [checkers, setCheckers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
-  const [form, setForm] = useState({ username: '', displayName: '', role: 'CHECKER' });
+  const [form, setForm] = useState({ employeeId: '', username: '' });
+  const [usernameTouched, setUsernameTouched] = useState(false);
+  const [linkFor, setLinkFor] = useState(null);
+  const [linkEmployeeId, setLinkEmployeeId] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [handover, setHandover] = useState(null);
@@ -19,7 +51,7 @@ export const AccountsPanel = ({ currentUser, toast }) => {
     try {
       const res = await fetch('/api/users');
       const data = await res.json();
-      if (res.ok) setUsers(data.users);
+      if (res.ok) { setUsers(data.users); setCheckers(data.availableCheckers || []); }
       else toast(data.error || 'Could not load accounts.', 'error');
     } catch {
       toast('Could not reach the server.', 'error');
@@ -43,7 +75,8 @@ export const AccountsPanel = ({ currentUser, toast }) => {
       if (!res.ok) { setError(data.error || 'Could not create the account.'); return; }
 
       setAddOpen(false);
-      setForm({ username: '', displayName: '', role: 'CHECKER' });
+      setForm({ employeeId: '', username: '' });
+      setUsernameTouched(false);
       setHandover({ username: data.user.username, tempPassword: data.tempPassword, isReset: false });
       load();
     } catch {
@@ -74,6 +107,43 @@ export const AccountsPanel = ({ currentUser, toast }) => {
     }
   };
 
+  const pickChecker = (employeeId) => {
+    const c = checkers.find(x => x.id === employeeId);
+    setForm(f => ({
+      ...f,
+      employeeId,
+      username: usernameTouched ? f.username : (c ? suggestUsername(c.name) : ''),
+    }));
+  };
+
+  const openCreate = () => {
+    setError('');
+    setForm({ employeeId: '', username: '' });
+    setUsernameTouched(false);
+    setAddOpen(true);
+  };
+
+  const link = async () => {
+    if (!linkFor) return;
+    setError(''); setBusy(true);
+    try {
+      const res = await fetch(`/api/users/${linkFor.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'link', employeeId: linkEmployeeId }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Could not link the account.'); return; }
+      toast(`${linkFor.username} is now linked.`);
+      setLinkFor(null);
+      load();
+    } catch {
+      setError('Could not reach the server.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const copy = (text) => {
     if (navigator?.clipboard) {
       navigator.clipboard.writeText(text).then(() => toast('Copied.'), () => {});
@@ -90,7 +160,7 @@ export const AccountsPanel = ({ currentUser, toast }) => {
     <div>
       <div className="flex items-center justify-between gap-4 mb-1">
         <h1 className="text-2xl font-bold" style={{ fontFamily: F_HEAD, color: T.ink }}>Account Access</h1>
-        <Btn size="sm" icon={Plus} onClick={() => { setError(''); setAddOpen(true); }}>Create account</Btn>
+        <Btn size="sm" icon={Plus} onClick={openCreate}>Create account</Btn>
       </div>
 
       <div className="mt-4">
@@ -119,16 +189,24 @@ export const AccountsPanel = ({ currentUser, toast }) => {
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold truncate" style={{ fontFamily: F_MONO, color: T.ink }}>{u.username}</div>
                 <div className="text-xs mt-0.5 truncate" style={{ fontFamily: F_BODY, color: T.soft }}>
-                  {u.displayName} <span aria-hidden="true">&middot;</span> last sign-in {fmtDate(u.lastLoginAt)}
+                  {u.employee ? `${u.employee.name}, ID ${u.employee.id}` : u.displayName} <span aria-hidden="true">&middot;</span> last sign-in {fmtDate(u.lastLoginAt)}
                 </div>
               </div>
 
               <div className="hidden sm:flex items-center gap-2 shrink-0">
+                {u.role === 'CHECKER' && !u.employee && <Badge tone="amber">Not linked</Badge>}
                 <Badge tone={u.role === 'ADMIN' ? 'amber' : 'blue'}>{roleLabel(u.role)}</Badge>
                 {statusBadge}
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0">
+                {u.role === 'CHECKER' && !u.employee && (
+                  <button className="pd-clickable p-2 rounded" title="Link to a checker" aria-label={`Link ${u.username} to a checker`}
+                    style={{ border: `1px solid ${T.line}` }}
+                    onClick={() => { setError(''); setLinkEmployeeId(''); setLinkFor(u); }}>
+                    <Link2 size={14} color={T.brand} />
+                  </button>
+                )}
                 <button className="pd-clickable p-2 rounded" title="Reset password"
                   style={{ border: `1px solid ${T.line}` }}
                   onClick={() => setConfirm({
@@ -167,14 +245,15 @@ export const AccountsPanel = ({ currentUser, toast }) => {
 
       {/* Create account */}
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Create Account" width={420}>
-        <Field label="Full name">
-          <input value={form.displayName} onChange={e => setForm(f => ({ ...f, displayName: e.target.value }))}
-            placeholder="Dela Cruz, Juan P." className={inputCls} style={inputStyle} />
-        </Field>
+        {checkers.length === 0 ? (
+          <NoCheckers onGoToEmployees={onGoToEmployees} />
+        ) : (
+          <CheckerSelect checkers={checkers} value={form.employeeId} onChange={pickChecker} />
+        )}
         <div className="mt-3">
           <Field label="Username">
-            <input value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value.toLowerCase() }))}
-              placeholder="checker2" autoCapitalize="none" spellCheck={false}
+            <input value={form.username} onChange={e => { setUsernameTouched(true); setForm(f => ({ ...f, username: e.target.value.toLowerCase() })); }}
+              placeholder="checker2" autoCapitalize="none" spellCheck={false} disabled={checkers.length === 0}
               className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
           </Field>
         </div>
@@ -191,8 +270,29 @@ export const AccountsPanel = ({ currentUser, toast }) => {
         )}
 
         <div className="flex gap-2 mt-4">
-          <Btn onClick={create} loading={busy} disabled={busy}>{busy ? 'Creating...' : 'Create account'}</Btn>
+          <Btn onClick={create} loading={busy} disabled={busy || !form.employeeId}>{busy ? 'Creating...' : 'Create account'}</Btn>
           <Btn variant="outline" onClick={() => setAddOpen(false)}>Cancel</Btn>
+        </div>
+      </Modal>
+
+      <Modal open={!!linkFor} onClose={() => setLinkFor(null)} title={linkFor ? `Link ${linkFor.username}` : 'Link account'} width={420}>
+        <div className="text-sm mb-3" style={{ fontFamily: F_BODY, color: T.ink, lineHeight: 1.6 }}>
+          Pick the employee who uses this account. Their name replaces the one typed when the account was made.
+        </div>
+        {checkers.length === 0 ? (
+          <NoCheckers onGoToEmployees={onGoToEmployees} />
+        ) : (
+          <CheckerSelect checkers={checkers} value={linkEmployeeId} onChange={setLinkEmployeeId} />
+        )}
+        {error && (
+          <div className="flex items-start gap-2 mt-3 px-3 py-2.5 rounded text-xs"
+            style={{ backgroundColor: T.brandBg, fontFamily: F_BODY, color: T.brandDark }}>
+            <AlertTriangle size={13} className="mt-0.5 shrink-0" /><span>{error}</span>
+          </div>
+        )}
+        <div className="flex gap-2 mt-4">
+          <Btn onClick={link} loading={busy} disabled={busy || !linkEmployeeId}>{busy ? 'Linking...' : 'Link account'}</Btn>
+          <Btn variant="outline" onClick={() => setLinkFor(null)}>Cancel</Btn>
         </div>
       </Modal>
 

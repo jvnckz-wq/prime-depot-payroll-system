@@ -11,7 +11,10 @@ export async function GET() {
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   try {
-    const rows = await prisma.employee.findMany({ orderBy: { id: 'asc' } });
+    const rows = await prisma.employee.findMany({
+      orderBy: { id: 'asc' },
+      include: { account: { select: { username: true, isActive: true } } },
+    });
     return NextResponse.json({ employees: rows.map(shapeEmployee) });
   } catch (err) {
     console.error('GET /api/employees failed:', err);

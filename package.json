@@ -13,6 +13,8 @@
     "test:loans3": "tsx tests/loans-phase3.test.cjs",
     "test:deliveries": "node tests/delivery-range.test.mjs",
     "test:email": "node tests/email-format.test.mjs",
+    "test:accounts": "node tests/checker-accounts.test.mjs",
+    "test:prisma": "node tests/prisma-safety.test.mjs",
     "sync": "node scripts/sync-agent.js",
     "sync:live": "node scripts/sync-agent.js --live",
     "pull-cutoff": "node scripts/pull-cutoff.js",

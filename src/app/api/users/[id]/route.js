@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { prisma } from '@/lib/server/db/prisma';
 import { destroyAllSessions, hashPassword, logSecurityEvent, requireAdmin } from '@/lib/server/security/auth';
+import { checkerLinkProblem, isActiveChecker } from '@/lib/checker-accounts';
 
 function generateTempPassword() {
   const letters = 'abcdefghjkmnpqrstuvwxyz';
@@ -11,7 +12,7 @@ function generateTempPassword() {
   return `pd-${pick(letters, 4)}${pick(digits, 4)}`;
 }
 
-/// PATCH /api/users/:id — { action: 'disable' | 'enable' | 'reset-password' }
+/// PATCH /api/users/:id — { action: 'disable' | 'enable' | 'reset-password' | 'link', employeeId? }
 export async function PATCH(request, { params }) {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -19,9 +20,12 @@ export async function PATCH(request, { params }) {
   const { id } = await params;
 
   try {
-    const { action } = await request.json();
+    const { action, employeeId } = await request.json();
 
-    const target = await prisma.user.findUnique({ where: { id } });
+    const target = await prisma.user.findUnique({
+      where: { id },
+      include: { employee: { select: { name: true, status: true, position: true } } },
+    });
     if (!target) return NextResponse.json({ error: 'Account not found.' }, { status: 404 });
 
     if (action === 'disable') {
@@ -55,6 +59,13 @@ export async function PATCH(request, { params }) {
     }
 
     if (action === 'enable') {
+      if (target.employeeId && !isActiveChecker(target.employee)) {
+        const who = target.employee?.name ?? 'The linked employee';
+        return NextResponse.json(
+          { error: `${who} is no longer an active Checker, so this account cannot be enabled.` },
+          { status: 400 },
+        );
+      }
       await prisma.user.update({ where: { id }, data: { isActive: true } });
 
       await logSecurityEvent('ACCOUNT_ENABLED', {
@@ -91,8 +102,41 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ ok: true, tempPassword });
     }
 
+    if (action === 'link') {
+      if (target.role !== 'CHECKER') {
+        return NextResponse.json({ error: 'Only Checker accounts are linked to an employee.' }, { status: 400 });
+      }
+      if (target.employeeId) {
+        return NextResponse.json({ error: 'This account is already linked to an employee.' }, { status: 400 });
+      }
+      const empId = typeof employeeId === 'string' ? employeeId.trim() : '';
+      const employee = empId
+        ? await prisma.employee.findUnique({
+          where: { id: empId },
+          select: { id: true, name: true, status: true, position: true, account: { select: { id: true, username: true } } },
+        })
+        : null;
+      const problem = checkerLinkProblem(employee);
+      if (problem) return NextResponse.json({ error: problem }, { status: 400 });
+
+      await prisma.user.update({ where: { id }, data: { employeeId: employee.id, displayName: employee.name } });
+
+      await logSecurityEvent('ACCOUNT_LINKED', {
+        actorId: auth.user.id,
+        actorLabel: auth.user.username,
+        targetType: 'user',
+        targetId: id,
+        detail: `Linked "${target.username}" to employee ${employee.id} (${employee.name}).`,
+      });
+
+      return NextResponse.json({ ok: true });
+    }
+
     return NextResponse.json({ error: 'Unknown action.' }, { status: 400 });
   } catch (err) {
+    if (err?.code === 'P2002') {
+      return NextResponse.json({ error: 'That checker was just linked to another account. Refresh and try again.' }, { status: 409 });
+    }
     console.error('PATCH /api/users/[id] failed:', err);
     return NextResponse.json({ error: 'Could not update the account.' }, { status: 500 });
   }

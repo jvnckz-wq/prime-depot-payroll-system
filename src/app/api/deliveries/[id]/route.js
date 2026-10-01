@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma, prismaBase } from '@/lib/server/db/prisma';
+import { withRetry } from '@/lib/server/db/db-retry';
 import { logSecurityEvent, requireUser } from '@/lib/server/security/auth';
 import { todayYmdManila } from '@/lib/loan-rules';
 
@@ -149,7 +150,7 @@ export async function PATCH(request, { params }) {
 
       const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
       let beforeD = 0, beforeH = 0, afterD = 0, afterH = 0;
-      const lineWrites = [];
+      const lineUpdates = [];
       for (const i of full.items) {
         const r = rateById.get(i.rateItemId);
         const q = Number(i.quantity);
@@ -159,9 +160,9 @@ export async function PATCH(request, { params }) {
         const newD = +(q * Number(want ? r.driverRateDouble : r.driverRate)).toFixed(2);
         const newH = +(q * Number(want ? r.helperRateDouble : r.helperRate)).toFixed(2);
         afterD += newD; afterH += newH;
-        lineWrites.push(prisma.deliveryLine.update({ where: { id: i.id }, data: { driverAmount: newD, helperAmount: newH } }));
+        lineUpdates.push({ id: i.id, data: { driverAmount: newD, helperAmount: newH } });
       }
-      const current = await prisma.deliveryLine.findMany({
+      const current = await prisma.deliveryItem.findMany({
         where: { deliveryId: id }, select: { driverAmount: true, helperAmount: true },
       });
       for (const l of current) { beforeD += Number(l.driverAmount); beforeH += Number(l.helperAmount); }
@@ -183,10 +184,10 @@ export async function PATCH(request, { params }) {
 
       // One batch (non-interactive) transaction: the flag and every line move
       // together, so the flag and the money can never disagree.
-      await prismaBase.$transaction([
-        prisma.delivery.update({ where: { id }, data: { isDouble: want } }),
-        ...lineWrites,
-      ]);
+      await withRetry(() => prismaBase.$transaction([
+        prismaBase.delivery.update({ where: { id }, data: { isDouble: want } }),
+        ...lineUpdates.map((u) => prismaBase.deliveryItem.update({ where: { id: u.id }, data: u.data })),
+      ]));
 
       await logSecurityEvent('DELIVERY_DOUBLE_CHANGED', {
         actorId: auth.user.id,

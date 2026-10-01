@@ -193,9 +193,11 @@ model User {
   /// phishing page cannot be replayed while it is still valid.
   totpLastStep Int?
   lastLoginAt  DateTime?
+  employeeId   String?  @unique
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  employee         Employee?  @relation(fields: [employeeId], references: [id], onDelete: SetNull)
   loggedDeliveries Delivery[] @relation("DeliveryLoggedBy")
   voidedDeliveries Delivery[] @relation("DeliveryVoidedBy")
   sessions         Session[]
@@ -380,6 +382,7 @@ model Employee {
   drivenDeliveries  Delivery[]   @relation("DeliveryDriver")
   helper1Deliveries Delivery[]   @relation("DeliveryHelper1")
   helper2Deliveries Delivery[]   @relation("DeliveryHelper2")
+  account           User?
 
   @@index([position])
   @@index([status])

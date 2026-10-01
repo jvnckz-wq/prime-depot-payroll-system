@@ -3,6 +3,7 @@ import { prisma } from '@/lib/server/db/prisma';
 import {
   burnPasswordComparison, createSession, logSecurityEvent, verifyPassword,
 } from '@/lib/server/security/auth';
+import { isActiveChecker } from '@/lib/checker-accounts';
 
 // Rate limiting: 5 failed attempts per (IP + username) per 15 minutes.
 //
@@ -94,7 +95,10 @@ export async function POST(request) {
       );
     }
 
-    const user = await prisma.user.findUnique({ where: { username } });
+    const user = await prisma.user.findUnique({
+      where: { username },
+      include: { employee: { select: { status: true, position: true } } },
+    });
 
     // One message for every failure mode — wrong username, wrong password,
     // disabled account. Saying "no such user" would let someone probe for
@@ -110,7 +114,7 @@ export async function POST(request) {
     // measurably faster than a wrong-password rejection, and that timing
     // difference enumerates usernames just as effectively as a distinct error
     // message would — undoing the point of the shared message above.
-    if (!user || !user.isActive) {
+    if (!user || !user.isActive || (user.employeeId && !isActiveChecker(user.employee))) {
       await burnPasswordComparison(password);
       return reject();
     }

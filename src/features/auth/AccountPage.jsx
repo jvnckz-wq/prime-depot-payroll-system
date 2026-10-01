@@ -385,7 +385,7 @@ const ReenrollModal = ({ open, toast, onClose }) => {
   );
 };
 
-export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut }) => {
+export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut, onGoToEmployees }) => {
   const isAdmin = user.role === 'ADMIN';
   const [section, setSection] = useState('account');
 
@@ -648,7 +648,7 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut }) 
           )}
 
           {section === 'access' && isAdmin && (
-            <AccountsPanel currentUser={user} toast={toast} />
+            <AccountsPanel currentUser={user} toast={toast} onGoToEmployees={onGoToEmployees} />
           )}
         </div>
       </div>

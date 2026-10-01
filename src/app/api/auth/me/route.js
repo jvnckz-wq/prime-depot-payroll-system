@@ -53,6 +53,13 @@ export async function PATCH(request) {
     }
 
     if ('displayName' in body) {
+      const self = await prisma.user.findUnique({ where: { id: auth.user.id }, select: { employeeId: true } });
+      if (self?.employeeId) {
+        return NextResponse.json(
+          { error: 'Your name comes from your employee record. Ask the Operations Head to change it there.' },
+          { status: 400 },
+        );
+      }
       const displayName = typeof body.displayName === 'string' ? body.displayName.trim() : '';
       if (!displayName) return NextResponse.json({ error: 'Name cannot be empty.' }, { status: 400 });
       if (displayName.length > 80) return NextResponse.json({ error: 'Name is too long.' }, { status: 400 });

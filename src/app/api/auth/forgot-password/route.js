@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createHash, randomInt } from 'crypto';
-import { prisma } from '@/lib/server/db/prisma';
+import { prisma, prismaBase } from '@/lib/server/db/prisma';
+import { withRetry } from '@/lib/server/db/db-retry';
 import { clientIp, logSecurityEvent, releaseAttempt, reserveAttempt } from '@/lib/server/security/auth';
 import { sendPasswordResetCode } from '@/lib/server/integrations/email';
 import { isEmail, maskEmail, normalizeEmail } from '@/lib/email-format';
@@ -31,12 +32,12 @@ async function issueResetCode(user) {
   if (recent) return 'cooldown';
 
   const code = sixDigits();
-  await prisma.$transaction([
-    prisma.passwordReset.deleteMany({ where: { userId: user.id, purpose: 'PASSWORD_RESET', usedAt: null } }),
-    prisma.passwordReset.create({
+  await withRetry(() => prismaBase.$transaction([
+    prismaBase.passwordReset.deleteMany({ where: { userId: user.id, purpose: 'PASSWORD_RESET', usedAt: null } }),
+    prismaBase.passwordReset.create({
       data: { userId: user.id, purpose: 'PASSWORD_RESET', codeHash: hashCode(code), expiresAt: new Date(Date.now() + CODE_TTL_MS) },
     }),
-  ]);
+  ]));
 
   try {
     await sendPasswordResetCode(user.email, code);

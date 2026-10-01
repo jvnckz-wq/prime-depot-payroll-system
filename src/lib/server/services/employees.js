@@ -50,6 +50,7 @@ export function shapeEmployee(e) {
     earlyShiftDays: e.earlyShiftDays ?? [],
     earlyShiftTime: e.earlyShiftTime ?? '06:00',
     crew: e.position === 'DRIVER' || e.position === 'PAHINANTE',
+    account: e.account ? { username: e.account.username, active: e.account.isActive } : null,
   };
 }
 

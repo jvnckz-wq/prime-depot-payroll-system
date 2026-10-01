@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { prisma } from '@/lib/server/db/prisma';
 import { hashPassword, logSecurityEvent, requireAdmin } from '@/lib/server/security/auth';
+import { POSITION_LABEL } from '@/lib/server/services/employees';
+import { checkerLinkProblem } from '@/lib/checker-accounts';
 
 // Account management is restricted to the Operations Head. Per the client's
 // requirement there is no public registration anywhere in this system — every
@@ -11,17 +13,33 @@ export async function GET() {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-  const users = await prisma.user.findMany({
-    orderBy: [{ role: 'asc' }, { username: 'asc' }],
-    // passwordHash is deliberately not selected. There is no reason for a hash
-    // to travel to the browser, so it never leaves this file's query.
-    select: {
-      id: true, username: true, displayName: true, role: true,
-      isActive: true, mustChangePassword: true, lastLoginAt: true, createdAt: true,
-    },
-  });
+  const [users, checkers] = await Promise.all([
+    prisma.user.findMany({
+      orderBy: [{ role: 'asc' }, { username: 'asc' }],
+      // passwordHash is deliberately not selected. There is no reason for a hash
+      // to travel to the browser, so it never leaves this file's query.
+      select: {
+        id: true, username: true, displayName: true, role: true,
+        isActive: true, mustChangePassword: true, lastLoginAt: true, createdAt: true,
+        employee: { select: { id: true, name: true, position: true, status: true } },
+      },
+    }),
+    prisma.employee.findMany({
+      where: { position: 'CHECKER', status: 'ACTIVE', account: { is: null } },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true },
+    }),
+  ]);
 
-  return NextResponse.json({ users });
+  return NextResponse.json({
+    users: users.map(({ employee, ...u }) => ({
+      ...u,
+      employee: employee
+        ? { id: employee.id, name: employee.name, position: POSITION_LABEL[employee.position] ?? employee.position, active: employee.status === 'ACTIVE' }
+        : null,
+    })),
+    availableCheckers: checkers,
+  });
 }
 
 /// Readable temporary password — the admin has to say this out loud to the
@@ -46,7 +64,7 @@ export async function POST(request) {
     // Prisma. Spreading would let a caller set anything the model happens to
     // have — including role — regardless of what this endpoint intends.
     const username = typeof body.username === 'string' ? body.username.trim().toLowerCase() : '';
-    const displayName = typeof body.displayName === 'string' ? body.displayName.trim() : '';
+    const employeeId = typeof body.employeeId === 'string' ? body.employeeId.trim() : '';
     // Only Checker accounts are created here. There is exactly one Operations
     // Head by design, so this refuses to mint a second admin even if the body
     // asks for one. The UI no longer offers the choice; this is the check that
@@ -65,9 +83,14 @@ export async function POST(request) {
         { status: 400 }
       );
     }
-    if (!displayName) {
-      return NextResponse.json({ error: 'Full name is required.' }, { status: 400 });
-    }
+    const employee = employeeId
+      ? await prisma.employee.findUnique({
+        where: { id: employeeId },
+        select: { id: true, name: true, status: true, position: true, account: { select: { id: true, username: true } } },
+      })
+      : null;
+    const problem = checkerLinkProblem(employee);
+    if (problem) return NextResponse.json({ error: problem }, { status: 400 });
 
     const existing = await prisma.user.findUnique({ where: { username } });
     if (existing) {
@@ -78,8 +101,9 @@ export async function POST(request) {
     const user = await prisma.user.create({
       data: {
         username,
-        displayName,
+        displayName: employee.name,
         role,
+        employeeId: employee.id,
         passwordHash: await hashPassword(tempPassword),
         mustChangePassword: true,
       },
@@ -91,7 +115,7 @@ export async function POST(request) {
       actorLabel: auth.user.username,
       targetType: 'user',
       targetId: user.id,
-      detail: `Created ${user.role} account "${user.username}".`,
+      detail: `Created ${user.role} account "${user.username}" for employee ${employee.id} (${employee.name}).`,
     });
 
     // The temporary password is returned exactly once, here, for the admin to
@@ -99,6 +123,9 @@ export async function POST(request) {
     // retrieved again — a forgotten one has to be reset, not looked up.
     return NextResponse.json({ user, tempPassword });
   } catch (err) {
+    if (err?.code === 'P2002') {
+      return NextResponse.json({ error: 'That checker or username was just taken. Refresh and try again.' }, { status: 409 });
+    }
     console.error('POST /api/users failed:', err);
     return NextResponse.json({ error: 'Could not create the account.' }, { status: 500 });
   }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/server/db/prisma';
+import { prisma, prismaBase } from '@/lib/server/db/prisma';
+import { withRetry } from '@/lib/server/db/db-retry';
 import { logSecurityEvent, requireAdmin } from '@/lib/server/security/auth';
 import { deductionOps } from '@/lib/server/services/loans-apply';
 import { cutoffOf, planDeductions, staffRunKey, withPlan } from '@/lib/loan-rules';
@@ -201,14 +202,14 @@ export async function POST(request) {
     //    every payslip. All of it is stored or none of it is, so a failure can
     //    never leave a released cutoff with half its payslips.
     const now = new Date();
-    const results = await prisma.$transaction([
-      ...deductionOps(prisma, plan, { runKey, endYmd: cut.end }),
-      prisma.payrollPeriod.upsert({
+    const results = await withRetry(() => prismaBase.$transaction([
+      ...deductionOps(prismaBase, plan, { runKey, endYmd: cut.end }),
+      prismaBase.payrollPeriod.upsert({
         where: { startDate_endDate: { startDate, endDate } },
         create: { label: label.trim(), startDate, endDate, isReleased: true, releasedAt: now, payslips: { createMany: { data: rows } } },
         update: { label: label.trim(), isReleased: true, releasedAt: now, payslips: { deleteMany: {}, createMany: { data: rows } } },
       }),
-    ]);
+    ]));
     const period = results[results.length - 1];
     const netTotal = slips.reduce((s, p) => s + p.netPay, 0);
 
@@ -289,12 +290,12 @@ export async function DELETE(request) {
     // (isSettled) by the same run, so it is re-opened here or it would sit in
     // History with money still owed. One batch transaction: the reversal
     // happens completely or not at all.
-    const [reversed] = await prisma.$transaction([
-      prisma.loanEntry.deleteMany({ where: { payslipId: { in: keys }, type: 'DEDUCTION' } }),
-      prisma.loan.updateMany({ where: { id: { in: loanIds }, isSettled: true }, data: { isSettled: false, settledAt: null } }),
-      prisma.payslip.deleteMany({ where: { payrollPeriodId: period.id } }),
-      prisma.payrollPeriod.update({ where: { id: period.id }, data: { isReleased: false, releasedAt: null } }),
-    ]);
+    const [reversed] = await withRetry(() => prismaBase.$transaction([
+      prismaBase.loanEntry.deleteMany({ where: { payslipId: { in: keys }, type: 'DEDUCTION' } }),
+      prismaBase.loan.updateMany({ where: { id: { in: loanIds }, isSettled: true }, data: { isSettled: false, settledAt: null } }),
+      prismaBase.payslip.deleteMany({ where: { payrollPeriodId: period.id } }),
+      prismaBase.payrollPeriod.update({ where: { id: period.id }, data: { isReleased: false, releasedAt: null } }),
+    ]));
 
     await logSecurityEvent('PAYROLL_UNFINALIZED', {
       actorId: auth.user.id,

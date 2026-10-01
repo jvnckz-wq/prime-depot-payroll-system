@@ -281,6 +281,7 @@ export default function PrimeDepotPayroll() {
       onBack={() => setTab('dashboard')}
       onUserChange={u => setUser(prev => ({ ...prev, ...u }))}
       onSignedOut={() => { setUser(null); setTab('dashboard'); }}
+      onGoToEmployees={() => setTab('employees')}
     />
   </>;
 
