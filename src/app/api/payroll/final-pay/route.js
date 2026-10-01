@@ -4,7 +4,8 @@ import { withRetry } from '@/lib/server/db/db-retry';
 import { requireAdmin } from '@/lib/server/security/auth';
 import { shapeEmployee } from '@/lib/server/services/employees';
 import { shapeLoan } from '@/lib/server/services/loans';
-import { deductionOps, isCrewPosition } from '@/lib/server/services/loans-apply';
+import { deductionOps } from '@/lib/server/services/loans-apply';
+import { isDailyPosition } from '@/lib/positions';
 import { planDeductions, todayYmdManila } from '@/lib/loan-rules';
 
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
@@ -48,7 +49,7 @@ export async function POST(request) {
     const key = finalKey(employeeId);
     const today = todayYmdManila();
     const loans = (await loadFinalLoans(employeeId)).map(shapeLoan);
-    const plan = planDeductions(loans, { crew: isCrewPosition(emp.position), runKey: key, endYmd: today, available: { [employeeId]: total }, full: true });
+    const plan = planDeductions(loans, { crew: isDailyPosition(emp.position), runKey: key, endYmd: today, available: { [employeeId]: total }, full: true });
     if (loans.some((l) => l.entries.some((e) => e.payslipId === key))) {
       return NextResponse.json({ error: 'The deduction from this final pay is already recorded. Undo it first to record it again.' }, { status: 409 });
     }

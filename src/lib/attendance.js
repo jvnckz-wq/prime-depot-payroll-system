@@ -1,3 +1,5 @@
+import { isDailyPosition, isNonRegularPosition } from './positions.js';
+
 export const WEEKDAYS = [
   { key: 'MON', label: 'Mon' }, { key: 'TUE', label: 'Tue' }, { key: 'WED', label: 'Wed' },
   { key: 'THU', label: 'Thu' }, { key: 'FRI', label: 'Fri' }, { key: 'SAT', label: 'Sat' },
@@ -7,12 +9,10 @@ export const WEEKDAYS = [
 const DEFAULT_CALL = { crew: '06:30', staff: '06:40' };
 const DEFAULT_EARLY = '06:00';
 
-const CREW_POSITIONS = new Set(['Driver', 'Pahinante', 'Checker', 'DRIVER', 'PAHINANTE', 'CHECKER']);
-
 export function callTimeFor(employee, date) {
   if (!employee) return DEFAULT_CALL.staff;
 
-  const days = employee.earlyShiftDays || [];
+  const days = isNonRegularPosition(employee.position) ? [] : (employee.earlyShiftDays || []);
   if (days.length && date) {
     const d = date instanceof Date ? date : new Date(date);
     if (!isNaN(d.getTime())) {
@@ -21,7 +21,7 @@ export function callTimeFor(employee, date) {
     }
   }
 
-  return CREW_POSITIONS.has(employee.position) ? DEFAULT_CALL.crew : DEFAULT_CALL.staff;
+  return isDailyPosition(employee.position) ? DEFAULT_CALL.crew : DEFAULT_CALL.staff;
 }
 
 export function minutesLate(employee, date, timeIn) {

@@ -16,7 +16,7 @@ const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 const labelOf = (e) => `${e.name} · ${e.position}`;
 
 const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
-  const people = useMemo(() => staff.filter((e) => !e.crew && e.status !== 'Inactive' && Number(e.rate) > 0), [staff]);
+  const people = useMemo(() => staff.filter((e) => !e.daily && e.status !== 'Inactive' && Number(e.rate) > 0), [staff]);
   const byLabel = useMemo(() => new Map(people.map((e) => [labelOf(e), e])), [people]);
   const [empId, setEmpId] = useState(null);
   const [date, setDate] = useState(todayLocalYmd());

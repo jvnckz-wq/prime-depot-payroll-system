@@ -75,10 +75,23 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
   const remitRows = payrollRows;
   const T13 = staff.filter(e => Number(e.rate) > 0).map(e => ({ name: e.name, months: 12, basic: e.rate * 22 * 12, pay: Math.round(e.rate * 22 * 12 / 12 * 100) / 100 }));
   const crewRowsAll = useMemo(() => crewEarningsRange(rangeApi, crewRates), [rangeApi, crewRates]);
+  const [dailyRemit, setDailyRemit] = useState({ month: '', rows: [] });
+  useEffect(() => {
+    if (tab !== 'remittance') return undefined;
+    let cancelled = false;
+    fetch(`/api/payroll/daily?date=${todayStr}&summary=month`)
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+      .then(data => { if (!cancelled) setDailyRemit({ month: data.month || '', rows: data.rows || [] }); })
+      .catch(err => { if (!cancelled) setDailyRemit({ month: '', rows: [] }); console.error('Could not load daily contributions:', err); });
+    return () => { cancelled = true; };
+  }, [tab, todayStr]);
   const crewRows = rangeError ? [] : crewRowsAll;
 
   const exportRegister = () => exportXLSX('Payroll-Register.xlsx', [{ name: 'Register', rows: payrollRows.map(r => ({ Employee: r.emp.name, Days: r.calc.days, Gross: r.calc.gross, OT: r.calc.ot, Deductions: r.calc.totalDeductions, 'Net Pay': r.calc.net })) }]);
-  const exportRemit = () => exportXLSX('Gov-Remittance.xlsx', [{ name: 'Remittance', rows: remitRows.map(r => ({ Employee: r.emp.name, SSS: r.calc.sss, PhilHealth: r.calc.phic, 'Pag-IBIG': r.calc.hdmf, Total: r.calc.sss + r.calc.phic + r.calc.hdmf })) }]);
+  const exportRemit = () => exportXLSX('Gov-Remittance.xlsx', [
+    { name: 'Remittance', rows: remitRows.map(r => ({ Employee: r.emp.name, SSS: r.calc.sss, PhilHealth: r.calc.phic, 'Pag-IBIG': r.calc.hdmf, Total: r.calc.sss + r.calc.phic + r.calc.hdmf })) },
+    { name: 'Daily-paid', rows: dailyRemit.rows.map(r => ({ Employee: r.name, Position: r.position, Month: dailyRemit.month, SSS: r.sss, PhilHealth: r.phic, 'Pag-IBIG': r.hdmf, Share: r.total, 'Collected from pay': r.collected, 'Company covers': r.remaining })) },
+  ]);
   const export13 = () => exportXLSX('13th-Month-Pay.xlsx', [{ name: '13th Month', rows: T13.map(r => ({ Employee: r.name, 'Months Worked': r.months, 'Total Basic': r.basic, '13th Month Pay': r.pay })) }]);
   const exportDriver = () => exportXLSX('Crew-Earnings.xlsx', [{ name: 'Crew', rows: crewRows.map(r => ({
     Name: r.name, Role: positionLabel(r.role), Trucks: r.trucks.join(', '), Days: r.days, Trips: r.trips,
@@ -122,6 +135,15 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
             <thead><tr><Th>Employee</Th><Th right>SSS</Th><Th right>PhilHealth</Th><Th right>Pag-IBIG</Th><Th right>Total Withheld</Th></tr></thead>
             <tbody>{remitRows.map((r, i) => <tr key={i}><Td>{r.emp.name}</Td><Td right mono>{peso(r.calc.sss)}</Td><Td right mono>{peso(r.calc.phic)}</Td><Td right mono>{peso(r.calc.hdmf)}</Td><Td right mono>{peso(r.calc.sss + r.calc.phic + r.calc.hdmf)}</Td></tr>)}</tbody>
           </table></div>
+          {dailyRemit.rows.length > 0 && (<>
+            <div className="px-4 py-2.5" style={{ borderTop: `1px solid ${T.line}`, borderBottom: `1px solid ${T.line}` }}>
+              <Eyebrow>Daily-paid employees · {dailyRemit.month} so far</Eyebrow>
+            </div>
+            <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
+              <thead><tr><Th>Employee</Th><Th right>SSS</Th><Th right>PhilHealth</Th><Th right>Pag-IBIG</Th><Th right>Share</Th><Th right>Collected</Th><Th right>Company covers</Th></tr></thead>
+              <tbody>{dailyRemit.rows.map(r => <tr key={r.id}><Td>{r.name}<div className="text-xs" style={{ color: T.soft }}>{r.position}</div></Td><Td right mono>{peso(r.sss)}</Td><Td right mono>{peso(r.phic)}</Td><Td right mono>{peso(r.hdmf)}</Td><Td right mono>{peso(r.total)}</Td><Td right mono>{peso(r.collected)}</Td><Td right mono style={{ color: r.remaining ? T.red : undefined }}>{peso(r.remaining)}</Td></tr>)}</tbody>
+            </table></div>
+          </>)}
           <div className="px-4 py-2.5 text-xs flex items-center gap-2" style={{ fontFamily: F_BODY, color: T.soft, borderTop: `1px solid ${T.line}` }}><AlertTriangle size={12} /> Estimated employee-share figures for this prototype. Add employer counterpart before remitting.</div>
         </Panel>
       )}

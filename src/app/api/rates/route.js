@@ -14,7 +14,7 @@ const shape = (r) => ({
 /// helper (rather than inlining findUnique everywhere) keeps the "what if the
 /// row is missing" answer in one place — a fresh database that has not run the
 /// seed still has to render something sane rather than paying everybody zero.
-const CREW_RATE_DEFAULTS = { driverDaily: 280, helperDaily: 240, bonusHead: 100, bonusTrips: 5 };
+const CREW_RATE_DEFAULTS = { driverDaily: 280, helperDaily: 240, bonusHead: 100, bonusTrips: 5, dailyContribution: null };
 
 const shapeCrewRates = (r) => (r
   ? {
@@ -22,6 +22,7 @@ const shapeCrewRates = (r) => (r
     helperDaily: num(r.helperDaily),
     bonusHead: num(r.bonusHead),
     bonusTrips: r.bonusTrips,
+    dailyContribution: r.dailyContribution == null ? null : num(r.dailyContribution),
   }
   : { ...CREW_RATE_DEFAULTS });
 
@@ -63,23 +64,38 @@ export async function PATCH(request) {
       return { value: Math.round(n * 100) / 100 };
     };
 
-    const driverDaily = money(body.driverDaily, 'Driver daily rate', 10000);
-    const helperDaily = money(body.helperDaily, 'Pahinante daily rate', 10000);
-    const bonusHead = money(body.bonusHead, 'Palima bonus', 10000);
-    const firstError = [driverDaily, helperDaily, bonusHead].find((f) => f.error);
-    if (firstError) return NextResponse.json({ error: firstError.error }, { status: 400 });
+    const data = {};
+    const parts = [];
 
-    const bonusTrips = parseInt(body.bonusTrips, 10);
-    if (!Number.isFinite(bonusTrips) || bonusTrips < 1 || bonusTrips > 50) {
-      return NextResponse.json({ error: 'Bonus trip threshold must be between 1 and 50.' }, { status: 400 });
+    if (body.driverDaily !== undefined) {
+      const driverDaily = money(body.driverDaily, 'Driver daily rate', 10000);
+      const helperDaily = money(body.helperDaily, 'Pahinante daily rate', 10000);
+      const bonusHead = money(body.bonusHead, 'Palima bonus', 10000);
+      const firstError = [driverDaily, helperDaily, bonusHead].find((f) => f.error);
+      if (firstError) return NextResponse.json({ error: firstError.error }, { status: 400 });
+
+      const bonusTrips = parseInt(body.bonusTrips, 10);
+      if (!Number.isFinite(bonusTrips) || bonusTrips < 1 || bonusTrips > 50) {
+        return NextResponse.json({ error: 'Bonus trip threshold must be between 1 and 50.' }, { status: 400 });
+      }
+
+      Object.assign(data, { driverDaily: driverDaily.value, helperDaily: helperDaily.value, bonusHead: bonusHead.value, bonusTrips });
+      parts.push(`Driver ₱${data.driverDaily}/day, pahinante ₱${data.helperDaily}/day, bonus ₱${data.bonusHead} at ${data.bonusTrips} trips.`);
     }
 
-    const data = {
-      driverDaily: driverDaily.value,
-      helperDaily: helperDaily.value,
-      bonusHead: bonusHead.value,
-      bonusTrips,
-    };
+    if (body.dailyContribution !== undefined) {
+      if (body.dailyContribution === null || body.dailyContribution === '') {
+        data.dailyContribution = null;
+        parts.push('Daily contributions: even split of the monthly share across working days.');
+      } else {
+        const daily = money(body.dailyContribution, 'Daily contribution deduction', 1000);
+        if (daily.error) return NextResponse.json({ error: daily.error }, { status: 400 });
+        data.dailyContribution = daily.value;
+        parts.push(`Daily contributions: fixed ₱${data.dailyContribution} per day.`);
+      }
+    }
+
+    if (!parts.length) return NextResponse.json({ error: 'Nothing to update.' }, { status: 400 });
 
     const updated = await prisma.crewRate.upsert({
       where: { id: 'current' },
@@ -92,8 +108,7 @@ export async function PATCH(request) {
       actorLabel: auth.user.username,
       targetType: 'crewRate',
       targetId: 'current',
-      detail: `Driver ₱${data.driverDaily}/day, pahinante ₱${data.helperDaily}/day, `
-        + `bonus ₱${data.bonusHead} at ${data.bonusTrips} trips.`,
+      detail: parts.join(' '),
     });
 
     return NextResponse.json({ crewRates: shapeCrewRates(updated) });

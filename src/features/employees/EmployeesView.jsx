@@ -4,13 +4,13 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Search, Save, Clock, AlertTriangle } from 'lucide-react';
 import { Badge, Btn, Confirm, Eyebrow, Field, H1, Modal, Money, Panel, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { POSITIONS, positionLabel } from '@/data/seed';
-import { isCrewPosition } from '@/lib/payroll';
+import { isDailyPosition, isLegacyPosition, isNonRegularPosition } from '@/lib/positions';
 import { WEEKDAYS, describeEarlyShift } from '@/lib/attendance';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { FinalPayView } from '@/features/payroll/FinalPayView.jsx';
 
 const BLANK_EMP = {
-  id: '', name: '', position: 'Administrative Staff', rate: '', declaredSalary: '',
+  id: '', name: '', position: '', rate: '', declaredSalary: '',
   status: 'Active', sssOn: false, phOn: false, piOn: false, mp2: 0, leaveCredits: 5,
   address: '', contact: '', birthdate: '', dateHired: '',
   earlyShiftDays: [], earlyShiftTime: '06:00',
@@ -35,14 +35,14 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
       || (statusFilter === 'inactive' && r.status === 'Inactive'))
     .filter(r => {
       if (typeFilter === 'all') return true;
-      const crew = typeof r.crew === 'boolean' ? r.crew : isCrewPosition(r.position);
+      const crew = typeof r.daily === 'boolean' ? r.daily : isDailyPosition(r.position);
       return typeFilter === 'crew' ? crew : !crew;
     })
     .sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true, sensitivity: 'base' })),
     [staff, q, statusFilter, typeFilter]);
 
   const counts = useMemo(() => {
-    const crewOf = (r) => (typeof r.crew === 'boolean' ? r.crew : isCrewPosition(r.position));
+    const crewOf = (r) => (typeof r.daily === 'boolean' ? r.daily : isDailyPosition(r.position));
     return {
       all: staff.length,
       active: staff.filter(r => r.status !== 'Inactive').length,
@@ -76,12 +76,14 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
     const dupe = staff.some(s => String(s.id).toLowerCase() === form.id.trim().toLowerCase() && (!editing || s.id !== editing.id));
     if (dupe) { toast(`ID ${form.id.trim()} is already used by another employee.`, 'error'); return; }
 
-    const crew = isCrewPosition(form.position);
+    if (!form.position) { toast('Choose a position.', 'error'); return; }
+    const crew = isDailyPosition(form.position);
+    const nonRegular = isNonRegularPosition(form.position);
 
     const payload = {
       id: form.id.trim(), name: form.name.trim(), position: form.position,
-      rate: parseFloat(form.rate) || 0, declaredSalary: crew ? 0 : (parseFloat(form.declaredSalary) || 0),
-      mp2: parseFloat(form.mp2) || 0, status: form.status,
+      rate: parseFloat(form.rate) || 0, declaredSalary: nonRegular ? 0 : (parseFloat(form.declaredSalary) || 0),
+      mp2: (crew || nonRegular) ? 0 : (parseFloat(form.mp2) || 0), status: form.status,
       leaveCredits: crew ? 0 : (parseInt(form.leaveCredits, 10) || 0),
       sssOn: form.sssOn, phOn: form.phOn, piOn: form.piOn,
       address: form.address, contact: form.contact,
@@ -134,7 +136,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
   };
 
   const renderActions = (r) => {
-    const isCrew = typeof r.crew === 'boolean' ? r.crew : isCrewPosition(r.position);
+    const isCrew = typeof r.daily === 'boolean' ? r.daily : isDailyPosition(r.position);
     if (r.status === 'Active') {
       return (
         <>
@@ -229,7 +231,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
       {/* Mobile: cards (same `rows` data, same handlers) */}
       <div className="md:hidden space-y-2.5">
         {rows.map(r => {
-          const crew = typeof r.crew === 'boolean' ? r.crew : isCrewPosition(r.position);
+          const crew = typeof r.daily === 'boolean' ? r.daily : isDailyPosition(r.position);
           return (
             <Panel key={r.id} className="p-3.5">
               <div className="flex items-center gap-3">
@@ -281,11 +283,13 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
           <Field label="Full name*"><input value={form.name} onChange={e => ff('name', e.target.value)} placeholder="Juan Dela Cruz" className={inputCls} style={inputStyle} /></Field>
           <Field label="Position">
             <select value={form.position} onChange={e => ff('position', e.target.value)} className={inputCls} style={inputStyle}>
+              {!form.position && <option value="">Choose a position</option>}
+              {isLegacyPosition(form.position) && <option value={form.position}>{positionLabel(form.position)}</option>}
               {POSITIONS.map(p => <option key={p} value={p}>{positionLabel(p)}</option>)}
             </select>
           </Field>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="Daily rate (₱)"><input type="number" value={form.rate} onChange={e => { const v = e.target.value; setForm(f => ({ ...f, rate: v, declaredSalary: (v === '' || isCrewPosition(f.position)) ? '' : String((parseFloat(v) || 0) * 26) })); }} className={inputCls} style={inputStyle} /></Field>
+            <Field label="Daily rate (₱)"><input type="number" value={form.rate} onChange={e => { const v = e.target.value; setForm(f => ({ ...f, rate: v, declaredSalary: (v === '' || isNonRegularPosition(f.position)) ? '' : String((parseFloat(v) || 0) * 26) })); }} className={inputCls} style={inputStyle} /></Field>
             <Field label="Status">
               <select value={form.status} onChange={e => ff('status', e.target.value)} className={inputCls} style={inputStyle}>
                 <option>Active</option><option>Inactive</option>
@@ -302,18 +306,18 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
               </span>
             </div>
           )}
-          {/* Crew are pakyawan (piece-rate, no monthly salary) and no-work-no-pay
-              (no leave credits), so these two fields do not apply to them. Shown
-              for office staff only; forced to 0 for crew on save. items-end keeps
-              the two input boxes aligned even though the labels wrap differently. */}
-          {!isCrewPosition(form.position) && (
+          {(!isDailyPosition(form.position) || !isNonRegularPosition(form.position)) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
-              <Field label="Declared monthly salary (₱)">
-                <input type="number" value={form.declaredSalary} onChange={e => ff('declaredSalary', e.target.value)} placeholder="e.g. daily rate × 26" className={inputCls} style={inputStyle} />
-              </Field>
-              <Field label="Leave credits (days/year)">
-                <input type="number" min="0" value={form.leaveCredits} onChange={e => ff('leaveCredits', e.target.value)} className={inputCls} style={inputStyle} />
-              </Field>
+              {!isNonRegularPosition(form.position) && (
+                <Field label="Declared monthly salary (₱)">
+                  <input type="number" value={form.declaredSalary} onChange={e => ff('declaredSalary', e.target.value)} placeholder="e.g. daily rate × 26" className={inputCls} style={inputStyle} />
+                </Field>
+              )}
+              {!isDailyPosition(form.position) && (
+                <Field label="Leave credits (days/year)">
+                  <input type="number" min="0" value={form.leaveCredits} onChange={e => ff('leaveCredits', e.target.value)} className={inputCls} style={inputStyle} />
+                </Field>
+              )}
             </div>
           )}
 
@@ -321,6 +325,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
               title — the same staff member can be early on Saturdays and
               normal the rest of the week. Left blank means no early
               requirement at all. */}
+          {!isNonRegularPosition(form.position) && (
           <div className="p-3 rounded" style={{ backgroundColor: T.bg }}>
             <Eyebrow>Early Shift</Eyebrow>
             <div className="flex flex-wrap gap-1.5 mb-2.5 mt-2.5">
@@ -360,6 +365,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
               </div>
             )}
           </div>
+          )}
 
           <div className="p-3 rounded" style={{ backgroundColor: T.bg }}>
             <Eyebrow>Personal Information</Eyebrow>
@@ -377,6 +383,11 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
               </div>
             </div>
           </div>
+          {isNonRegularPosition(form.position) ? (
+            <div className="px-3 py-2.5 rounded text-xs" style={{ border: `1px dashed ${T.line}`, fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
+              Early Shift, declared salary and Government Contributions do not apply to Job Order.
+            </div>
+          ) : (
           <div className="p-3 rounded" style={{ backgroundColor: T.bg }}>
             <Eyebrow>Government Contributions</Eyebrow>
             {[['sssOn', 'SSS'], ['phOn', 'PhilHealth'], ['piOn', 'Pag-IBIG (HDMF)']].map(([k, l]) => (
@@ -384,8 +395,15 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
                 <input type="checkbox" checked={form[k]} onChange={e => ff(k, e.target.checked)} /> {l}
               </label>
             ))}
-            <Field label="Pag-IBIG MP2 (₱/cutoff)"><input type="number" value={form.mp2} onChange={e => ff('mp2', e.target.value)} className={inputCls} style={inputStyle} /></Field>
+            {isDailyPosition(form.position) ? (
+              <div className="text-xs mt-1.5" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
+                Deducted per day worked until this month&apos;s share is complete. The amount per day is in Settings.
+              </div>
+            ) : (
+              <Field label="Pag-IBIG MP2 (₱/cutoff)"><input type="number" value={form.mp2} onChange={e => ff('mp2', e.target.value)} className={inputCls} style={inputStyle} /></Field>
+            )}
           </div>
+          )}
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="outline" onClick={() => setModal(false)} disabled={busy}>Cancel</Btn>
             <Btn onClick={save} loading={busy} disabled={busy}>{busy ? 'Saving…' : editing ? 'Save changes' : 'Register'}</Btn>

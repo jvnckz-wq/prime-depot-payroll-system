@@ -2,9 +2,6 @@ import { isYmd, planDeductions } from '../../loan-rules';
 import { shapeLoan } from './loans';
 import { withRetry } from '../db/db-retry';
 
-export const isCrewPosition = (position) =>
-  position === 'DRIVER' || position === 'PAHINANTE';
-
 export function runEndOf(runKey, cutoffEnd) {
   if (isYmd(cutoffEnd)) return cutoffEnd;
   const m = /^crew-(\d{4}-\d{2}-\d{2})$/.exec(String(runKey || ''));

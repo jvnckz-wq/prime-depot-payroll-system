@@ -5,7 +5,7 @@ import { Package, ArrowLeft, Trash2, AlertTriangle, MapPin, Phone, Printer } fro
 import { DeliveryForm } from '@/features/deliveries/DeliveryForm.jsx';
 import { Av, Badge, Btn, Confirm, EmptyState, Eyebrow, Field, H1, Modal, Panel, Skeleton, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { CREW_RATE_FALLBACK } from '@/data/seed';
-import { crewEarnings, deliveriesToLog, flattenDeliveries, loanBalance } from '@/lib/payroll';
+import { crewDayPay, crewEarnings, dailyContributionFor, deliveriesToLog, flattenDeliveries, loanBalance } from '@/lib/payroll';
 import { grantedBy, planDeductions, todayYmdManila } from '@/lib/loan-rules';
 import { peso, telHref, timeLabel } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
@@ -255,6 +255,18 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
   };
 
   const allTrips = useMemo(() => flattenDeliveries(D, filterCrew), [D, filterCrew]);
+
+  const [dailyStaff, setDailyStaff] = useState([]);
+  const dailyDate = viewDate || todayYmdManila();
+  useEffect(() => {
+    if (!payslipsMode) return undefined;
+    let cancelled = false;
+    fetch(`/api/payroll/daily?date=${dailyDate}`)
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+      .then(data => { if (!cancelled) setDailyStaff((data.staff || []).map(d => ({ ...d, key: d.name }))); })
+      .catch(err => { if (!cancelled) setDailyStaff([]); console.error('Could not load daily attendance:', err); });
+    return () => { cancelled = true; };
+  }, [payslipsMode, dailyDate]);
 
   if (selected) {
     const crew = trucks.find(c => c.id === selected) || { id: selected, vehicle: '', plate: '' };
@@ -599,15 +611,19 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
         .filter(en => en.type === 'deduction' && en.payslipId === runKey)
         .reduce((a, en) => a + (en.amount || 0), 0), 0);
   };
-  const dayPeople = crewEarnings(D, crewRates).map(p => {
+  const contributionByName = new Map(dailyStaff.filter(d => d.contribution).map(d => [d.key, d.contribution]));
+  const dayPeople = crewDayPay(crewEarnings(D, crewRates), dailyStaff).map(p => {
     const manualKaltas = Object.values(D).flatMap(l => l.kaltas || [])
       .filter(k => (k.name || k.who) === p.name)
       .reduce((s, k) => s + (k.h ?? k.amount ?? 0), 0);
     const kaltas = round2(manualKaltas + loanKaltasFor(p.name));
-    return { ...p, kaltas, net: round2(p.total - kaltas) };
+    const c = contributionByName.get(p.name);
+    const contribution = c ? dailyContributionFor(c, p.payable) : 0;
+    const month = c ? { collected: round2(c.collectedBefore + contribution), share: c.shareTotal } : null;
+    return { ...p, kaltas, contribution, month, net: round2(p.payable - contribution - kaltas) };
   });
 
-  const earnedToday = new Map(dayPeople.map(p => [p.name, p.total]));
+  const earnedToday = new Map(dayPeople.map(p => [p.name, round2(p.payable - p.contribution)]));
   const crewLoans = loans.filter(l => l.isCrew);
   const crewPlan = viewDate ? null : planDeductions(crewLoans, {
     crew: true, runKey: 'crew-' + todayYmd, endYmd: todayYmd,
@@ -742,7 +758,10 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                   <Av name={p.name} size={32} tone={p.role === 'Driver' ? T.amber : T.brand} />
                   <div>
                     <div className="text-sm font-semibold" style={{ fontFamily: F_HEAD, color: T.ink }}>{p.name}</div>
-                    <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>{roleLabel(p.role)} · {p.trips} trip{p.trips === 1 ? '' : 's'}</div>
+                    <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
+                      {roleLabel(p.role)} · {p.attendanceDaily ? 'present' : `${p.trips} trip${p.trips === 1 ? '' : 's'}`}
+                      {p.lateMins > 0 && <span style={{ color: T.brand }}> · {p.lateMins} min late</span>}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
@@ -756,7 +775,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
       )}
 
       {payslipsMode && dayPeople.length === 0 && (
-        <Panel className="overflow-hidden"><EmptyState title="No crew pay for this day" desc="Crew payslips appear here once deliveries are logged for the day." /></Panel>
+        <Panel className="overflow-hidden"><EmptyState title="No crew pay for this day" desc="Crew payslips appear here once deliveries are logged or daily staff time in for the day." /></Panel>
       )}
 
       {!payslipsMode && (<>
@@ -831,7 +850,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                       <div className="text-white font-bold" style={{ fontFamily: F_MONO, fontSize: 18 }}>{peso(p.net)}</div>
                     </div>
                   </div>
-                  <div className="overflow-x-auto pd-scroll-shadow">
+                  {!p.attendanceDaily && <div className="overflow-x-auto pd-scroll-shadow">
                     <table className="w-full" style={{ fontSize: 12 }}>
                       <thead><tr><Th>Seq</Th><Th>Item</Th><Th center>Qty</Th><Th>Unit</Th><Th>Double</Th><Th right>Amount</Th></tr></thead>
                       <tbody>
@@ -848,13 +867,21 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                         {!lines.length && <tr><Td colSpan={6}><span style={{ color: T.soft }}>No piece-rate trips.</span></Td></tr>}
                       </tbody>
                     </table>
-                  </div>
+                  </div>}
                   <div className="px-6 py-4" style={{ borderTop: `1px dashed ${T.line}`, backgroundColor: T.bg }}>
                     <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full" style={{ fontFamily: F_MONO, fontSize: 13 }}>
                       <tbody>
                         <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Daily rate</Td><Td right mono>{peso(p.dailyRate)}</Td></tr>
-                        <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Piece rate ({p.trips} trip{p.trips === 1 ? '' : 's'})</Td><Td right mono>{peso(p.pieceRate)}</Td></tr>
-                        <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Trip bonus</Td><Td right mono style={{ color: p.bonus ? T.green : undefined }}>{p.bonus ? `+${peso(p.bonus)}` : peso(0)}</Td></tr>
+                        {!p.attendanceDaily && <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Piece rate ({p.trips} trip{p.trips === 1 ? '' : 's'})</Td><Td right mono>{peso(p.pieceRate)}</Td></tr>}
+                        {!p.attendanceDaily && <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Trip bonus</Td><Td right mono style={{ color: p.bonus ? T.green : undefined }}>{p.bonus ? `+${peso(p.bonus)}` : peso(0)}</Td></tr>}
+                        <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Late ({p.lateMins || 0} min × ₱3)</Td><Td right mono style={{ color: p.late ? T.red : undefined }}>{p.late ? `-${peso(p.late)}` : peso(0)}</Td></tr>
+                        <tr>
+                          <Td style={{ fontFamily: F_HEAD, color: T.soft }}>
+                            SSS, PhilHealth, Pag-IBIG
+                            {p.month && <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>{peso(p.month.collected)} of {peso(p.month.share)} this month</div>}
+                          </Td>
+                          <Td right mono style={{ color: p.contribution ? T.red : undefined }}>{p.contribution ? `-${peso(p.contribution)}` : peso(0)}</Td>
+                        </tr>
                         <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Deductions</Td><Td right mono style={{ color: p.kaltas ? T.red : undefined }}>{p.kaltas ? `-${peso(p.kaltas)}` : peso(0)}</Td></tr>
                         <tr style={{ borderTop: `1px solid ${T.line}` }}><Td style={{ fontFamily: F_HEAD, color: T.ink }}><b>NET SALARY</b></Td><Td right mono><b style={{ color: T.brand }}>{peso(p.net)}</b></Td></tr>
                       </tbody>

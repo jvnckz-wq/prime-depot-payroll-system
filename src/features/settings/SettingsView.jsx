@@ -8,7 +8,7 @@ import { exportXLSX, peso } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { FleetPanel } from '@/features/settings/FleetPanel.jsx';
 
-export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers, setCheckers, sssTable, setSssTable, philhealthRates, setPhilhealthRates, pagibigRates, setPagibigRates, birTable, setBirTable, toast, navTab }) => {
+export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers, setCheckers, sssTable, setSssTable, philhealthRates, setPhilhealthRates, pagibigRates, setPagibigRates, birTable, setBirTable, crewRates, setCrewRates, toast, navTab }) => {
   const [tab, setTab] = useState(navTab || 'statutory');
   // eslint-disable-next-line react-hooks/set-state-in-effect -- sync the settings panel from the sidebar selection
   useEffect(() => { if (navTab) setTab(navTab); }, [navTab]);
@@ -20,6 +20,31 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
   const [piDraft, setPiDraft] = useState(pagibigRates);
   const [editBir, setEditBir] = useState(false);
   const [birDraft, setBirDraft] = useState(birTable);
+  const [editDaily, setEditDaily] = useState(false);
+  const [dailyMode, setDailyMode] = useState('split');
+  const [dailyDraft, setDailyDraft] = useState('');
+  const dailyFixed = crewRates?.dailyContribution;
+  const startEditDaily = () => {
+    setDailyMode(dailyFixed == null ? 'split' : 'fixed');
+    setDailyDraft(dailyFixed == null ? '50' : String(dailyFixed));
+    setEditDaily(true);
+  };
+  const saveDaily = async () => {
+    try {
+      const res = await fetch('/api/rates', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dailyContribution: dailyMode === 'split' ? null : dailyDraft }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast(data.error || 'Could not save.', 'error'); return; }
+      if (setCrewRates) setCrewRates(data.crewRates);
+      setEditDaily(false);
+      toast('Daily contribution deduction saved.');
+    } catch {
+      toast('Could not reach the server.', 'error');
+    }
+  };
 
   const [exporting, setExporting] = useState(false);
   const [lastExport, setLastExport] = useState('');
@@ -203,6 +228,39 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
                 <span className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.soft }}>Monthly cap (₱)</span>
                 {editPi ? <input type="number" value={piDraft.cap} onChange={e => setPiDraft(p => ({ ...p, cap: parseFloat(e.target.value) || 0 }))} className="px-2 py-1 rounded border text-xs w-24 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} />
                   : <span className="text-sm font-semibold" style={{ fontFamily: F_MONO }}>{peso(pagibigRates.cap)}</span>}
+              </div>
+            </Panel>
+            <Panel className="overflow-hidden">
+              <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
+                <Eyebrow>Daily-paid employees</Eyebrow>
+                {editDaily ? (
+                  <div className="flex gap-2">
+                    <Btn size="sm" onClick={saveDaily}>Save</Btn>
+                    <Btn size="sm" variant="outline" onClick={() => setEditDaily(false)}>Cancel</Btn>
+                  </div>
+                ) : <Btn size="sm" variant="outline" onClick={startEditDaily}>Edit</Btn>}
+              </div>
+              <div className="px-4 py-3 space-y-2.5">
+                <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
+                  SSS, PhilHealth and Pag-IBIG taken per day worked, until the month&apos;s employee share is complete.
+                </div>
+                {editDaily ? (
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm" style={{ fontFamily: F_BODY, color: T.ink }}>
+                      <input type="radio" name="dailyMode" checked={dailyMode === 'split'} onChange={() => setDailyMode('split')} />
+                      Even split (monthly share ÷ working days)
+                    </label>
+                    <label className="flex items-center gap-2 text-sm flex-wrap" style={{ fontFamily: F_BODY, color: T.ink }}>
+                      <input type="radio" name="dailyMode" checked={dailyMode === 'fixed'} onChange={() => setDailyMode('fixed')} />
+                      Fixed per day ₱
+                      <input type="number" min="0" value={dailyDraft} disabled={dailyMode !== 'fixed'} onChange={e => setDailyDraft(e.target.value)} className="px-2 py-1 rounded border text-xs w-24 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} />
+                    </label>
+                  </div>
+                ) : (
+                  <div className="text-sm font-semibold" style={{ fontFamily: F_MONO }}>
+                    {dailyFixed == null ? 'Even split (monthly share ÷ working days)' : `${peso(dailyFixed)} per day`}
+                  </div>
+                )}
               </div>
             </Panel>
             <Panel className="overflow-hidden">

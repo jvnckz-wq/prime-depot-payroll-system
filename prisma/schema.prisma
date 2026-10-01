@@ -58,6 +58,9 @@ enum Position {
   JUNIOR_SECRETARY
   JOB_ORDER
   TRAINEE
+  COMMUNICATIONS_OFFICER_I
+  COLLECTION_OFFICER
+  WAREHOUSE_OFFICER
 }
 
 enum Weekday {
@@ -623,6 +626,7 @@ model CrewRate {
   bonusHead   Decimal  @default(100) @db.Decimal(12, 2)
   /// Trips one truck must finish in a day before the bonus applies.
   bonusTrips  Int      @default(5)
+  dailyContribution Decimal? @db.Decimal(12, 2)
 
   updatedAt   DateTime @updatedAt
 

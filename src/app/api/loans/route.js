@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';
 import { shapeLoan } from '@/lib/server/services/loans';
-import { isCrewPosition } from '@/lib/server/services/loans-apply';
+import { isDailyPosition } from '@/lib/positions';
 import {
   LOAN_MAX_BALANCE, LOAN_PURPOSES, PURPOSE_ENUM, advancedInCutoff, balanceOf, cutoffOf, isYmd, periodLabel, projectedGross, todayYmdManila, workingDaysIn,
 } from '@/lib/loan-rules';
@@ -68,7 +68,7 @@ export async function POST(request) {
       const purpose = typeof body.purpose === 'string' ? body.purpose.trim() : '';
       if (!LOAN_PURPOSES.includes(purpose)) return bad(`Choose a purpose: ${LOAN_PURPOSES.join(', ')}.`);
       const perRun = money(body.perCutoff);
-      const unit = isCrewPosition(employee.position) ? 'day' : 'cutoff';
+      const unit = isDailyPosition(employee.position) ? 'day' : 'cutoff';
       if (!Number.isFinite(perRun) || perRun <= 0) return bad(`Enter the deduction per ${unit}.`);
       if (perRun > principal) return bad(`The deduction per ${unit} cannot be more than the loan itself.`);
       if (principal > LOAN_MAX_BALANCE) return bad(`A loan can be at most ${peso(LOAN_MAX_BALANCE)}.`);
@@ -86,7 +86,7 @@ export async function POST(request) {
       // The purpose has its own column (LoanPurpose) since Phase 2; `note` is free.
       data = { employeeId, type: 'LOAN', purpose: PURPOSE_ENUM[purpose], principal, deductionPerRun: perRun, dateGranted: granted };
     } else {
-      if (isCrewPosition(employee.position)) return bad('Crew are paid daily, so cash advances are for office staff only.');
+      if (isDailyPosition(employee.position)) return bad('Crew are paid daily, so cash advances are for office staff only.');
 
       // Hard limit: projected gross pay for the cutoff the advance falls in,
       // minus what was already advanced in that cutoff.

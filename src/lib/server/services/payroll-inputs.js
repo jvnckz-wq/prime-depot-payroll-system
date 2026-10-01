@@ -1,7 +1,11 @@
 import { summarizeAttendance } from '../../attendance';
-import { shapeEmployee } from './employees';
+import { POSITION_LABEL, shapeEmployee } from './employees';
+import { isDailyAttendancePosition } from '../../positions';
 import { shapeLoan } from './loans';
-import { computeStaffPayroll, crewEarnings, deliveriesToLog } from '../../payroll';
+import {
+  collectDailyContributions, computeStaffPayroll, contributionPerDay, crewDayPay, crewEarnings, dailyContributionFor, dailyPresent,
+  deliveriesToLog, monthlyEmployeeShare,
+} from '../../payroll';
 import { shapeBir, shapePagibig, shapePhilhealth, shapeSss } from './statutory';
 import { CREW_RATE_FALLBACK } from '../../../data/seed';
 
@@ -46,7 +50,7 @@ export async function loadStaffPayrollInputs(prisma, { start, end, withLoans = t
   const attendanceById = new Map(summarizeAttendance(attendanceRows).map((s) => [s.id, s]));
   const staff = employees
     .map(shapeEmployee)
-    .filter((e) => !e.crew && Number(e.rate) > 0 && attendanceById.has(e.id));
+    .filter((e) => !e.daily && Number(e.rate) > 0 && attendanceById.has(e.id));
 
   return { staff, attendanceById, statutory, loans: loanRows.map(shapeLoan) };
 }
@@ -60,33 +64,171 @@ export function staffAvailable({ staff, attendanceById, statutory }) {
   return out;
 }
 
+const DAILY_POSITIONS = ['DRIVER', 'PAHINANTE', 'CHECKER', 'WAREHOUSE_OFFICER'];
+const ymdOf = (d) => (d ? new Date(d).toISOString().slice(0, 10) : null);
+const dayBefore = (ymd) => ymdOf(new Date(toDate(ymd).getTime() - 86400000));
+
+const shapeRates = (rate) => (rate
+  ? { driverDaily: Number(rate.driverDaily), helperDaily: Number(rate.helperDaily), bonusHead: Number(rate.bonusHead), bonusTrips: rate.bonusTrips, dailyContribution: rate.dailyContribution == null ? null : Number(rate.dailyContribution) }
+  : { ...CREW_RATE_FALLBACK });
+
+const dailyEntry = (e, row) => {
+  const present = dailyPresent(row);
+  return {
+    id: e.id,
+    name: e.name,
+    position: POSITION_LABEL[e.position] ?? e.position,
+    attendanceDaily: isDailyAttendancePosition(e.position),
+    dailyRate: Number(e.dailyRate) || 0,
+    present,
+    lateMins: present ? (row.tardinessMins || 0) : 0,
+  };
+};
+
+const toLog = (rows, ymd) => deliveriesToLog(rows.map((d) => ({
+  id: d.id,
+  date: ymd,
+  truckId: d.truckId,
+  seq: d.sequenceNo,
+  driver: d.driverId,
+  helpers: [d.helper1Id, d.helper2Id].filter(Boolean),
+  dbl: d.isDouble,
+  voided: false,
+  items: (d.items || []).map((i) => ({ item: i.itemName, unit: i.unit, qty: Number(i.quantity), d: Number(i.driverAmount), h: Number(i.helperAmount) })),
+})));
+
+const dailyEmployees = (prisma) => prisma.employee.findMany({
+  where: { status: 'ACTIVE', position: { in: DAILY_POSITIONS } },
+  orderBy: { name: 'asc' },
+});
+
+async function dailyPayByDate(prisma, employees, rates, start, end) {
+  if (start > end) return new Map();
+  const [rows, attendance] = await Promise.all([
+    prisma.delivery.findMany({
+      where: { date: { gte: toDate(start), lte: toDate(end) }, voidedAt: null },
+      include: { items: true },
+      orderBy: [{ truckId: 'asc' }, { sequenceNo: 'asc' }],
+    }),
+    prisma.attendance.findMany({ where: { date: { gte: toDate(start), lte: toDate(end) } } }),
+  ]);
+  const dates = new Set();
+  const deliveriesOn = new Map();
+  for (const d of rows) {
+    const ymd = ymdOf(d.date);
+    if (!ymd) continue;
+    dates.add(ymd);
+    if (!deliveriesOn.has(ymd)) deliveriesOn.set(ymd, []);
+    deliveriesOn.get(ymd).push(d);
+  }
+  const attendanceOn = new Map();
+  for (const a of attendance) {
+    const ymd = ymdOf(a.date);
+    if (!ymd) continue;
+    dates.add(ymd);
+    if (!attendanceOn.has(ymd)) attendanceOn.set(ymd, new Map());
+    attendanceOn.get(ymd).set(a.employeeId, a);
+  }
+  const out = new Map();
+  for (const ymd of dates) {
+    const rowsById = attendanceOn.get(ymd) || new Map();
+    const staff = employees.map((e) => ({ ...dailyEntry(e, rowsById.get(e.id)), key: e.id }));
+    out.set(ymd, crewDayPay(crewEarnings(toLog(deliveriesOn.get(ymd) || [], ymd), rates), staff));
+  }
+  return out;
+}
+
+export async function contributionContext(prisma, ymd, { employees, rates } = {}) {
+  const [emps, rateRow] = await Promise.all([
+    employees ? Promise.resolve(employees) : dailyEmployees(prisma),
+    rates ? Promise.resolve(null) : prisma.crewRate.findUnique({ where: { id: 'current' } }),
+  ]);
+  const r = rates || shapeRates(rateRow);
+  const setting = r.dailyContribution;
+  const enrolled = emps.filter((e) => e.sssEnrolled || e.philhealthEnrolled || e.pagibigEnrolled);
+  const byId = {};
+  if (!enrolled.length || setting === 0) return { setting, byId };
+
+  const { statutory } = await loadStatutory(prisma);
+  const monthStart = `${ymd.slice(0, 8)}01`;
+  const pays = await dailyPayByDate(prisma, emps, r, monthStart, dayBefore(ymd));
+  for (const e of enrolled) {
+    const share = monthlyEmployeeShare(shapeEmployee(e), statutory);
+    const perDay = contributionPerDay(setting, share.total, ymd);
+    const days = [];
+    for (const [day, people] of pays) {
+      const p = people.find((x) => x.name === e.id);
+      if (p) days.push({ ymd: day, payable: p.payable });
+    }
+    const { collected } = collectDailyContributions(days, share.total, perDay);
+    byId[e.id] = { share, perDay, shareTotal: share.total, collectedBefore: collected };
+  }
+  return { setting, byId };
+}
+
+export async function loadDailyStaff(prisma, ymd) {
+  const [employees, rows, rateRow] = await Promise.all([
+    dailyEmployees(prisma),
+    prisma.attendance.findMany({ where: { date: toDate(ymd) } }),
+    prisma.crewRate.findUnique({ where: { id: 'current' } }),
+  ]);
+  const ctx = await contributionContext(prisma, ymd, { employees, rates: shapeRates(rateRow) });
+  const byId = new Map(rows.map((r) => [r.employeeId, r]));
+  return employees.map((e) => {
+    const c = ctx.byId[e.id];
+    return {
+      ...dailyEntry(e, byId.get(e.id)),
+      contribution: c ? { perDay: c.perDay, shareTotal: c.shareTotal, collectedBefore: c.collectedBefore } : null,
+    };
+  });
+}
+
+export async function loadDailyContributionsForMonth(prisma, ymd) {
+  const [employees, rateRow] = await Promise.all([
+    dailyEmployees(prisma),
+    prisma.crewRate.findUnique({ where: { id: 'current' } }),
+  ]);
+  const rates = shapeRates(rateRow);
+  const setting = rates.dailyContribution;
+  const enrolled = employees.filter((e) => e.sssEnrolled || e.philhealthEnrolled || e.pagibigEnrolled);
+  if (!enrolled.length) return { setting, month: ymd.slice(0, 7), rows: [] };
+
+  const { statutory } = await loadStatutory(prisma);
+  const pays = await dailyPayByDate(prisma, employees, rates, `${ymd.slice(0, 8)}01`, ymd);
+  const rows = enrolled.map((e) => {
+    const share = monthlyEmployeeShare(shapeEmployee(e), statutory);
+    const perDay = contributionPerDay(setting, share.total, ymd);
+    const days = [];
+    for (const [day, people] of pays) {
+      const p = people.find((x) => x.name === e.id);
+      if (p) days.push({ ymd: day, payable: p.payable });
+    }
+    const { collected, remaining } = collectDailyContributions(days, share.total, perDay);
+    return { id: e.id, name: e.name, position: POSITION_LABEL[e.position] ?? e.position, ...share, perDay, collected, remaining };
+  });
+  return { setting, month: ymd.slice(0, 7), rows };
+}
+
 export async function crewAvailableOn(prisma, ymd) {
-  const [rows, rate] = await Promise.all([
+  const [rows, rate, dailyStaff] = await Promise.all([
     prisma.delivery.findMany({
       where: { date: toDate(ymd), voidedAt: null },
       include: { items: true },
       orderBy: [{ truckId: 'asc' }, { sequenceNo: 'asc' }],
     }),
     prisma.crewRate.findUnique({ where: { id: 'current' } }),
+    loadDailyStaff(prisma, ymd),
   ]);
 
-  const rates = rate
-    ? { driverDaily: Number(rate.driverDaily), helperDaily: Number(rate.helperDaily), bonusHead: Number(rate.bonusHead), bonusTrips: rate.bonusTrips }
-    : { ...CREW_RATE_FALLBACK };
-
-  const log = deliveriesToLog(rows.map((d) => ({
-    id: d.id,
-    date: ymd,
-    truckId: d.truckId,
-    seq: d.sequenceNo,
-    driver: d.driverId,
-    helpers: [d.helper1Id, d.helper2Id].filter(Boolean),
-    dbl: d.isDouble,
-    voided: false,
-    items: (d.items || []).map((i) => ({ item: i.itemName, unit: i.unit, qty: Number(i.quantity), d: Number(i.driverAmount), h: Number(i.helperAmount) })),
-  })));
+  const rates = shapeRates(rate);
+  const people = crewDayPay(crewEarnings(toLog(rows, ymd), rates), dailyStaff.map((d) => ({ ...d, key: d.id })));
+  const contributionOf = new Map(dailyStaff.filter((d) => d.contribution).map((d) => [d.id, d.contribution]));
 
   const out = new Map();
-  for (const p of crewEarnings(log, rates)) out.set(p.name, round2(Math.max(0, p.total)));
+  for (const p of people) {
+    const c = contributionOf.get(p.name);
+    const contribution = c ? dailyContributionFor(c, p.payable) : 0;
+    out.set(p.name, round2(Math.max(0, p.payable - contribution)));
+  }
   return out;
 }

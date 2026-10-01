@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, ClipboardList, ArrowLeft, Pencil, Upload, Loader2 } from 'lucide-react';
 import { Av, Badge, BigStat, Btn, EmptyState, Eyebrow, Field, H1, Modal, Panel, SkeletonBlock, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
+import { isDailyPosition } from '@/lib/positions';
 
 const agoFrom = (iso) => {
   if (!iso) return null;
@@ -14,11 +15,10 @@ const agoFrom = (iso) => {
   return `${Math.floor(m / 60)}h ago`;
 };
 
-const CREW = new Set(['Driver', 'Pahinante', 'Checker']);
 const callTimeLabel = (emp) => {
   if (!emp) return '6:40 AM';
   if ((emp.earlyShiftDays || []).length) return `${emp.earlyShiftTime || '06:00'} (early shift)`;
-  return CREW.has(emp.position) ? '6:30 AM' : '6:40 AM';
+  return isDailyPosition(emp.position) ? '6:30 AM' : '6:40 AM';
 };
 const asUTC = (iso) => new Date(iso + 'T00:00:00Z');
 const fmtDay = (iso) => asUTC(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });

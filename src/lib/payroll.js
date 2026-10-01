@@ -1,9 +1,4 @@
-import { CREW_POSITIONS } from '../data/seed';
-import { dueFor } from './loan-rules';
-
-export function isCrewPosition(position) {
-  return CREW_POSITIONS.includes(position);
-}
+import { dueFor, workingDaysIn } from './loan-rules';
 
 export function flattenDeliveries(deliveries, filterCrewId, { includeVoided = false } = {}) {
   const out = [];
@@ -217,4 +212,75 @@ export function crewEarnings(deliveries, { driverDaily, helperDaily, bonusHead, 
       };
     })
     .sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === 'Driver' ? -1 : 1));
+}
+export const DAILY_LATE_PER_MINUTE = 3;
+
+export function dailyPresent(row) {
+  return !!row && !row.isAbsent && !row.isLeave && (!!row.timeIn || !!row.isAssumedIn);
+}
+
+export function dailyLateDeduction(lateMins, cap) {
+  const due = Math.max(0, Number(lateMins) || 0) * DAILY_LATE_PER_MINUTE;
+  return round2(Math.min(Math.max(0, Number(cap) || 0), due));
+}
+
+export function crewDayPay(crewPeople, dailyStaff) {
+  const byKey = new Map((dailyStaff || []).map((d) => [d.key, d]));
+  const piece = (crewPeople || []).map((p) => {
+    const a = byKey.get(p.name);
+    const lateMins = a && a.present ? a.lateMins : 0;
+    const late = dailyLateDeduction(lateMins, p.total);
+    return { ...p, lateMins, late, payable: round2(p.total - late) };
+  });
+  const attendance = (dailyStaff || [])
+    .filter((d) => d.attendanceDaily && d.present)
+    .map((d) => {
+      const gross = round2(d.dailyRate);
+      const late = dailyLateDeduction(d.lateMins, gross);
+      return {
+        name: d.key, role: d.position, trucks: [], trips: 0, days: 1,
+        pieceRate: 0, dailyRate: gross, bonus: 0, total: gross,
+        lateMins: d.lateMins, late, payable: round2(gross - late), attendanceDaily: true,
+      };
+    });
+  return [...piece, ...attendance];
+}
+
+export function monthlyEmployeeShare(e, statutory) {
+  const sss = round2(e.sssOn ? computeSSS(e.declaredSalary, statutory.sss) * 2 : 0);
+  const phic = round2(e.phOn ? computePhilHealth(e.declaredSalary, statutory.philhealth) * 2 : 0);
+  const hdmf = round2(e.piOn ? computePagIBIG(e.declaredSalary, statutory.pagibig) * 2 : 0);
+  return { sss, phic, hdmf, total: round2(sss + phic + hdmf) };
+}
+
+export function monthBounds(ymd) {
+  const y = Number(ymd.slice(0, 4));
+  const m = Number(ymd.slice(5, 7));
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return { start: `${ymd.slice(0, 8)}01`, end: `${ymd.slice(0, 8)}${String(last).padStart(2, '0')}` };
+}
+
+export function contributionPerDay(setting, shareTotal, ymd) {
+  if (setting !== null && setting !== undefined && setting !== '') return round2(Math.max(0, Number(setting) || 0));
+  const days = workingDaysIn(monthBounds(ymd));
+  if (!days || !(shareTotal > 0)) return 0;
+  return Math.ceil((shareTotal / days) * 100 - 1e-9) / 100;
+}
+
+export function dailyContributionFor({ perDay, shareTotal, collectedBefore }, payable) {
+  const remaining = Math.max(0, round2((Number(shareTotal) || 0) - (Number(collectedBefore) || 0)));
+  return round2(Math.max(0, Math.min(Number(perDay) || 0, Math.max(0, Number(payable) || 0), remaining)));
+}
+
+export function collectDailyContributions(days, shareTotal, perDay) {
+  let collected = 0;
+  const byDay = {};
+  for (const d of [...days].sort((a, b) => a.ymd.localeCompare(b.ymd))) {
+    const amount = dailyContributionFor({ perDay, shareTotal, collectedBefore: collected }, d.payable);
+    if (amount > 0) {
+      byDay[d.ymd] = amount;
+      collected = round2(collected + amount);
+    }
+  }
+  return { byDay, collected, remaining: Math.max(0, round2(shareTotal - collected)) };
 }

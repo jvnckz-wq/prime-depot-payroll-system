@@ -1,3 +1,5 @@
+import { isDailyPosition, isNonRegularPosition, isPieceRatePosition } from '../../positions';
+
 export const POSITION_LABEL = {
   OPERATIONS_HEAD: 'Operations Head',
   ADMINISTRATIVE_STAFF: 'Administrative Staff',
@@ -5,11 +7,14 @@ export const POSITION_LABEL = {
   CHECKER: 'Checker',
   DRIVER: 'Driver',
   PAHINANTE: 'Pahinante',
-  ADMINISTRATIVE_ASSISTANT: 'Administrative Assistant',
+  ADMINISTRATIVE_ASSISTANT: 'Assistant',
   COMMUNICATIONS_OFFICER_II: 'Communications Officer II',
   JUNIOR_SECRETARY: 'Junior Secretary',
   JOB_ORDER: 'Job Order',
   TRAINEE: 'Trainee',
+  COMMUNICATIONS_OFFICER_I: 'Communications Officer I',
+  COLLECTION_OFFICER: 'Collection Officer',
+  WAREHOUSE_OFFICER: 'Warehouse Officer',
 };
 
 const POSITION_ENUM = {
@@ -18,11 +23,15 @@ const POSITION_ENUM = {
   Checker: 'CHECKER',
   Driver: 'DRIVER',
   Pahinante: 'PAHINANTE',
+  Assistant: 'ADMINISTRATIVE_ASSISTANT',
   'Administrative Assistant': 'ADMINISTRATIVE_ASSISTANT',
   'Communications Officer II': 'COMMUNICATIONS_OFFICER_II',
+  'Communications Officer I': 'COMMUNICATIONS_OFFICER_I',
   'Junior Secretary': 'JUNIOR_SECRETARY',
+  'Collection Officer': 'COLLECTION_OFFICER',
   'Job Order': 'JOB_ORDER',
   Trainee: 'TRAINEE',
+  'Warehouse Officer': 'WAREHOUSE_OFFICER',
 };
 
 const VALID_WEEKDAYS = new Set(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']);
@@ -30,26 +39,29 @@ const VALID_WEEKDAYS = new Set(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
 const num = (d) => (d == null ? 0 : Number(d));
 
 export function shapeEmployee(e) {
+  const nonRegular = isNonRegularPosition(e.position);
   return {
     id: e.id,
     name: e.name,
     position: POSITION_LABEL[e.position] ?? e.position,
     rate: num(e.dailyRate),
-    declaredSalary: num(e.declaredSalary),
+    declaredSalary: nonRegular ? 0 : num(e.declaredSalary),
     status: e.status === 'ACTIVE' ? 'Active' : 'Inactive',
-    sssOn: e.sssEnrolled,
-    phOn: e.philhealthEnrolled,
-    piOn: e.pagibigEnrolled,
-    mp2: num(e.mp2Amount),
+    sssOn: nonRegular ? false : e.sssEnrolled,
+    phOn: nonRegular ? false : e.philhealthEnrolled,
+    piOn: nonRegular ? false : e.pagibigEnrolled,
+    mp2: nonRegular ? 0 : num(e.mp2Amount),
     allowance: num(e.otherAllowance),
     leaveCredits: Number.isFinite(Number(e.leaveCredits)) ? Number(e.leaveCredits) : 5,
     address: e.address ?? '',
     contact: e.contactNumber ?? '',
     birthdate: e.birthdate ? e.birthdate.toISOString().slice(0, 10) : '',
     dateHired: e.dateHired ? e.dateHired.toISOString().slice(0, 10) : '',
-    earlyShiftDays: e.earlyShiftDays ?? [],
+    earlyShiftDays: nonRegular ? [] : (e.earlyShiftDays ?? []),
     earlyShiftTime: e.earlyShiftTime ?? '06:00',
-    crew: e.position === 'DRIVER' || e.position === 'PAHINANTE',
+    crew: isPieceRatePosition(e.position),
+    daily: isDailyPosition(e.position),
+    nonRegular,
     account: e.account ? { username: e.account.username, active: e.account.isActive } : null,
   };
 }
@@ -133,6 +145,13 @@ export function buildEmployeeData(body, { partial = false } = {}) {
   }
   if (!partial || has('earlyShiftTime')) {
     data.earlyShiftTime = /^\d{2}:\d{2}$/.test(body.earlyShiftTime) ? body.earlyShiftTime : '06:00';
+  }
+
+  if (isNonRegularPosition(data.position)) {
+    Object.assign(data, {
+      declaredSalary: 0, mp2Amount: 0, earlyShiftDays: [],
+      sssEnrolled: false, philhealthEnrolled: false, pagibigEnrolled: false,
+    });
   }
 
   return { data };

@@ -1,19 +1,8 @@
-export const POSITIONS = [
-  'Operations Head',
-  'Administrative Staff',
-  'Administrative Assistant',
-  'Communications Officer II',
-  'Junior Secretary',
-  'Job Order',
-  'Trainee',
-  'Checker',
-  'Driver',
-  'Pahinante',
-];
+import { FINAL_POSITIONS } from '../lib/positions.js';
 
-export const CREW_POSITIONS = ['Driver', 'Pahinante'];
+export const POSITIONS = FINAL_POSITIONS;
 
-const POSITION_LABELS = { Pahinante: 'Delivery Helper' };
+const POSITION_LABELS = { Pahinante: 'Helper' };
 export const positionLabel = (p) => POSITION_LABELS[p] || p;
 
 export const CREW_RATE_FALLBACK = {
@@ -21,6 +10,7 @@ export const CREW_RATE_FALLBACK = {
   helperDaily: 240,
   bonusHead: 100,
   bonusTrips: 5,
+  dailyContribution: null,
 };
 
 export const SSS_TABLE_INIT = [

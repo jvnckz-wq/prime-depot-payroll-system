@@ -1,4 +1,5 @@
 import { POSITION_LABEL } from './employees';
+import { isDailyPosition } from '../../positions';
 import { LOAN_PURPOSES, PURPOSE_LABEL } from '../../loan-rules';
 
 const num = (d) => (d == null ? 0 : Number(d));
@@ -37,7 +38,7 @@ export function shapeLoan(loan) {
     purpose,
     dateGranted: ymd(loan.dateGranted),
     settledAt: ymd(loan.settledAt),
-    isCrew: loan.employee?.position === 'DRIVER' || loan.employee?.position === 'PAHINANTE',
+    isCrew: isDailyPosition(loan.employee?.position),
     active: loan.employee?.status !== 'INACTIVE',
     createdAt: loan.createdAt ? new Date(loan.createdAt).toISOString() : null,
     person: loan.employee?.name || '—',

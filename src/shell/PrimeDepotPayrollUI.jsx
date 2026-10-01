@@ -44,7 +44,7 @@ export default function PrimeDepotPayroll() {
   const [allStaff, setAllStaff] = useState([]);
   const [staffLoading, setStaffLoading] = useState(true);
 
-  const staff = React.useMemo(() => allStaff.filter((e) => !e.crew), [allStaff]);
+  const staff = React.useMemo(() => allStaff.filter((e) => !e.daily), [allStaff]);
 
   const [loans, setLoans] = useState([]);
   const [sessionNotice, setSessionNotice] = useState('');
@@ -318,7 +318,7 @@ export default function PrimeDepotPayroll() {
           {tab === 'loans' && <LoansView navSub={subs.loans} staff={allStaff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} cutoffPeriod={cutoffPeriod} toast={toast} />}
           {tab === 'faqs' && <FAQView />}
           {tab === 'reports' && <ReportsView navTab={subs.reports} staff={staff} deliveries={deliveries} loans={loans} statutory={statutory} cutoffLabel={cutoffText} runKey={staffKey} attendanceSummaries={attSummaries} crewRates={crewRates} />}
-          {tab === 'settings' && <SettingsView navTab={subs.settings} currentUser={user} onUserChange={u => setUser(prev => ({ ...prev, ...u }))} onSignedOut={() => { setUser(null); setTab('dashboard'); }} checkers={checkers} setCheckers={setCheckers} sssTable={sssTable} setSssTable={setSssTable} philhealthRates={philhealthRates} setPhilhealthRates={setPhilhealthRates} pagibigRates={pagibigRates} setPagibigRates={setPagibigRates} birTable={birTable} setBirTable={setBirTable} toast={toast} />}
+          {tab === 'settings' && <SettingsView navTab={subs.settings} currentUser={user} onUserChange={u => setUser(prev => ({ ...prev, ...u }))} onSignedOut={() => { setUser(null); setTab('dashboard'); }} checkers={checkers} setCheckers={setCheckers} sssTable={sssTable} setSssTable={setSssTable} philhealthRates={philhealthRates} setPhilhealthRates={setPhilhealthRates} pagibigRates={pagibigRates} setPagibigRates={setPagibigRates} birTable={birTable} setBirTable={setBirTable} crewRates={crewRates} setCrewRates={setCrewRates} toast={toast} />}
           </div>
         </main>
       </div>
