@@ -3,11 +3,6 @@ import { prisma } from '@/lib/server/db/prisma';
 import { logSecurityEvent, requireUser } from '@/lib/server/security/auth';
 import { totpStep, generateBackupCodes, hashBackupCode } from '@/lib/server/security/twofactor';
 
-// Confirm enrollment: the code must match the secret stored by /setup. On
-// success two-factor turns on and ten one-time backup codes are generated. The
-// plaintext codes are returned exactly once (the client shows them); only their
-// hashes are stored. Operations Head only, and only while two-factor is off, so
-// this can never silently re-issue backup codes for an account that has them.
 export async function POST(request) {
   const auth = await requireUser();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -33,10 +28,6 @@ export async function POST(request) {
       );
     }
 
-    // Turn it on only if nothing moved since the read: still off, and still the
-    // secret the code was just checked against (setup may have been reopened in
-    // another window). Recording the step means this code cannot then be
-    // replayed at the sign-in prompt.
     const backupCodes = generateBackupCodes(10);
     const { count } = await prisma.user.updateMany({
       where: { id: record.id, totpEnabled: false, totpSecret: record.totpSecret },

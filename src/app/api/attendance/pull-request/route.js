@@ -6,8 +6,6 @@ export const runtime = 'nodejs';
 
 const ymd = (d) => (d ? new Date(d).toISOString().slice(0, 10) : null);
 const validYmd = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
-// A RUNNING request older than this is assumed dead (agent crashed / laptop
-// slept), so a new pull is allowed and the stale one is marked FAILED.
 const STALE_MS = 5 * 60 * 1000;
 
 const serialize = (r) => (r ? {
@@ -24,9 +22,6 @@ const serialize = (r) => (r ? {
   error: r.error,
 } : null);
 
-/// GET /api/attendance/pull-request
-/// Returns the most recent pull request plus the device connection status, so
-/// the button can show its progress and whether the agent is reachable.
 export async function GET() {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -37,19 +32,15 @@ export async function GET() {
       const ageMs = Date.now() - new Date(s.lastSyncAt).getTime();
       device = { status: ageMs < 30000 ? 'live' : ageMs < 60000 ? 'stale' : 'offline', lastSyncAt: s.lastSyncAt };
     }
-  } catch { /* device_sync not migrated yet */ }
+  } catch { }
   try {
     const latest = await prisma.pullRequest.findFirst({ orderBy: { requestedAt: 'desc' } });
     return NextResponse.json({ request: serialize(latest), device });
   } catch {
-    // Table not migrated yet — behave as "no request".
     return NextResponse.json({ request: null, device });
   }
 }
 
-/// POST /api/attendance/pull-request  { from, to }
-/// Queues a "pull this cutoff from the device" request. The sync agent executes
-/// it on its next heartbeat. Only one pull runs at a time.
 export async function POST(request) {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -71,8 +62,6 @@ export async function POST(request) {
       if (runningFresh) {
         return NextResponse.json({ error: 'A pull is already running. Wait for it to finish.', request: serialize(active) }, { status: 409 });
       }
-      // PENDING (agent hasn't picked it up — e.g. device/agent offline) or a stale
-      // RUNNING (agent died): supersede it so the user can retry, never stuck.
       await prisma.pullRequest.update({
         where: { id: active.id },
         data: { status: 'FAILED', finishedAt: new Date(), error: active.status === 'PENDING' ? 'Superseded by a newer request.' : 'Timed out — the agent did not finish. Is it running on the warehouse PC?' },

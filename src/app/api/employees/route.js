@@ -4,9 +4,6 @@ import { requireAdmin } from '@/lib/server/security/auth';
 import { buildEmployeeData, shapeEmployee } from '@/lib/server/services/employees';
 
 export async function GET() {
-  // Employee records — including addresses, contact numbers, and birthdates —
-  // are Operations Head only, per the access control matrix. A Checker calling
-  // this endpoint directly gets nothing.
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
@@ -22,7 +19,6 @@ export async function GET() {
   }
 }
 
-// Registering an employee is an Operations Head action.
 export async function POST(request) {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -30,8 +26,6 @@ export async function POST(request) {
   try {
     const body = await request.json();
 
-    // The ID is the link to the biometric scanner: required, and set once here.
-    // It is never changed afterward (see the PATCH route).
     const id = typeof body.id === 'string' ? body.id.trim() : '';
     if (!id) {
       return NextResponse.json(

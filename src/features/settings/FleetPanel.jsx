@@ -85,7 +85,6 @@ export const FleetPanel = ({ toast }) => {
 
   return (
     <div>
-      {/* ---------------- Fleet ---------------- */}
       <div className="flex items-center justify-between mb-3">
         <Eyebrow>Trucks</Eyebrow>
         <Btn size="sm" onClick={openAddTruck}>Add Truck</Btn>
@@ -132,7 +131,6 @@ export const FleetPanel = ({ toast }) => {
         no one is tied to a particular truck.
       </p>
 
-      {/* ---------------- Add truck modal ---------------- */}
       <Modal open={truckModal} onClose={() => setTruckModal(false)} title={editingTruck ? `Edit ${editingTruck.id}` : 'Add Truck'} width={420}>
         <Field label="Truck ID">
           <input value={truckForm.id} readOnly={!!editingTruck}

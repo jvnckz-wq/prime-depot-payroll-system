@@ -48,7 +48,6 @@ const Row = ({ label, children, last = false }) => (
   </div>
 );
 
-// A two-factor detail line, indented under the Two-factor row.
 const SubRow = ({ label, children }) => (
   <div className="flex items-center gap-4 flex-wrap py-3 pl-4"
     style={{ borderLeft: `2px solid ${T.lineSoft}`, marginLeft: 2 }}>
@@ -410,7 +409,7 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut, on
       const data = await res.json();
       const n = data?.user?.backupCodesRemaining;
       if (typeof n === 'number') setBackupRemaining(n);
-    } catch { /* leave the count hidden */ }
+    } catch { }
   };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect -- run once on mount for the admin's 2FA card
@@ -515,7 +514,6 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut, on
 
   return (
     <div className="flex h-screen w-full overflow-hidden" style={{ backgroundColor: T.bg, fontFamily: F_BODY }}>
-      {/* Left rail, same crimson as the app sidebar, for a seamless hand-off */}
       <aside className="shrink-0 flex flex-col h-full" style={{ width: 236, backgroundColor: T.sidebar, borderRight: `1px solid ${T.sidebarLine}` }}>
         <div className="py-3">
           <button onClick={onBack}
@@ -530,7 +528,6 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut, on
         </div>
       </aside>
 
-      {/* Right, the settings themselves */}
       <div className="flex-1 overflow-y-auto">
         <div className="px-5 sm:px-10 py-8 mx-auto" style={{ maxWidth: 820 }}>
 
@@ -538,7 +535,6 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut, on
             <>
               <h1 className="text-2xl font-bold mb-5" style={{ fontFamily: F_HEAD, color: T.ink }}>Account</h1>
 
-              {/* Identity block, no card, no banner */}
               <div className="flex items-center gap-5 flex-wrap pb-5" style={{ borderBottom: `1px solid ${T.lineSoft}` }}>
                 <div className="relative shrink-0">
                   <Avatar user={user} size={68} />
@@ -589,7 +585,6 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut, on
                 )}
               </div>
 
-              {/* Security rows */}
               <Row label="Password">
                 <Btn size="sm" variant="outline" icon={KeyRound} onClick={() => setPwdOpen(true)}>Change</Btn>
               </Row>
@@ -653,7 +648,6 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut, on
         </div>
       </div>
 
-      {/* Dialogs */}
       <Modal open={pwdOpen} onClose={() => setPwdOpen(false)} title="Change password" width={440}>
         <ChangePasswordPanel toast={toast} twoFactor={!!user.totpEnabled} onDone={() => setPwdOpen(false)} />
       </Modal>

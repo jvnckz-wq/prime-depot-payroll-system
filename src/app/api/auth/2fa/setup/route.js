@@ -3,15 +3,6 @@ import { prisma } from '@/lib/server/db/prisma';
 import { requireUser } from '@/lib/server/security/auth';
 import { generateTotpSecret, totpKeyUri, totpQrDataUrl } from '@/lib/server/security/twofactor';
 
-// Begin two-factor enrollment: mint a fresh secret, store it (disabled until a
-// code confirms it), and hand back a QR plus the secret for manual entry.
-// Operations Head only. Called each time the setup screen opens, so a new
-// secret always replaces any abandoned one.
-//
-// Only while two-factor is OFF. Once it is on this refuses instead of replacing
-// the working secret; otherwise anyone holding a signed-in session could swap
-// in their own authenticator, or turn two-factor off just by starting setup
-// and walking away.
 export async function POST() {
   const auth = await requireUser();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -21,8 +12,6 @@ export async function POST() {
 
   try {
     const secret = generateTotpSecret();
-    // The "still off" check and the write are one statement, so a setup racing
-    // an enable cannot slip a new secret in underneath it.
     const { count } = await prisma.user.updateMany({
       where: { id: auth.user.id, totpEnabled: false },
       data: { totpSecret: secret, totpLastStep: null },

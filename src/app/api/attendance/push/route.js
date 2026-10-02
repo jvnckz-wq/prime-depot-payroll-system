@@ -4,15 +4,10 @@ import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { withRetry } from '@/lib/server/db/db-retry';
 import { pairPunches, buildAttendanceRow } from '@/lib/attendance';
 
-// Prisma + node crypto need the Node.js runtime, not the Edge runtime.
 export const runtime = 'nodejs';
 
 const MAX_SCANS = 500;
 
-/// Constant-time check of the device's bearer token against DEVICE_SYNC_TOKEN.
-/// Fail-closed: if the env var is unset, every push is rejected rather than
-/// silently accepted. The device is not a logged-in admin, so this endpoint is
-/// authenticated by the shared token only, never by a session.
 function tokenOk(request) {
   const expected = process.env.DEVICE_SYNC_TOKEN;
   if (!expected) return false;
@@ -26,17 +21,6 @@ function tokenOk(request) {
   return timingSafeEqual(a, b);
 }
 
-/// POST /api/attendance/push
-/// Auth: `Authorization: Bearer <DEVICE_SYNC_TOKEN>` (or `x-device-token`).
-/// Body: { date: 'YYYY-MM-DD', scans: [ { biometricId, times: ['HH:MM', ...] } ] }
-///
-/// The sync agent sends the FULL set of the day's punches for each user every
-/// cycle (stateless re-pair): the server pairs them with the SAME shared
-/// function the .xls import uses, then rewrites that day's rows for the users in
-/// the payload. Because it runs mid-day, it only writes PRESENT rows — it never
-/// marks anyone absent (the day is not over; the period .xls import remains
-/// authoritative for absences at cutoff). Hand-corrected rows are never touched.
-/// Scans whose id matches no employee are returned in `unmapped`, not dropped.
 export async function POST(request) {
   if (!tokenOk(request)) {
     return NextResponse.json({ error: 'Unauthorized device.' }, { status: 401 });
@@ -71,15 +55,14 @@ export async function POST(request) {
         : [];
       const emp = empById.get(bid);
       if (!emp) { unmapped.push(bid); continue; }
-      if (!times.length) continue; // nothing to record for this user yet
+      if (!times.length) continue;
       matchedIds.push(emp.id);
       const paired = pairPunches(times);
-      presentRows.push(buildAttendanceRow(emp, date, paired)); // no importBatchId — this is a live row
+      presentRows.push(buildAttendanceRow(emp, date, paired));
     }
 
     const day = new Date(`${date}T00:00:00.000Z`);
 
-    // Never overwrite a hand-corrected row: drop those employees from the write.
     const manual = matchedIds.length
       ? await prisma.attendance.findMany({
           where: { date: day, employeeId: { in: matchedIds }, isManualEdit: true },
@@ -90,10 +73,6 @@ export async function POST(request) {
     const rows = presentRows.filter((r) => !manualSet.has(r.employeeId));
     const writeIds = rows.map((r) => r.employeeId);
 
-    // Stateless re-pair: this push is authoritative for these users on this
-    // date, so clear their non-manual rows for the day and insert the fresh
-    // ones. Array-form transaction on prismaBase — the Neon pooler runs these
-    // reliably; interactive transactions do not.
     if (writeIds.length) {
       await withRetry(() => prismaBase.$transaction([
         prismaBase.attendance.deleteMany({
@@ -103,10 +82,6 @@ export async function POST(request) {
       ]));
     }
 
-    // Heartbeat: record that we just heard from the device, even on a cycle with
-    // no scans, so the Live tab can tell "connected" from "agent is dead." Kept
-    // in its own try/catch: a heartbeat problem (or a not-yet-migrated table)
-    // must never fail the actual attendance sync.
     try {
       const now = new Date();
       await withRetry(() => prismaBase.deviceSync.upsert({
@@ -118,10 +93,6 @@ export async function POST(request) {
       console.error('Heartbeat write skipped:', hbErr?.message || hbErr);
     }
 
-    // Hand any queued "Pull from device" to the agent. Flip PENDING (or a stale
-    // RUNNING, i.e. a previous agent that died mid-pull) to RUNNING so the next
-    // heartbeat won't hand out the same one twice. Best-effort: a not-yet-migrated
-    // table just means no pull is offered.
     let pull = null;
     try {
       const staleBefore = new Date(Date.now() - 5 * 60 * 1000);

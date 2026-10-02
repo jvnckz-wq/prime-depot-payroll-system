@@ -83,8 +83,6 @@ export const CheckerView = ({ currentUser, deliveries, reloadDeliveries, rates, 
           </div>
         </Panel>
 
-        {/* Two columns on wide screens: log a delivery on the left, review the
-            day's logged deliveries on the right. Stacks on phones. */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
           <Panel className="p-4">
             <Eyebrow>New Delivery</Eyebrow>

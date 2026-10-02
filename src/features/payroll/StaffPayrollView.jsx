@@ -50,8 +50,6 @@ const PayslipCard = ({ e, calc, cutoffLabel, attPeriod, att, statutory, classNam
           ? <span style={{ color: T.green }}>Days present, tardiness, and OT from imported attendance{attPeriod ? ` (${attPeriod.start} → ${attPeriod.end})` : ''}.</span>
           : <span style={{ color: T.amber }}>⚠ No attendance imported for this person — figures are an estimate ({calc.days} days assumed).</span>}
       </div>
-      {/* Attendance basis — the exact record behind Days Present, Tardiness and
-          OT, so a payslip can be traced to its source at a glance. */}
       {calc.hasAttendance && att && (
         <div className="mb-2 px-2.5 py-1.5 rounded text-xs" style={{ backgroundColor: T.bg, fontFamily: F_MONO, color: T.soft }}>
           Present {att.present}{att.leave ? ` · Leave ${att.leave}` : ''} · Late {att.daysLate}d/{Math.round(att.lateMins || 0)}min · OT {Math.round(att.otWeekdayMins || 0)}min wkdy / {Math.round(att.otWeekendMins || 0)}min wknd
@@ -72,8 +70,6 @@ const PayslipCard = ({ e, calc, cutoffLabel, attPeriod, att, statutory, classNam
           <Money value={v} />
         </div>
       ))}
-      {/* Only when the pay could not cover the government contributions: the
-          company pays the difference for this cutoff (Phase 3 assumption). */}
       {calc.companyCover > 0 && (
         <div className="flex justify-between gap-3 text-sm py-1" style={{ fontFamily: F_BODY }}>
           <span style={{ color: T.ink }}>
@@ -88,12 +84,9 @@ const PayslipCard = ({ e, calc, cutoffLabel, attPeriod, att, statutory, classNam
       <div className="text-sm italic mb-1.5" style={{ fontFamily: F_BODY, color: T.soft }}>Deductions</div>
       {[
         ['HDMF MP1 Contribution:', calc.mp1 ?? 0, false],
-        // MP2 is voluntary savings: on a short payslip it is only what fits.
         ['HDMF MP2 Contribution:', calc.mp2 ?? 0, false, e.piOn && (Number(e.mp2) || 0) > (calc.mp2 ?? 0) + 0.004 ? `Not enough pay this cutoff for the full ${peso(Number(e.mp2) || 0)}` : null],
         ['PHIC Contribution:', calc.phic, false],
         ['SSS Contribution:', calc.sss, false],
-        // Loans and cash advances on their own lines, as on the client's own
-        // payslip, each with a short note so the employee can see what it is.
         ['Loans:', calc.loanDeduction ?? 0, false, loanNote(calc, 'LOAN', nextEnd)],
         ['Adjustments: Advance Payment', calc.advanceDeduction ?? calc.advance, false, loanNote(calc, 'CASH_ADVANCE', nextEnd)],
         ['Tardiness:', calc.tardiness, true, calc.tardinessDue > calc.tardiness + 0.004 ? `${peso(calc.tardinessDue - calc.tardiness)} not deducted: no pay left` : null],
@@ -373,9 +366,6 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
           <Panel className="overflow-hidden">
             <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
               <Eyebrow>Payslips — {cutoffLabel}</Eyebrow>
-              {/* Phone: the DTR range on its own line and one full-width button
-                  per row, so none of the money buttons has its label broken
-                  into pieces. From sm up: one row, as before. */}
               <div className="grid grid-cols-1 gap-2 w-full sm:flex sm:items-center sm:w-auto">
                 <Badge tone={attPeriod ? 'green' : 'amber'}>{attPeriod ? `DTR ${attPeriod.start} → ${attPeriod.end}` : 'No attendance imported'}</Badge>
                 <Btn size="sm" fullMobile variant="outline" disabled={rows.length === 0 || printAll} onClick={() => setPrintAll(true)}>{printAll ? 'Preparing…' : 'Print All Payslips'}</Btn>
@@ -383,8 +373,6 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
                 <Btn size="sm" fullMobile loading={finalizing} disabled={!attPeriod || finalizing} onClick={() => setConfirmFinalize(true)}>{finalizing ? 'Finalizing…' : 'Finalize / Release'}</Btn>
               </div>
             </div>
-            {/* Phone: one card per payslip, Net Pay first. Tapping the card
-                opens the payslip, the same as View. */}
             <div className="md:hidden">
               {loading ? <SkeletonBlock /> : rows.map(({ emp, calc }) => (
                 <button key={emp.id} type="button" onClick={() => { setSelectedId(emp.id); setView('slip'); }}

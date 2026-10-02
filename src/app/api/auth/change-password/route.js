@@ -6,12 +6,7 @@ import {
 } from '@/lib/server/security/auth';
 import { totpStep } from '@/lib/server/security/twofactor';
 
-// Changing your own password. Available to both roles — this is the one
-// account action a Checker can perform. The admin's first-time change also
-// registers a verified recovery email, but that runs through the dedicated
-// verify-email endpoints, not here, so this stays password-only.
 export async function POST(request) {
-  // Allowed on a temporary password: this is how a Checker replaces it.
   const auth = await requireUser({ allowPasswordChange: true });
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
@@ -21,19 +16,9 @@ export async function POST(request) {
     const record = await prisma.user.findUnique({ where: { id: auth.user.id } });
     if (!record) return NextResponse.json({ error: 'Account not found.' }, { status: 404 });
 
-    // Proving the current password matters even though the user is already
-    // signed in: it stops someone who walks up to an unattended, logged-in
-    // machine from locking the real owner out of their own account.
     const ok = await verifyPassword(currentPassword ?? '', record.passwordHash);
     if (!ok) return NextResponse.json({ error: 'Current password is incorrect.' }, { status: 400 });
 
-    // If two-factor is on for this account, the password alone is not enough:
-    // a current authenticator code is required too, so someone at an unattended
-    // signed-in machine still cannot change the password. This never fires on
-    // the first-time forced change (two-factor is set up only afterwards, so
-    // totpEnabled is false then), which keeps that flow working. Wrong codes are
-    // rate-limited fail-closed, and an accepted code's time step is recorded so
-    // it cannot be replayed at the sign-in prompt.
     if (record.totpEnabled) {
       const key = `chpwd:${record.id}`;
       if (!(await reserveAttempt(key))) {
@@ -73,9 +58,6 @@ export async function POST(request) {
       data: { passwordHash: await hashPassword(newPassword), mustChangePassword: false },
     });
 
-    // Sign out every other device, then re-issue a session for this one. If the
-    // password is being changed because someone else knew it, that person is
-    // now locked out.
     await destroyAllSessions(record.id);
     await createSession(record.id);
 

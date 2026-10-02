@@ -89,7 +89,6 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
     <div className="p-4 sm:p-6">
       <H1 sub="Snapshot of headcount, this cutoff's payroll, deliveries, and outstanding advances.">Dashboard Overview</H1>
 
-      {/* Top row: 4 stat cards + Attention Needed, mirroring the approved layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <div className="lg:col-span-2 grid grid-cols-2 gap-4 pd-stagger">
           <StatCard label="Total Employees" value={totalEmployees} icon={Users} onClick={() => go('employees')} />
@@ -129,7 +128,6 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
         </Panel>
       </div>
 
-      {/* Payroll snapshot table + two charts */}
       <div className="grid lg:grid-cols-2 gap-4 items-start">
         <Panel className="overflow-hidden lg:flex lg:flex-col" style={{ height: snapshotHeight }}>
           <div className="px-4 pt-4 pb-2 shrink-0 flex items-center justify-between gap-2 flex-wrap">

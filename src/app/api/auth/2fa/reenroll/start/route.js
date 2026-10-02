@@ -8,13 +8,6 @@ import {
   generateTotpSecret, hashBackupCode, totpKeyUri, totpQrDataUrl, totpStep,
 } from '@/lib/server/security/twofactor';
 
-// Step one of moving two-factor to a new phone. Proves it is really the owner
-// (current password AND a code from the CURRENT authenticator, or a backup
-// code, since the whole reason to re-enroll may be that the phone is gone), then
-// mints a FRESH secret and returns it with a QR. That new secret is NOT stored
-// yet: the account keeps working on the old authenticator until /confirm proves
-// the new one scans. So a half-finished re-enrollment can never lock the account
-// out, and simply starting this never weakens the working setup.
 export async function POST(request) {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -39,9 +32,6 @@ export async function POST(request) {
       );
     }
 
-    // Accept a current TOTP code first (recorded so it cannot be replayed at
-    // sign-in), then fall back to a one-time backup code, spent with a single
-    // conditional UPDATE so it can be used exactly once.
     const entered = typeof code === 'string' ? code.trim() : '';
     let authed = false;
     const step = totpStep(entered, record.totpSecret);
@@ -67,9 +57,6 @@ export async function POST(request) {
     }
     await releaseAttempt(key);
 
-    // A fresh secret, handed back for the QR. Intentionally not written to the
-    // account here; /confirm writes it only once a code proves the new app has
-    // it.
     const secret = generateTotpSecret();
     const uri = totpKeyUri(record.username, secret);
     const qrDataUrl = await totpQrDataUrl(uri);

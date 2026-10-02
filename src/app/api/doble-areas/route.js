@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin, requireUser } from '@/lib/server/security/auth';
 
-// Checkers need this list: the delivery form matches the address they type
-// against it and flags a double-rate trip automatically.
 export async function GET() {
   const auth = await requireUser();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });

@@ -57,7 +57,7 @@ export default function TwoFactorSetup({ user, onDone }) {
   };
 
   const copyCodes = () => {
-    try { navigator.clipboard.writeText(codes.join('\n')); } catch { /* clipboard blocked — the Download option still works */ }
+    try { navigator.clipboard.writeText(codes.join('\n')); } catch { }
   };
 
   const downloadCodes = () => {
@@ -71,7 +71,7 @@ export default function TwoFactorSetup({ user, onDone }) {
       a.href = url; a.download = 'prime-depot-backup-codes.txt';
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
-    } catch { /* download blocked — the Copy option still works */ }
+    } catch { }
   };
 
   const errorBox = error && (

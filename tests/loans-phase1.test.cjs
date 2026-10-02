@@ -3,11 +3,9 @@ const { computeStaffPayroll } = require('../src/lib/payroll.js');
 const R = require('../src/lib/loan-rules.js');
 const { applyLoanDeductions, runEndOf } = require('../src/lib/server/services/loans-apply.js');
 
-// Collected first, then run one by one so async checks finish in order.
 const tests = [];
 const ok = (name, fn) => tests.push([name, fn]);
 
-// --- statutory tables (2026, as seeded) -----------------------------------
 const C = [[4250,135],[4750,157.5],[5250,180],[5750,202.5],[6250,225],[6750,247.5],[7250,270],[7750,292.5],[8250,315],[8750,337.5],[9250,360],[9750,382.5],[10250,405],[10750,427.5],[11250,450],[11750,472.5],[12250,495],[12750,517.5],[13250,540],[13750,562.5],[14250,585],[14750,607.5],[15250,630],[15750,652.5],[16250,675],[16750,697.5],[17250,720],[17750,742.5],[18250,765],[18750,787.5],[19250,810],[19750,832.5],[20250,855],[null,900]];
 const statutory = {
   sss: C.map(([ceiling, share]) => ({ ceiling, share })),
@@ -16,7 +14,6 @@ const statutory = {
 };
 const att = (present, lateMins = 0) => ({ present, leave: 0, lateMins, otWeekdayMins: 0, otWeekendMins: 0 });
 
-// A shaped loan (the form the browser and payroll math read).
 const shaped = (o) => ({
   id: o.id, employeeId: o.employeeId, kind: o.kind || 'LOAN', purpose: o.kind === 'CASH_ADVANCE' ? null : (o.purpose || 'Emergency'),
   dateGranted: o.dateGranted || '2026-09-01', isCrew: !!o.isCrew, person: o.person || 'X', principal: o.principal,
@@ -27,7 +24,6 @@ const ded = (amount, key) => ({ type: 'deduction', amount, payslipId: key });
 
 console.log('Loans & Advances, Phase 1');
 
-// --- payslip split: same net as before, lines apart ------------------------
 const KEY = 'staff-September 16–30, 2026';
 const staffA = { id: 'emp-a', name: 'Staff A', rate: 700, declaredSalary: 18200, sssOn: true, phOn: true, piOn: true, mp2: 500, allowance: 0 };
 
@@ -39,11 +35,11 @@ ok('loan and cash advance land on separate lines; net unchanged (2,646.25)', () 
   const c = computeStaffPayroll(staffA, loans, statutory, att(12, 15), KEY);
   assert.equal(c.loanDeduction, 1000);
   assert.equal(c.advanceDeduction, 3500);
-  assert.equal(c.advance, 4500);          // stored snapshot total, as before
+  assert.equal(c.advance, 4500);
   assert.equal(c.totalDeductions, 5753.75);
   assert.equal(c.net, 2646.25);
   const loanLine = c.deductionLines.find((d) => d.kind === 'LOAN');
-  assert.equal(loanLine.balanceAfter, 3000); // 5,000 - 1,000 - 1,000
+  assert.equal(loanLine.balanceAfter, 3000);
 });
 
 ok('matched by employeeId: a renamed employee keeps the deduction, a namesake gets none', () => {
@@ -58,7 +54,6 @@ ok('an applied deduction still shows after the loan is paused', () => {
   assert.equal(computeStaffPayroll(staffA, loans, statutory, att(12), KEY).loanDeduction, 1000);
 });
 
-// --- cutoff and working-day rules ------------------------------------------
 ok('cutoffOf / nextCutoff handle both halves and year end', () => {
   assert.deepEqual(R.cutoffOf('2026-09-29'), { start: '2026-09-16', end: '2026-09-30' });
   assert.deepEqual(R.cutoffOf('2026-02-20'), { start: '2026-02-16', end: '2026-02-28' });
@@ -97,12 +92,11 @@ ok('payoff plan: 6,000 at 1,000 from Sep 29 ends Dec 15; top-up to 5,000 ends No
 
 ok('due amount: advance in full, loan one installment capped at the balance', () => {
   const adv = shaped({ kind: 'CASH_ADVANCE', principal: 3500, perCutoff: 500, entries: [grant(3500)] });
-  assert.equal(R.dueAmount(adv), 3500); // even an old record set to 500 per cutoff
+  assert.equal(R.dueAmount(adv), 3500);
   const loan = shaped({ principal: 5000, perCutoff: 1000, entries: [grant(5000), ded(4500, 'k')] });
   assert.equal(R.dueAmount(loan), 500);
 });
 
-// --- applyLoanDeductions against an in-memory Prisma -----------------------
 function fakePrisma(rows) {
   const writes = [];
   return {
@@ -129,14 +123,12 @@ ok('apply: advance in full + settled, loan one installment, late grant and crew 
     dbLoan({ id: 'late', type: 'CASH_ADVANCE', principal: 2000, perRun: 2000, granted: '2026-10-02' }),
     dbLoan({ id: 'crew', principal: 3000, perRun: 100, position: 'DRIVER' }),
   ]);
-  // Phase 2 requires the pay available per person; ample here, so Phase 1's
-  // expectations hold unchanged (loans-phase2 covers the short cases).
   const available = { 'emp-adv': 10000, 'emp-loan': 10000, 'emp-late': 10000, 'emp-crew': 10000 };
   const r = await applyLoanDeductions(p, { scope: 'staff', runKey: KEY, cutoffEnd: '2026-09-30', available });
   assert.equal(r.applied, 2);
   assert.equal(r.settled, 1);
   assert.equal(r.total, 4500);
-  assert.equal(p.writes.length, 1); // one transaction
+  assert.equal(p.writes.length, 1);
   const ops = p.writes[0];
   const created = ops.filter((o) => o.op === 'loanEntry.create').map((o) => [o.data.loanId, o.data.amount]);
   assert.deepEqual(created, [['adv', 3500], ['loan', 1000]]);

@@ -4,14 +4,12 @@ import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { withRetry } from '@/lib/server/db/db-retry';
 import { pairPunches, buildAttendanceRow } from '@/lib/attendance';
 
-// Prisma + node crypto need the Node.js runtime, not the Edge runtime.
 export const runtime = 'nodejs';
 
 const atTime = (dateStr, hhmm) => (hhmm ? new Date(`${dateStr}T${hhmm}:00.000Z`) : null);
 const dayStr = (d) => d.toISOString().slice(0, 10);
 const validYmd = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
 
-// Same fail-closed device token as the live push.
 function tokenOk(request) {
   const expected = process.env.DEVICE_SYNC_TOKEN;
   if (!expected) return false;
@@ -23,23 +21,6 @@ function tokenOk(request) {
   return timingSafeEqual(a, b);
 }
 
-/// POST /api/attendance/pull
-/// Auth: `Authorization: Bearer <DEVICE_SYNC_TOKEN>` (or `x-device-token`).
-/// Body: {
-///   from: 'YYYY-MM-DD', to: 'YYYY-MM-DD',       // the cutoff, inclusive
-///   roster: [{ userId, name }],                 // device-enrolled users
-///   punches: { "<userId>": { "<YYYY-MM-DD>": ["HH:MM", ...] } }  // Manila times
-/// }
-///
-/// This is the .xls import, sourced from the device instead of a file. The local
-/// "pull-cutoff" command reads the whole cutoff from the ZK3969 (including scans
-/// made while the laptop was off) and posts it here. The server writes one
-/// Attendance row per matched employee per day — PRESENT from the paired punches,
-/// ABSENT when there was no scan — using the SAME pairing and row-building as the
-/// import, so payroll math is identical. It records an ImportBatch (so the cutoff
-/// shows up in Employee DTR and Import History exactly like an import), preserves
-/// manual edits, keeps unmatched ids in UnmappedLog, and is authoritative for the
-/// period (it replaces that period's earlier non-manual rows and batch).
 export async function POST(request) {
   if (!tokenOk(request)) {
     return NextResponse.json({ error: 'Unauthorized device.' }, { status: 401 });
@@ -50,8 +31,6 @@ export async function POST(request) {
   try {
     const body = await request.json();
     requestId = body?.requestId ? String(body.requestId) : null;
-    // The agent reports a device-read failure here so the request doesn't hang in
-    // "Pulling" — mark it FAILED with a clear reason.
     if (requestId && body?.failed) {
       await prisma.pullRequest.update({
         where: { id: requestId },
@@ -69,7 +48,6 @@ export async function POST(request) {
     if (end < start) {
       return NextResponse.json({ error: 'The "to" date is before "from".' }, { status: 400 });
     }
-    // A cutoff is ~15-16 days; refuse anything absurd rather than build a huge write.
     const spanDays = Math.round((end - start) / 86400000) + 1;
     if (spanDays > 40) {
       return NextResponse.json({ error: `Period too long (${spanDays} days).` }, { status: 413 });
@@ -78,11 +56,9 @@ export async function POST(request) {
     if (!roster) return NextResponse.json({ error: 'Missing roster[].' }, { status: 400 });
     const punches = (body?.punches && typeof body.punches === 'object') ? body.punches : {};
 
-    // Every day in the period, inclusive.
     const days = [];
     for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) days.push(dayStr(d));
 
-    // Match by id — the biometric User ID is the Employee id (per the design).
     const employees = await prisma.employee.findMany();
     const empById = new Map(employees.map((e) => [String(e.id), e]));
 
@@ -90,7 +66,6 @@ export async function POST(request) {
       data: { filename: `Device pull: ${from} to ${to}`, periodStart: start, periodEnd: end, status: 'PROCESSING' },
     });
 
-    // Keep manual corrections: never overwrite a row someone fixed by hand.
     const manual = await prisma.attendance.findMany({
       where: { date: { gte: start, lte: end }, isManualEdit: true },
       select: { employeeId: true, date: true },
@@ -117,12 +92,10 @@ export async function POST(request) {
           totalRows++;
           if (manualKeys.has(`${emp.id}|${ds}`)) continue;
           const times = cleanTimes(userDays[ds]);
-          const paired = times.length ? pairPunches(times) : null; // null -> absent row
+          const paired = times.length ? pairPunches(times) : null;
           attendanceRows.push(buildAttendanceRow(emp, ds, paired, { importBatchId: batch.id }));
         }
       } else {
-        // Unmapped: log the actual punches only — an absence can't be pinned on
-        // someone the system doesn't know yet.
         for (const [ds, raw] of Object.entries(userDays)) {
           const times = cleanTimes(raw);
           if (!times.length) continue;
@@ -137,10 +110,6 @@ export async function POST(request) {
       }
     }
 
-    // Atomic batch (not interactive — the Neon pooler runs these reliably). This
-    // pull is authoritative for its period, so clear that period's old non-manual
-    // rows and prior unmapped logs first, then insert the fresh set. Mirrors the
-    // .xls import exactly.
     const ops = [];
     if (matchedIds.length) {
       ops.push(prismaBase.attendance.deleteMany({
@@ -154,15 +123,11 @@ export async function POST(request) {
       where: { id: batch.id },
       data: { status: 'COMPLETED', totalRows, mappedRows: attendanceRows.length, unmappedRows: unmappedRows.length },
     }));
-    // Replace-on-repull: drop any earlier completed batch for the SAME period so
-    // history keeps one entry per cutoff (attendance rows survive; FK is SET NULL).
     ops.push(prismaBase.importBatch.deleteMany({
       where: { periodStart: start, periodEnd: end, status: 'COMPLETED', id: { not: batch.id } },
     }));
     await withRetry(() => prismaBase.$transaction(ops));
 
-    // If this pull came from a queued web request, mark it done so the button
-    // can flip to "Pulled". Best-effort — the write above is what matters.
     if (requestId) {
       await prisma.pullRequest.update({
         where: { id: requestId },

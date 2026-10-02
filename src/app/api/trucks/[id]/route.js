@@ -2,10 +2,6 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';
 
-/// PATCH /api/trucks/:id — update details, or retire/restore.
-///
-/// A truck is retired rather than deleted: past deliveries point at it, and
-/// deleting it would break the record of which vehicle made which trip.
 export async function PATCH(request, { params }) {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });

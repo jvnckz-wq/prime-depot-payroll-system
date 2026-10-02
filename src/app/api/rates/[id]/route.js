@@ -5,11 +5,6 @@ import { requireAdmin, logSecurityEvent } from '@/lib/server/security/auth';
 const num = (d) => (d == null ? 0 : Number(d));
 const money = (n) => '₱' + Number(n || 0).toFixed(2);
 
-/// PATCH /api/rates/:id — edit the amounts, or retire the item.
-///
-/// Retiring keeps it out of the delivery form's dropdown without touching past
-/// deliveries. Amounts on a logged delivery are frozen at the moment it was
-/// logged, so changing a rate here never rewrites what someone already earned.
 export async function PATCH(request, { params }) {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -32,16 +27,11 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ error: 'Nothing to update.' }, { status: 400 });
     }
 
-    // Read the current values first, so the audit entry can record what actually
-    // changed (old → new). Piece rates decide crew pay, so every edit to them is
-    // logged with who made it and when — a question the panel will ask.
     const before = await prisma.rateItem.findUnique({ where: { id } });
     if (!before) return NextResponse.json({ error: 'Rate item not found.' }, { status: 404 });
 
     const r = await prisma.rateItem.update({ where: { id }, data });
 
-    // Build a human-readable diff and, only if something really changed, append
-    // one row to the audit trail. Never let an audit failure fail the update.
     const changes = [];
     if (data.itemName != null && before.itemName !== r.itemName) changes.push(`name "${before.itemName}"→"${r.itemName}"`);
     if (data.unit != null && before.unit !== r.unit) changes.push(`unit "${before.unit}"→"${r.unit}"`);

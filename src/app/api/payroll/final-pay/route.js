@@ -11,9 +11,6 @@ import { planDeductions, todayYmdManila } from '@/lib/loan-rules';
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 
-// Ledger key for the loan deductions taken from one employee's final pay. Like
-// a payroll run key, it is the idempotency stamp: recording twice finds it and
-// skips, and Undo deletes exactly these entries.
 const finalKey = (employeeId) => `final-${employeeId}`;
 
 const loadFinalLoans = (employeeId) => prisma.loan.findMany({
@@ -22,17 +19,6 @@ const loadFinalLoans = (employeeId) => prisma.loan.findMany({
   orderBy: { createdAt: 'asc' },
 });
 
-/// POST /api/payroll/final-pay  { employeeId, finalPayTotal }
-///
-/// Deducts what the employee still owes from their final pay (Phase 3
-/// assumption, pending the client). Same rules as payroll: cash advances first, then loans,
-/// never more than the final pay (net stops at P0). Here the WHOLE balance is
-/// due, paused or not. Whatever the final pay cannot cover stays on the ledger
-/// as the unpaid balance: nothing is written off by the system.
-///
-/// The final pay itself is worked out on the form (editable, as on the
-/// client's FINAL PAY sheet), so its total is the cap the Operations Head sends.
-/// The server still decides the order, the amounts, and the balances.
 export async function POST(request) {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -64,9 +50,6 @@ export async function POST(request) {
   }
 }
 
-/// DELETE /api/payroll/final-pay  { employeeId }  (undo, admin only)
-/// Removes the final-pay deductions and re-opens any loan they had closed, in
-/// one batch transaction, like un-finalizing a cutoff.
 export async function DELETE(request) {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -89,11 +72,6 @@ export async function DELETE(request) {
   }
 }
 
-/// GET /api/payroll/final-pay?employeeId=ID
-/// Auto-fill context for a resigning employee's final pay: the last imported
-/// cutoff's days worked + OT/allowances, and the total basic salary they've
-/// earned this year (for the pro-rated 13th month). Everything is editable on
-/// the form — this is just the starting point.
 export async function GET(request) {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -107,7 +85,6 @@ export async function GET(request) {
     if (!emp) return NextResponse.json({ error: 'Employee not found.' }, { status: 404 });
     const shaped = shapeEmployee(emp);
 
-    // Latest imported cutoff.
     const latest = await prisma.importBatch.findFirst({
       where: { status: 'COMPLETED' },
       orderBy: { importedAt: 'desc' },
@@ -115,7 +92,6 @@ export async function GET(request) {
     const period = latest && latest.periodStart && latest.periodEnd
       ? { start: latest.periodStart, end: latest.periodEnd } : null;
 
-    // This employee's attendance for that cutoff.
     let days = 0, otWeekdayMins = 0, otWeekendMins = 0, lateMins = 0;
     if (period) {
       const rows = await prisma.attendance.findMany({
@@ -136,9 +112,6 @@ export async function GET(request) {
     const allowance = round2(Number(shaped.allowance) || 0);
     const otAndAllowances = round2(otWeekday + otWeekend + allowance);
 
-    // Total basic salary earned this year, from released payslips (for the
-    // pro-rated 13th month). May be incomplete if older cutoffs predate the
-    // system, so the form lets the admin adjust it.
     const yearStart = new Date(`${new Date().getFullYear()}-01-01T00:00:00.000Z`);
     const yslips = await prisma.payslip.findMany({
       where: { employeeId, payrollType: 'STAFF', payrollPeriod: { startDate: { gte: yearStart } } },
@@ -146,16 +119,12 @@ export async function GET(request) {
     });
     const yearBasic = round2(yslips.reduce((s, p) => s + Number(p.basicPay), 0));
 
-    // Unused leave for the year, monetised in the final pay. Days taken are the
-    // attendance rows flagged as leave; the balance is credits minus those.
     const leaveUsed = await prisma.attendance.count({
       where: { employeeId, isLeave: true, date: { gte: yearStart } },
     });
     const leaveCredits = shaped.leaveCredits ?? 5;
     const leaveRemaining = Math.max(0, leaveCredits - leaveUsed);
 
-    // Loans and cash advances still owed, plus any already settled from this
-    // final pay (so a recorded deduction keeps showing on the sheet).
     const loans = (await loadFinalLoans(employeeId)).map(shapeLoan);
 
     return NextResponse.json({

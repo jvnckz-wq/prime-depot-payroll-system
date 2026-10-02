@@ -6,34 +6,17 @@ import {
 } from '@/lib/server/security/auth';
 import { hashBackupCode, totpStep } from '@/lib/server/security/twofactor';
 
-// Second step of a two-factor login. The pending session (set by /login after a
-// correct password) proves the password was right; here the code proves
-// possession of the phone. A TOTP code is tried first, then the one-time backup
-// codes. On success the pending session is replaced by a full one.
-//
-// Guessing is capped twice. Each pending session allows MAX_PER_SESSION codes,
-// then it is deleted and the password has to be entered again. And because a
-// correct password can open any number of pending sessions, the account as a
-// whole allows MAX_PER_ACCOUNT wrong codes per window. Both counters are bumped
-// BEFORE the code is checked, each in a single conditional statement, so a
-// burst of parallel requests cannot all slip in under the limit.
 const MAX_PER_SESSION = 5;
 const MAX_PER_ACCOUNT = 10;
 const WINDOW_MS = 15 * 60 * 1000;
 
-// The account-wide tally shares the login_attempts table with /login. Login
-// keys are "<ip>|<username>" and always contain a "|"; this one never does, so
-// a forged IP header can never land a login failure in this bucket.
 const accountKey = (userId) => `2fa:${userId}`;
 
-/// Take one attempt from the account's allowance. False once it is used up.
 async function reserveAccountAttempt(key) {
   const now = new Date();
-  // A window that has run out starts over from zero.
   await prisma.loginAttempt.deleteMany({
     where: { key, firstAt: { lt: new Date(now.getTime() - WINDOW_MS) } },
   });
-  // One upsert, so parallel requests each get back their own count.
   const { count } = await prisma.loginAttempt.upsert({
     where: { key },
     create: { key, count: 1, firstAt: now, lastAt: now },
@@ -78,10 +61,6 @@ export async function POST(request) {
     let ok = false;
     let usedBackup = false;
 
-    // A TOTP code is accepted once per time step: recording the step and
-    // checking it is still newer than the last one is a single statement, so a
-    // code that has already been used (or is being used right now in a
-    // parallel request) is refused.
     const step = totpStep(entered, user.totpSecret);
     if (step !== null) {
       const { count } = await prisma.user.updateMany({
@@ -92,10 +71,6 @@ export async function POST(request) {
     }
 
     if (!ok) {
-      // Fall back to a one-time backup code. Removing it is one conditional
-      // UPDATE, and only the affected-row count is trusted: two requests
-      // spending the same code cannot both succeed, and two spending different
-      // codes cannot write back a stale list that restores the other's code.
       const h = hashBackupCode(entered);
       const removed = await withRetry(() => prismaBase.$executeRaw`
         UPDATE "users" SET "backupCodes" = array_remove("backupCodes", ${h})
@@ -117,8 +92,6 @@ export async function POST(request) {
       );
     }
 
-    // Hand back the attempt this correct code reserved, so only wrong codes
-    // count against the account.
     await prisma.loginAttempt.updateMany({
       where: { key, count: { gt: 0 } },
       data: { count: { decrement: 1 } },

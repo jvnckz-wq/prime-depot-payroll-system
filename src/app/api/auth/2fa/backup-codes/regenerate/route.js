@@ -5,14 +5,6 @@ import {
 } from '@/lib/server/security/auth';
 import { generateBackupCodes, hashBackupCode, totpStep } from '@/lib/server/security/twofactor';
 
-// Replace all backup codes with a fresh set of ten. Operations Head only, and
-// only with two-factor on (requireAdmin already refuses otherwise). Proving the
-// current password AND a live authenticator code is required, so someone at an
-// unattended signed-in machine cannot silently issue themselves a new set. A
-// live TOTP code is required here rather than a backup code: you regenerate
-// because you still have your app, and spending a backup code to make more is
-// backwards. The plaintext codes are returned exactly once; only hashes are
-// stored.
 export async function POST(request) {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -29,7 +21,6 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Current password is incorrect.' }, { status: 400 });
     }
 
-    // Fail-closed cap on wrong codes, counted before the check.
     const key = `regen:${record.id}`;
     if (!(await reserveAttempt(key))) {
       return NextResponse.json(
@@ -38,8 +29,6 @@ export async function POST(request) {
       );
     }
 
-    // A live authenticator code, accepted once per time step so it cannot be
-    // replayed at the sign-in prompt afterwards.
     const entered = typeof code === 'string' ? code.trim() : '';
     let codeOk = false;
     const step = totpStep(entered, record.totpSecret);

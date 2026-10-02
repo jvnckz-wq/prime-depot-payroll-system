@@ -4,10 +4,6 @@ import { requireAdmin } from '@/lib/server/security/auth';
 
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
 
-/// GET /api/payroll/history           → released cut-offs with snapshot totals.
-/// GET /api/payroll/history?periodId=X → one cut-off's per-employee payslips
-///                                       (locked read-only view). Figures come
-///                                       straight from the stored Payslip rows.
 export async function GET(request) {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });

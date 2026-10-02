@@ -5,31 +5,13 @@ import { requireUser, validatePassword, verifyPassword } from '@/lib/server/secu
 import { sendEmailVerificationCode } from '@/lib/server/integrations/email';
 import { isEmail } from '@/lib/email-format';
 
-// Step 1 of registering a recovery email: email a one-time code to the address
-// the admin typed, so step 2 can prove the inbox is real and theirs before
-// anything is saved. This is the ONLY way a recovery email is set or changed.
-//
-// Two callers:
-//  * the admin's first-time gate, which also sets a new password (validated
-//    here so we never email a code and then fail on the password, but NOT
-//    changed until step 2);
-//  * My Account, which changes the email alone. The current password is still
-//    required, so a signed-in session on its own cannot redirect recovery.
-//
-// The caller is the authenticated admin, so unlike the logged-out "forgot"
-// flow this returns real errors — there is no address to keep secret from the
-// person setting it.
 const CODE_TTL_MS = 10 * 60 * 1000;
-const RESEND_COOLDOWN_MS = 60 * 1000; // at most one email per minute per account
+const RESEND_COOLDOWN_MS = 60 * 1000;
 
-// The code is hashed together with the target email, so a stored code only ever
-// validates for the exact address it was sent to.
 const hashFor = (code, email) => createHash('sha256').update(`${code}|${email}`).digest('hex');
 const sixDigits = () => String(randomInt(100000, 1000000));
 
 export async function POST(request) {
-  // Allowed on a temporary password: the admin's gate replaces it here (the
-  // mustChangePassword branch below makes the new password mandatory).
   const auth = await requireUser({ allowPasswordChange: true });
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
@@ -48,8 +30,6 @@ export async function POST(request) {
     const ok = await verifyPassword(currentPassword, record.passwordHash);
     if (!ok) return NextResponse.json({ error: 'Current password is incorrect.' }, { status: 400 });
 
-    // A temporary password has to be replaced in the same step; otherwise the
-    // new password is optional and only the email changes.
     const changingPassword = !!newPassword || record.mustChangePassword;
     if (changingPassword) {
       const problem = validatePassword(newPassword);
@@ -67,9 +47,6 @@ export async function POST(request) {
       return NextResponse.json({ error: 'That is already your recovery email.' }, { status: 400 });
     }
 
-    // Throttle sends, so a session and password cannot be used to flood an
-    // inbox from the business mail account (and get it throttled by Gmail,
-    // which would also stop password-reset emails).
     const recent = await prisma.passwordReset.findFirst({
       where: {
         userId: record.id, purpose: 'EMAIL_VERIFY', usedAt: null,
@@ -83,15 +60,10 @@ export async function POST(request) {
       );
     }
 
-    // One live code at a time — clear any earlier unused one (also handles the
-    // case where the admin used "Use a different email" and re-sent).
     await prisma.passwordReset.deleteMany({
       where: { userId: record.id, purpose: 'EMAIL_VERIFY', usedAt: null },
     });
 
-    // Store the code before sending, so the cooldown above sees it as early as
-    // possible; if the mailer is down, remove it again and tell the admin
-    // rather than leave a code that can never arrive.
     const code = sixDigits();
     const row = await prisma.passwordReset.create({
       data: {
@@ -113,8 +85,6 @@ export async function POST(request) {
       );
     }
 
-    // The audit trail records the meaningful event (email changed, password
-    // set) at the /complete step; the transient "code sent" is not logged.
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('POST /api/auth/verify-email/start failed:', err);

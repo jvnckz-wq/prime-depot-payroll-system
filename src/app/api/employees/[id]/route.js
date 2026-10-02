@@ -5,12 +5,6 @@ import { logSecurityEvent, requireAdmin } from '@/lib/server/security/auth';
 import { buildEmployeeData, shapeEmployee } from '@/lib/server/services/employees';
 import { accountAfterEmployeeChange } from '@/lib/checker-accounts';
 
-/// PATCH /api/employees/:id — edit a record, or flip its Active/Inactive status.
-///
-/// The ID itself is never changed here. It is the key that attendance logs,
-/// loans, and payslips all point at, so renaming it would orphan that history.
-/// An edit that only carries { status } is how the list's Deactivate/Activate
-/// button works — the same endpoint, a partial update of one field.
 export async function PATCH(request, { params }) {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });

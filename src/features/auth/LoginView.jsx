@@ -9,7 +9,7 @@ const TERMS_KEY = 'pd_terms_agreed';
 
 const subscribeNoop = () => () => {};
 const readTermsAgreed = () => {
-  try { return localStorage.getItem(TERMS_KEY) === '1'; } catch { return false; } // storage blocked: leave unchecked
+  try { return localStorage.getItem(TERMS_KEY) === '1'; } catch { return false; }
 };
 const serverTermsAgreed = () => false;
 
@@ -290,7 +290,7 @@ export const LoginView = ({ onSignedIn, onShowLegal, notice = '' }) => {
         setPassword('');
         return;
       }
-      try { localStorage.setItem(TERMS_KEY, '1'); } catch { /* storage blocked — no memory, box just re-ticks next time */ }
+      try { localStorage.setItem(TERMS_KEY, '1'); } catch { }
       if (data.twoFactorRequired) { setAwaiting2FA(true); setPassword(''); return; }
       onSignedIn(data.user);
     } catch {
@@ -338,7 +338,6 @@ export const LoginView = ({ onSignedIn, onShowLegal, notice = '' }) => {
 
   return (
     <div className="min-h-screen flex bg-white" style={{ fontFamily: F_BODY }}>
-      {/* ---------- Form half (centered) ---------- */}
       <div className="w-full lg:w-1/2 relative flex items-center justify-center px-6">
         <span
           className="absolute top-8 left-8 inline-flex items-center gap-2.5"
@@ -458,7 +457,6 @@ export const LoginView = ({ onSignedIn, onShowLegal, notice = '' }) => {
               className="absolute inset-y-0 right-0 flex items-center px-3"
               style={{ color: T.soft }}
             >
-              {/* Icon shows the STATE: hidden → covered eye; visible → open eye. */}
               {showPw ? <Eye size={16} /> : <EyeOff size={16} />}
             </button>
           </div>
@@ -473,9 +471,6 @@ export const LoginView = ({ onSignedIn, onShowLegal, notice = '' }) => {
             </div>
           )}
 
-          {/* Explicit consent the panel asked for. Ticked automatically on a
-              device that has accepted before, so it is a one-time step per
-              browser rather than a friction on every sign-in. */}
           <div className="flex items-start gap-2 mt-5 text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
             <input
               id="agree-terms"
@@ -516,7 +511,6 @@ export const LoginView = ({ onSignedIn, onShowLegal, notice = '' }) => {
         </div>
       </div>
 
-      {/* ---------- Crimson half (full-bleed, no white) ---------- */}
       <div className="hidden lg:block lg:w-1/2">
         <div className="relative w-full h-full overflow-hidden" style={{ backgroundColor: T.brand }}>
           {ART.map((t) => (

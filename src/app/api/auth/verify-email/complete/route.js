@@ -7,19 +7,12 @@ import {
 } from '@/lib/server/security/auth';
 import { isEmail } from '@/lib/email-format';
 
-// Step 2 of registering a recovery email. The email (and, from the first-time
-// gate, the new password) is saved ONLY here, and only once the emailed code
-// matches the address it was sent to. A mistyped or fake address can never be
-// registered because it could not have received the code.
 const MAX_ATTEMPTS = 5;
 const CODE_RE = /^\d{6}$/;
 
-// Must match verify-email/start: the address is bound into the hash, so a code
-// only validates for the exact email it was sent to.
 const hashFor = (code, email) => createHash('sha256').update(`${code}|${email}`).digest('hex');
 
 export async function POST(request) {
-  // Allowed on a temporary password, as in /start: this is where it is replaced.
   const auth = await requireUser({ allowPasswordChange: true });
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
@@ -36,13 +29,9 @@ export async function POST(request) {
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
     const code = typeof body.code === 'string' ? body.code.trim() : '';
 
-    // Re-check the password on this final call too, since the client re-sends it
-    // between the two steps rather than the server holding it.
     const ok = await verifyPassword(currentPassword, record.passwordHash);
     if (!ok) return NextResponse.json({ error: 'Current password is incorrect.' }, { status: 400 });
 
-    // Same rule as /start: a temporary password must be replaced here; otherwise
-    // only the email changes.
     const changingPassword = !!newPassword || record.mustChangePassword;
     if (changingPassword) {
       const problem = validatePassword(newPassword);
@@ -64,9 +53,6 @@ export async function POST(request) {
       return NextResponse.json({ error: 'No pending code. Send a new one and try again.' }, { status: 400 });
     }
 
-    // Count the attempt BEFORE comparing, in one conditional statement that
-    // also refuses a spent, expired or exhausted code, so parallel requests
-    // cannot each get a guess past the limit.
     const { count: allowed } = await prisma.passwordReset.updateMany({
       where: { id: pending.id, usedAt: null, attempts: { lt: MAX_ATTEMPTS }, expiresAt: { gt: new Date() } },
       data: { attempts: { increment: 1 } },
@@ -75,16 +61,12 @@ export async function POST(request) {
       return NextResponse.json({ error: 'That code has expired. Send a new one and try again.' }, { status: 400 });
     }
 
-    // Wrong code (or right code but a different email than it was issued for):
-    // the email-bound hash will not match.
     if (pending.codeHash !== hashFor(code, email)) {
       return NextResponse.json({ error: 'That code did not match. Try again.' }, { status: 400 });
     }
 
     const newHash = changingPassword ? await hashPassword(newPassword) : null;
 
-    // Spend the code first, and go on only if this request is the one that
-    // spent it.
     const { count: claimed } = await prisma.passwordReset.updateMany({
       where: { id: pending.id, usedAt: null },
       data: { usedAt: new Date() },
@@ -101,7 +83,6 @@ export async function POST(request) {
     });
 
     if (changingPassword) {
-      // Sign out every other device, then re-issue this one so the admin stays in.
       await destroyAllSessions(record.id);
       await createSession(record.id);
 

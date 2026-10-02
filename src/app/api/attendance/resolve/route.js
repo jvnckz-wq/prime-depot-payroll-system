@@ -9,13 +9,6 @@ const atTime = (dateStr, hhmm) => (hhmm ? new Date(`${dateStr}T${hhmm}:00.000Z`)
 const hhmm = (dt) => (dt ? new Date(dt).toISOString().slice(11, 16) : null);
 const dayStr = (d) => new Date(d).toISOString().slice(0, 10);
 
-/// POST /api/attendance/resolve
-/// Body: { biometricId }
-///
-/// Turns the stored unmapped scans for one biometric User ID into real
-/// Attendance for the employee now registered under that id — no re-upload
-/// needed. Rebuilds the full DTR for the import's period (present days from the
-/// logs, the rest absent), preserves manual edits, then marks the logs resolved.
 export async function POST(request) {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -39,8 +32,6 @@ export async function POST(request) {
     });
     if (!logs.length) return NextResponse.json({ error: 'Nothing left to resolve for this ID.' }, { status: 400 });
 
-    // Period: prefer the import batch's range so leading/trailing absences are
-    // included; fall back to the span of the logs themselves.
     const batch = logs.find((l) => l.importBatch?.periodStart && l.importBatch?.periodEnd)?.importBatch;
     let start, end;
     if (batch) {
@@ -57,7 +48,6 @@ export async function POST(request) {
 
     const punchByDate = new Map(logs.map((l) => [dayStr(l.date), { timeIn: hhmm(l.timeIn), timeOut: hhmm(l.timeOut) }]));
 
-    // Keep any manual corrections already made for this employee in the period.
     const manual = await prisma.attendance.findMany({
       where: { employeeId: emp.id, date: { gte: start, lte: end }, isManualEdit: true },
       select: { date: true },
@@ -85,8 +75,6 @@ export async function POST(request) {
       }
     }
 
-    // Atomic batch (pooler-safe): replace non-manual rows for the period, insert
-    // the rebuilt ones, and mark this ID's logs resolved.
     await withRetry(() => prismaBase.$transaction([
       prismaBase.attendance.deleteMany({
         where: { employeeId: emp.id, date: { gte: start, lte: end }, isManualEdit: false },

@@ -7,15 +7,11 @@ import {
   sssToDb, philhealthToDb, pagibigToDb, birToDb,
 } from '@/lib/server/services/statutory';
 
-// The active year is the most recent one present in the tables (the seed loads
-// the current year). Edits update that year in place.
 async function activeYear() {
   const latest = await prisma.philhealthConfig.findFirst({ orderBy: { effectiveYear: 'desc' } });
   return latest?.effectiveYear ?? new Date().getFullYear();
 }
 
-/// GET /api/statutory — the current year's SSS, PhilHealth, Pag-IBIG, and BIR
-/// tables, in the shape the Settings editor and the compute* functions expect.
 export async function GET() {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -41,8 +37,6 @@ export async function GET() {
   }
 }
 
-/// PUT /api/statutory — save one table for the active year.
-/// Body: { table: 'sss' | 'philhealth' | 'pagibig' | 'bir', data }
 export async function PUT(request) {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });

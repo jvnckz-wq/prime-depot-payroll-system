@@ -5,12 +5,6 @@ import {
 } from '@/lib/server/security/auth';
 import { totpStep } from '@/lib/server/security/twofactor';
 
-// Step two of moving two-factor to a new phone. The secret returned by /start
-// comes back here with a code the new app produced. Only if that code matches
-// the new secret does it replace the live one, in a single conditional update.
-// The accepted time step is recorded against the new secret, so the same code
-// cannot then be replayed at the sign-in prompt. Backup codes are unaffected;
-// they are independent of which authenticator is enrolled.
 export async function POST(request) {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -39,8 +33,6 @@ export async function POST(request) {
     }
     await releaseAttempt(key);
 
-    // Swap the secret only if two-factor is still on for the account, and record
-    // the step so this confirming code cannot be reused to sign in.
     const { count } = await prisma.user.updateMany({
       where: { id: auth.user.id, totpEnabled: true },
       data: { totpSecret: secret, totpLastStep: step },

@@ -3,9 +3,6 @@ import { prisma } from '@/lib/server/db/prisma';
 import { destroyAllSessions, getCurrentUser, logSecurityEvent, requireUser } from '@/lib/server/security/auth';
 import { MAX_AVATAR_BYTES, hasImageMagic, maxBase64Length } from '@/lib/server/security/uploads';
 
-// Called once when the app loads, so a page refresh doesn't sign anyone out.
-// Returns null rather than a 401 — "nobody is signed in" is a normal answer
-// here, not an error.
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ user: null });
@@ -27,16 +24,6 @@ export async function GET() {
   });
 }
 
-/// PATCH /api/auth/me — edit your own profile.
-///
-/// Only the display name and picture are editable. The username is the login
-/// identity and is attached to every delivery this account has logged; letting
-/// it change would quietly rewrite who did what.
-///
-/// The recovery email is deliberately NOT editable here. A password-reset code
-/// goes to that address, so changing it would hand the account to whoever
-/// controls the new inbox. It changes only through /api/auth/verify-email,
-/// which asks for the current password and a code sent to the new address.
 export async function PATCH(request) {
   const auth = await requireUser();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -69,11 +56,8 @@ export async function PATCH(request) {
     if ('avatar' in body) {
       const avatar = body.avatar;
       if (avatar === null) {
-        data.avatar = null; // removing the picture
+        data.avatar = null;
       } else if (typeof avatar === 'string') {
-        // Only real images, and only small ones. The browser resizes to 128px
-        // before sending; this is the backstop for anything that skips that
-        // step, since nothing stops a caller posting straight to the endpoint.
         const match = /^data:image\/(png|jpeg|webp);base64,(.*)$/s.exec(avatar);
         if (!match) {
           return NextResponse.json({ error: 'Profile picture must be a PNG, JPEG, or WebP image.' }, { status: 400 });
@@ -81,10 +65,6 @@ export async function PATCH(request) {
         if (avatar.length > maxBase64Length(MAX_AVATAR_BYTES)) {
           return NextResponse.json({ error: 'Profile picture is too large. Choose a smaller image.' }, { status: 413 });
         }
-        // The declared MIME type is just a string in the data URL — a caller
-        // that skips the browser can label anything `image/png`. Check the
-        // first bytes actually carry that format's signature, so what gets
-        // stored is a real image rather than 150KB of whatever.
         if (!hasImageMagic(match[1], match[2])) {
           return NextResponse.json({ error: 'That file is not a valid PNG, JPEG, or WebP image.' }, { status: 400 });
         }
@@ -109,11 +89,6 @@ export async function PATCH(request) {
   }
 }
 
-/// DELETE /api/auth/me — sign out everywhere, this device included.
-///
-/// Signing out only *other* devices would need this session to be identified
-/// and spared; ending all of them is simpler to reason about and leaves no
-/// doubt about what happened. The user lands back on the sign-in screen.
 export async function DELETE() {
   const auth = await requireUser();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });

@@ -6,16 +6,6 @@ import { todayYmdManila } from '@/lib/loan-rules';
 
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
 
-/// PATCH /api/deliveries/:id — { action: 'void' | 'unvoid', reason }
-///
-/// Voiding replaces deletion. The rules were set with the client:
-///
-///   * A Checker may correct only TODAY's trips. Yesterday is already part of
-///     a payroll figure someone may have looked at, so it stops being theirs
-///     to change.
-///   * The Operations Head may correct anything, including a released cutoff —
-///     but the response says so plainly, because that means a payslip already
-///     handed out no longer matches the record behind it.
 export async function PATCH(request, { params }) {
   const auth = await requireUser();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -32,8 +22,6 @@ export async function PATCH(request, { params }) {
     if (!delivery) return NextResponse.json({ error: 'Delivery not found.' }, { status: 404 });
 
     const isAdmin = auth.user.role === 'ADMIN';
-    // "Today" in Manila, the same day the trip was filed under (see POST). A UTC
-    // today used to lock a Checker out of this morning's trips until 8 AM.
     const isToday = ymd(delivery.date) === todayYmdManila();
 
     if (!isAdmin && !isToday) {
@@ -43,7 +31,6 @@ export async function PATCH(request, { params }) {
       );
     }
 
-    // Was this delivery inside a cutoff that has already been released?
     const period = await prisma.payrollPeriod.findFirst({
       where: { startDate: { lte: delivery.date }, endDate: { gte: delivery.date } },
       select: { label: true, isReleased: true },
@@ -82,7 +69,6 @@ export async function PATCH(request, { params }) {
 
       return NextResponse.json({
         ok: true,
-        // Surfaced so the UI can warn rather than silently rewrite history.
         warning: released
           ? `${period.label} was already released — the payslip issued for this cutoff no longer matches the record. Make the adjustment on the next cutoff.`
           : null,
@@ -90,8 +76,6 @@ export async function PATCH(request, { params }) {
     }
 
     if (action === 'unvoid') {
-      // Restoring is Operations Head only. Letting a Checker un-void would
-      // undo the visibility the whole arrangement depends on.
       if (!isAdmin) {
         return NextResponse.json({ error: 'Only the Operations Head can restore a voided delivery.' }, { status: 403 });
       }
@@ -115,9 +99,6 @@ export async function PATCH(request, { params }) {
     }
 
     if (action === 'setDouble') {
-      // Re-pricing a logged trip is Operations Head only. Checkers correct a
-      // wrong trip by voiding and re-entering it; this is the admin's one-tap
-      // fix before a cutoff is closed.
       if (!isAdmin) {
         return NextResponse.json({ error: "Only the Operations Head can change a trip's double rate." }, { status: 403 });
       }
@@ -131,8 +112,6 @@ export async function PATCH(request, { params }) {
         select: { isDouble: true, items: { select: { id: true, quantity: true, rateItemId: true } } },
       });
 
-      // A line whose rate item was removed cannot be re-priced cleanly, so send
-      // the admin to void + re-enter for that rare case rather than guess.
       const rateIds = [...new Set(full.items.map((i) => i.rateItemId).filter(Boolean))];
       const rateItems = rateIds.length
         ? await prisma.rateItem.findMany({
@@ -154,9 +133,6 @@ export async function PATCH(request, { params }) {
       for (const i of full.items) {
         const r = rateById.get(i.rateItemId);
         const q = Number(i.quantity);
-        // Byte-for-byte the same computation the entry form uses (+(x).toFixed(2)),
-        // so a toggle re-prices a trip exactly as if it were entered now at the
-        // current rate table, with no one-centavo rounding drift.
         const newD = +(q * Number(want ? r.driverRateDouble : r.driverRate)).toFixed(2);
         const newH = +(q * Number(want ? r.helperRateDouble : r.helperRate)).toFixed(2);
         afterD += newD; afterH += newH;
@@ -173,8 +149,6 @@ export async function PATCH(request, { params }) {
         from: full.isDouble, to: want,
       };
 
-      // Preview mode computes and reports, changing nothing, so the confirmation
-      // can show the before and after amounts.
       if (preview) {
         return NextResponse.json({ ok: true, preview: true, unchanged: full.isDouble === want, ...summary });
       }
@@ -182,8 +156,6 @@ export async function PATCH(request, { params }) {
         return NextResponse.json({ ok: true, unchanged: true, ...summary });
       }
 
-      // One batch (non-interactive) transaction: the flag and every line move
-      // together, so the flag and the money can never disagree.
       await withRetry(() => prismaBase.$transaction([
         prismaBase.delivery.update({ where: { id }, data: { isDouble: want } }),
         ...lineUpdates.map((u) => prismaBase.deliveryItem.update({ where: { id: u.id }, data: u.data })),

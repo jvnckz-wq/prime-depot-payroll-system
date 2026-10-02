@@ -2,13 +2,10 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin, requireUser } from '@/lib/server/security/auth';
 
-// A truck is a vehicle and nothing else. Crew belongs to each delivery.
 const shape = (t) => ({
   id: t.id, vehicle: t.vehicle, plate: t.plateNumber, isActive: t.isActive,
 });
 
-// Any signed-in user needs the fleet list — a Checker cannot log a delivery
-// without knowing which trucks exist.
 export async function GET() {
   const auth = await requireUser();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -17,7 +14,6 @@ export async function GET() {
   return NextResponse.json({ trucks: trucks.map(shape) });
 }
 
-// Adding a truck to the fleet is an Operations Head action.
 export async function POST(request) {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });

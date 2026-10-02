@@ -243,7 +243,6 @@ export const AccountsPanel = ({ currentUser, toast, onGoToEmployees }) => {
         })}
       </div>
 
-      {/* Create account */}
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Create Account" width={420}>
         {checkers.length === 0 ? (
           <NoCheckers onGoToEmployees={onGoToEmployees} />
@@ -296,7 +295,6 @@ export const AccountsPanel = ({ currentUser, toast, onGoToEmployees }) => {
         </div>
       </Modal>
 
-      {/* Temporary password handover, shown once, never retrievable again */}
       <Modal open={!!handover} onClose={() => setHandover(null)}
         title={handover?.isReset ? 'Password reset' : 'Account created'} width={420}>
         {handover && (

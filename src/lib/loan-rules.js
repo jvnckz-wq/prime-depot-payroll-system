@@ -178,8 +178,6 @@ export function planDeductions(loans, { crew = false, runKey, endYmd = null, ava
   const availOf = (id) => (available instanceof Map ? available.get(id) : available[id]);
   const group = (loans || []).filter((l) => !!l.isCrew === !!crew);
 
-  // Money this run already took from each person (an earlier Apply, then a new
-  // advance before Finalize): it has left their pay, so it is not available.
   const takenAlready = new Map();
   for (const l of group) {
     const t = (l.entries || []).filter((e) => e.type === 'deduction' && e.payslipId === key).reduce((s, e) => s + (Number(e.amount) || 0), 0);

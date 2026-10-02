@@ -5,10 +5,6 @@ import { hashPassword, logSecurityEvent, requireAdmin } from '@/lib/server/secur
 import { POSITION_LABEL } from '@/lib/server/services/employees';
 import { checkerLinkProblem } from '@/lib/checker-accounts';
 
-// Account management is restricted to the Operations Head. Per the client's
-// requirement there is no public registration anywhere in this system — every
-// account is created here, by hand.
-
 export async function GET() {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -16,8 +12,6 @@ export async function GET() {
   const [users, checkers] = await Promise.all([
     prisma.user.findMany({
       orderBy: [{ role: 'asc' }, { username: 'asc' }],
-      // passwordHash is deliberately not selected. There is no reason for a hash
-      // to travel to the browser, so it never leaves this file's query.
       select: {
         id: true, username: true, displayName: true, role: true,
         isActive: true, mustChangePassword: true, lastLoginAt: true, createdAt: true,
@@ -42,9 +36,6 @@ export async function GET() {
   });
 }
 
-/// Readable temporary password — the admin has to say this out loud to the
-/// checker, so it avoids characters that are ambiguous when spoken or written
-/// (no O/0, no l/1/I).
 function generateTempPassword() {
   const letters = 'abcdefghjkmnpqrstuvwxyz';
   const digits = '23456789';
@@ -60,15 +51,8 @@ export async function POST(request) {
   try {
     const body = await request.json();
 
-    // Fields are picked one by one rather than spreading the request body into
-    // Prisma. Spreading would let a caller set anything the model happens to
-    // have — including role — regardless of what this endpoint intends.
     const username = typeof body.username === 'string' ? body.username.trim().toLowerCase() : '';
     const employeeId = typeof body.employeeId === 'string' ? body.employeeId.trim() : '';
-    // Only Checker accounts are created here. There is exactly one Operations
-    // Head by design, so this refuses to mint a second admin even if the body
-    // asks for one. The UI no longer offers the choice; this is the check that
-    // actually holds it, so the API cannot be driven directly to bypass it.
     if (body.role === 'ADMIN') {
       return NextResponse.json(
         { error: 'Only Checker accounts can be created. There is one Operations Head by design.' },
@@ -118,9 +102,6 @@ export async function POST(request) {
       detail: `Created ${user.role} account "${user.username}" for employee ${employee.id} (${employee.name}).`,
     });
 
-    // The temporary password is returned exactly once, here, for the admin to
-    // hand over. It is not stored anywhere in readable form and cannot be
-    // retrieved again — a forgotten one has to be reset, not looked up.
     return NextResponse.json({ user, tempPassword });
   } catch (err) {
     if (err?.code === 'P2002') {

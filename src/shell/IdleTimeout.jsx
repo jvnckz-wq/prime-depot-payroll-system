@@ -21,7 +21,7 @@ export function IdleTimeout({ enabled, onExit }) {
 
     const onIdle = async () => {
       setExpired(true);
-      try { await fetch('/api/auth/logout', { method: 'POST' }); } catch { /* sign out locally regardless */ }
+      try { await fetch('/api/auth/logout', { method: 'POST' }); } catch { }
     };
 
     const arm = () => {

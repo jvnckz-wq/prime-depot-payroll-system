@@ -5,34 +5,15 @@ import {
 } from '@/lib/server/security/auth';
 import { isActiveChecker } from '@/lib/checker-accounts';
 
-// Rate limiting: 5 failed attempts per (IP + username) per 15 minutes.
-//
-// Keying on the source IP as well as the username matters: if we throttled by
-// username alone, anyone could lock a known user out for 15 minutes just by
-// spamming wrong passwords for their name. With a single Operations Head
-// account that is a remote off switch for the whole business. Pairing it with
-// the IP means a guesser only throttles themselves, while the real user (on a
-// different IP) can still sign in.
-//
-// The counter lives in the database. It used to be a Map in this module's
-// scope, which reset on every server restart and gave each serverless instance
-// its own private tally — so on a platform that recycles instances constantly,
-// an attacker rarely met the same counter twice. That version looked like a
-// throttle without being one.
 const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000;
 
-// Best-effort client IP behind Vercel's proxy. x-forwarded-for is a list, with
-// the original client first; fall back to x-real-ip, then a constant so the
-// limiter still works (just coarser) if neither header is present.
 function clientIp(request) {
   const xff = request.headers.get('x-forwarded-for');
   if (xff) return xff.split(',')[0].trim();
   return request.headers.get('x-real-ip') || 'unknown';
 }
 
-/// Drop windows that have already expired. Called after a successful sign-in —
-/// rare enough to be free, frequent enough that the table never accumulates.
 async function sweepExpired() {
   await prisma.loginAttempt
     .deleteMany({ where: { firstAt: { lt: new Date(Date.now() - WINDOW_MS) } } })
@@ -50,7 +31,6 @@ export async function POST(request) {
     }
 
     const ip = clientIp(request);
-    // Throttle per source IP and username together, not by username alone.
     const key = `${ip}|${username}`;
 
     if (!(await reserveAttempt(key, { max: MAX_ATTEMPTS, windowMs: WINDOW_MS }))) {
@@ -66,19 +46,11 @@ export async function POST(request) {
       include: { employee: { select: { status: true, position: true } } },
     });
 
-    // One message for every failure mode — wrong username, wrong password,
-    // disabled account. Saying "no such user" would let someone probe for
-    // valid usernames one guess at a time.
     const reject = async () => {
       await logSecurityEvent('LOGIN_FAILURE', { actorId: user?.id ?? null, actorLabel: username, ip });
       return NextResponse.json({ error: 'Incorrect username or password.' }, { status: 401 });
     };
 
-    // A missing or disabled account still pays for a bcrypt comparison, against
-    // a hash no password matches. Skipping it would make these rejections
-    // measurably faster than a wrong-password rejection, and that timing
-    // difference enumerates usernames just as effectively as a distinct error
-    // message would — undoing the point of the shared message above.
     if (!user || !user.isActive || (user.employeeId && !isActiveChecker(user.employee))) {
       await burnPasswordComparison(password);
       return reject();
@@ -90,9 +62,6 @@ export async function POST(request) {
     await prisma.loginAttempt.deleteMany({ where: { key } });
     await sweepExpired();
 
-    // Password is correct. If 2FA is on, do NOT grant a usable session yet:
-    // issue a short-lived pending one and make the client finish at
-    // /api/auth/2fa. Until then getCurrentUser treats the session as signed out.
     if (user.totpEnabled) {
       await createSession(user.id, { pendingTwoFactor: true });
       await logSecurityEvent('LOGIN_2FA_PENDING', {
@@ -124,10 +93,7 @@ export async function POST(request) {
         avatar: user.avatar,
         role: user.role,
         mustChangePassword: user.mustChangePassword,
-        // Carried so the app knows whether a recovery email is on file without a
-        // page reload — the Settings field and the gate both read user.email.
         email: user.email,
-        // Drives the enforced 2FA-setup gate for an admin who has not set it up.
         totpEnabled: user.totpEnabled,
       },
     });

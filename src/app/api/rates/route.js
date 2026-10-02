@@ -10,10 +10,6 @@ const shape = (r) => ({
   isActive: r.isActive,
 });
 
-/// The crew rate card is a single row with a known id. Reading it through this
-/// helper (rather than inlining findUnique everywhere) keeps the "what if the
-/// row is missing" answer in one place — a fresh database that has not run the
-/// seed still has to render something sane rather than paying everybody zero.
 const CREW_RATE_DEFAULTS = { driverDaily: 280, helperDaily: 240, bonusHead: 100, bonusTrips: 5, dailyContribution: null, minimumDailyWage: null };
 
 const shapeCrewRates = (r) => (r
@@ -27,10 +23,6 @@ const shapeCrewRates = (r) => (r
   }
   : { ...CREW_RATE_DEFAULTS });
 
-// Checkers need the rate table to log a delivery — the form shows what each
-// trip is worth as it is entered. They can read it; only the Operations Head
-// can change it. The crew rate card rides along in the same response because
-// every screen that needs one needs the other.
 export async function GET() {
   const auth = await requireUser();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -43,11 +35,6 @@ export async function GET() {
   return NextResponse.json({ rates: rates.map(shape), crewRates: shapeCrewRates(crew) });
 }
 
-/// PATCH /api/rates — edit the crew rate card (daily minimums and the bonus).
-///
-/// Separate from POST, which adds a piece-rate item. These four numbers used to
-/// be constants compiled into the browser bundle; they are money, so they live
-/// in the database and change through an audited admin action.
 export async function PATCH(request) {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -55,9 +42,6 @@ export async function PATCH(request) {
   try {
     const body = await request.json();
 
-    // Bounded on both ends. A negative daily rate is nonsense, and an
-    // accidental extra zero on a pay rate is the kind of typo worth catching
-    // here rather than discovering on a payslip.
     const money = (value, label, max) => {
       const n = Number(value);
       if (!Number.isFinite(n) || n < 0) return { error: `${label} must be zero or more.` };
@@ -157,7 +141,6 @@ export async function POST(request) {
       data: {
         itemName, unit,
         driverRate: rate(body.driverRate), helperRate: rate(body.helperRate),
-        // Double-rate areas pay twice the standard rate unless told otherwise.
         driverRateDouble: body.driverRateDouble != null ? rate(body.driverRateDouble) : rate(body.driverRate) * 2,
         helperRateDouble: body.helperRateDouble != null ? rate(body.helperRateDouble) : rate(body.helperRate) * 2,
       },

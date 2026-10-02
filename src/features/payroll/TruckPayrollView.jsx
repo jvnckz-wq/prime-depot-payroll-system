@@ -327,8 +327,6 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
               <Eyebrow>Delivery Manifest</Eyebrow>
-              {/* Truck first, then whoever actually drove it. No assigned crew
-                  is named, because there is none. */}
               <div className="text-xl font-bold" style={{ fontFamily: F_HEAD, color: T.ink }}>
                 {crew.id}
                 {driversWorked.length > 0 && <span style={{ color: T.soft, fontWeight: 400 }}> — {driversWorked.join(' / ')}</span>}
@@ -395,10 +393,6 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                 </tbody>
               </table>
             </div>
-            {/* Totals are per PERSON, not per column. The three columns above
-                are slots that different people occupy on different trips, so a
-                column total would be two people's money added together and
-                payable to neither. */}
             <div className="px-4 py-3" style={{ borderTop: `1px dashed ${T.line}`, backgroundColor: T.bg }}>
               <Eyebrow>Payable — per person</Eyebrow>
               <div className="mt-2 overflow-x-auto">
@@ -452,7 +446,6 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
               <Btn variant="outline" size="sm" onClick={() => window.print()}>Print truck payslip</Btn>
             </div>
 
-            {/* ===== Truck payslip — matches the client's TRUCK_PAYROLL sheet ===== */}
             <div id="truck-payslip">
               <Panel className="overflow-hidden">
                 <div className="px-6 py-5 flex items-center gap-3" style={{ backgroundColor: T.ink }}>
@@ -494,8 +487,6 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                   </table>
                 </div>
 
-                {/* Day totals — Driver / Pahinante (combined), like the sheet. The
-                    per-helper split is on each pahinante's own slip below. */}
                 <div className="px-6 py-4" style={{ borderTop: `1px dashed ${T.line}`, backgroundColor: T.bg }}>
                   <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full" style={{ fontFamily: F_MONO, fontSize: 13 }}>
                     <thead>
@@ -665,7 +656,6 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
             : <Btn onClick={() => setLogOpen(true)}>Log Delivery</Btn>}
         </div>}>{payslipsMode ? 'Crew Payroll — Piece-rate' : 'Deliveries — Piece-rate'}</H1>
 
-      {/* Which day are we looking at — today (live) or a past day from history */}
       <div className="flex items-center flex-wrap gap-2 mb-5">
         <span className="text-xs" style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.04em' }}>VIEWING</span>
         {readOnly && <Badge tone="amber">History · {viewDate}</Badge>}
@@ -701,11 +691,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
             <tr key={i}>
               <Td>{editingRates ? <input value={r.cat} onChange={e => setRatesDraft(p => p.map((x, j) => j === i ? { ...x, cat: e.target.value } : x))} className="px-2 py-1 rounded border text-xs w-full" style={{ borderColor: T.line, fontFamily: F_BODY }} /> : r.cat}</Td>
               <Td>{r.unit}</Td>
-              {/* Single rate — editing it re-derives the double (×2) UNLESS the
-                  row is in Custom mode, where the double is left untouched. */}
               {[0, 1].map(k => <Td right mono key={'s' + k}>{editingRates ? <input type="number" value={r.s[k]} onChange={e => { const nv = parseFloat(e.target.value) || 0; setRatesDraft(p => p.map((x, j) => j === i ? { ...x, s: x.s.map((v, vi) => vi === k ? nv : v), d: x._custom ? x.d : x.d.map((v, vi) => vi === k ? round2(nv * 2) : v) } : x)); }} className="px-2 py-1 rounded border text-xs w-16 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} /> : peso(r.s[k])}</Td>)}
-              {/* Double rate — locked to single×2 (greyed, read-only) unless the
-                  row is Custom, then it becomes a hand-editable field. */}
               {[0, 1].map(k => <Td right mono key={'d' + k}>{
                 editingRates
                   ? (r._custom
@@ -741,8 +727,6 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
       </Panel>
       )}
 
-      {/* ===== Per-person payslips — standalone: one full slip per person for the
-              whole day, across every truck. Tap to open and print. ===== */}
       {payslipsMode && dayPeople.length > 0 && (
         <div className="mb-5">
           <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -817,7 +801,6 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
       </Modal>
       </>)}
 
-      {/* Individual payslip — the full day for one person, across every truck */}
       <Modal open={!!slipPerson} onClose={() => setSlipPerson(null)} title={`Payslip — ${slipPerson?.name || ''}`} width={600}>
         {slipPerson && (() => {
           const p = slipPerson;

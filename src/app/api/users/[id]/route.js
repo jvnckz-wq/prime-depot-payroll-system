@@ -12,7 +12,6 @@ function generateTempPassword() {
   return `pd-${pick(letters, 4)}${pick(digits, 4)}`;
 }
 
-/// PATCH /api/users/:id — { action: 'disable' | 'enable' | 'reset-password' | 'link', employeeId? }
 export async function PATCH(request, { params }) {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -29,12 +28,9 @@ export async function PATCH(request, { params }) {
     if (!target) return NextResponse.json({ error: 'Account not found.' }, { status: 404 });
 
     if (action === 'disable') {
-      // Locking yourself out would leave the system with no way back in, since
-      // only an admin can re-enable an account.
       if (target.id === auth.user.id) {
         return NextResponse.json({ error: 'You cannot disable your own account.' }, { status: 400 });
       }
-      // The same guard for the last remaining admin.
       if (target.role === 'ADMIN') {
         const activeAdmins = await prisma.user.count({ where: { role: 'ADMIN', isActive: true } });
         if (activeAdmins <= 1) {
@@ -43,8 +39,6 @@ export async function PATCH(request, { params }) {
       }
 
       await prisma.user.update({ where: { id }, data: { isActive: false } });
-      // Disabling has to take effect now, not at the next expiry — so every
-      // session this account holds is destroyed immediately.
       await destroyAllSessions(id);
 
       await logSecurityEvent('ACCOUNT_DISABLED', {
@@ -85,7 +79,6 @@ export async function PATCH(request, { params }) {
         where: { id },
         data: { passwordHash: await hashPassword(tempPassword), mustChangePassword: true },
       });
-      // Any session opened with the old password stops working.
       await destroyAllSessions(id);
 
       await logSecurityEvent('PASSWORD_RESET', {
@@ -93,9 +86,6 @@ export async function PATCH(request, { params }) {
         actorLabel: auth.user.username,
         targetType: 'user',
         targetId: id,
-        // The temporary password itself is deliberately NOT recorded. An audit
-        // trail that contains working credentials is a second place to steal
-        // them from.
         detail: `Issued a temporary password for "${target.username}" and revoked its sessions.`,
       });
 

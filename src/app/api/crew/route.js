@@ -2,17 +2,6 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireUser } from '@/lib/server/security/auth';
 
-/// GET /api/crew — drivers and pahinante, names only.
-///
-/// A Checker cannot open employee records, and should not: those carry
-/// salaries, addresses, contact numbers, and birthdates. But logging a
-/// delivery is impossible without knowing who is on the truck, so this
-/// endpoint exists to hand over exactly that and nothing else — an id and a
-/// name per crew member.
-///
-/// Keeping it separate from /api/employees is the point. Widening that
-/// endpoint's audience would have been one line and would have quietly handed
-/// every checker the payroll of every employee.
 export async function GET() {
   const auth = await requireUser();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });

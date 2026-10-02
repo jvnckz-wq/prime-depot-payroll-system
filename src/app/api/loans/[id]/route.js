@@ -8,14 +8,6 @@ const balanceOf = (entries) =>
   entries.reduce((b, e) => (e.type === 'GRANT' ? b + Number(e.amount) : b - Number(e.amount)), 0);
 const money = (v) => Math.round(Number(v) * 100) / 100;
 
-/// PATCH /api/loans/:id
-///  - { isPaused: true|false }  → pause or resume deductions (the loan stays).
-///                                Loans only; a cash advance cannot be paused.
-///  - { topUp: { amount, date?, perCutoff? } } → add money to an active loan.
-///  - { settle: true }          → clear the remaining balance with one final
-///                                deduction and lock the loan as fully paid.
-///                                No longer on the Loans page (loans close by
-///                                themselves at zero); kept for corrections.
 export async function PATCH(request, { params }) {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -38,9 +30,6 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ loan: shapeLoan(loan) });
     }
 
-    // Top-up: more money on the same loan, so there is still one balance and
-    // one installment (the one-active-loan rule). Written as a single update
-    // with a nested ledger entry, which the database applies atomically.
     if (body.topUp) {
       if (existing.type !== 'LOAN') return NextResponse.json({ error: 'Only a loan can be topped up. Record a new cash advance instead.' }, { status: 400 });
       const balance = balanceOf(existing.entries);
@@ -68,7 +57,6 @@ export async function PATCH(request, { params }) {
 
     const data = {};
     if (typeof body.isPaused === 'boolean') {
-      // A cash advance is taken in full on its cutoff; it cannot be put off.
       if (existing.type === 'CASH_ADVANCE' && body.isPaused) {
         return NextResponse.json({ error: 'A cash advance cannot be paused. It is deducted in full on its cutoff.' }, { status: 400 });
       }

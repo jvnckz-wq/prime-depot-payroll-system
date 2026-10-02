@@ -95,9 +95,6 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
             desc={rows.length ? 'Try another name or filter.' : 'Loans that are fully paid are in History.'} />
         ) : (
           <>
-          {/* Phone: one card per loan with the money in view (balance, next
-              deduction, status). Tap the card for its ledger; the action
-              buttons are separate so a tap on the card never pauses or tops up. */}
           <div className="md:hidden">
             {shown.map(({ l, balance, due, carry, status, nextEnd, left }) => {
               const expanded = openId === l.id;

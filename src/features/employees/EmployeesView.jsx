@@ -19,7 +19,7 @@ const BLANK_EMP = {
 export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillConsumed, minimumDailyWage = null }) => {
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState('active');
-  const [typeFilter, setTypeFilter] = useState('all'); // all | staff | crew — a separate axis from status
+  const [typeFilter, setTypeFilter] = useState('all');
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [finalPayFor, setFinalPayFor] = useState(null);
@@ -191,7 +191,6 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
         </div>
       </div>
 
-      {/* Desktop: full table */}
       <Panel className="overflow-hidden hidden md:block">
         <div className="overflow-x-auto overflow-y-auto pd-scroll-shadow" style={{ maxHeight: 520 }}>
           <table className="w-full">
@@ -228,7 +227,6 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
         </div>
       </Panel>
 
-      {/* Mobile: cards (same `rows` data, same handlers) */}
       <div className="md:hidden space-y-2.5">
         {rows.map(r => {
           const crew = typeof r.daily === 'boolean' ? r.daily : isDailyPosition(r.position);
@@ -331,10 +329,6 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
             </div>
           )}
 
-          {/* Early shift. Modelled here, on the person, rather than as a job
-              title — the same staff member can be early on Saturdays and
-              normal the rest of the week. Left blank means no early
-              requirement at all. */}
           {!isNonRegularPosition(form.position) && (
           <div className="p-3 rounded" style={{ backgroundColor: T.bg }}>
             <Eyebrow>Early Shift</Eyebrow>

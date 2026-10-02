@@ -171,7 +171,6 @@ export const CashAdvancesPage = ({ staff, loans, reloadLoans, statutory, period:
           <EmptyState title={`No cash advances for ${periodLabel(period)}`} desc="Advances given in this cutoff are deducted in full on its payroll." />
         ) : (
           <>
-          {/* Phone: one card per advance (who, when, how much, status). */}
           <div className="md:hidden">
             {inCutoff.map((l) => {
               const bal = balanceOf(l);

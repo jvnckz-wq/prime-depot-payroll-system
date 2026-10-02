@@ -18,7 +18,7 @@ const dateFmt = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit',
 });
 const manilaHHMM = (d) => hhmmFmt.format(d);
-const manilaDate = (d) => dateFmt.format(d); // YYYY-MM-DD
+const manilaDate = (d) => dateFmt.format(d);
 
 function readEnv(file) {
   const out = {};
@@ -36,7 +36,6 @@ function readEnv(file) {
       out[key] = val;
     }
   } catch {
-    // No .env is fine for a dry run; live mode checks for the token below.
   }
   return out;
 }
@@ -143,7 +142,7 @@ async function handlePull(req, stamp) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
         body: JSON.stringify({ requestId: req.id, failed: true, error: `Could not read the device: ${e.message}` }),
       });
-    } catch { /* ignore */ }
+    } catch { }
   }
 }
 

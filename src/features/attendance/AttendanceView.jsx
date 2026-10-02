@@ -56,13 +56,13 @@ export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
   const [subTab, setSubTab] = useState(navSub || 'live');
   const [data, setData] = useState({ period: null, summaries: [], unmappedCount: 0, batches: [] });
   const [loading, setLoading] = useState(true);
-  const [liveDate, setLiveDate] = useState(null); // null = today (live); 'YYYY-MM-DD' = a past day
+  const [liveDate, setLiveDate] = useState(null);
   const [liveData, setLiveData] = useState({ date: null, today: null, isToday: true, rows: [], stats: { present: 0, late: 0, notYetIn: 0 }, sync: { status: 'offline', lastSyncAt: null, lastScanAt: null } });
   const [liveLoading, setLiveLoading] = useState(true);
   const [pullReq, setPullReq] = useState(null);
   const [pullBusy, setPullBusy] = useState(false);
   const [pullError, setPullError] = useState(null);
-  const [pullSel, setPullSel] = useState(() => recentCutoffs(manilaTodayStr(), 2)[1]); // default: most recently ended cutoff
+  const [pullSel, setPullSel] = useState(() => recentCutoffs(manilaTodayStr(), 2)[1]);
   const [pullDevice, setPullDevice] = useState({ status: 'offline' });
   const [, setAgoTick] = useState(0);
   const [dtr, setDtr] = useState({ period: null, rows: [] });
@@ -111,7 +111,7 @@ export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
     try {
       const r = await fetch('/api/attendance/pull-request');
       if (r.ok) { const j = await r.json(); setPullReq(j.request); if (j.device) setPullDevice(j.device); }
-    } catch { /* ignore */ }
+    } catch { }
   };
   const queuePull = async () => {
     setPullBusy(true); setPullError(null);
@@ -144,7 +144,7 @@ export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
         setPullReq(j.request);
         if (j.device) setPullDevice(j.device);
         if (j.request && j.request.status === 'DONE') load({ silent: true });
-      } catch { /* ignore */ }
+      } catch { }
     }, 3000);
     return () => clearInterval(id);
   }, [pullReq?.status]);
@@ -397,7 +397,6 @@ export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
           )}
         </Panel>
 
-        {/* Per-day correction — recomputes tardiness and flags the row EDITED */}
         <Modal open={!!editDay} onClose={() => setEditDay(null)} title={`Correct ${editDay ? `${name} — ${editDay.date}` : ''}`} width={440}>
           {editDay && (
             <div className="space-y-3">
@@ -719,8 +718,6 @@ export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
         </Panel>
       )}
 
-      {/* Read-only look-back at a past import. Locked — corrections happen on the
-          live DTR, never here, so historical figures stay exactly as recorded. */}
       <Modal open={!!viewBatch} onClose={() => setViewBatch(null)} title={viewBatch ? `Import — ${viewBatch.filename}` : ''} width={680}>
         {viewBatch && (
           <div className="space-y-3">
@@ -759,7 +756,6 @@ export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
         )}
       </Modal>
 
-      {/* Locked DTR drill-down — read-only day-by-day for a past import. */}
       <Modal open={!!histDtr} onClose={() => setHistDtr(null)} title={histDtr ? `DTR — ${histDtr.name}` : ''} width={640}>
         {histDtr && (
           <div className="space-y-3">

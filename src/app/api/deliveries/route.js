@@ -33,8 +33,6 @@ function shape(d) {
     })),
     loggedBy: d.loggedBy?.displayName ?? null,
     loggedAt: d.createdAt ? d.createdAt.toISOString() : null,
-    // Void metadata travels with the row so the UI can strike it through and
-    // name who corrected it, rather than the trip simply vanishing.
     voided: !!d.voidedAt,
     voidedAt: d.voidedAt ? d.voidedAt.toISOString() : null,
     voidedBy: d.voidedBy?.displayName ?? null,
@@ -84,9 +82,6 @@ export async function POST(request) {
   try {
     const body = await request.json();
 
-    // Server-side validation. The delivery form checks these too, but that
-    // check runs in the browser and can be bypassed — this is the one that
-    // actually protects the payroll figures.
     const truckId = typeof body.truckId === 'string' ? body.truckId.trim() : '';
     const driverId = typeof body.driverId === 'string' ? body.driverId.trim() : '';
     const address = typeof body.address === 'string' ? body.address.trim() : '';
@@ -95,16 +90,6 @@ export async function POST(request) {
     if (!driverId) return NextResponse.json({ error: 'Select a driver.' }, { status: 400 });
     if (!address) return NextResponse.json({ error: 'Delivery address is required.' }, { status: 400 });
 
-    // The day a trip belongs to is the PHILIPPINE calendar day. The server runs
-    // in UTC, so a plain new Date() still said "yesterday" until 8 AM Manila
-    // time, and every trip logged from 6:30 to 8:00 AM was filed (trip number
-    // and crew pay included) under the day before.
-    //
-    // The form sends no date: a trip is logged the day it happens. A date sent
-    // straight to the API is checked here, because that is the check that
-    // cannot be skipped: never a future day, and a Checker only today (the same
-    // rule as voiding). The Operations Head may still file a missed trip on an
-    // earlier day.
     const today = todayYmdManila();
     let dayYmd = today;
     if (body.date != null && body.date !== '') {
@@ -137,10 +122,6 @@ export async function POST(request) {
 
     const day = new Date(`${dayYmd}T00:00:00.000Z`);
 
-    // The next trip number for that truck on that day. Two checkers logging at
-    // the same moment can both read the same number, which is why the database
-    // holds a unique constraint on (truck, date, sequence) — the retry below
-    // handles the loser of that race instead of letting it fail.
     const attempt = async () => {
       const last = await prisma.delivery.findFirst({
         where: { truckId, date: day },
@@ -179,8 +160,6 @@ export async function POST(request) {
         delivery = await attempt();
         break;
       } catch (e) {
-        // P2002 = unique constraint violation, i.e. someone took that trip
-        // number first. Read the latest number again and retry.
         if (e?.code !== 'P2002' || tries === 3) throw e;
       }
     }

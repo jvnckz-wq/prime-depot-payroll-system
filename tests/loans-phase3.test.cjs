@@ -24,25 +24,20 @@ ok('enough pay: every figure is what it was (net 2,646.25 path, no cover)', () =
 
 ok('1 day present: contributions above pay (it used to be net -510.00); company covers 10.00, MP2 skipped, net 0.00', () => {
   const c = computeStaffPayroll(staffA, [], statutory, att(1));
-  // Mandatory in full, still remitted: SSS 382.50 + PhilHealth 227.50 + MP1 100 = 710 against 700 pay.
   assert.deepEqual([c.sss, c.phic, c.mp1], [382.5, 227.5, 100]);
   assert.equal(c.companyCover, 10);
-  assert.equal(c.mp2, 0);           // voluntary savings: never paid by the company
+  assert.equal(c.mp2, 0);
   assert.equal(c.net, 0);
-  // The snapshot adds up: gross + OT + allowances + cover - deductions = net.
   assert.equal(Math.round((c.totalEarnings + c.companyCover - c.totalDeductions) * 100) / 100, c.net);
 });
 
 ok('short but not negative: tardiness first, then only the MP2 that fits', () => {
-  // 2 days = 1,400; after mandatory 710 there is 690; 30 min late = 87.50; MP2 gets 500 of 500.
   let c = computeStaffPayroll(staffA, [], statutory, att(2, 30));
   assert.deepEqual([c.tardiness, c.mp2, c.companyCover, c.net], [87.5, 500, 0, 102.5]);
-  // Declared MP2 of 800 on the same day: only 602.50 fits.
   c = computeStaffPayroll({ ...staffA, mp2: 800 }, [], statutory, att(2, 30));
   assert.deepEqual([c.mp2, c.net], [602.5, 0]);
 });
 
-// --- final pay --------------------------------------------------------------
 const grant = (amount, ymd = '2026-09-01') => ({ type: 'grant', amount, ymd, shortfall: 0, payslipId: null });
 const shaped = (o) => ({
   id: o.id, employeeId: 'emp-a', kind: o.kind || 'LOAN', purpose: o.kind === 'CASH_ADVANCE' ? null : 'Emergency',
@@ -73,7 +68,6 @@ ok('final pay smaller than the debt: never below P0, the rest stays owed (nothin
   assert.match(plan.writes[1].remark, /Final pay · ₱3,300\.00 still unpaid/);
   const after = R.withPlan(loans, plan, { runKey: KEY, endYmd: '2026-09-30' });
   assert.equal(R.balanceOf(after[0]), 3300);
-  // Recording again finds the stamp and skips.
   assert.equal(R.planDeductions(after, { runKey: KEY, endYmd: '2026-09-30', available: { 'emp-a': 3200 }, full: true }).writes.length, 0);
 });
 

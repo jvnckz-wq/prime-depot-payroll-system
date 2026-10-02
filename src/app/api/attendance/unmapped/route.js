@@ -4,11 +4,6 @@ import { requireAdmin } from '@/lib/server/security/auth';
 
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
 
-/// GET /api/attendance/unmapped
-/// Unresolved scanner logs grouped by biometric User ID, with the name read
-/// from the biometric file — so the Operations Head can see WHO each unmapped
-/// ID is, and whether an employee with that ID has since been registered
-/// (which is what the Resolve action needs).
 export async function GET() {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -38,7 +33,6 @@ export async function GET() {
       if (!g.biometricName && l.biometricName) g.biometricName = l.biometricName;
     }
 
-    // Which of these IDs now match a registered employee (id = biometric ID)?
     const ids = [...byId.keys()];
     const employees = ids.length
       ? await prisma.employee.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })

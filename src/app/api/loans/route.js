@@ -8,7 +8,6 @@ import {
 } from '@/lib/loan-rules';
 
 export async function GET() {
-  // Loans are Operations Head only — a Checker never sees anyone's balances.
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
@@ -26,21 +25,8 @@ export async function GET() {
 
 const bad = (error, status = 400, extra = {}) => NextResponse.json({ error, ...extra }, { status });
 const money = (v) => Math.round(Number(v) * 100) / 100;
-// Local formatter: lib/utils pulls in the xlsx library, which a route has no use for.
 const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-/// POST /api/loans
-/// Body: { employeeId, kind: 'LOAN' | 'CASH_ADVANCE', principal, date?, purpose?, perCutoff? }
-///
-/// Every rule the forms show is enforced again here (src/lib/loan-rules.js), so
-/// nothing can be slipped past the UI by calling the API directly:
-///   LOAN          purpose from the list, installment required (> 0, <= amount),
-///                 and one active loan per employee (more money = top-up).
-///   CASH_ADVANCE  staff only, taken in full, and the cutoff's advances together
-///                 may not exceed the projected gross pay for that cutoff.
-///
-/// Granting writes the loan and its first ledger entry together, so the
-/// balance is correct from the very first read.
 export async function POST(request) {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -73,8 +59,6 @@ export async function POST(request) {
       if (perRun > principal) return bad(`The deduction per ${unit} cannot be more than the loan itself.`);
       if (principal > LOAN_MAX_BALANCE) return bad(`A loan can be at most ${peso(LOAN_MAX_BALANCE)}.`);
 
-      // One active loan per employee. Extra money is a top-up on that loan so
-      // there is one balance and one installment to follow.
       const current = await prisma.loan.findMany({
         where: { employeeId, type: 'LOAN', isSettled: false },
         include: { employee: true, entries: true },
@@ -83,13 +67,10 @@ export async function POST(request) {
       if (open) {
         return bad(`${employee.name} already has an active loan (balance ${peso(balanceOf(open))}). Add to it with a top-up instead.`, 409, { activeLoanId: open.id });
       }
-      // The purpose has its own column (LoanPurpose) since Phase 2; `note` is free.
       data = { employeeId, type: 'LOAN', purpose: PURPOSE_ENUM[purpose], principal, deductionPerRun: perRun, dateGranted: granted };
     } else {
       if (isDailyPosition(employee.position)) return bad('Crew are paid daily, so cash advances are for office staff only.');
 
-      // Hard limit: projected gross pay for the cutoff the advance falls in,
-      // minus what was already advanced in that cutoff.
       const period = cutoffOf(date);
       const limit = projectedGross(employee.dailyRate, period);
       const siblings = await prisma.loan.findMany({
@@ -105,7 +86,6 @@ export async function POST(request) {
           + `. At most ${peso(Math.max(0, room))} can be advanced.`,
         );
       }
-      // Taken in full on the cutoff's payroll: the installment is the whole amount.
       data = { employeeId, type: 'CASH_ADVANCE', note: 'Cash Advance', principal, deductionPerRun: principal, dateGranted: granted };
     }
 

@@ -18,12 +18,12 @@ const check = (name, fn) => { fn(); passed++; console.log('  ok -', name); };
 
 check('pairing matches the pre-refactor logic', () => {
   const cases = [
-    ['06:28', '17:32'],                     // normal full day
-    ['17:05'],                              // lone afternoon = missing time-in
-    ['06:40'],                              // lone morning  = missing time-out
-    ['06:30', '11:58'],                     // half-day shape: last morning is the time-out
-    ['06:31', '12:01', '12:45', '17:30'],   // several punches
-    [],                                     // no punches
+    ['06:28', '17:32'],
+    ['17:05'],
+    ['06:40'],
+    ['06:30', '11:58'],
+    ['06:31', '12:01', '12:45', '17:30'],
+    [],
   ];
   for (const t of cases) {
     assert.deepEqual(pairPunches(t), oldInlinePair(t), `pairing ${JSON.stringify(t)}`);
@@ -34,21 +34,21 @@ check('a half-day keeps the pre-noon time-out', () => {
   assert.deepEqual(pairPunches(['06:31', '11:58']), { timeIn: '06:31', timeOut: '11:58' });
 });
 
-const emp = { id: '1001', position: 'Driver', earlyShiftDays: [] }; // crew -> 06:30 call
-const date = '2026-05-18'; // Monday
+const emp = { id: '1001', position: 'Driver', earlyShiftDays: [] };
+const date = '2026-05-18';
 const raw = ['06:44', '17:20'];
 
 const paired = pairPunches(raw);
-const fileRow = buildAttendanceRow(emp, date, paired, { importBatchId: 'batch-1' });   // .xls path
-const deviceRow = buildAttendanceRow(emp, date, paired, { importBatchId: 'batch-1' }); // live push path
+const fileRow = buildAttendanceRow(emp, date, paired, { importBatchId: 'batch-1' });
+const deviceRow = buildAttendanceRow(emp, date, paired, { importBatchId: 'batch-1' });
 
 check('import and push build identical rows from identical punches', () => {
   assert.deepEqual(deviceRow, fileRow);
 });
 
 check('the row carries the expected tardiness and overtime', () => {
-  assert.equal(fileRow.tardinessMins, 14); // 06:44 vs 06:30 call
-  assert.equal(fileRow.overtimeMins, 20);  // 17:20 vs 17:00
+  assert.equal(fileRow.tardinessMins, 14);
+  assert.equal(fileRow.overtimeMins, 20);
   assert.equal(fileRow.isAbsent, false);
   assert.equal(fileRow.isAssumedIn, false);
   assert.equal(fileRow.isAssumedOut, false);
@@ -58,7 +58,7 @@ check('missing time-out is assumed 17:00 with no overtime', () => {
   const r = buildAttendanceRow(emp, date, pairPunches(['06:20']));
   assert.equal(r.isAssumedOut, true);
   assert.equal(r.overtimeMins, 0);
-  assert.equal(r.tardinessMins, 0); // 06:20 is before the 06:30 call
+  assert.equal(r.tardinessMins, 0);
 });
 
 check('missing time-in is penalised a flat 30 and flagged assumed', () => {
@@ -75,13 +75,9 @@ check('a day with no punches builds an absent row', () => {
 });
 
 check('a double scan (taps about a minute apart) counts once', () => {
-  // Morning double-tap: one time-in, no phantom time-out.
   assert.deepEqual(pairPunches(['06:44', '06:45']), { timeIn: '06:44', timeOut: null });
-  // Double-tap in, real out later: correct in and out.
   assert.deepEqual(pairPunches(['06:44', '06:45', '17:20']), { timeIn: '06:44', timeOut: '17:20' });
-  // Same-minute duplicate is collapsed too.
   assert.deepEqual(pairPunches(['06:44', '06:44']), { timeIn: '06:44', timeOut: null });
-  // Two minutes apart is treated as distinct (the guard boundary), not a tap.
   assert.deepEqual(pairPunches(['06:44', '06:46']), { timeIn: '06:44', timeOut: '06:46' });
 });
 

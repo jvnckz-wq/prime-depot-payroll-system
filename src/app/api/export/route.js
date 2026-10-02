@@ -2,10 +2,6 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';
 
-/// GET /api/export
-/// Full backup of every business table as JSON (Neon's free tier has no
-/// automatic backups, so this is the manual safety net). Password hashes and
-/// login sessions are deliberately left out. Admin only.
 export async function GET() {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });

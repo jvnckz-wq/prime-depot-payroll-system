@@ -101,7 +101,6 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
     <div>
       <div className="text-base font-bold mb-4" style={{ fontFamily: F_HEAD, color: T.ink }}>Trip details</div>
 
-      {/* 1. Driver — picked from the whole driver pool, not tied to the truck */}
       <div className="mb-3">
         <Field label={<>Driver <span style={{ color: T.brand }}>*</span></>}>
           <select value={driverId} onChange={e => setDriverId(e.target.value)} className={inputCls} style={inputStyle}>
@@ -111,7 +110,6 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
         </Field>
       </div>
 
-      {/* 2. Truck + plate. Picking the truck fills the plate automatically. */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
         <Field label={<>Truck <span style={{ color: T.brand }}>*</span></>}>
           {fixedCrewId ? (
@@ -130,7 +128,6 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
         </Field>
       </div>
 
-      {/* 3. Helpers — the full pahinante pool is available for either slot */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-1">
         <Field label="Delivery Helper 1">
           <select value={helper1Id} onChange={e => setHelper1Id(e.target.value)} className={inputCls} style={inputStyle}>
@@ -146,9 +143,6 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
         </Field>
       </div>
 
-      {/* Customer and contact first: who and how to reach them, before the
-          location. Both required. The contact field accepts digits only and is
-          capped, so a scrambled or over-long entry can never be saved. */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 mb-1">
         <Field label={<>Customer&rsquo;s name <span style={{ color: T.brand }}>*</span></>}>
           <input placeholder="Customer's name" value={customer} onChange={e => setCustomer(e.target.value)} className={inputCls} style={inputStyle} />
@@ -158,8 +152,6 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
         </Field>
       </div>
 
-      {/* Location, top down: province, then municipality, barangay, and the
-          specific landmark. All four are required. */}
       <div className="mt-3 mb-1">
         <Field label={<>Province <span style={{ color: T.brand }}>*</span></>}>
           <SearchSelect value={province} onChange={(v) => { setProvince(v); setMunicipality(''); setBarangay(''); }}
@@ -186,14 +178,10 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
         </Field>
       </div>
 
-      {/* Items delivered */}
       <div className="flex items-center justify-between mt-4 mb-2">
         <Eyebrow>Items Delivered</Eyebrow>
         <button onClick={addRow} disabled={lineRows.length >= rates.length} className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold border disabled:opacity-40" style={{ fontFamily: F_HEAD, color: T.ink, borderColor: T.line, backgroundColor: T.surface }}><Plus size={13} /> Add item</button>
       </div>
-      {/* Each item is its own block rather than a row in a cramped table. The
-          form lives in a 560px modal; six columns squeezed into that width left
-          the quantity field too narrow to read what had just been typed. */}
       <div className="flex flex-col gap-2 mb-3">
         {lineRows.map((row, i) => {
           const rate = rateByKey(row.item);
@@ -207,7 +195,6 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
                 <select value={row.item} onChange={e => updateRow(i, { item: e.target.value })}
                   className="flex-1 min-w-0 px-2.5 py-2 rounded border text-sm"
                   style={{ fontFamily: F_BODY, borderColor: T.line, color: T.ink }}>
-                  {/* #D11 — offer this row's own item plus only items not used by another row. */}
                   {rates.filter(r => rateKey(r) === row.item || !usedKeys.has(rateKey(r))).map(r => <option key={rateKey(r)} value={rateKey(r)}>{rateLabel(r)}</option>)}
                 </select>
                 {lineRows.length > 1 && (
@@ -252,9 +239,6 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
         })}
       </div>
 
-      {/* Double rate is a manual mark set by whoever logs the trip. Toggling it
-          re-prices every line above (single rate vs double) as you watch. The
-          label stays dark so it reads in both states; only the box fills. */}
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <button type="button" onClick={() => setDbl(v => !v)}
           className="flex items-center gap-2 px-3 py-1.5 rounded text-xs font-semibold border"

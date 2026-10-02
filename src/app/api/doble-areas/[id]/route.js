@@ -2,10 +2,6 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';
 
-/// PATCH /api/doble-areas/:id — activate or deactivate.
-///
-/// Deactivating stops the address matcher from flagging new trips in that area,
-/// while leaving past trips that were correctly paid double untouched.
 export async function PATCH(request, { params }) {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });

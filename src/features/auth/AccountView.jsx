@@ -38,8 +38,6 @@ export function PasswordInput({ value, onChange, placeholder, autoComplete }) {
         className="absolute inset-y-0 right-0 flex items-center px-3"
         style={{ color: T.soft }}
       >
-        {/* Icon shows the STATE: hidden password → covered eye (EyeOff);
-            visible password → open eye (Eye). */}
         {show ? <Eye size={15} /> : <EyeOff size={15} />}
       </button>
     </div>
@@ -62,9 +60,6 @@ function PasswordStrength({ value }) {
         </div>
         {word && <span className="text-xs font-semibold shrink-0" style={{ fontFamily: F_HEAD, color: barColor }}>{word}</span>}
       </div>
-      {/* #A1 — the requirements checklist has done its job once every rule
-          passes, so it collapses into a single confirmation line instead of
-          staying on screen as a wall of green ticks. */}
       {passwordMeetsAll(value) ? (
         <div className="flex items-center gap-1.5 text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.green }}>
           <CheckCircle2 size={13} className="shrink-0" /><span>All password requirements met</span>
@@ -402,7 +397,6 @@ export const AccountView = ({ user, toast, onUserChange, onSignedOut }) => {
 
   return (
     <div className="max-w-lg">
-      {/* ---------------- Profile ---------------- */}
       <Panel className="p-5 mb-4">
         <div className="flex items-center gap-4 mb-5">
           <div className="flex items-center justify-center rounded-full shrink-0"
@@ -440,7 +434,6 @@ export const AccountView = ({ user, toast, onUserChange, onSignedOut }) => {
         </div>
       </Panel>
 
-      {/* ---------------- Security ---------------- */}
       <Panel className="p-5 mb-4">
         <div className="flex items-center gap-2 mb-1">
           <ShieldCheck size={15} color={T.brand} />
