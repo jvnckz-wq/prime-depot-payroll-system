@@ -20,6 +20,24 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
   const [piDraft, setPiDraft] = useState(pagibigRates);
   const [editBir, setEditBir] = useState(false);
   const [birDraft, setBirDraft] = useState(birTable);
+  const [editWage, setEditWage] = useState(false);
+  const [wageDraft, setWageDraft] = useState('');
+  const saveWage = async () => {
+    try {
+      const res = await fetch('/api/rates', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ minimumDailyWage: wageDraft }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast(data.error || 'Could not save.', 'error'); return; }
+      if (setCrewRates) setCrewRates(data.crewRates);
+      setEditWage(false);
+      toast('Minimum daily wage saved.');
+    } catch {
+      toast('Could not reach the server.', 'error');
+    }
+  };
   const [editDaily, setEditDaily] = useState(false);
   const [dailyMode, setDailyMode] = useState('split');
   const [dailyDraft, setDailyDraft] = useState('');
@@ -228,6 +246,25 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
                 <span className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.soft }}>Monthly cap (₱)</span>
                 {editPi ? <input type="number" value={piDraft.cap} onChange={e => setPiDraft(p => ({ ...p, cap: parseFloat(e.target.value) || 0 }))} className="px-2 py-1 rounded border text-xs w-24 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} />
                   : <span className="text-sm font-semibold" style={{ fontFamily: F_MONO }}>{peso(pagibigRates.cap)}</span>}
+              </div>
+            </Panel>
+            <Panel className="overflow-hidden">
+              <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
+                <Eyebrow>Minimum daily wage</Eyebrow>
+                {editWage ? (
+                  <div className="flex gap-2">
+                    <Btn size="sm" onClick={saveWage}>Save</Btn>
+                    <Btn size="sm" variant="outline" onClick={() => setEditWage(false)}>Cancel</Btn>
+                  </div>
+                ) : <Btn size="sm" variant="outline" onClick={() => { setWageDraft(crewRates?.minimumDailyWage == null ? '' : String(crewRates.minimumDailyWage)); setEditWage(true); }}>Edit</Btn>}
+              </div>
+              <div className="px-4 py-3 flex items-center justify-between gap-3">
+                <span className="text-xs" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
+                  Warns when a daily rate or a crew day is below this amount. Wage Order IVA-22: ₱525 to ₱600 depending on the municipality. Leave blank to turn the warning off.
+                </span>
+                {editWage
+                  ? <input type="number" min="0" value={wageDraft} onChange={e => setWageDraft(e.target.value)} placeholder="e.g. 600" className="px-2 py-1 rounded border text-xs w-24 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} />
+                  : <span className="text-sm font-semibold whitespace-nowrap" style={{ fontFamily: F_MONO }}>{crewRates?.minimumDailyWage == null ? 'Not set' : `${peso(crewRates.minimumDailyWage)} / day`}</span>}
               </div>
             </Panel>
             <Panel className="overflow-hidden">

@@ -22,4 +22,3 @@ export const isPieceRatePosition = (position) => PIECE_RATE.has(position);
 export const isDailyAttendancePosition = (position) => DAILY_ATTENDANCE.has(position);
 export const isDailyPosition = (position) => isPieceRatePosition(position) || isDailyAttendancePosition(position);
 export const isNonRegularPosition = (position) => NON_REGULAR.has(position);
-export const isLegacyPosition = (position) => !!position && !FINAL_POSITIONS.includes(position);

@@ -25,7 +25,7 @@ ok('an inactive employee is refused', () => {
 });
 
 ok('a non-Checker is refused, even a real employee', () => {
-  const clerk = { ...ana, name: 'Jerome Ylagan', position: 'ADMINISTRATIVE_STAFF' };
+  const clerk = { ...ana, name: 'Jerome Ylagan', position: 'JUNIOR_SECRETARY' };
   assert.match(checkerLinkProblem(clerk), /Jerome Ylagan is not a Checker/);
   assert.equal(isActiveChecker(clerk), false);
 });

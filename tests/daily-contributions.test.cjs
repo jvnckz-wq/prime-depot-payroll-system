@@ -18,6 +18,15 @@ ok('monthly employee share for a driver declared at ₱7,280 (280 × 26)', () =>
   assert.deepEqual(monthlyEmployeeShare(driver, statutory), { sss: 292.5, phic: 250, hdmf: 145.6, total: 688.1 });
 });
 
+ok('the 2025-2026 SSS schedule (client\u2019s Taxes.pdf): 5% of MSC from ₱5,000 to ₱35,000', () => {
+  const { SSS_TABLE_INIT } = require('../src/data/seed.js');
+  const real = { ...statutory, sss: SSS_TABLE_INIT };
+  assert.equal(SSS_TABLE_INIT.length, 61);
+  assert.deepEqual(monthlyEmployeeShare(driver, real), { sss: 375, phic: 250, hdmf: 145.6, total: 770.6 });
+  const ee = (salary) => monthlyEmployeeShare({ ...driver, phOn: false, piOn: false, declaredSalary: salary }, real).sss;
+  assert.deepEqual([ee(4000), ee(5249.99), ee(5250), ee(14999), ee(20300), ee(34749.99), ee(34750), ee(90000)], [250, 250, 275, 750, 1025, 1725, 1750, 1750]);
+});
+
 ok('no enrolment or no declared salary means no share', () => {
   assert.equal(monthlyEmployeeShare({ ...driver, sssOn: false, phOn: false, piOn: false }, statutory).total, 0);
   assert.equal(monthlyEmployeeShare({ ...driver, declaredSalary: 0 }, statutory).total, 0);

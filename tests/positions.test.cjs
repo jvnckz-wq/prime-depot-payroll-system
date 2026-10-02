@@ -38,19 +38,24 @@ ok('enum values and labels agree', () => {
   }
 });
 
-ok('legacy positions are flagged but keep their old pay (still semi-monthly, still regular)', () => {
-  for (const p of ['Administrative Staff', 'Trainee']) {
-    assert.equal(P.isLegacyPosition(p), true, p);
-    assert.equal(P.isDailyPosition(p), false, p);
-    assert.equal(P.isNonRegularPosition(p), false, p);
+ok('removed positions are no longer accepted', () => {
+  for (const p of ['Administrative Staff', 'Trainee', 'Secretary (Special Shift)']) {
+    assert.match(buildEmployeeData({ id: 'E1', name: 'X', position: p, rate: 600, declaredSalary: 0, mp2: 0, status: 'Active' }).error || '', /valid position/, p);
   }
-  const t = shapeEmployee(raw('TRAINEE'));
-  assert.equal(t.sssOn, true);
-  assert.equal(t.declaredSalary, 15600);
+});
+
+ok('moving someone off a removed office position keeps their pay exactly the same', () => {
+  const statutory = { sss: [{ ceiling: null, share: 900 }], philhealth: { rate: 5, floor: 10000, ceiling: 100000 }, pagibig: { cap: 200, brackets: [{ ceiling: null, eePct: 2 }] }, bir: [] };
+  const att = { present: 12, leave: 1, lateMins: 35, otWeekdayMins: 60, otWeekendMins: 0 };
+  const before = computeStaffPayroll(shapeEmployee(raw('ADMINISTRATIVE_STAFF')), [], statutory, att);
+  for (const e of ['ADMINISTRATIVE_ASSISTANT', 'COLLECTION_OFFICER', 'JUNIOR_SECRETARY', 'COMMUNICATIONS_OFFICER_I']) {
+    assert.deepEqual(computeStaffPayroll(shapeEmployee(raw(e)), [], statutory, att), before, e);
+    assert.equal(callTimeFor({ position: e, earlyShiftDays: ['SAT'], earlyShiftTime: '06:00' }, '2026-10-03'), '06:00', e);
+  }
 });
 
 ok('semi-monthly regulars are shaped exactly as before (no payroll change)', () => {
-  for (const e of ['OPERATIONS_HEAD', 'ADMINISTRATIVE_ASSISTANT', 'COMMUNICATIONS_OFFICER_I', 'COLLECTION_OFFICER', 'ADMINISTRATIVE_STAFF']) {
+  for (const e of ['OPERATIONS_HEAD', 'ADMINISTRATIVE_ASSISTANT', 'COMMUNICATIONS_OFFICER_I', 'COLLECTION_OFFICER', 'JUNIOR_SECRETARY']) {
     const s = shapeEmployee(raw(e));
     assert.deepEqual([s.sssOn, s.phOn, s.piOn, s.mp2, s.declaredSalary, s.earlyShiftDays, s.daily, s.nonRegular], [true, true, true, 200, 15600, ['SAT'], false, false], e);
   }

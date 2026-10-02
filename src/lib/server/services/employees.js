@@ -2,8 +2,6 @@ import { isDailyPosition, isNonRegularPosition, isPieceRatePosition } from '../.
 
 export const POSITION_LABEL = {
   OPERATIONS_HEAD: 'Operations Head',
-  ADMINISTRATIVE_STAFF: 'Administrative Staff',
-  SECRETARY_SPECIAL_SHIFT: 'Administrative Staff',
   CHECKER: 'Checker',
   DRIVER: 'Driver',
   PAHINANTE: 'Pahinante',
@@ -11,7 +9,6 @@ export const POSITION_LABEL = {
   COMMUNICATIONS_OFFICER_II: 'Communications Officer II',
   JUNIOR_SECRETARY: 'Junior Secretary',
   JOB_ORDER: 'Job Order',
-  TRAINEE: 'Trainee',
   COMMUNICATIONS_OFFICER_I: 'Communications Officer I',
   COLLECTION_OFFICER: 'Collection Officer',
   WAREHOUSE_OFFICER: 'Warehouse Officer',
@@ -19,7 +16,6 @@ export const POSITION_LABEL = {
 
 const POSITION_ENUM = {
   'Operations Head': 'OPERATIONS_HEAD',
-  'Administrative Staff': 'ADMINISTRATIVE_STAFF',
   Checker: 'CHECKER',
   Driver: 'DRIVER',
   Pahinante: 'PAHINANTE',
@@ -30,7 +26,6 @@ const POSITION_ENUM = {
   'Junior Secretary': 'JUNIOR_SECRETARY',
   'Collection Officer': 'COLLECTION_OFFICER',
   'Job Order': 'JOB_ORDER',
-  Trainee: 'TRAINEE',
   'Warehouse Officer': 'WAREHOUSE_OFFICER',
 };
 

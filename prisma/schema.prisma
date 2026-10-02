@@ -39,13 +39,6 @@ enum Role {
 /// same thing can disagree, and then nobody knows which one to trust.
 enum Position {
   OPERATIONS_HEAD
-  ADMINISTRATIVE_STAFF
-  /// DEPRECATED — kept only so existing rows stay valid. The early call time
-  /// turned out not to be a separate job at all: it is the same administrative
-  /// staff member reporting early on certain days. That belongs on the person
-  /// (see earlyShiftDays below), not in their job title. Not offered when
-  /// registering a new employee.
-  SECRETARY_SPECIAL_SHIFT
   CHECKER
   DRIVER
   PAHINANTE
@@ -57,7 +50,6 @@ enum Position {
   COMMUNICATIONS_OFFICER_II
   JUNIOR_SECRETARY
   JOB_ORDER
-  TRAINEE
   COMMUNICATIONS_OFFICER_I
   COLLECTION_OFFICER
   WAREHOUSE_OFFICER
@@ -627,6 +619,7 @@ model CrewRate {
   /// Trips one truck must finish in a day before the bonus applies.
   bonusTrips  Int      @default(5)
   dailyContribution Decimal? @db.Decimal(12, 2)
+  minimumDailyWage  Decimal? @db.Decimal(12, 2)
 
   updatedAt   DateTime @updatedAt
 

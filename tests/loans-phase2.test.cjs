@@ -217,7 +217,7 @@ const dbLoan = (o) => ({
   id: o.id, employeeId: o.employeeId, type: o.type || 'LOAN', purpose: 'EMERGENCY', note: null,
   principal: o.principal, deductionPerRun: o.perRun, dateGranted: new Date('2026-09-01T00:00:00Z'),
   isPaused: false, isSettled: false, settledAt: null, createdAt: new Date('2026-09-01T01:00:00Z'),
-  employee: { name: o.employeeId, position: o.position || 'ADMINISTRATIVE_STAFF', status: 'ACTIVE' },
+  employee: { name: o.employeeId, position: o.position || 'ADMINISTRATIVE_ASSISTANT', status: 'ACTIVE' },
   entries: [{ type: 'GRANT', amount: o.principal, shortfall: 0, date: new Date('2026-09-01T00:00:00Z'), createdAt: new Date('2026-09-01T01:00:00Z'), payslipId: null }],
 });
 
@@ -237,7 +237,7 @@ ok('apply refuses to run without knowing the pay', async () => {
 
 // --- server inputs ----------------------------------------------------------
 const day = (ymd, o = {}) => ({ employeeId: o.id, date: new Date(ymd + 'T00:00:00Z'), isAbsent: !!o.absent, isLeave: false, tardinessMins: o.late || 0, overtimeMins: 0, employee: { name: o.id } });
-const dbEmp = (id, o = {}) => ({ id, name: id, position: o.position || 'ADMINISTRATIVE_STAFF', dailyRate: o.rate ?? 700, declaredSalary: o.declared ?? 18200, status: o.status || 'ACTIVE', sssEnrolled: true, philhealthEnrolled: true, pagibigEnrolled: true, mp2Amount: 500, otherAllowance: 0 });
+const dbEmp = (id, o = {}) => ({ id, name: id, position: o.position || 'ADMINISTRATIVE_ASSISTANT', dailyRate: o.rate ?? 700, declaredSalary: o.declared ?? 18200, status: o.status || 'ACTIVE', sssEnrolled: true, philhealthEnrolled: true, pagibigEnrolled: true, mp2Amount: 500, otherAllowance: 0 });
 const sssRows = C.map(([ceiling, share], i) => ({ salaryFrom: i ? C[i - 1][0] : 0, salaryTo: ceiling ?? 999999999, employeeShare: share }));
 
 ok('server payroll set = the screen: staff without attendance get no payslip and no loan pay', async () => {

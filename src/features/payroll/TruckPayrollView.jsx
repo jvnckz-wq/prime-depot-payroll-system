@@ -761,6 +761,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                     <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
                       {roleLabel(p.role)} · {p.attendanceDaily ? 'present' : `${p.trips} trip${p.trips === 1 ? '' : 's'}`}
                       {p.lateMins > 0 && <span style={{ color: T.brand }}> · {p.lateMins} min late</span>}
+                      {crewRates.minimumDailyWage != null && p.total < crewRates.minimumDailyWage && <span style={{ color: T.warn }}> · below minimum wage</span>}
                     </div>
                   </div>
                 </div>

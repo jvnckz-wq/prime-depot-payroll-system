@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Search, Save, Clock, AlertTriangle } from 'lucide-react';
 import { Badge, Btn, Confirm, Eyebrow, Field, H1, Modal, Money, Panel, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { POSITIONS, positionLabel } from '@/data/seed';
-import { isDailyPosition, isLegacyPosition, isNonRegularPosition } from '@/lib/positions';
+import { isDailyPosition, isNonRegularPosition } from '@/lib/positions';
 import { WEEKDAYS, describeEarlyShift } from '@/lib/attendance';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { FinalPayView } from '@/features/payroll/FinalPayView.jsx';
@@ -16,7 +16,7 @@ const BLANK_EMP = {
   earlyShiftDays: [], earlyShiftTime: '06:00',
 };
 
-export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillConsumed }) => {
+export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillConsumed, minimumDailyWage = null }) => {
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState('active');
   const [typeFilter, setTypeFilter] = useState('all'); // all | staff | crew — a separate axis from status
@@ -284,7 +284,6 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
           <Field label="Position">
             <select value={form.position} onChange={e => ff('position', e.target.value)} className={inputCls} style={inputStyle}>
               {!form.position && <option value="">Choose a position</option>}
-              {isLegacyPosition(form.position) && <option value={form.position}>{positionLabel(form.position)}</option>}
               {POSITIONS.map(p => <option key={p} value={p}>{positionLabel(p)}</option>)}
             </select>
           </Field>
@@ -296,6 +295,17 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
               </select>
             </Field>
           </div>
+          {minimumDailyWage != null && form.rate !== '' && (parseFloat(form.rate) || 0) < minimumDailyWage && (
+            <div role="status" className="flex items-start gap-2 px-3 py-2.5 rounded text-xs"
+              style={{ backgroundColor: T.warnBg, fontFamily: F_BODY, color: T.ink, lineHeight: 1.6 }}>
+              <AlertTriangle size={13} color={T.warn} className="mt-0.5 shrink-0" />
+              <span>
+                {isDailyPosition(form.position) && !['Checker', 'Warehouse Officer'].includes(form.position)
+                  ? `This daily rate is below the minimum wage (₱${minimumDailyWage}). Per-piece pay must still reach the minimum for a full working day.`
+                  : `This daily rate is below the minimum wage (₱${minimumDailyWage}).`}
+              </span>
+            </div>
+          )}
           {editing?.account?.active && (form.position !== 'Checker' || form.status === 'Inactive') && (
             <div role="status" className="flex items-start gap-2 px-3 py-2.5 rounded text-xs"
               style={{ backgroundColor: T.warnBg, fontFamily: F_BODY, color: T.ink, lineHeight: 1.6 }}>

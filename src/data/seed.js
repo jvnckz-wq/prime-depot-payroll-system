@@ -11,22 +11,13 @@ export const CREW_RATE_FALLBACK = {
   bonusHead: 100,
   bonusTrips: 5,
   dailyContribution: null,
+  minimumDailyWage: null,
 };
 
-export const SSS_TABLE_INIT = [
-  { ceiling: 4250, share: 135 }, { ceiling: 4750, share: 157.5 }, { ceiling: 5250, share: 180 },
-  { ceiling: 5750, share: 202.5 }, { ceiling: 6250, share: 225 }, { ceiling: 6750, share: 247.5 },
-  { ceiling: 7250, share: 270 }, { ceiling: 7750, share: 292.5 }, { ceiling: 8250, share: 315 },
-  { ceiling: 8750, share: 337.5 }, { ceiling: 9250, share: 360 }, { ceiling: 9750, share: 382.5 },
-  { ceiling: 10250, share: 405 }, { ceiling: 10750, share: 427.5 }, { ceiling: 11250, share: 450 },
-  { ceiling: 11750, share: 472.5 }, { ceiling: 12250, share: 495 }, { ceiling: 12750, share: 517.5 },
-  { ceiling: 13250, share: 540 }, { ceiling: 13750, share: 562.5 }, { ceiling: 14250, share: 585 },
-  { ceiling: 14750, share: 607.5 }, { ceiling: 15250, share: 630 }, { ceiling: 15750, share: 652.5 },
-  { ceiling: 16250, share: 675 }, { ceiling: 16750, share: 697.5 }, { ceiling: 17250, share: 720 },
-  { ceiling: 17750, share: 742.5 }, { ceiling: 18250, share: 765 }, { ceiling: 18750, share: 787.5 },
-  { ceiling: 19250, share: 810 }, { ceiling: 19750, share: 832.5 }, { ceiling: 20250, share: 855 },
-  { ceiling: null, share: 900 },
-];
+export const SSS_TABLE_INIT = Array.from({ length: 61 }, (_, i) => ({
+  ceiling: i === 60 ? null : 5250 + i * 500,
+  share: 250 + i * 25,
+}));
 
 export const PHILHEALTH_INIT = { rate: 5, floor: 10000, ceiling: 100000 };
 

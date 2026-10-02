@@ -38,19 +38,19 @@ const YEAR = 2026;
 
 const STAFF = [
   ['EMP-001', 'Jean Margaret Tengco', 'OPERATIONS_HEAD',         800, 20800, true,  true,  true,   0],
-  ['EMP-002', 'Girlie Ernesto',       'ADMINISTRATIVE_STAFF',    700, 18200, true,  true,  true, 500],
-  ['EMP-003', 'April Rose Castillo',  'ADMINISTRATIVE_STAFF',    650, 16900, true,  true,  true,   0],
-  ['EMP-004', 'Jaclyn Joyce Genova',  'ADMINISTRATIVE_STAFF',    650, 16900, true,  true,  false,  0],
-  ['EMP-005', 'Ma. Christine Reyes',  'ADMINISTRATIVE_STAFF',    650, 16900, true,  true,  true, 200],
-  ['EMP-006', 'Paula Mae Nazarro',    'ADMINISTRATIVE_STAFF',    550, 14300, false, false, false,  0],
-  ['EMP-007', 'Lea May Magsino',      'ADMINISTRATIVE_STAFF',    600, 15600, false, false, false,  0],
-  ['EMP-008', 'Lovely Bantoy',        'ADMINISTRATIVE_STAFF',    600, 15600, false, false, false,  0],
-  ['EMP-009', 'Ayessa Mae Mahaguay',  'ADMINISTRATIVE_STAFF',    600, 15600, false, false, true, 200],
-  ['EMP-010', 'Romelyn Villanueva',   'ADMINISTRATIVE_STAFF',    600, 15600, true,  true,  true,   0],
-  ['EMP-011', 'Jessa Pintor',         'ADMINISTRATIVE_STAFF',    600, 15600, true,  true,  true,   0],
-  ['EMP-012', 'Yesha Espinosa',       'ADMINISTRATIVE_STAFF',    600, 15600, true,  true,  true,   0],
-  ['EMP-013', 'Krine',                'SECRETARY_SPECIAL_SHIFT', 650, 16900, true,  true,  true,   0],
-  ['EMP-014', 'Jerome Ylagan',        'ADMINISTRATIVE_STAFF',    550, 14300, false, false, false,  0],
+  ['EMP-002', 'Girlie Ernesto',       'ADMINISTRATIVE_ASSISTANT', 700, 18200, true,  true,  true, 500],
+  ['EMP-003', 'April Rose Castillo',  'COMMUNICATIONS_OFFICER_II', 650, 16900, true,  true,  true,   0],
+  ['EMP-004', 'Jaclyn Joyce Genova',  'JUNIOR_SECRETARY',        650, 16900, true,  true,  false,  0],
+  ['EMP-005', 'Ma. Christine Reyes',  'JUNIOR_SECRETARY',        650, 16900, true,  true,  true, 200],
+  ['EMP-006', 'Paula Mae Nazarro',    'ADMINISTRATIVE_ASSISTANT', 550, 14300, false, false, false,  0],
+  ['EMP-007', 'Lea May Magsino',      'JUNIOR_SECRETARY',        600, 15600, false, false, false,  0],
+  ['EMP-008', 'Lovely Bantoy',        'JOB_ORDER',               600, 15600, false, false, false,  0],
+  ['EMP-009', 'Ayessa Mae Mahaguay',  'ADMINISTRATIVE_ASSISTANT', 600, 15600, false, false, true, 200],
+  ['EMP-010', 'Romelyn Villanueva',   'JOB_ORDER',               600, 15600, true,  true,  true,   0],
+  ['EMP-011', 'Jessa Pintor',         'JUNIOR_SECRETARY',        600, 15600, true,  true,  true,   0],
+  ['EMP-012', 'Yesha Espinosa',       'COMMUNICATIONS_OFFICER_I', 600, 15600, true,  true,  true,   0],
+  ['EMP-013', 'Krine',                'ADMINISTRATIVE_ASSISTANT', 650, 16900, true,  true,  true,   0],
+  ['EMP-014', 'Jerome Ylagan',        'CHECKER',                 550, 14300, false, false, false,  0],
 ];
 
 // Fleet, as recorded in the client's workbook. The driver and helper names in
@@ -100,15 +100,7 @@ const DOBLE_AREAS = [
 ];
 
 // SSS — [salaryFrom, salaryTo, employeeShare]. Upper band has no ceiling.
-const SSS_CEILINGS = [
-  [4250, 135], [4750, 157.5], [5250, 180], [5750, 202.5], [6250, 225],
-  [6750, 247.5], [7250, 270], [7750, 292.5], [8250, 315], [8750, 337.5],
-  [9250, 360], [9750, 382.5], [10250, 405], [10750, 427.5], [11250, 450],
-  [11750, 472.5], [12250, 495], [12750, 517.5], [13250, 540], [13750, 562.5],
-  [14250, 585], [14750, 607.5], [15250, 630], [15750, 652.5], [16250, 675],
-  [16750, 697.5], [17250, 720], [17750, 742.5], [18250, 765], [18750, 787.5],
-  [19250, 810], [19750, 832.5], [20250, 855], [null, 900],
-];
+const SSS_CEILINGS = Array.from({ length: 61 }, (_, i) => [i === 60 ? null : 5250 + i * 500, 250 + i * 25]);
 
 // BIR TRAIN annual brackets — [from, to, baseTax, percentOverExcess]
 const BIR = [

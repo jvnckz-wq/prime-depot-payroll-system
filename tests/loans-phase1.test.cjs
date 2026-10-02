@@ -118,7 +118,7 @@ function fakePrisma(rows) {
 const dbLoan = (o) => ({
   id: o.id, employeeId: o.employeeId || 'emp-' + o.id, type: o.type || 'LOAN', note: o.note || 'Emergency',
   principal: o.principal, deductionPerRun: o.perRun, dateGranted: new Date((o.granted || '2026-09-01') + 'T00:00:00Z'),
-  isPaused: false, isSettled: false, settledAt: null, employee: { name: o.id, position: o.position || 'ADMINISTRATIVE_STAFF' },
+  isPaused: false, isSettled: false, settledAt: null, employee: { name: o.id, position: o.position || 'ADMINISTRATIVE_ASSISTANT' },
   entries: o.entries || [{ type: 'GRANT', amount: o.principal, date: new Date('2026-09-01T00:00:00Z'), createdAt: new Date(), payslipId: null }],
 });
 
