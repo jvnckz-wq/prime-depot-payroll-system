@@ -3,15 +3,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Truck, LogOut, Star, MapPin, Phone } from 'lucide-react';
 import { DeliveryForm } from '@/features/deliveries/DeliveryForm.jsx';
-import { Av, Badge, BigStat, EmptyState, Eyebrow, Panel, Td, Th } from '@/components/ui.jsx';
+import { Av, Badge, BigStat, Confirm, EmptyState, Eyebrow, Panel, Td, Th } from '@/components/ui.jsx';
 import { CREW_RATE_FALLBACK } from '@/data/seed';
 import { flattenDeliveries } from '@/lib/payroll';
 import { peso, telHref, timeLabel } from '@/lib/utils';
-import { FONTS, F_BODY, F_HEAD, T } from '@/components/theme';
+import { FONTS, F_HEAD, T } from '@/components/theme';
 /* eslint-disable @next/next/no-img-element -- user avatars are base64 data URIs; next/image adds no value and cannot optimize data URIs */
 
 export const CheckerView = ({ currentUser, deliveries, reloadDeliveries, rates, crewRates = CREW_RATE_FALLBACK, onLogout, toast }) => {
   const [trucks, setTrucks] = useState([]);
+  const [confirmLogout, setConfirmLogout] = useState(false);
   useEffect(() => {
     let cancelled = false;
     fetch('/api/trucks')
@@ -49,6 +50,14 @@ export const CheckerView = ({ currentUser, deliveries, reloadDeliveries, rates, 
   return (
     <div className="min-h-screen" style={{ backgroundColor: T.bg }}>
       <style>{FONTS}</style>
+      <Confirm
+        open={confirmLogout}
+        title="Sign out?"
+        message="You will need to sign in again to log deliveries."
+        confirmLabel="Sign out"
+        onCancel={() => setConfirmLogout(false)}
+        onConfirm={() => { setConfirmLogout(false); onLogout(); }}
+      />
       <div className="flex items-center justify-between flex-wrap gap-2 px-4 sm:px-5 py-3" style={{ backgroundColor: T.sidebar }}>
         <div className="flex items-center gap-2.5">
           <img src="/logo.png" alt="Prime Depot" className="w-8 h-8 rounded bg-white p-0.5 shrink-0" />
@@ -61,7 +70,7 @@ export const CheckerView = ({ currentUser, deliveries, reloadDeliveries, rates, 
           {currentUser?.avatar
             ? <img src={currentUser.avatar} alt="" className="rounded-full object-cover" style={{ width: 28, height: 28 }} />
             : <Av name={currentUser?.displayName || 'Checker'} size={28} tone={T.amber} />}
-          <button onClick={onLogout} className="flex items-center gap-1.5 text-sm" style={{ fontFamily: F_BODY, color: T.sidebarSoft }}><LogOut size={15} /></button>
+          <button type="button" onClick={() => setConfirmLogout(true)} aria-label="Sign out" className="-my-1 -mr-2 w-11 h-11 shrink-0 flex items-center justify-center rounded" style={{ color: T.sidebarSoft }}><LogOut size={15} /></button>
         </div>
       </div>
 

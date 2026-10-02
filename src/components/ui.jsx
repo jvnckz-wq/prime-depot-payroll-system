@@ -221,7 +221,7 @@ export const Modal = ({ open, onClose, title, children, width = 520 }) => {
       <div onClick={e => e.stopPropagation()} className="pd-modal w-full rounded-lg overflow-hidden flex flex-col" style={{ backgroundColor: T.surface, maxWidth: width, maxHeight: '88vh' }}>
         <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${T.line}` }}>
           <span className="text-sm font-bold" style={{ fontFamily: F_HEAD, color: T.ink }}>{title}</span>
-          <button onClick={onClose}><X size={16} color={T.soft} /></button>
+          <button type="button" onClick={onClose} aria-label="Close" className="-my-3 -mr-3 w-10 h-10 shrink-0 flex items-center justify-center rounded"><X size={16} color={T.soft} /></button>
         </div>
         <div className="p-5 overflow-y-auto">{children}</div>
       </div>
