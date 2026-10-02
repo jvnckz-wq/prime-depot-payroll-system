@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import {
-  burnPasswordComparison, createSession, logSecurityEvent, verifyPassword,
+  burnPasswordComparison, createSession, logSecurityEvent, reserveAttempt, verifyPassword,
 } from '@/lib/server/security/auth';
 import { isActiveChecker } from '@/lib/checker-accounts';
 
@@ -31,40 +31,6 @@ function clientIp(request) {
   return request.headers.get('x-real-ip') || 'unknown';
 }
 
-const isExpired = (record) => Date.now() - record.firstAt.getTime() > WINDOW_MS;
-
-async function tooManyAttempts(key) {
-  const record = await prisma.loginAttempt.findUnique({ where: { key } });
-  if (!record) return false;
-  if (isExpired(record)) {
-    // The window has passed — clear it so counting starts fresh.
-    await prisma.loginAttempt.delete({ where: { key } }).catch(() => {});
-    return false;
-  }
-  return record.count >= MAX_ATTEMPTS;
-}
-
-async function recordFailure(key) {
-  const now = new Date();
-  const existing = await prisma.loginAttempt.findUnique({ where: { key } });
-
-  // Inside the window, add to the tally; outside it (or first ever failure),
-  // start a new window at one.
-  if (existing && !isExpired(existing)) {
-    await prisma.loginAttempt.update({
-      where: { key },
-      data: { count: { increment: 1 }, lastAt: now },
-    });
-    return;
-  }
-
-  await prisma.loginAttempt.upsert({
-    where: { key },
-    create: { key, count: 1, firstAt: now, lastAt: now },
-    update: { count: 1, firstAt: now, lastAt: now },
-  });
-}
-
 /// Drop windows that have already expired. Called after a successful sign-in —
 /// rare enough to be free, frequent enough that the table never accumulates.
 async function sweepExpired() {
@@ -87,7 +53,7 @@ export async function POST(request) {
     // Throttle per source IP and username together, not by username alone.
     const key = `${ip}|${username}`;
 
-    if (await tooManyAttempts(key)) {
+    if (!(await reserveAttempt(key, { max: MAX_ATTEMPTS, windowMs: WINDOW_MS }))) {
       await logSecurityEvent('LOGIN_THROTTLED', { actorLabel: username, ip });
       return NextResponse.json(
         { error: 'Too many failed attempts. Please wait 15 minutes and try again.' },
@@ -104,7 +70,6 @@ export async function POST(request) {
     // disabled account. Saying "no such user" would let someone probe for
     // valid usernames one guess at a time.
     const reject = async () => {
-      await recordFailure(key);
       await logSecurityEvent('LOGIN_FAILURE', { actorId: user?.id ?? null, actorLabel: username, ip });
       return NextResponse.json({ error: 'Incorrect username or password.' }, { status: 401 });
     };

@@ -17,6 +17,7 @@
     "test:prisma": "node tests/prisma-safety.test.mjs",
     "test:positions": "tsx tests/positions.test.cjs",
     "test:contributions": "tsx tests/daily-contributions.test.cjs",
+    "test:login": "tsx tests/login-limit.test.cjs",
     "sync": "node scripts/sync-agent.js",
     "sync:live": "node scripts/sync-agent.js --live",
     "pull-cutoff": "node scripts/pull-cutoff.js",
