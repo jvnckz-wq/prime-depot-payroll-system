@@ -11,7 +11,6 @@ export const CREW_RATE_FALLBACK = {
   bonusHead: 100,
   bonusTrips: 5,
   dailyContribution: null,
-  minimumDailyWage: null,
 };
 
 export const SSS_TABLE_INIT = Array.from({ length: 61 }, (_, i) => ({

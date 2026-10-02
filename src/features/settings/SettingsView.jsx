@@ -8,7 +8,7 @@ import { exportXLSX, peso } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { FleetPanel } from '@/features/settings/FleetPanel.jsx';
 
-export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers, setCheckers, sssTable, setSssTable, philhealthRates, setPhilhealthRates, pagibigRates, setPagibigRates, birTable, setBirTable, crewRates, setCrewRates, toast, navTab }) => {
+export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers, setCheckers, sssTable, setSssTable, philhealthRates, setPhilhealthRates, pagibigRates, setPagibigRates, birTable, setBirTable, toast, navTab }) => {
   const [tab, setTab] = useState(navTab || 'statutory');
   // eslint-disable-next-line react-hooks/set-state-in-effect -- sync the settings panel from the sidebar selection
   useEffect(() => { if (navTab) setTab(navTab); }, [navTab]);
@@ -20,49 +20,6 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
   const [piDraft, setPiDraft] = useState(pagibigRates);
   const [editBir, setEditBir] = useState(false);
   const [birDraft, setBirDraft] = useState(birTable);
-  const [editWage, setEditWage] = useState(false);
-  const [wageDraft, setWageDraft] = useState('');
-  const saveWage = async () => {
-    try {
-      const res = await fetch('/api/rates', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ minimumDailyWage: wageDraft }),
-      });
-      const data = await res.json();
-      if (!res.ok) { toast(data.error || 'Could not save.', 'error'); return; }
-      if (setCrewRates) setCrewRates(data.crewRates);
-      setEditWage(false);
-      toast('Minimum daily wage saved.');
-    } catch {
-      toast('Could not reach the server.', 'error');
-    }
-  };
-  const [editDaily, setEditDaily] = useState(false);
-  const [dailyMode, setDailyMode] = useState('split');
-  const [dailyDraft, setDailyDraft] = useState('');
-  const dailyFixed = crewRates?.dailyContribution;
-  const startEditDaily = () => {
-    setDailyMode(dailyFixed == null ? 'split' : 'fixed');
-    setDailyDraft(dailyFixed == null ? '50' : String(dailyFixed));
-    setEditDaily(true);
-  };
-  const saveDaily = async () => {
-    try {
-      const res = await fetch('/api/rates', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dailyContribution: dailyMode === 'split' ? null : dailyDraft }),
-      });
-      const data = await res.json();
-      if (!res.ok) { toast(data.error || 'Could not save.', 'error'); return; }
-      if (setCrewRates) setCrewRates(data.crewRates);
-      setEditDaily(false);
-      toast('Daily contribution deduction saved.');
-    } catch {
-      toast('Could not reach the server.', 'error');
-    }
-  };
 
   const [exporting, setExporting] = useState(false);
   const [lastExport, setLastExport] = useState('');
@@ -108,7 +65,6 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
     } catch (err) { console.error('Excel export failed:', err); toast('Could not build the workbook.', 'error'); }
     finally { setExporting(false); }
   };
-  const [testSalary, setTestSalary] = useState('16900');
 
   const saveTable = async (table, data, label) => {
     try {
@@ -126,10 +82,6 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
     }
   };
 
-  const testResult = useMemo(() => {
-    const sal = parseFloat(testSalary) || 0;
-    return { sss: computeSSS(sal, sssTable), ph: computePhilHealth(sal, philhealthRates), pi: computePagIBIG(sal, pagibigRates) };
-  }, [testSalary, sssTable, philhealthRates, pagibigRates]);
 
   return (
     <div className="p-4 sm:p-6">
@@ -137,19 +89,6 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
 
       {tab === 'statutory' && (
         <div className="space-y-4">
-          <Panel className="p-4">
-            <Eyebrow>Try a declared salary</Eyebrow>
-            <div className="text-xs mb-3" style={{ fontFamily: F_BODY, color: T.soft }}>Check what the tables below actually produce, before saving changes to a live payslip.</div>
-            <div className="flex items-end gap-4 flex-wrap">
-              <div style={{ width: 180 }}><Field label="Declared monthly salary (₱)"><input type="number" value={testSalary} onChange={e => setTestSalary(e.target.value)} className={inputCls} style={inputStyle} /></Field></div>
-              <div className="flex gap-6">
-                <div><Eyebrow>SSS / cutoff</Eyebrow><Money value={testResult.sss} bold size="text-base" /></div>
-                <div><Eyebrow>PhilHealth / cutoff</Eyebrow><Money value={testResult.ph} bold size="text-base" /></div>
-                <div><Eyebrow>Pag-IBIG / cutoff</Eyebrow><Money value={testResult.pi} bold size="text-base" /></div>
-              </div>
-            </div>
-          </Panel>
-
           <Panel className="overflow-hidden">
             <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
               <Eyebrow>SSS Contribution Table — employee share by declared monthly salary</Eyebrow>
@@ -250,58 +189,6 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
             </Panel>
             <Panel className="overflow-hidden">
               <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
-                <Eyebrow>Minimum daily wage</Eyebrow>
-                {editWage ? (
-                  <div className="flex gap-2">
-                    <Btn size="sm" onClick={saveWage}>Save</Btn>
-                    <Btn size="sm" variant="outline" onClick={() => setEditWage(false)}>Cancel</Btn>
-                  </div>
-                ) : <Btn size="sm" variant="outline" onClick={() => { setWageDraft(crewRates?.minimumDailyWage == null ? '' : String(crewRates.minimumDailyWage)); setEditWage(true); }}>Edit</Btn>}
-              </div>
-              <div className="px-4 py-3 flex items-center justify-between gap-3">
-                <span className="text-xs" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
-                  Warns when a daily rate or a crew day is below this amount. Wage Order IVA-22: ₱525 to ₱600 depending on the municipality. Leave blank to turn the warning off.
-                </span>
-                {editWage
-                  ? <input type="number" min="0" value={wageDraft} onChange={e => setWageDraft(e.target.value)} placeholder="e.g. 600" className="px-2 py-1 rounded border text-xs w-24 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} />
-                  : <span className="text-sm font-semibold whitespace-nowrap" style={{ fontFamily: F_MONO }}>{crewRates?.minimumDailyWage == null ? 'Not set' : `${peso(crewRates.minimumDailyWage)} / day`}</span>}
-              </div>
-            </Panel>
-            <Panel className="overflow-hidden">
-              <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
-                <Eyebrow>Daily-paid employees</Eyebrow>
-                {editDaily ? (
-                  <div className="flex gap-2">
-                    <Btn size="sm" onClick={saveDaily}>Save</Btn>
-                    <Btn size="sm" variant="outline" onClick={() => setEditDaily(false)}>Cancel</Btn>
-                  </div>
-                ) : <Btn size="sm" variant="outline" onClick={startEditDaily}>Edit</Btn>}
-              </div>
-              <div className="px-4 py-3 space-y-2.5">
-                <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
-                  SSS, PhilHealth and Pag-IBIG taken per day worked, until the month&apos;s employee share is complete.
-                </div>
-                {editDaily ? (
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2 text-sm" style={{ fontFamily: F_BODY, color: T.ink }}>
-                      <input type="radio" name="dailyMode" checked={dailyMode === 'split'} onChange={() => setDailyMode('split')} />
-                      Even split (monthly share ÷ working days)
-                    </label>
-                    <label className="flex items-center gap-2 text-sm flex-wrap" style={{ fontFamily: F_BODY, color: T.ink }}>
-                      <input type="radio" name="dailyMode" checked={dailyMode === 'fixed'} onChange={() => setDailyMode('fixed')} />
-                      Fixed per day ₱
-                      <input type="number" min="0" value={dailyDraft} disabled={dailyMode !== 'fixed'} onChange={e => setDailyDraft(e.target.value)} className="px-2 py-1 rounded border text-xs w-24 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} />
-                    </label>
-                  </div>
-                ) : (
-                  <div className="text-sm font-semibold" style={{ fontFamily: F_MONO }}>
-                    {dailyFixed == null ? 'Even split (monthly share ÷ working days)' : `${peso(dailyFixed)} per day`}
-                  </div>
-                )}
-              </div>
-            </Panel>
-            <Panel className="overflow-hidden">
-              <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
                 <Eyebrow>BIR Withholding Tax Brackets</Eyebrow>
                 {editBir ? (
                   <div className="flex gap-2">
@@ -343,6 +230,9 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
       {tab === 'backup' && currentUser?.role === 'ADMIN' && (
         <Panel className="p-4">
           <Eyebrow>Data &amp; Backup</Eyebrow>
+          <div className="text-xs mt-1 mb-3 max-w-2xl" style={{ fontFamily: F_BODY, color: T.soft }}>
+            Neon&apos;s free tier keeps no automatic backups, so download a copy regularly — especially before your defense. The <b>.json</b> file is a complete, restorable snapshot of every record (passwords and login sessions are never included). The <b>.xlsx</b> workbook is a readable copy of the main tables for review.
+          </div>
           <div className="flex gap-2 flex-wrap">
             <Btn disabled={exporting} onClick={exportJSON}>{exporting ? 'Preparing…' : 'Download full backup (.json)'}</Btn>
             <Btn variant="outline" disabled={exporting} onClick={exportExcel}>{exporting ? 'Preparing…' : 'Download Excel workbook (.xlsx)'}</Btn>

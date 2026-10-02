@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { currentCutoffPeriod } from '@/lib/utils';
-import { cutoffOf, staffRunKey } from '@/lib/loan-rules';
+import { cutoffOf, staffRunKey, todayYmdManila } from '@/lib/loan-rules';
 import { LoansPage } from '@/features/loans/LoansPage.jsx';
 import { CashAdvancesPage } from '@/features/loans/CashAdvancesPage.jsx';
 import { LoanHistoryPage } from '@/features/loans/LoanHistoryPage.jsx';
@@ -13,7 +13,7 @@ export const LoansView = ({ navSub = 'loans', staff = [], loans = [], reloadLoan
   const runKey = staffRunKey(raw.start);
 
   if (navSub === 'advances') {
-    return <CashAdvancesPage staff={staff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} period={period} toast={toast} />;
+    return <CashAdvancesPage staff={staff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} period={cutoffOf(todayYmdManila())} toast={toast} />;
   }
   if (navSub === 'history') return <LoanHistoryPage loans={loans} />;
   return <LoansPage staff={staff} loans={loans} reloadLoans={reloadLoans} period={period} runKey={runKey} toast={toast} />;

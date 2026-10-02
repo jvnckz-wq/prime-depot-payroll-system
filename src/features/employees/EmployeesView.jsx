@@ -16,7 +16,7 @@ const BLANK_EMP = {
   earlyShiftDays: [], earlyShiftTime: '06:00',
 };
 
-export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillConsumed, minimumDailyWage = null }) => {
+export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillConsumed }) => {
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState('active');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -284,17 +284,6 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
               </select>
             </Field>
           </div>
-          {minimumDailyWage != null && form.rate !== '' && (parseFloat(form.rate) || 0) < minimumDailyWage && (
-            <div role="status" className="flex items-start gap-2 px-3 py-2.5 rounded text-xs"
-              style={{ backgroundColor: T.warnBg, fontFamily: F_BODY, color: T.ink, lineHeight: 1.6 }}>
-              <AlertTriangle size={13} color={T.warn} className="mt-0.5 shrink-0" />
-              <span>
-                {isDailyPosition(form.position) && !['Checker', 'Warehouse Officer'].includes(form.position)
-                  ? `This daily rate is below the minimum wage (₱${minimumDailyWage}). Per-piece pay must still reach the minimum for a full working day.`
-                  : `This daily rate is below the minimum wage (₱${minimumDailyWage}).`}
-              </span>
-            </div>
-          )}
           {editing?.account?.active && (form.position !== 'Checker' || form.status === 'Inactive') && (
             <div role="status" className="flex items-start gap-2 px-3 py-2.5 rounded text-xs"
               style={{ backgroundColor: T.warnBg, fontFamily: F_BODY, color: T.ink, lineHeight: 1.6 }}>

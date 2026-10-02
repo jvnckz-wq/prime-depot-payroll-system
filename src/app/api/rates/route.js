@@ -10,7 +10,7 @@ const shape = (r) => ({
   isActive: r.isActive,
 });
 
-const CREW_RATE_DEFAULTS = { driverDaily: 280, helperDaily: 240, bonusHead: 100, bonusTrips: 5, dailyContribution: null, minimumDailyWage: null };
+const CREW_RATE_DEFAULTS = { driverDaily: 280, helperDaily: 240, bonusHead: 100, bonusTrips: 5, dailyContribution: null };
 
 const shapeCrewRates = (r) => (r
   ? {
@@ -19,7 +19,6 @@ const shapeCrewRates = (r) => (r
     bonusHead: num(r.bonusHead),
     bonusTrips: r.bonusTrips,
     dailyContribution: r.dailyContribution == null ? null : num(r.dailyContribution),
-    minimumDailyWage: r.minimumDailyWage == null ? null : num(r.minimumDailyWage),
   }
   : { ...CREW_RATE_DEFAULTS });
 
@@ -77,18 +76,6 @@ export async function PATCH(request) {
         if (daily.error) return NextResponse.json({ error: daily.error }, { status: 400 });
         data.dailyContribution = daily.value;
         parts.push(`Daily contributions: fixed ₱${data.dailyContribution} per day.`);
-      }
-    }
-
-    if (body.minimumDailyWage !== undefined) {
-      if (body.minimumDailyWage === null || body.minimumDailyWage === '') {
-        data.minimumDailyWage = null;
-        parts.push('Minimum daily wage cleared.');
-      } else {
-        const wage = money(body.minimumDailyWage, 'Minimum daily wage', 5000);
-        if (wage.error) return NextResponse.json({ error: wage.error }, { status: 400 });
-        data.minimumDailyWage = wage.value;
-        parts.push(`Minimum daily wage ₱${data.minimumDailyWage}.`);
       }
     }
 

@@ -337,7 +337,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {readOnly ? <Badge tone="amber">History · {viewDate}</Badge> : <Btn variant="outline" size="sm" onClick={() => setLogOpen(true)}>Log Delivery</Btn>}
+              {!readOnly && <Btn variant="outline" size="sm" onClick={() => setLogOpen(true)}>Log Delivery</Btn>}
               <div className="px-3 py-1.5 rounded text-sm font-semibold tabular-nums" style={{ fontFamily: F_MONO, backgroundColor: T.ink, color: '#fff' }}>{crew.plate}</div>
             </div>
           </div>
@@ -658,19 +658,13 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
 
       <div className="flex items-center flex-wrap gap-2 mb-5">
         <span className="text-xs" style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.04em' }}>VIEWING</span>
-        {readOnly && <Badge tone="amber">History · {viewDate}</Badge>}
         <input type="date" max={todayStr} value={viewDate || todayStr}
           onChange={e => loadHistory(e.target.value === todayStr ? null : e.target.value)}
           className="px-3 py-2 rounded border text-sm" style={{ borderColor: T.line, fontFamily: F_MONO, minWidth: 168, colorScheme: 'light', color: T.ink, backgroundColor: T.surface }} />
         {readOnly && (
-          <button onClick={() => loadHistory(null)} className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.brand }}>Back to Today</button>
+          <Btn variant="outline" onClick={() => loadHistory(null)}>Back to Today</Btn>
         )}
         {histLoading && <Skeleton w={72} h={11} />}
-        {readOnly && (
-          <span className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
-            Read-only — logging and corrections are disabled for past days.
-          </span>
-        )}
       </div>
 
       {!payslipsMode && (
@@ -745,7 +739,6 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                     <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
                       {roleLabel(p.role)} · {p.attendanceDaily ? 'present' : `${p.trips} trip${p.trips === 1 ? '' : 's'}`}
                       {p.lateMins > 0 && <span style={{ color: T.brand }}> · {p.lateMins} min late</span>}
-                      {crewRates.minimumDailyWage != null && p.total < crewRates.minimumDailyWage && <span style={{ color: T.warn }}> · below minimum wage</span>}
                     </div>
                   </div>
                 </div>
