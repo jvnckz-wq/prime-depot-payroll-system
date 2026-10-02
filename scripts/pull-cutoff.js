@@ -141,6 +141,7 @@ async function main() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
       body: JSON.stringify({ from, to, roster, punches }),
+      signal: AbortSignal.timeout(90000),
     });
     const text = await res.text();
     let bodyOut; try { bodyOut = JSON.parse(text); } catch { bodyOut = text; }

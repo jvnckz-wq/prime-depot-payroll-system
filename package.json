@@ -19,6 +19,7 @@
     "test:contributions": "tsx tests/daily-contributions.test.cjs",
     "test:login": "tsx tests/login-limit.test.cjs",
     "test:authstate": "node tests/auth-state.test.mjs",
+    "test:validation": "tsx tests/validation.test.cjs",
     "sync": "node scripts/sync-agent.js",
     "sync:live": "node scripts/sync-agent.js --live",
     "pull-cutoff": "node scripts/pull-cutoff.js",

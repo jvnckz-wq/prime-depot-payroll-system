@@ -21,7 +21,6 @@ import { LegalView } from '@/features/auth/LegalView.jsx';
 import { ForcedPasswordChange } from '@/features/auth/AccountView.jsx';
 import TwoFactorSetup from '@/features/auth/TwoFactorSetup.jsx';
 import { AccountPage } from '@/features/auth/AccountPage.jsx';
-import { FAQView } from '@/features/help/FAQView.jsx';
 import { ReportsView } from '@/features/reports/ReportsView.jsx';
 import { SettingsView } from '@/features/settings/SettingsView.jsx';
 import { PayrollView } from '@/features/payroll/PayrollView.jsx';
@@ -363,7 +362,6 @@ export default function PrimeDepotPayroll() {
           {tab === 'payroll' && <PayrollView navSub={subs.payroll} staff={staff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} toast={toast} cutoffLabel={cutoffText} reloadStaff={reloadStaff} staffLoading={staffLoading} deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} crewRates={crewRates} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} />}
           {tab === 'deliveries' && <TruckPayrollView mode="logging" deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} crewRates={crewRates} loans={loans} reloadLoans={reloadLoans} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} toast={toast} />}
           {tab === 'loans' && <LoansView navSub={subs.loans} staff={allStaff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} cutoffPeriod={cutoffPeriod} toast={toast} />}
-          {tab === 'faqs' && <FAQView />}
           {tab === 'reports' && <ReportsView navTab={subs.reports} staff={staff} deliveries={deliveries} loans={loans} statutory={statutory} cutoffLabel={cutoffText} runKey={staffKey} attendanceSummaries={attSummaries} crewRates={crewRates} />}
           {tab === 'settings' && <SettingsView navTab={subs.settings} currentUser={user} onUserChange={u => setUser(prev => ({ ...prev, ...u }))} onSignedOut={() => { setUser(null); setTab('dashboard'); }} checkers={checkers} setCheckers={setCheckers} sssTable={sssTable} setSssTable={setSssTable} philhealthRates={philhealthRates} setPhilhealthRates={setPhilhealthRates} pagibigRates={pagibigRates} setPagibigRates={setPagibigRates} birTable={birTable} setBirTable={setBirTable} crewRates={crewRates} setCrewRates={setCrewRates} toast={toast} />}
           </div>

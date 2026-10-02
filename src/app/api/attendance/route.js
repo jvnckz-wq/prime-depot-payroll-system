@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';
-import { minutesLate, summarizeAttendance } from '@/lib/attendance';
+import { isCalendarDate, isClockTime, minutesLate, summarizeAttendance } from '@/lib/attendance';
 
 const hhmm = (d) => (d ? new Date(d).toISOString().slice(11, 16) : null);
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
@@ -16,8 +16,11 @@ export async function PATCH(request) {
     const body = await request.json();
     const employeeId = String(body.employeeId || '').trim();
     const dateStr = String(body.date || '').trim();
-    if (!employeeId || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    if (!employeeId || !isCalendarDate(dateStr)) {
       return NextResponse.json({ error: 'employeeId and a valid date are required.' }, { status: 400 });
+    }
+    if (!body.isLeave && !body.isAbsent && [body.timeIn, body.timeOut].some((t) => t != null && t !== '' && !isClockTime(t))) {
+      return NextResponse.json({ error: 'Times must be in 24-hour HH:MM, from 00:00 to 23:59.' }, { status: 400 });
     }
 
     const emp = await prisma.employee.findUnique({ where: { id: employeeId } });
@@ -25,7 +28,7 @@ export async function PATCH(request) {
 
     const date = new Date(`${dateStr}T00:00:00.000Z`);
     const editNote = (body.editNote || '').toString().trim() || null;
-    const clean = (t) => (/^\d{2}:\d{2}$/.test(String(t || '')) ? String(t) : null);
+    const clean = (t) => (isClockTime(t) ? String(t) : null);
 
     let fields;
     if (body.isLeave) {

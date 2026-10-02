@@ -228,9 +228,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
       </Panel>
 
       <div className="md:hidden space-y-2.5">
-        {rows.map(r => {
-          const crew = typeof r.daily === 'boolean' ? r.daily : isDailyPosition(r.position);
-          return (
+        {rows.map(r => (
             <Panel key={r.id} className="p-3.5">
               <div className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">
@@ -247,22 +245,15 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
                   </span>
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-3 mt-3 pt-3" style={{ borderTop: `1px solid ${T.lineSoft}` }}>
-                <div>
-                  <div className="text-xs" style={{ color: T.soft, letterSpacing: '0.05em' }}>DAILY RATE</div>
-                  <div className="font-semibold" style={{ fontFamily: F_MONO }}><Money value={r.rate} /></div>
-                </div>
-                <div>
-                  <div className="text-xs" style={{ color: T.soft, letterSpacing: '0.05em' }}>{crew ? 'TYPE' : 'LEAVE CREDITS'}</div>
-                  <div className="font-semibold text-sm" style={{ fontFamily: F_BODY }}>{crew ? 'Pakyawan' : `${r.leaveCredits ?? 0} days`}</div>
-                </div>
+              <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${T.lineSoft}` }}>
+                <div className="text-xs" style={{ color: T.soft, letterSpacing: '0.05em' }}>DAILY RATE</div>
+                <div className="font-semibold" style={{ fontFamily: F_MONO }}><Money value={r.rate} /></div>
               </div>
               <div className="flex gap-2 flex-wrap mt-3">
                 {renderActions(r)}
               </div>
             </Panel>
-          );
-        })}
+        ))}
         {rows.length === 0 && (
           <Panel className="p-6"><div className="text-sm text-center" style={{ color: T.soft }}>No employees to show.</div></Panel>
         )}

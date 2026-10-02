@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronDown, HelpCircle, LogOut, Menu, User, X } from 'lucide-react';
+import { ChevronDown, LogOut, Menu, User, X } from 'lucide-react';
 import { ADMIN_NAV, ADMIN_NAV_GROUPS } from '@/shell/nav-items';
 import { F_BODY, F_HEAD, T } from '@/components/theme';
 /* eslint-disable @next/next/no-img-element -- user avatars are base64 data URIs; next/image adds no value and cannot optimize data URIs */
@@ -81,29 +81,6 @@ const NavList = ({ tab, subs, onSelect }) => (
   </nav>
 );
 
-const FaqButton = ({ tab, onClick }) => {
-  const active = tab === 'faqs';
-  return (
-    <button
-      onClick={onClick}
-      aria-current={active ? 'page' : undefined}
-      className="pd-nav-item relative w-full flex items-center gap-3 pl-5 pr-3 py-3 text-sm text-left"
-      style={{
-        fontFamily: F_BODY, fontWeight: active ? 600 : 400,
-        color: active ? '#FFFFFF' : T.sidebarSoft,
-        backgroundColor: active ? T.sidebarActiveBg : undefined,
-        borderTop: `1px solid ${T.sidebarLine}`,
-      }}
-    >
-      {active && (
-        <span aria-hidden="true" style={{ position: 'absolute', left: 0, top: 7, bottom: 7, width: 3, borderRadius: '0 3px 3px 0', backgroundColor: T.sidebarAccent }} />
-      )}
-      <HelpCircle size={17} strokeWidth={active ? 2.2 : 1.9} color={active ? T.sidebarAccent : 'currentColor'} />
-      <span className="truncate">FAQs</span>
-    </button>
-  );
-};
-
 export const Sidebar = ({ tab, subs = {}, onSelect, open = false, onClose }) => {
   const panelRef = useRef(null);
   const restoreRef = useRef(null);
@@ -164,7 +141,6 @@ export const Sidebar = ({ tab, subs = {}, onSelect, open = false, onClose }) => 
       <aside className="hidden lg:flex flex-col shrink-0 h-full"
         style={{ width: SIDEBAR_W, backgroundColor: T.sidebar, borderRight: `1px solid ${T.sidebarLine}` }}>
         <NavList tab={tab} subs={subs} onSelect={onSelect} />
-        <FaqButton tab={tab} onClick={() => onSelect('faqs')} />
       </aside>
 
       {open && (
@@ -180,7 +156,6 @@ export const Sidebar = ({ tab, subs = {}, onSelect, open = false, onClose }) => 
           >
             {header(true)}
             <NavList tab={tab} subs={subs} onSelect={select} />
-            <FaqButton tab={tab} onClick={() => select('faqs')} />
           </div>
         </div>
       )}

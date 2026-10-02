@@ -5,7 +5,10 @@ import { requireAdmin } from '@/lib/server/security/auth';
 import {
   shapeSss, shapePhilhealth, shapePagibig, shapeBir,
   sssToDb, philhealthToDb, pagibigToDb, birToDb,
+  validateSss, validatePhilhealth, validatePagibig, validateBir,
 } from '@/lib/server/services/statutory';
+
+const VALIDATORS = { sss: validateSss, philhealth: validatePhilhealth, pagibig: validatePagibig, bir: validateBir };
 
 async function activeYear() {
   const latest = await prisma.philhealthConfig.findFirst({ orderBy: { effectiveYear: 'desc' } });
@@ -45,10 +48,12 @@ export async function PUT(request) {
     const body = await request.json();
     const table = body.table;
     const data = body.data;
+    if (!VALIDATORS[table]) return NextResponse.json({ error: 'Unknown table.' }, { status: 400 });
+    const problem = VALIDATORS[table](data);
+    if (problem) return NextResponse.json({ error: problem }, { status: 400 });
     const year = await activeYear();
 
     if (table === 'sss') {
-      if (!Array.isArray(data) || !data.length) return NextResponse.json({ error: 'SSS table cannot be empty.' }, { status: 400 });
       await withRetry(() => prismaBase.$transaction([
         prismaBase.sssBracket.deleteMany({ where: { effectiveYear: year } }),
         prismaBase.sssBracket.createMany({ data: sssToDb(data, year) }),
@@ -64,7 +69,6 @@ export async function PUT(request) {
         prismaBase.pagibigBracket.createMany({ data: brackets.map((b) => ({ ...b, configId: cfg.id })) }),
       ]));
     } else if (table === 'bir') {
-      if (!Array.isArray(data) || !data.length) return NextResponse.json({ error: 'BIR table cannot be empty.' }, { status: 400 });
       await withRetry(() => prismaBase.$transaction([
         prismaBase.birBracket.deleteMany({ where: { effectiveYear: year } }),
         prismaBase.birBracket.createMany({ data: birToDb(data, year) }),
@@ -76,6 +80,6 @@ export async function PUT(request) {
     return NextResponse.json({ ok: true, year, table });
   } catch (err) {
     console.error('PUT /api/statutory failed:', err);
-    return NextResponse.json({ error: 'Could not save: ' + (err?.message || 'unknown error') }, { status: 500 });
+    return NextResponse.json({ error: 'Could not save the table. Please try again.' }, { status: 500 });
   }
 }

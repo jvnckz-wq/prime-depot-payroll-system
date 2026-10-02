@@ -186,7 +186,7 @@ export const CashAdvancesPage = ({ staff, loans, reloadLoans, statutory, period:
                     <span className="font-bold pd-num whitespace-nowrap" style={{ fontFamily: F_MONO, color: T.ink }}>{peso(l.principal)}</span>
                   </div>
                   <div className="mt-2 flex items-center justify-between gap-2 text-xs" style={{ color: T.soft }}>
-                    <span>Given {shortDate(l.dateGranted, true)}{room == null ? '' : ` · room left ${peso(Math.max(0, room))}`}</span>
+                    <span>Given {shortDate(l.dateGranted, true)}{limit == null ? '' : ` · limit ${peso(limit)}`}{room == null ? '' : ` · room left ${peso(Math.max(0, room))}`}</span>
                     {paid ? <Pill tone="green">Deducted</Pill>
                       : partly ? <Pill tone="amber">{peso(bal)} carried over</Pill>
                         : <Pill tone="slate">To deduct {shortDate(period.end)}</Pill>}

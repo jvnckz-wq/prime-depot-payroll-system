@@ -75,6 +75,7 @@ async function push(payload) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
     body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(30000),
   });
   const text = await res.text();
   let body;
@@ -126,6 +127,7 @@ async function handlePull(req, stamp) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
       body: JSON.stringify({ requestId: req.id, from: req.from, to: req.to, roster, punches }),
+      signal: AbortSignal.timeout(90000),
     });
     const text = await res.text();
     let body; try { body = JSON.parse(text); } catch { body = text; }
@@ -141,6 +143,7 @@ async function handlePull(req, stamp) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
         body: JSON.stringify({ requestId: req.id, failed: true, error: `Could not read the device: ${e.message}` }),
+        signal: AbortSignal.timeout(15000),
       });
     } catch { }
   }
