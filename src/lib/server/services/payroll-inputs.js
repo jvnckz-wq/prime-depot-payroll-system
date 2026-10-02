@@ -232,3 +232,79 @@ export async function crewAvailableOn(prisma, ymd) {
   }
   return out;
 }
+
+const ROLE_ORDER = ['Driver', 'Pahinante', 'Checker', 'Warehouse Officer'];
+
+export async function loadCrewReport(prisma, from, to) {
+  const [employees, everyone, rateRow, entries] = await Promise.all([
+    dailyEmployees(prisma),
+    prisma.employee.findMany({ select: { id: true, name: true } }),
+    prisma.crewRate.findUnique({ where: { id: 'current' } }),
+    prisma.loanEntry.findMany({
+      where: { type: 'DEDUCTION', payslipId: { startsWith: 'crew-' }, date: { gte: toDate(from), lte: toDate(to) } },
+      include: { loan: { select: { employeeId: true } } },
+    }),
+  ]);
+  const rates = shapeRates(rateRow);
+  const pays = await dailyPayByDate(prisma, employees, rates, `${from.slice(0, 8)}01`, to);
+
+  const contributionOn = new Map();
+  const enrolled = employees.filter((e) => e.sssEnrolled || e.philhealthEnrolled || e.pagibigEnrolled);
+  if (enrolled.length && rates.dailyContribution !== 0) {
+    const { statutory } = await loadStatutory(prisma);
+    for (const e of enrolled) {
+      const share = monthlyEmployeeShare(shapeEmployee(e), statutory);
+      const byMonth = new Map();
+      for (const [day, people] of pays) {
+        const p = people.find((x) => x.name === e.id);
+        if (!p) continue;
+        const month = day.slice(0, 7);
+        if (!byMonth.has(month)) byMonth.set(month, []);
+        byMonth.get(month).push({ ymd: day, payable: p.payable });
+      }
+      for (const [month, days] of byMonth) {
+        const perDay = contributionPerDay(rates.dailyContribution, share.total, `${month}-01`);
+        const { byDay } = collectDailyContributions(days, share.total, perDay);
+        for (const [day, amount] of Object.entries(byDay)) contributionOn.set(`${e.id}|${day}`, amount);
+      }
+    }
+  }
+
+  const loansBy = new Map();
+  for (const en of entries) {
+    const id = en.loan?.employeeId;
+    if (id) loansBy.set(id, round2((loansBy.get(id) || 0) + Number(en.amount)));
+  }
+
+  const nameOf = new Map(everyone.map((e) => [e.id, e.name]));
+  const merged = new Map();
+  for (const [day, people] of pays) {
+    if (day < from || day > to) continue;
+    for (const p of people) {
+      if (!merged.has(p.name)) {
+        merged.set(p.name, {
+          id: p.name, name: nameOf.get(p.name) || p.name, role: p.role, trucks: new Set(),
+          days: 0, trips: 0, dailyRate: 0, pieceRate: 0, bonus: 0, total: 0, late: 0, contributions: 0,
+        });
+      }
+      const m = merged.get(p.name);
+      m.days += p.days;
+      m.trips += p.trips;
+      m.dailyRate = round2(m.dailyRate + p.dailyRate);
+      m.pieceRate = round2(m.pieceRate + p.pieceRate);
+      m.bonus = round2(m.bonus + p.bonus);
+      m.total = round2(m.total + p.total);
+      m.late = round2(m.late + (p.late || 0));
+      m.contributions = round2(m.contributions + (contributionOn.get(`${p.name}|${day}`) || 0));
+      (p.trucks || []).forEach((t) => m.trucks.add(t));
+    }
+  }
+
+  const rank = (role) => (ROLE_ORDER.indexOf(role) + 1) || ROLE_ORDER.length + 1;
+  return [...merged.values()]
+    .map((m) => {
+      const loans = loansBy.get(m.id) || 0;
+      return { ...m, trucks: [...m.trucks].sort(), loans, net: round2(m.total - m.late - m.contributions - loans) };
+    })
+    .sort((a, b) => rank(a.role) - rank(b.role) || a.name.localeCompare(b.name));
+}

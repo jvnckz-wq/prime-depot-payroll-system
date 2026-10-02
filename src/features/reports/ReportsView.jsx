@@ -3,33 +3,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { AlertTriangle, Check } from 'lucide-react';
 import { Badge, Btn, EmptyState, Eyebrow, H1, Panel, Skeleton, Td, Th } from '@/components/ui.jsx';
-import { CREW_RATE_FALLBACK, positionLabel } from '@/data/seed';
-import { computeStaffPayroll, crewEarnings, deliveriesToLog } from '@/lib/payroll';
+import { positionLabel } from '@/data/seed';
+import { computeStaffPayroll } from '@/lib/payroll';
 import { todayYmdManila } from '@/lib/loan-rules';
 import { deliveryRange } from '@/lib/delivery-range';
 import { exportXLSX, peso } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 
-function crewEarningsRange(apiDeliveries, crewRates) {
-  const byDate = {};
-  for (const d of apiDeliveries) (byDate[d.date] ||= []).push(d);
-  const merged = new Map();
-  for (const rows of Object.values(byDate)) {
-    const day = crewEarnings(deliveriesToLog(rows), crewRates);
-    for (const p of day) {
-      if (!merged.has(p.name)) merged.set(p.name, { name: p.name, role: p.role, trips: 0, days: 0, trucks: new Set(), pieceRate: 0, dailyRate: 0, bonus: 0, total: 0 });
-      const m = merged.get(p.name);
-      m.trips += p.trips; m.days += p.days; m.pieceRate += p.pieceRate;
-      m.dailyRate += p.dailyRate; m.bonus += p.bonus; m.total += p.total;
-      p.trucks.forEach(t => m.trucks.add(t));
-    }
-  }
-  return [...merged.values()]
-    .map(m => ({ ...m, trucks: [...m.trucks].sort(), pieceRate: +m.pieceRate.toFixed(2), total: +m.total.toFixed(2) }))
-    .sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === 'Driver' ? -1 : 1));
-}
-
-export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel = '', runKey = '', attendanceSummaries = [], crewRates = CREW_RATE_FALLBACK, navTab }) => {
+export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel = '', runKey = '', attendanceSummaries = [], navTab }) => {
   const [tab, setTab] = useState(navTab || 'register');
   // eslint-disable-next-line react-hooks/set-state-in-effect -- sync the report from the sidebar selection
   useEffect(() => { if (navTab) setTab(navTab); }, [navTab]);
@@ -48,13 +29,13 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
     setLoadingRange(true);
     setFetchError('');
     const t = setTimeout(() => {
-      fetch(`/api/deliveries?from=${from}&to=${to}`)
+      fetch(`/api/payroll/daily?summary=crew&from=${from}&to=${to}`)
         .then(async r => {
           const data = await r.json().catch(() => ({}));
-          if (!r.ok) throw new Error(data.error || 'Could not load deliveries for this range.');
+          if (!r.ok) throw new Error(data.error || 'Could not load the crew report for this range.');
           return data;
         })
-        .then(data => { if (!cancelled) setRangeApi(data.deliveries || []); })
+        .then(data => { if (!cancelled) setRangeApi(data.rows || []); })
         .catch(err => { if (!cancelled) { setRangeApi([]); setFetchError(err.message); } })
         .finally(() => { if (!cancelled) setLoadingRange(false); });
     }, 400);
@@ -74,7 +55,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
   );
   const remitRows = payrollRows;
   const T13 = staff.filter(e => Number(e.rate) > 0).map(e => ({ name: e.name, months: 12, basic: e.rate * 22 * 12, pay: Math.round(e.rate * 22 * 12 / 12 * 100) / 100 }));
-  const crewRowsAll = useMemo(() => crewEarningsRange(rangeApi, crewRates), [rangeApi, crewRates]);
+  const crewRowsAll = rangeApi;
   const [dailyRemit, setDailyRemit] = useState({ month: '', rows: [] });
   useEffect(() => {
     if (tab !== 'remittance') return undefined;
@@ -95,7 +76,8 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
   const export13 = () => exportXLSX('13th-Month-Pay.xlsx', [{ name: '13th Month', rows: T13.map(r => ({ Employee: r.name, 'Months Worked': r.months, 'Total Basic': r.basic, '13th Month Pay': r.pay })) }]);
   const exportDriver = () => exportXLSX('Crew-Earnings.xlsx', [{ name: 'Crew', rows: crewRows.map(r => ({
     Name: r.name, Role: positionLabel(r.role), Trucks: r.trucks.join(', '), Days: r.days, Trips: r.trips,
-    'Daily Rate': r.dailyRate, 'Piece Rate': r.pieceRate, 'Palima Bonus': r.bonus, 'Total Earned': r.total,
+    'Daily Rate': r.dailyRate, 'Piece Rate': r.pieceRate, 'Palima Bonus': r.bonus, Gross: r.total,
+    Late: r.late, 'SSS, PhilHealth, Pag-IBIG': r.contributions, Loans: r.loans, Net: r.net,
   })) }]);
 
   return (
@@ -179,11 +161,12 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
           )}
           <p className="text-xs px-4 pb-3" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
             One row per person, totalled across every truck they rode. A pahinante who worked with two
-            different drivers appears once here, not twice.
+            different drivers appears once here, not twice. Net is gross minus late, contributions and loan
+            deductions, the same as the daily payslips.
           </p>
           <div className="overflow-x-auto pd-scroll-shadow">
             <table className="w-full">
-              <thead><tr><Th>Name</Th><Th>Role</Th><Th>Trucks</Th><Th center>Days</Th><Th center>Trips</Th><Th right>Daily</Th><Th right>Piece Rate</Th><Th right>Palima</Th><Th right>Total</Th></tr></thead>
+              <thead><tr><Th>Name</Th><Th>Role</Th><Th>Trucks</Th><Th center>Days</Th><Th center>Trips</Th><Th right>Daily</Th><Th right>Piece Rate</Th><Th right>Palima</Th><Th right>Gross</Th><Th right>Late</Th><Th right>Contrib.</Th><Th right>Loans</Th><Th right>Net</Th></tr></thead>
               <tbody>{crewRows.map((r, i) => (
                 <tr key={i}>
                   <Td>{r.name}</Td>
@@ -194,7 +177,11 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
                   <Td right mono>{peso(r.dailyRate)}</Td>
                   <Td right mono>{peso(r.pieceRate)}</Td>
                   <Td right mono>{r.bonus ? <span style={{ color: T.green }}>{peso(r.bonus)}</span> : '—'}</Td>
-                  <Td right mono><span style={{ fontWeight: 700 }}>{peso(r.total)}</span></Td>
+                  <Td right mono>{peso(r.total)}</Td>
+                  <Td right mono>{r.late ? <span style={{ color: T.red }}>-{peso(r.late)}</span> : '—'}</Td>
+                  <Td right mono>{r.contributions ? <span style={{ color: T.red }}>-{peso(r.contributions)}</span> : '—'}</Td>
+                  <Td right mono>{r.loans ? <span style={{ color: T.red }}>-{peso(r.loans)}</span> : '—'}</Td>
+                  <Td right mono><span style={{ fontWeight: 700 }}>{peso(r.net)}</span></Td>
                 </tr>
               ))}</tbody>
             </table>

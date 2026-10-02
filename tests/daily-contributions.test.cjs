@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const { collectDailyContributions, contributionPerDay, dailyContributionFor, monthlyEmployeeShare } = require('../src/lib/payroll.js');
-const { contributionContext, crewAvailableOn, loadDailyContributionsForMonth } = require('../src/lib/server/services/payroll-inputs.js');
+const { contributionContext, crewAvailableOn, loadCrewReport, loadDailyContributionsForMonth } = require('../src/lib/server/services/payroll-inputs.js');
 
 const tests = [];
 const ok = (name, fn) => tests.push([name, fn]);
@@ -126,6 +126,34 @@ ok('server, even split (the default): Oct 3 collected ₱50.98 before, loans see
   assert.equal(available.get('DRV-001'), 254.51);
   const r = await loadDailyContributionsForMonth(fakePrisma(null), '2026-10-03');
   assert.deepEqual(r.rows.map((x) => [x.perDay, x.collected, x.remaining]), [[25.49, 76.47, 611.63]]);
+});
+
+function reportPrisma(dailyContribution) {
+  const base = fakePrisma(dailyContribution);
+  const D = (ymd) => new Date(`${ymd}T00:00:00Z`);
+  const inRange = (date, w) => (!w ? true : w instanceof Date ? date.getTime() === w.getTime() : (!w.gte || date >= w.gte) && (!w.lte || date <= w.lte));
+  const attendance = [{ employeeId: 'DRV-001', date: D('2026-10-03'), timeIn: new Date('2026-10-03T06:40:00+08:00'), isAbsent: false, isLeave: false, tardinessMins: 10 }];
+  const entries = [{ type: 'DEDUCTION', payslipId: 'crew-2026-10-02', date: D('2026-10-02'), amount: 100, loan: { employeeId: 'DRV-001' } },
+    { type: 'DEDUCTION', payslipId: 'crew-2026-09-30', date: D('2026-09-30'), amount: 999, loan: { employeeId: 'DRV-001' } }];
+  return {
+    ...base,
+    employee: { findMany: async (args) => (args?.select ? [{ id: 'DRV-001', name: 'Andro' }] : base.employee.findMany(args)) },
+    attendance: { findMany: async ({ where }) => attendance.filter((a) => inRange(a.date, where?.date)) },
+    loanEntry: { findMany: async ({ where }) => entries.filter((e) => inRange(e.date, where?.date)) },
+  };
+}
+
+ok('crew report Oct 2 to 3: gross, late, contributions and loans add up to the payslips (even split)', async () => {
+  const [r] = await loadCrewReport(reportPrisma(null), '2026-10-02', '2026-10-03');
+  assert.deepEqual([r.name, r.role, r.days, r.trips, r.total], ['Andro', 'Driver', 2, 2, 560]);
+  assert.deepEqual([r.late, r.contributions, r.loans, r.net], [30, 50.98, 100, 379.02]);
+});
+
+ok('crew report with the client\u2019s fixed ₱50: Oct 1 is outside the range but still counts toward the month', async () => {
+  const [r] = await loadCrewReport(reportPrisma(50), '2026-10-02', '2026-10-03');
+  assert.deepEqual([r.contributions, r.net], [100, 330]);
+  const [all] = await loadCrewReport(reportPrisma(50), '2026-10-01', '2026-10-03');
+  assert.deepEqual([all.days, all.contributions, all.loans], [3, 150, 100]);
 });
 
 ok('the first of the month starts from zero', async () => {
