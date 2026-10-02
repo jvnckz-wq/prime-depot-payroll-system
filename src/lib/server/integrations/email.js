@@ -15,10 +15,6 @@ function getTransporter() {
   return cached;
 }
 
-export function isEmailConfigured() {
-  return !!(process.env.EMAIL_USER && process.env.EMAIL_APP_PASSWORD);
-}
-
 export async function sendPasswordResetCode(to, code) {
   const t = getTransporter();
   if (!t) throw new Error('Email is not configured (set EMAIL_USER and EMAIL_APP_PASSWORD).');

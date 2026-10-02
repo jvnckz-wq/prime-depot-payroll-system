@@ -19,17 +19,7 @@ export function exportXLSX(filename, sheets) {
   XLSX.writeFile(wb, filename);
 }
 
-export const todayLabel = () => new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-
 export const telHref = (raw) => 'tel:' + String(raw || '').replace(/[^\d+]/g, '');
-
-export const looksLikePHPhone = (raw) => {
-  const t = String(raw || '').trim();
-  if (!t) return true; 
-  const s = t.replace(/[^\d+]/g, '');
-  if (!s) return false; 
-  return /^09\d{9}$/.test(s) || /^\+639\d{9}$/.test(s) || /^0\d{7,9}$/.test(s) || /^\d{7,8}$/.test(s);
-};
 
 export const timeLabel = (iso) => {
   if (!iso) return '';

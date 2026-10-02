@@ -108,12 +108,6 @@ export const EmptyState = ({ icon: Icon = Package, title, desc, action }) => (
   </div>
 );
 
-export const ProgressBar = ({ pct, tone = T.green }) => (
-  <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: T.lineSoft, width: 100 }}>
-    <div className="h-full rounded-full pd-progress-fill" style={{ width: `${Math.min(100, Math.max(0, pct))}%`, backgroundColor: tone }} />
-  </div>
-);
-
 export const Skeleton = ({ w = '100%', h = 12, r = 6, className = '', style = {} }) => (
   <span className={`pd-skeleton ${className}`} aria-hidden="true"
     style={{ display: 'inline-block', width: w, height: h, borderRadius: r, ...style }} />
