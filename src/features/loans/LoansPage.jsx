@@ -87,7 +87,6 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
         <div className="flex items-center gap-2.5 flex-wrap px-3.5 py-3" style={{ borderBottom: `1px solid ${T.line}` }}>
           <SearchBox value={q} onChange={setQ} />
           <Seg value={who} onChange={setWho} options={[['all', 'All'], ['staff', 'Staff'], ['crew', 'Crew']]} />
-          <span className="ml-auto text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Sorted by next deduction</span>
         </div>
 
         {shown.length === 0 ? (

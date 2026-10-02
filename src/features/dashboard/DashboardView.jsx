@@ -132,7 +132,6 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
         <Panel className="overflow-hidden lg:flex lg:flex-col" style={{ height: snapshotHeight }}>
           <div className="px-4 pt-4 pb-2 shrink-0 flex items-center justify-between gap-2 flex-wrap">
             <Eyebrow>{cutoffLabel} · Payroll Snapshot</Eyebrow>
-            <span className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Tap a row to open Payroll for the full breakdown</span>
           </div>
           <div className="overflow-auto lg:flex-1 lg:min-h-0 pd-no-scrollbar">
             <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">

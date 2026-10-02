@@ -45,16 +45,6 @@ const PayslipCard = ({ e, calc, cutoffLabel, attPeriod, att, statutory, classNam
       ))}
     </div>
     <div className="px-6 py-4" style={{ borderBottom: `1px solid ${T.line}` }}>
-      <div className="mb-2 text-xs" style={{ fontFamily: F_BODY }}>
-        {calc.hasAttendance
-          ? <span style={{ color: T.green }}>Days present, tardiness, and OT from imported attendance{attPeriod ? ` (${attPeriod.start} → ${attPeriod.end})` : ''}.</span>
-          : <span style={{ color: T.amber }}>⚠ No attendance imported for this person — figures are an estimate ({calc.days} days assumed).</span>}
-      </div>
-      {calc.hasAttendance && att && (
-        <div className="mb-2 px-2.5 py-1.5 rounded text-xs" style={{ backgroundColor: T.bg, fontFamily: F_MONO, color: T.soft }}>
-          Present {att.present}{att.leave ? ` · Leave ${att.leave}` : ''} · Late {att.daysLate}d/{Math.round(att.lateMins || 0)}min · OT {Math.round(att.otWeekdayMins || 0)}min wkdy / {Math.round(att.otWeekendMins || 0)}min wknd
-        </div>
-      )}
       {[['Basic Rate (Daily):', peso(e.rate)], ['Days Present:', String(calc.days)], ['Gross Salary:', peso(calc.gross)]].map(([l, v], i) => (
         <div key={i} className="flex justify-between text-sm py-1" style={{ fontFamily: F_BODY }}>
           <span style={{ color: T.ink }}>{l}</span>
@@ -335,7 +325,6 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
               className="px-2 py-1.5 rounded border text-sm w-32" style={{ borderColor: T.line, fontFamily: F_MONO, color: T.ink, backgroundColor: T.surface }} />
           </div>
           <Btn size="sm" loading={savingAllowance} disabled={!allowDirty || savingAllowance} onClick={() => saveAllowance(e)}>{savingAllowance ? 'Saving…' : 'Save'}</Btn>
-          <span className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Saved to this employee and shown on every payslip. Edit here, press Save, then Finalize.</span>
         </div>
 
         <style>{`

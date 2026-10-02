@@ -126,7 +126,6 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
               <tbody>{dailyRemit.rows.map(r => <tr key={r.id}><Td>{r.name}<div className="text-xs" style={{ color: T.soft }}>{r.position}</div></Td><Td right mono>{peso(r.sss)}</Td><Td right mono>{peso(r.phic)}</Td><Td right mono>{peso(r.hdmf)}</Td><Td right mono>{peso(r.total)}</Td><Td right mono>{peso(r.collected)}</Td><Td right mono style={{ color: r.remaining ? T.red : undefined }}>{peso(r.remaining)}</Td></tr>)}</tbody>
             </table></div>
           </>)}
-          <div className="px-4 py-2.5 text-xs flex items-center gap-2" style={{ fontFamily: F_BODY, color: T.soft, borderTop: `1px solid ${T.line}` }}><AlertTriangle size={12} /> Estimated employee-share figures for this prototype. Add employer counterpart before remitting.</div>
         </Panel>
       )}
       {tab === '13th' && (

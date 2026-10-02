@@ -115,8 +115,6 @@ const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
           </div>
         )}
 
-        <div className="text-xs" style={{ color: T.soft }}>Deducted in full on the {shortDate(period.end)} payroll. Cash advances cannot be paused.</div>
-
         <div className="flex justify-end gap-2 pt-1">
           <Btn variant="outline" onClick={onClose} disabled={busy}>Cancel</Btn>
           <Btn variant="amber" onClick={save} loading={busy} disabled={busy || !!problem}>Save advance</Btn>

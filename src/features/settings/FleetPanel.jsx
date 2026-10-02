@@ -86,7 +86,7 @@ export const FleetPanel = ({ toast }) => {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <Eyebrow>Trucks</Eyebrow>
+        <Eyebrow> </Eyebrow>
         <Btn size="sm" onClick={openAddTruck}>Add Truck</Btn>
       </div>
 
@@ -126,10 +126,6 @@ export const FleetPanel = ({ toast }) => {
           </table>
         </div>
       </Panel>
-      <p className="text-xs mb-6" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.65 }}>
-        A truck record holds the vehicle only. The driver and helpers are chosen on each delivery, so
-        no one is tied to a particular truck.
-      </p>
 
       <Modal open={truckModal} onClose={() => setTruckModal(false)} title={editingTruck ? `Edit ${editingTruck.id}` : 'Add Truck'} width={420}>
         <Field label="Truck ID">

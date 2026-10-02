@@ -230,9 +230,6 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
       {tab === 'backup' && currentUser?.role === 'ADMIN' && (
         <Panel className="p-4">
           <Eyebrow>Data &amp; Backup</Eyebrow>
-          <div className="text-xs mt-1 mb-3 max-w-2xl" style={{ fontFamily: F_BODY, color: T.soft }}>
-            Neon&apos;s free tier keeps no automatic backups, so download a copy regularly — especially before your defense. The <b>.json</b> file is a complete, restorable snapshot of every record (passwords and login sessions are never included). The <b>.xlsx</b> workbook is a readable copy of the main tables for review.
-          </div>
           <div className="flex gap-2 flex-wrap">
             <Btn disabled={exporting} onClick={exportJSON}>{exporting ? 'Preparing…' : 'Download full backup (.json)'}</Btn>
             <Btn variant="outline" disabled={exporting} onClick={exportExcel}>{exporting ? 'Preparing…' : 'Download Excel workbook (.xlsx)'}</Btn>
