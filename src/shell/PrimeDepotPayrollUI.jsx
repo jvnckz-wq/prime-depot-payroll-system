@@ -1,14 +1,16 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { RefreshCw, WifiOff } from 'lucide-react';
 import { Sidebar, TopBar } from '@/shell/Nav.jsx';
-import { Confirm, Toasts } from '@/components/ui.jsx';
+import { Btn, Confirm, Panel, Toasts } from '@/components/ui.jsx';
 import { IdleTimeout } from '@/shell/IdleTimeout.jsx';
 import { BIR_TABLE_INIT, CREW_RATE_FALLBACK, PAGIBIG_INIT, PHILHEALTH_INIT, SSS_TABLE_INIT } from '@/data/seed';
 import { deliveriesToLog } from '@/lib/payroll';
 import { uid, cutoffLabel, currentCutoffPeriod } from '@/lib/utils';
 import { staffRunKey, todayYmdManila } from '@/lib/loan-rules';
-import { FONTS, F_BODY, T } from '@/components/theme';
+import { authStateFrom } from '@/lib/auth-state';
+import { FONTS, F_BODY, F_HEAD, T } from '@/components/theme';
 import { AttendanceView } from '@/features/attendance/AttendanceView.jsx';
 import { CheckerView } from '@/features/deliveries/CheckerView.jsx';
 import { DashboardView } from '@/features/dashboard/DashboardView.jsx';
@@ -25,10 +27,37 @@ import { SettingsView } from '@/features/settings/SettingsView.jsx';
 import { PayrollView } from '@/features/payroll/PayrollView.jsx';
 import { TruckPayrollView } from '@/features/payroll/TruckPayrollView.jsx';
 
+const AUTH_RETRY_MS = 5000;
+const AUTH_RETRIES = 3;
+
+const readAuthState = () => fetch('/api/auth/me')
+  .then(async (r) => {
+    const body = await r.json().catch(() => null);
+    return { state: authStateFrom(r.status, body), user: body?.user ?? null };
+  })
+  .catch(() => ({ state: authStateFrom(0, null), user: null }));
+
+function ServerUnreachable({ checking, retrying, onRetry }) {
+  return (
+    <Panel className="w-full max-w-sm p-6 text-center" role="status">
+      <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: T.brandBg }}>
+        <WifiOff size={20} color={T.brand} aria-hidden="true" />
+      </div>
+      <div className="text-base font-bold mb-1" style={{ fontFamily: F_HEAD, color: T.ink }}>Can&apos;t reach the server.</div>
+      <div className="text-sm mb-5" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
+        {retrying ? 'Retrying...' : 'Check your internet connection, then try again.'}
+      </div>
+      <Btn onClick={onRetry} icon={RefreshCw} loading={checking} full>Retry</Btn>
+    </Panel>
+  );
+}
+
 export default function PrimeDepotPayroll() {
 
   const [user, setUser] = useState(null);
   const [authChecking, setAuthChecking] = useState(true);
+  const [serverDown, setServerDown] = useState(null);
+  const [authRound, setAuthRound] = useState(0);
   const [legalPage, setLegalPage] = useState(null);
   const [tab, setTab] = useState('dashboard');
 
@@ -65,12 +94,29 @@ export default function PrimeDepotPayroll() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/auth/me')
-      .then(r => r.json())
-      .then(data => { if (!cancelled) { setUser(data.user); setAuthChecking(false); } })
-      .catch(() => { if (!cancelled) setAuthChecking(false); });
-    return () => { cancelled = true; };
-  }, []);
+    let timer = null;
+    let tries = 0;
+    const check = () => readAuthState().then(({ state, user: me }) => {
+      if (cancelled) return;
+      if (state === 'unreachable') {
+        tries += 1;
+        const retrying = tries <= AUTH_RETRIES;
+        setServerDown({ checking: false, retrying });
+        if (retrying) timer = setTimeout(() => { setServerDown({ checking: true, retrying: true }); check(); }, AUTH_RETRY_MS);
+        return;
+      }
+      setServerDown(null);
+      setUser(me);
+      setAuthChecking(false);
+    });
+    check();
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [authRound]);
+
+  const retryAuth = () => {
+    setServerDown({ checking: true, retrying: true });
+    setAuthRound((n) => n + 1);
+  };
 
   const reloadStaff = React.useCallback(async () => {
     try {
@@ -199,10 +245,7 @@ export default function PrimeDepotPayroll() {
       const now = Date.now();
       if (now - last < 60000) return;
       last = now;
-      fetch('/api/auth/me')
-        .then(r => r.json())
-        .then(d => { if (!d.user) expireSession(); })
-        .catch(() => {});
+      readAuthState().then(({ state }) => { if (state === 'signed-out') expireSession(); });
     };
     document.addEventListener('visibilitychange', check);
     window.addEventListener('focus', check);
@@ -240,9 +283,13 @@ export default function PrimeDepotPayroll() {
 
   if (authChecking) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: T.sidebar }}>
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: T.sidebar }}>
         <style>{FONTS}</style>
-        <div className="pd-spin" aria-label="Loading" role="status" style={{ width: 30, height: 30, borderRadius: '50%', border: '3px solid rgba(255,255,255,0.22)', borderTopColor: '#FFFFFF' }} />
+        {serverDown ? (
+          <ServerUnreachable checking={serverDown.checking} retrying={serverDown.retrying} onRetry={retryAuth} />
+        ) : (
+          <div className="pd-spin" aria-label="Loading" role="status" style={{ width: 30, height: 30, borderRadius: '50%', border: '3px solid rgba(255,255,255,0.22)', borderTopColor: '#FFFFFF' }} />
+        )}
       </div>
     );
   }
