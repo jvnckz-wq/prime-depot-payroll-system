@@ -3,6 +3,14 @@ const path = require('path');
 const readline = require('readline');
 const ZKLib = require('node-zklib');
 
+const whyFailed = (e) => {
+  if (!e) return 'unknown error';
+  const inner = e.err || {};
+  const base = (typeof e.toast === 'function' ? e.toast() : '') || inner.message || e.message || String(e);
+  const code = inner.code || e.code;
+  return code && !String(base).includes(code) ? `${base} (${code})` : String(base);
+};
+
 const env = readEnv(path.join(process.cwd(), '.env'));
 const DEVICE_IP = env.DEVICE_IP || '192.168.1.201';
 const DEVICE_PORT = Number(env.DEVICE_PORT || 4370);
@@ -156,7 +164,7 @@ async function main() {
       console.error(`\nFailed (${res.status}):`, bodyOut);
     }
   } catch (e) {
-    console.error('\nCould not complete the pull:', e.message);
+    console.error('\nCould not complete the pull:', whyFailed(e));
   } finally {
     rl.close();
   }

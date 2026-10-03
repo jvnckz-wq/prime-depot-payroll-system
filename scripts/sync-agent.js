@@ -2,9 +2,17 @@ const fs = require('fs');
 const path = require('path');
 const ZKLib = require('node-zklib');
 
+const whyFailed = (e) => {
+  if (!e) return 'unknown error';
+  const inner = e.err || {};
+  const base = (typeof e.toast === 'function' ? e.toast() : '') || inner.message || e.message || String(e);
+  const code = inner.code || e.code;
+  return code && !String(base).includes(code) ? `${base} (${code})` : String(base);
+};
+
 const env = readEnv(path.join(process.cwd(), '.env'));
 const LIVE = process.argv.includes('--live');
-const DEVICE_IP = env.DEVICE_IP || '192.168.1.201';
+const DEVICE_IP = env.DEVICE_IP || '192.168.1.200';
 const DEVICE_PORT = Number(env.DEVICE_PORT || 4370);
 const PUSH_URL = env.PUSH_URL || 'http://localhost:3000/api/attendance/push';
 const PULL_URL = env.PULL_URL || PUSH_URL.replace(/\/push\/?$/, '/pull');
@@ -137,12 +145,12 @@ async function handlePull(req, stamp) {
       console.log(`[${stamp}] Pull failed (${res.status}):`, body);
     }
   } catch (e) {
-    console.log(`[${stamp}] Pull could not complete: ${e.message}`);
+    console.log(`[${stamp}] Pull could not complete: ${whyFailed(e)}`);
     try {
       await fetch(PULL_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
-        body: JSON.stringify({ requestId: req.id, failed: true, error: `Could not read the device: ${e.message}` }),
+        body: JSON.stringify({ requestId: req.id, failed: true, error: `Could not read the device: ${whyFailed(e)}` }),
         signal: AbortSignal.timeout(15000),
       });
     } catch { }
@@ -183,7 +191,7 @@ async function cycle() {
       console.log(`[${stamp}] Push tumanggi (${status}):`, body);
     }
   } catch (e) {
-    console.log(`[${stamp}] Hindi nabasa ang device: ${e.message}`);
+    console.log(`[${stamp}] Hindi nabasa ang device: ${whyFailed(e)}`);
   } finally {
     busy = false;
   }
