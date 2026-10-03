@@ -155,7 +155,13 @@ async function cycle() {
   busy = true;
   const stamp = new Date().toLocaleTimeString();
   try {
-    const payload = await readToday();
+    let payload;
+    try {
+      payload = await readToday();
+    } catch (e) {
+      console.log(`[${stamp}] Hindi nabasa ang device (${DEVICE_IP}:${DEVICE_PORT}): ${e.message}`);
+      return;
+    }
 
     if (!LIVE) {
       if (!payload.scans.length) {
@@ -170,7 +176,13 @@ async function cycle() {
       return;
     }
 
-    const { status, body } = await push(payload);
+    let status, body;
+    try {
+      ({ status, body } = await push(payload));
+    } catch (e) {
+      console.log(`[${stamp}] Nabasa ang device pero hindi maabot ang server (${PUSH_URL}): ${e.message}`);
+      return;
+    }
     if (status === 200 && body && body.ok) {
       if (payload.scans.length) {
         const unmapped = (body.unmapped || []).join(', ');
@@ -183,7 +195,7 @@ async function cycle() {
       console.log(`[${stamp}] Push tumanggi (${status}):`, body);
     }
   } catch (e) {
-    console.log(`[${stamp}] Hindi nabasa ang device: ${e.message}`);
+    console.log(`[${stamp}] Error: ${e.message}`);
   } finally {
     busy = false;
   }
@@ -198,6 +210,10 @@ console.log(`  poll   : bawat ${POLL_MS / 1000}s`);
 if (LIVE && !TOKEN) {
   console.error('\nHUMINTO: --live pero walang DEVICE_SYNC_TOKEN sa .env. Idagdag muna ito.');
   process.exit(1);
+}
+if (LIVE && /\/\/(localhost|127\.0\.0\.1)[:/]/.test(PUSH_URL)) {
+  console.warn('\nBABALA: localhost ang target. Kung sa live site dapat magpadala, ilagay sa .env ang');
+  console.warn('  PUSH_URL=https://prime-depot-payroll-system.vercel.app/api/attendance/push');
 }
 
 console.log('\nCtrl+C para itigil.\n');
