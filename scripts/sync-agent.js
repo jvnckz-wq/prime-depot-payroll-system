@@ -12,7 +12,7 @@ const whyFailed = (e) => {
 
 const env = readEnv(path.join(process.cwd(), '.env'));
 const LIVE = process.argv.includes('--live');
-const DEVICE_IP = env.DEVICE_IP || '192.168.1.200';
+const DEVICE_IP = env.DEVICE_IP || '192.168.1.201';
 const DEVICE_PORT = Number(env.DEVICE_PORT || 4370);
 const PUSH_URL = env.PUSH_URL || 'http://localhost:3000/api/attendance/push';
 const PULL_URL = env.PULL_URL || PUSH_URL.replace(/\/push\/?$/, '/pull');
