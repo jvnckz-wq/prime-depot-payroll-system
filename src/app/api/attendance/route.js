@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';
-import { isCalendarDate, isClockTime, minutesLate, summarizeAttendance } from '@/lib/attendance';
+import { isCalendarDate, isClockTime, minutesLate, shiftEndFor, summarizeAttendance } from '@/lib/attendance';
 
 const hhmm = (d) => (d ? new Date(d).toISOString().slice(11, 16) : null);
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
@@ -39,12 +39,13 @@ export async function PATCH(request) {
       const inT = clean(body.timeIn);
       const outT = clean(body.timeOut);
       const assumedOut = !outT;
-      const effectiveOut = outT || '17:00';
+      const shiftEnd = shiftEndFor(dateStr);
+      const effectiveOut = outT || shiftEnd;
       fields = {
         timeIn: inT ? new Date(`${dateStr}T${inT}:00.000Z`) : null,
         timeOut: new Date(`${dateStr}T${effectiveOut}:00.000Z`),
         tardinessMins: minutesLate(emp, date, inT),
-        overtimeMins: assumedOut ? 0 : Math.max(0, toMin(effectiveOut) - 17 * 60),
+        overtimeMins: assumedOut ? 0 : Math.max(0, toMin(effectiveOut) - toMin(shiftEnd)),
         isLeave: false,
         isAbsent: false,
         isAssumedIn: !inT,

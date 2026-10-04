@@ -54,23 +54,19 @@ const _toMin = (t) => { const [h, m] = String(t).split(':').map(Number); return 
 const _atTime = (dateStr, hhmm) => (hhmm ? new Date(`${dateStr}T${hhmm}:00.000Z`) : null);
 
 export function pairPunches(times) {
-  const DOUBLE_SCAN_MIN = 2;
   const sorted = (times || []).filter(Boolean).slice().sort();
   if (!sorted.length) return { timeIn: null, timeOut: null };
 
-  const kept = [];
-  for (const t of sorted) {
-    if (!kept.length || _toMin(t) - _toMin(kept[kept.length - 1]) >= DOUBLE_SCAN_MIN) kept.push(t);
-  }
-
-  const morning = kept.filter((t) => _toMin(t) < 720);
-  const afternoon = kept.filter((t) => _toMin(t) >= 720);
+  const morning = sorted.filter((t) => _toMin(t) < 720);
+  const afternoon = sorted.filter((t) => _toMin(t) >= 720);
   return {
     timeIn: morning[0] || null,
-    timeOut: afternoon.length
-      ? afternoon[afternoon.length - 1]
-      : (morning.length >= 2 ? morning[morning.length - 1] : null),
+    timeOut: afternoon.length ? afternoon[afternoon.length - 1] : null,
   };
+}
+
+export function shiftEndFor(dateStr) {
+  return new Date(`${dateStr}T00:00:00.000Z`).getUTCDay() === 0 ? '12:00' : '17:00';
 }
 
 export function buildAttendanceRow(emp, dateStr, paired, extra = {}) {
@@ -80,12 +76,13 @@ export function buildAttendanceRow(emp, dateStr, paired, extra = {}) {
   }
   const assumedIn = !paired.timeIn;
   const assumedOut = !paired.timeOut;
-  const timeOut = paired.timeOut || '17:00';
+  const shiftEnd = shiftEndFor(dateStr);
+  const timeOut = paired.timeOut || shiftEnd;
   return {
     employeeId: emp.id, date,
     timeIn: _atTime(dateStr, paired.timeIn), timeOut: _atTime(dateStr, timeOut),
     tardinessMins: minutesLate(emp, date, paired.timeIn),
-    overtimeMins: assumedOut ? 0 : Math.max(0, _toMin(timeOut) - 17 * 60),
+    overtimeMins: assumedOut ? 0 : Math.max(0, _toMin(timeOut) - _toMin(shiftEnd)),
     isAbsent: false, isAssumedIn: assumedIn, isAssumedOut: assumedOut, ...extra,
   };
 }

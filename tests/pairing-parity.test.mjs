@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { pairPunches, buildAttendanceRow } from '../src/lib/attendance.js';
+import { pairPunches, buildAttendanceRow, shiftEndFor } from '../src/lib/attendance.js';
 
 function oldInlinePair(times) {
   const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
@@ -7,9 +7,7 @@ function oldInlinePair(times) {
   const morning = sorted.filter((t) => toMin(t) < 720);
   const afternoon = sorted.filter((t) => toMin(t) >= 720);
   const timeIn = morning[0] || null;
-  const timeOut = afternoon.length
-    ? afternoon[afternoon.length - 1]
-    : (morning.length >= 2 ? morning[morning.length - 1] : null);
+  const timeOut = afternoon.length ? afternoon[afternoon.length - 1] : null;
   return { timeIn, timeOut };
 }
 
@@ -30,8 +28,11 @@ check('pairing matches the pre-refactor logic', () => {
   }
 });
 
-check('a half-day keeps the pre-noon time-out', () => {
-  assert.deepEqual(pairPunches(['06:31', '11:58']), { timeIn: '06:31', timeOut: '11:58' });
+check('a second morning scan never becomes the time-out', () => {
+  assert.deepEqual(pairPunches(['07:03', '08:32']), { timeIn: '07:03', timeOut: null });
+  assert.deepEqual(pairPunches(['11:31', '11:45']), { timeIn: '11:31', timeOut: null });
+  assert.deepEqual(pairPunches(['06:31', '11:58']), { timeIn: '06:31', timeOut: null });
+  assert.deepEqual(pairPunches(['07:03', '08:32', '17:10']), { timeIn: '07:03', timeOut: '17:10' });
 });
 
 const emp = { id: '1001', position: 'Driver', earlyShiftDays: [] };
@@ -78,7 +79,26 @@ check('a double scan (taps about a minute apart) counts once', () => {
   assert.deepEqual(pairPunches(['06:44', '06:45']), { timeIn: '06:44', timeOut: null });
   assert.deepEqual(pairPunches(['06:44', '06:45', '17:20']), { timeIn: '06:44', timeOut: '17:20' });
   assert.deepEqual(pairPunches(['06:44', '06:44']), { timeIn: '06:44', timeOut: null });
-  assert.deepEqual(pairPunches(['06:44', '06:46']), { timeIn: '06:44', timeOut: '06:46' });
+  assert.deepEqual(pairPunches(['06:44', '06:46']), { timeIn: '06:44', timeOut: null });
+});
+
+check('shift ends 12:00 on Sunday and 17:00 Monday to Saturday', () => {
+  assert.equal(shiftEndFor('2026-10-04'), '12:00');
+  assert.equal(shiftEndFor('2026-10-03'), '17:00');
+  assert.equal(shiftEndFor('2026-10-05'), '17:00');
+  const sun = buildAttendanceRow(emp, '2026-10-04', pairPunches(['06:35', '09:10']));
+  assert.equal(sun.timeOut.toISOString().slice(11, 16), '12:00');
+  assert.equal(sun.isAssumedOut, true);
+  assert.equal(sun.overtimeMins, 0);
+  const sat = buildAttendanceRow(emp, '2026-10-03', pairPunches(['06:35']));
+  assert.equal(sat.timeOut.toISOString().slice(11, 16), '17:00');
+});
+
+check('Sunday overtime counts from 12:00, weekdays and Saturday from 17:00', () => {
+  assert.equal(buildAttendanceRow(emp, '2026-10-04', pairPunches(['06:35', '14:00'])).overtimeMins, 120);
+  assert.equal(buildAttendanceRow(emp, '2026-10-04', pairPunches(['06:35', '11:50', '12:00'])).overtimeMins, 0);
+  assert.equal(buildAttendanceRow(emp, '2026-10-03', pairPunches(['06:35', '14:00'])).overtimeMins, 0);
+  assert.equal(buildAttendanceRow(emp, '2026-10-03', pairPunches(['06:35', '17:45'])).overtimeMins, 45);
 });
 
 console.log(`\nALL ${passed} PAIRING PARITY CHECKS PASSED`);

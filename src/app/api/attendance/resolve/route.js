@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { withRetry } from '@/lib/server/db/db-retry';
 import { requireAdmin } from '@/lib/server/security/auth';
-import { minutesLate } from '@/lib/attendance';
+import { minutesLate, shiftEndFor } from '@/lib/attendance';
 
 const toMin = (t) => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
 const atTime = (dateStr, hhmm) => (hhmm ? new Date(`${dateStr}T${hhmm}:00.000Z`) : null);
@@ -64,12 +64,13 @@ export async function POST(request) {
       } else {
         const assumedIn = !p.timeIn;
         const assumedOut = !p.timeOut;
-        const outTime = p.timeOut || '17:00';
+        const shiftEnd = shiftEndFor(ds);
+        const outTime = p.timeOut || shiftEnd;
         rows.push({
           employeeId: emp.id, date,
           timeIn: atTime(ds, p.timeIn), timeOut: atTime(ds, outTime),
           tardinessMins: minutesLate(emp, date, p.timeIn),
-          overtimeMins: assumedOut ? 0 : Math.max(0, toMin(outTime) - 17 * 60),
+          overtimeMins: assumedOut ? 0 : Math.max(0, toMin(outTime) - toMin(shiftEnd)),
           isAbsent: false, isAssumedIn: assumedIn, isAssumedOut: assumedOut,
         });
       }
