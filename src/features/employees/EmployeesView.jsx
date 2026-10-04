@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Search, Save, Clock, AlertTriangle } from 'lucide-react';
 import { Badge, Btn, Confirm, Eyebrow, Field, H1, Modal, Money, Panel, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { POSITIONS, positionLabel } from '@/data/seed';
-import { isDailyPosition, isNonRegularPosition } from '@/lib/positions';
+import { hasNoContributions, isDailyPosition, isNonRegularPosition } from '@/lib/positions';
 import { WEEKDAYS, describeEarlyShift } from '@/lib/attendance';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { FinalPayView } from '@/features/payroll/FinalPayView.jsx';
@@ -78,14 +78,14 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
 
     if (!form.position) { toast('Choose a position.', 'error'); return; }
     const crew = isDailyPosition(form.position);
-    const nonRegular = isNonRegularPosition(form.position);
+    const noContrib = hasNoContributions(form.position);
 
     const payload = {
       id: form.id.trim(), name: form.name.trim(), position: form.position,
-      rate: parseFloat(form.rate) || 0, declaredSalary: nonRegular ? 0 : (parseFloat(form.declaredSalary) || 0),
-      mp2: (crew || nonRegular) ? 0 : (parseFloat(form.mp2) || 0), status: form.status,
+      rate: parseFloat(form.rate) || 0, declaredSalary: noContrib ? 0 : (parseFloat(form.declaredSalary) || 0),
+      mp2: noContrib ? 0 : (parseFloat(form.mp2) || 0), status: form.status,
       leaveCredits: crew ? 0 : (parseInt(form.leaveCredits, 10) || 0),
-      sssOn: form.sssOn, phOn: form.phOn, piOn: form.piOn,
+      sssOn: !noContrib && form.sssOn, phOn: !noContrib && form.phOn, piOn: !noContrib && form.piOn,
       address: form.address, contact: form.contact,
       birthdate: form.birthdate, dateHired: form.dateHired,
       earlyShiftDays: form.earlyShiftDays, earlyShiftTime: form.earlyShiftTime,
@@ -277,7 +277,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
             </select>
           </Field>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="Daily rate (₱)"><input type="number" value={form.rate} onChange={e => { const v = e.target.value; setForm(f => ({ ...f, rate: v, declaredSalary: (v === '' || isNonRegularPosition(f.position)) ? '' : String((parseFloat(v) || 0) * 26) })); }} className={inputCls} style={inputStyle} /></Field>
+            <Field label="Daily rate (₱)"><input type="number" value={form.rate} onChange={e => { const v = e.target.value; setForm(f => ({ ...f, rate: v, declaredSalary: (v === '' || hasNoContributions(f.position)) ? '' : String((parseFloat(v) || 0) * 26) })); }} className={inputCls} style={inputStyle} /></Field>
             <Field label="Status">
               <select value={form.status} onChange={e => ff('status', e.target.value)} className={inputCls} style={inputStyle}>
                 <option>Active</option><option>Inactive</option>
@@ -294,9 +294,9 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
               </span>
             </div>
           )}
-          {(!isDailyPosition(form.position) || !isNonRegularPosition(form.position)) && (
+          {(!hasNoContributions(form.position) || !isDailyPosition(form.position)) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
-              {!isNonRegularPosition(form.position) && (
+              {!hasNoContributions(form.position) && (
                 <Field label="Declared monthly salary (₱)">
                   <input type="number" value={form.declaredSalary} onChange={e => ff('declaredSalary', e.target.value)} placeholder="e.g. daily rate × 26" className={inputCls} style={inputStyle} />
                 </Field>
@@ -371,6 +371,10 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
             <div className="px-3 py-2.5 rounded text-xs" style={{ border: `1px dashed ${T.line}`, fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
               Early Shift, declared salary and Government Contributions do not apply to Job Order.
             </div>
+          ) : isDailyPosition(form.position) ? (
+            <div className="px-3 py-2.5 rounded text-xs" style={{ border: `1px dashed ${T.line}`, fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
+              Declared salary and Government Contributions do not apply to daily-paid crew.
+            </div>
           ) : (
           <div className="p-3 rounded" style={{ backgroundColor: T.bg }}>
             <Eyebrow>Government Contributions</Eyebrow>
@@ -379,13 +383,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
                 <input type="checkbox" checked={form[k]} onChange={e => ff(k, e.target.checked)} /> {l}
               </label>
             ))}
-            {isDailyPosition(form.position) ? (
-              <div className="text-xs mt-1.5" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
-                Deducted per day worked until this month&apos;s share is complete. The amount per day is in Settings.
-              </div>
-            ) : (
-              <Field label="Pag-IBIG MP2 (₱/cutoff)"><input type="number" value={form.mp2} onChange={e => ff('mp2', e.target.value)} className={inputCls} style={inputStyle} /></Field>
-            )}
+            <Field label="Pag-IBIG MP2 (₱/cutoff)"><input type="number" value={form.mp2} onChange={e => ff('mp2', e.target.value)} className={inputCls} style={inputStyle} /></Field>
           </div>
           )}
           <div className="flex justify-end gap-2 pt-1">

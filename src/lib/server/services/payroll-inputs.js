@@ -64,6 +64,11 @@ export function staffAvailable({ staff, attendanceById, statutory }) {
   return out;
 }
 
+const isContributing = (e) => {
+  const s = shapeEmployee(e);
+  return s.sssOn || s.phOn || s.piOn;
+};
+
 const DAILY_POSITIONS = ['DRIVER', 'PAHINANTE', 'CHECKER', 'WAREHOUSE_OFFICER'];
 const ymdOf = (d) => (d ? new Date(d).toISOString().slice(0, 10) : null);
 const dayBefore = (ymd) => ymdOf(new Date(toDate(ymd).getTime() - 86400000));
@@ -145,7 +150,7 @@ export async function contributionContext(prisma, ymd, { employees, rates } = {}
   ]);
   const r = rates || shapeRates(rateRow);
   const setting = r.dailyContribution;
-  const enrolled = emps.filter((e) => e.sssEnrolled || e.philhealthEnrolled || e.pagibigEnrolled);
+  const enrolled = emps.filter(isContributing);
   const byId = {};
   if (!enrolled.length || setting === 0) return { setting, byId };
 
@@ -190,7 +195,7 @@ export async function loadDailyContributionsForMonth(prisma, ymd) {
   ]);
   const rates = shapeRates(rateRow);
   const setting = rates.dailyContribution;
-  const enrolled = employees.filter((e) => e.sssEnrolled || e.philhealthEnrolled || e.pagibigEnrolled);
+  const enrolled = employees.filter(isContributing);
   if (!enrolled.length) return { setting, month: ymd.slice(0, 7), rows: [] };
 
   const { statutory } = await loadStatutory(prisma);
@@ -249,7 +254,7 @@ export async function loadCrewReport(prisma, from, to) {
   const pays = await dailyPayByDate(prisma, employees, rates, `${from.slice(0, 8)}01`, to);
 
   const contributionOn = new Map();
-  const enrolled = employees.filter((e) => e.sssEnrolled || e.philhealthEnrolled || e.pagibigEnrolled);
+  const enrolled = employees.filter(isContributing);
   if (enrolled.length && rates.dailyContribution !== 0) {
     const { statutory } = await loadStatutory(prisma);
     for (const e of enrolled) {

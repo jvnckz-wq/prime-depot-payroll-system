@@ -1,4 +1,4 @@
-import { isDailyPosition, isNonRegularPosition, isPieceRatePosition } from '../../positions';
+import { hasNoContributions, isDailyPosition, isNonRegularPosition, isPieceRatePosition } from '../../positions';
 
 export const POSITION_LABEL = {
   OPERATIONS_HEAD: 'Operations Head',
@@ -35,17 +35,18 @@ const num = (d) => (d == null ? 0 : Number(d));
 
 export function shapeEmployee(e) {
   const nonRegular = isNonRegularPosition(e.position);
+  const noContrib = hasNoContributions(e.position);
   return {
     id: e.id,
     name: e.name,
     position: POSITION_LABEL[e.position] ?? e.position,
     rate: num(e.dailyRate),
-    declaredSalary: nonRegular ? 0 : num(e.declaredSalary),
+    declaredSalary: noContrib ? 0 : num(e.declaredSalary),
     status: e.status === 'ACTIVE' ? 'Active' : 'Inactive',
-    sssOn: nonRegular ? false : e.sssEnrolled,
-    phOn: nonRegular ? false : e.philhealthEnrolled,
-    piOn: nonRegular ? false : e.pagibigEnrolled,
-    mp2: nonRegular ? 0 : num(e.mp2Amount),
+    sssOn: noContrib ? false : e.sssEnrolled,
+    phOn: noContrib ? false : e.philhealthEnrolled,
+    piOn: noContrib ? false : e.pagibigEnrolled,
+    mp2: noContrib ? 0 : num(e.mp2Amount),
     allowance: num(e.otherAllowance),
     leaveCredits: Number.isFinite(Number(e.leaveCredits)) ? Number(e.leaveCredits) : 5,
     address: e.address ?? '',
@@ -142,12 +143,13 @@ export function buildEmployeeData(body, { partial = false } = {}) {
     data.earlyShiftTime = /^\d{2}:\d{2}$/.test(body.earlyShiftTime) ? body.earlyShiftTime : '06:00';
   }
 
-  if (isNonRegularPosition(data.position)) {
+  if (hasNoContributions(data.position)) {
     Object.assign(data, {
-      declaredSalary: 0, mp2Amount: 0, earlyShiftDays: [],
+      declaredSalary: 0, mp2Amount: 0,
       sssEnrolled: false, philhealthEnrolled: false, pagibigEnrolled: false,
     });
   }
+  if (isNonRegularPosition(data.position)) data.earlyShiftDays = [];
 
   return { data };
 }

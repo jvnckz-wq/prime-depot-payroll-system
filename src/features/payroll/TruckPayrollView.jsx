@@ -852,13 +852,6 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                         {!p.attendanceDaily && <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Piece rate ({p.trips} trip{p.trips === 1 ? '' : 's'})</Td><Td right mono>{peso(p.pieceRate)}</Td></tr>}
                         {!p.attendanceDaily && <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Trip bonus</Td><Td right mono style={{ color: p.bonus ? T.green : undefined }}>{p.bonus ? `+${peso(p.bonus)}` : peso(0)}</Td></tr>}
                         <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Late ({p.lateMins || 0} min × ₱3)</Td><Td right mono style={{ color: p.late ? T.red : undefined }}>{p.late ? `-${peso(p.late)}` : peso(0)}</Td></tr>
-                        <tr>
-                          <Td style={{ fontFamily: F_HEAD, color: T.soft }}>
-                            SSS, PhilHealth, Pag-IBIG
-                            {p.month && <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>{peso(p.month.collected)} of {peso(p.month.share)} this month</div>}
-                          </Td>
-                          <Td right mono style={{ color: p.contribution ? T.red : undefined }}>{p.contribution ? `-${peso(p.contribution)}` : peso(0)}</Td>
-                        </tr>
                         <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Deductions</Td><Td right mono style={{ color: p.kaltas ? T.red : undefined }}>{p.kaltas ? `-${peso(p.kaltas)}` : peso(0)}</Td></tr>
                         <tr style={{ borderTop: `1px solid ${T.line}` }}><Td style={{ fontFamily: F_HEAD, color: T.ink }}><b>NET SALARY</b></Td><Td right mono><b style={{ color: T.brand }}>{peso(p.net)}</b></Td></tr>
                       </tbody>

@@ -131,6 +131,21 @@ ok('server: loans see the same daily pay (checker present and late, by employee 
   assert.equal(available.get('C1'), 438);
 });
 
+ok('daily-paid and Job Order never carry declared salary or contributions', () => {
+  for (const pos of ['DRIVER', 'PAHINANTE', 'CHECKER', 'WAREHOUSE_OFFICER', 'JOB_ORDER']) {
+    const e = shapeEmployee(raw(pos));
+    assert.deepEqual([e.declaredSalary, e.sssOn, e.phOn, e.piOn, e.mp2], [0, false, false, false, 0], pos);
+  }
+  for (const pos of ['Driver', 'Pahinante', 'Checker', 'Warehouse Officer', 'Job Order']) {
+    const { data } = buildEmployeeData({ name: 'X', position: pos, rate: 280, declaredSalary: 7280, mp2: 100, sssOn: true, phOn: true, piOn: true });
+    assert.deepEqual([data.declaredSalary, data.mp2Amount, data.sssEnrolled, data.philhealthEnrolled, data.pagibigEnrolled], [0, 0, false, false, false], pos);
+  }
+  const { data: chk } = buildEmployeeData({ name: 'X', position: 'Checker', rate: 450, declaredSalary: 0, mp2: 0, earlyShiftDays: ['SAT'] });
+  assert.deepEqual(chk.earlyShiftDays, ['SAT']);
+  const staff = shapeEmployee(raw('OPERATIONS_HEAD'));
+  assert.deepEqual([staff.declaredSalary, staff.sssOn, staff.phOn, staff.piOn], [15600, true, true, true]);
+});
+
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {

@@ -102,30 +102,15 @@ function fakePrisma(dailyContribution = 50) {
   };
 }
 
-ok('server, fixed ₱50: Oct 3 knows ₱100 was already collected on Oct 1 and 2', async () => {
-  const ctx = await contributionContext(fakePrisma(), '2026-10-03');
-  assert.equal(ctx.byId['DRV-001'].perDay, 50);
-  assert.deepEqual([ctx.byId['DRV-001'].shareTotal, ctx.byId['DRV-001'].collectedBefore], [688.1, 100]);
-});
-
-ok('server: loans on Oct 3 see the day\u2019s pay minus that day\u2019s ₱50', async () => {
-  const available = await crewAvailableOn(fakePrisma(), '2026-10-03');
-  assert.equal(available.get('DRV-001'), 230);
-});
-
-ok('server: the month summary for the remittance report', async () => {
-  const r = await loadDailyContributionsForMonth(fakePrisma(), '2026-10-03');
-  assert.equal(r.month, '2026-10');
-  assert.deepEqual(r.rows.map((x) => [x.name, x.total, x.collected, x.remaining]), [['Andro', 688.1, 150, 538.1]]);
-});
-
-ok('server, even split (the default): Oct 3 collected ₱50.98 before, loans see ₱254.51', async () => {
-  const ctx = await contributionContext(fakePrisma(null), '2026-10-03');
-  assert.deepEqual([ctx.byId['DRV-001'].perDay, ctx.byId['DRV-001'].collectedBefore], [25.49, 50.98]);
-  const available = await crewAvailableOn(fakePrisma(null), '2026-10-03');
-  assert.equal(available.get('DRV-001'), 254.51);
-  const r = await loadDailyContributionsForMonth(fakePrisma(null), '2026-10-03');
-  assert.deepEqual(r.rows.map((x) => [x.perDay, x.collected, x.remaining]), [[25.49, 76.47, 611.63]]);
+ok('server: daily-paid crew contribute nothing, even if an old record still says enrolled', async () => {
+  for (const setting of [50, null]) {
+    const ctx = await contributionContext(fakePrisma(setting), '2026-10-03');
+    assert.deepEqual(ctx.byId, {});
+    const available = await crewAvailableOn(fakePrisma(setting), '2026-10-03');
+    assert.equal(available.get('DRV-001'), 280);
+    const r = await loadDailyContributionsForMonth(fakePrisma(setting), '2026-10-03');
+    assert.deepEqual(r.rows, []);
+  }
 });
 
 function reportPrisma(dailyContribution) {
@@ -143,22 +128,12 @@ function reportPrisma(dailyContribution) {
   };
 }
 
-ok('crew report Oct 2 to 3: gross, late, contributions and loans add up to the payslips (even split)', async () => {
-  const [r] = await loadCrewReport(reportPrisma(null), '2026-10-02', '2026-10-03');
-  assert.deepEqual([r.name, r.role, r.days, r.trips, r.total], ['Andro', 'Driver', 2, 2, 560]);
-  assert.deepEqual([r.late, r.contributions, r.loans, r.net], [30, 50.98, 100, 379.02]);
-});
-
-ok('crew report with the client\u2019s fixed ₱50: Oct 1 is outside the range but still counts toward the month', async () => {
-  const [r] = await loadCrewReport(reportPrisma(50), '2026-10-02', '2026-10-03');
-  assert.deepEqual([r.contributions, r.net], [100, 330]);
-  const [all] = await loadCrewReport(reportPrisma(50), '2026-10-01', '2026-10-03');
-  assert.deepEqual([all.days, all.contributions, all.loans], [3, 150, 100]);
-});
-
-ok('the first of the month starts from zero', async () => {
-  const ctx = await contributionContext(fakePrisma(), '2026-10-01');
-  assert.equal(ctx.byId['DRV-001'].collectedBefore, 0);
+ok('crew report Oct 2 to 3: gross, late and loans add up, with no contributions', async () => {
+  for (const setting of [null, 50]) {
+    const [r] = await loadCrewReport(reportPrisma(setting), '2026-10-02', '2026-10-03');
+    assert.deepEqual([r.name, r.role, r.days, r.trips, r.total], ['Andro', 'Driver', 2, 2, 560]);
+    assert.deepEqual([r.late, r.contributions, r.loans, r.net], [30, 0, 100, 430]);
+  }
 });
 
 (async () => {
