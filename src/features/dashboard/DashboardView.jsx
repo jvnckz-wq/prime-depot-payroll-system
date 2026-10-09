@@ -1,16 +1,16 @@
 'use client';
 
 import React, { useMemo, useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { Users, Truck, Wallet, FileText, AlertTriangle, TrendingUp, Check } from 'lucide-react';
+import { Users, Truck, Wallet, FileText, AlertTriangle, TrendingUp, Check, CalendarX, BarChart3 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Av, Eyebrow, H1, Panel, StatCard, Td, Th } from '@/components/ui.jsx';
+import { Av, EmptyState, Eyebrow, H1, Panel, Skeleton, SkeletonRows, StatCard, Td, Th } from '@/components/ui.jsx';
 import { computeStaffPayroll, flattenDeliveries, loanBalance } from '@/lib/payroll';
 import { peso } from '@/lib/utils';
 import { F_BODY, T } from '@/components/theme';
 
 const useIsoLayoutEffect = typeof document !== 'undefined' ? useLayoutEffect : useEffect;
 
-export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loans = [], statutory, setTab, cutoffLabel = '', runKey = '', attendanceSummaries = [], unmappedCount = 0 }) => {
+export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loans = [], statutory, setTab, onNavigate, dataLoading = false, cutoffLabel = '', runKey = '', attendanceSummaries = [], unmappedCount = 0 }) => {
   const loggedToday = Object.keys(deliveries).length;
   const deliveriesLogged = useMemo(() => flattenDeliveries(deliveries).length, [deliveries]);
 
@@ -43,12 +43,14 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
   const activeLoanCount = loans.filter(l => loanBalance(l) > 0).length;
 
   const [attTrend, setAttTrend] = useState([]);
+  const [attTrendLoading, setAttTrendLoading] = useState(true);
   useEffect(() => {
     let cancelled = false;
     fetch('/api/attendance?trend=1')
       .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
       .then(d => { if (!cancelled) setAttTrend(d.trend || []); })
-      .catch(err => console.error('Could not load attendance trend:', err));
+      .catch(err => console.error('Could not load attendance trend:', err))
+      .finally(() => { if (!cancelled) setAttTrendLoading(false); });
     return () => { cancelled = true; };
   }, []);
   const attendanceData = useMemo(() => {
@@ -70,12 +72,14 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
   );
 
   const [releases, setReleases] = useState([]);
+  const [releasesLoading, setReleasesLoading] = useState(true);
   useEffect(() => {
     let cancelled = false;
     fetch('/api/payroll/history')
       .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
       .then(d => { if (!cancelled) setReleases(d.periods || []); })
-      .catch(err => console.error('Could not load payroll trend:', err));
+      .catch(err => console.error('Could not load payroll trend:', err))
+      .finally(() => { if (!cancelled) setReleasesLoading(false); });
     return () => { cancelled = true; };
   }, []);
   const trendData = useMemo(
@@ -83,7 +87,10 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
     [releases]
   );
 
-  const go = (t) => setTab && setTab(t);
+  const go = (t, child) => (onNavigate ? onNavigate(t, child) : setTab && setTab(t));
+  const noEmployees = !dataLoading && totalEmployees === 0;
+  const noAttendance = !dataLoading && totalEmployees > 0 && attendanceSummaries.length === 0;
+  const hasAttendanceData = attendanceData.some(d => d.Present || d.Late || d.Absent);
 
   return (
     <div className="p-4 sm:p-6">
@@ -98,6 +105,25 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
         </div>
         <Panel className="p-4">
           <Eyebrow>Attention Needed</Eyebrow>
+          {dataLoading && <div className="mt-3 flex flex-col gap-2"><Skeleton h={14} w="70%" /><Skeleton h={11} w="90%" /></div>}
+          {noEmployees && (
+            <button onClick={() => go('employees')} className="pd-clickable w-full text-left mt-2 flex items-start gap-3 p-3 rounded" style={{ backgroundColor: T.blueBg }}>
+              <Users size={16} color={T.blue} className="mt-0.5 shrink-0" />
+              <div>
+                <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>No employees registered yet</div>
+                <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft }}>Register staff and crew with their biometric ID so attendance and payroll can be computed.</div>
+              </div>
+            </button>
+          )}
+          {noAttendance && (
+            <button onClick={() => go('attendance', 'dtr')} className="pd-clickable w-full text-left mt-2 flex items-start gap-3 p-3 rounded" style={{ backgroundColor: T.blueBg }}>
+              <CalendarX size={16} color={T.blue} className="mt-0.5 shrink-0" />
+              <div>
+                <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>No attendance for {cutoffLabel || 'this cutoff'} yet</div>
+                <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft }}>Pull it from the device so this cutoff&apos;s payroll can be computed.</div>
+              </div>
+            </button>
+          )}
           {unmappedCount > 0 && (
             <button onClick={() => go('attendance')} className="pd-clickable w-full text-left mt-2 flex items-start gap-3 p-3 rounded" style={{ backgroundColor: T.warnBg }}>
               <AlertTriangle size={16} color={T.warn} className="mt-0.5 shrink-0" />
@@ -116,7 +142,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
               </div>
             </button>
           )}
-          {unmappedCount === 0 && activeLoanCount === 0 && (
+          {!dataLoading && !noEmployees && !noAttendance && unmappedCount === 0 && activeLoanCount === 0 && (
             <div className="mt-2 flex items-start gap-3 p-3 rounded" style={{ backgroundColor: T.greenBg }}>
               <Check size={16} color={T.green} className="mt-0.5 shrink-0" />
               <div>
@@ -133,13 +159,20 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
           <div className="px-4 pt-4 pb-2 shrink-0 flex items-center justify-between gap-2 flex-wrap">
             <Eyebrow>{cutoffLabel} · Payroll Snapshot</Eyebrow>
           </div>
+          {!dataLoading && snapshot.length === 0 ? (
+            <div className="lg:flex-1 flex items-center justify-center">
+              {totalEmployees === 0
+                ? <EmptyState compact icon={Users} title="No employees yet" desc="Payroll shows here once staff are registered and attendance is pulled." />
+                : <EmptyState compact icon={CalendarX} title="No attendance for this cutoff yet" desc="This snapshot fills in once attendance is pulled from the device." />}
+            </div>
+          ) : (
           <div className="overflow-auto lg:flex-1 lg:min-h-0 pd-no-scrollbar">
             <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
               <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}>
                 <tr><Th>Employee</Th><Th right>Gross</Th><Th right>Net Pay</Th></tr>
               </thead>
               <tbody>
-                {snapshot.map((r, i) => (
+                {dataLoading ? <SkeletonRows cols={3} rows={5} /> : snapshot.map((r, i) => (
                   <tr key={i} onClick={() => go('payroll')} className="pd-clickable-row" style={{ cursor: 'pointer' }} title="Open Payroll">
                     <Td>
                       <div className="flex items-center gap-2.5">
@@ -161,12 +194,18 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
               </tfoot>
             </table></div>
           </div>
+          )}
         </Panel>
 
         <div className="flex flex-col gap-4" ref={chartsColRef}>
           <Panel className="p-4">
             <Eyebrow>Attendance</Eyebrow>
             <div className="text-xs mb-3" style={{ fontFamily: F_BODY, color: T.soft }}>Present / Late / Absent · recent cutoffs</div>
+            {!attTrendLoading && !dataLoading && !hasAttendanceData ? (
+              <div className="flex items-center justify-center" style={{ height: 170 }}>
+                <EmptyState compact icon={BarChart3} title="No attendance recorded yet" desc="Present, late and absent counts appear once attendance is pulled." />
+              </div>
+            ) : (
             <ResponsiveContainer width="100%" height={170}>
               <BarChart data={attendanceData} margin={{ left: -20, right: 5, top: 5, bottom: 0 }} barGap={2} barCategoryGap="22%">
                 <CartesianGrid strokeDasharray="3 3" stroke={T.lineSoft} vertical={false} />
@@ -179,6 +218,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
                 <Bar dataKey="Absent" fill={T.warn} radius={[2, 2, 0, 0]} animationDuration={800} />
               </BarChart>
             </ResponsiveContainer>
+            )}
           </Panel>
           <Panel className="p-4">
             <div className="flex items-center justify-between mb-1">
@@ -186,9 +226,11 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
               <TrendingUp size={14} color={T.soft} />
             </div>
             <div className="text-xs mb-3" style={{ fontFamily: F_BODY, color: T.soft }}>Net salary released · last 6 cutoffs</div>
-            {trendData.length === 0 ? (
-              <div className="flex items-center justify-center text-center text-xs px-4" style={{ height: 150, color: T.soft, fontFamily: F_BODY }}>
-                No released cut-offs yet — finalize a cutoff on Staff Payroll to build this trend.
+            {releasesLoading ? (
+              <div className="flex items-center justify-center" style={{ height: 150 }}><Skeleton w="85%" h={110} /></div>
+            ) : trendData.length === 0 ? (
+              <div className="flex items-center justify-center" style={{ height: 150 }}>
+                <EmptyState compact icon={TrendingUp} title="No released cutoffs yet" desc="Finalize a cutoff in Staff Payroll to start this trend." />
               </div>
             ) : (
             <ResponsiveContainer width="100%" height={150}>

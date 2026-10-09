@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Wallet } from 'lucide-react';
 import { Btn, EmptyState, Field, H1, Modal, SearchSelect, inputCls, inputStyle } from '@/components/ui.jsx';
 import {
   advancedInCutoff, balanceOf, cutoffOf, dueFor, grantedBy, isOpen, nextCutoff, periodLabel, prevCutoff, projectedGross,
@@ -166,7 +166,7 @@ export const CashAdvancesPage = ({ staff, loans, reloadLoans, statutory, period:
 
       <div className="rounded-lg border overflow-hidden" style={{ backgroundColor: T.surface, borderColor: T.line }}>
         {inCutoff.length === 0 ? (
-          <EmptyState title={`No cash advances for ${periodLabel(period)}`} desc="Advances given in this cutoff are deducted in full on its payroll." />
+          <EmptyState icon={Wallet} title={`No cash advances for ${periodLabel(period)}`} desc="Advances given in this cutoff are deducted in full on its payroll." />
         ) : (
           <>
           <div className="md:hidden">

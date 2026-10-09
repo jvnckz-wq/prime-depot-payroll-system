@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Users, Wallet, ArrowLeft } from 'lucide-react';
-import { Av, Badge, Btn, Confirm, Eyebrow, H1, Modal, Money, Panel, SkeletonBlock, SkeletonRows, StatCard, Td, Th } from '@/components/ui.jsx';
+import { Users, Wallet, ArrowLeft, CalendarX, ReceiptText } from 'lucide-react';
+import { Av, Badge, Btn, Confirm, EmptyState, Eyebrow, H1, Modal, Money, Panel, SkeletonBlock, SkeletonRows, StatCard, Td, Th } from '@/components/ui.jsx';
 import { computeStaffPayroll } from '@/lib/payroll';
 import { cutoffOf, nextCutoff, planDeductions, shortDate, staffRunKey } from '@/lib/loan-rules';
 import { currentCutoffPeriod, peso } from '@/lib/utils';
@@ -106,7 +106,7 @@ const PayslipCard = ({ e, calc, cutoffLabel, attPeriod, att, statutory, classNam
   );
 };
 
-export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, cutoffLabel = '', reloadStaff, loading = false, navView }) => {
+export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, cutoffLabel = '', reloadStaff, loading: staffLoading = false, navView, onNavigate }) => {
   const [view, setView] = useState('list');
   const [selectedId, setSelectedId] = useState(null);
   const [subTab, setSubTab] = useState(navView || 'current');
@@ -138,6 +138,8 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
   const [savingAllowance, setSavingAllowance] = useState(false);
   const [attById, setAttById] = useState({});
   const [attPeriod, setAttPeriod] = useState(null);
+  const [attLoading, setAttLoading] = useState(true);
+  const loading = staffLoading || attLoading;
   const cutoffKey = staffRunKey(attPeriod?.start || currentCutoffPeriod().start);
   const [printAll, setPrintAll] = useState(false);
   useEffect(() => {
@@ -157,7 +159,8 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
         setAttById(map);
         setAttPeriod(d.period || null);
       })
-      .catch(err => console.error('Could not load attendance for payroll:', err));
+      .catch(err => console.error('Could not load attendance for payroll:', err))
+      .finally(() => { if (!cancelled) setAttLoading(false); });
     return () => { cancelled = true; };
   }, []);
 
@@ -223,6 +226,16 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
 
   const rows = staff.filter(e => Number(e.rate) > 0).map(e => ({ emp: e, calc: computeStaffPayroll(e, loans, statutory, attById[e.id], cutoffKey), att: attById[e.id] || null })).filter(r => r.calc.hasAttendance);
   const totalGross = rows.reduce((s, r) => s + r.calc.gross, 0);
+  const go = (key, child) => onNavigate && onNavigate(key, child);
+  const payrollEmpty = staff.filter(e => Number(e.rate) > 0).length === 0 ? (
+    <EmptyState icon={Users} title="No staff registered yet"
+      desc="Staff payroll lists office staff. Register them in Employees first."
+      action={<Btn variant="outline" onClick={() => go('employees')}>Go to Employees</Btn>} />
+  ) : (
+    <EmptyState icon={CalendarX} title={`No attendance for ${cutoffLabel || 'this cutoff'} yet`}
+      desc="Payslips are computed from attendance. Pull it from the device and they appear here."
+      action={<Btn variant="outline" onClick={() => go('attendance', 'dtr')}>Go to Attendance</Btn>} />
+  );
   const totalNet = rows.reduce((s, r) => s + r.calc.net, 0);
 
   const cutoffEnd = cutoffOf(attPeriod?.start || currentCutoffPeriod().start).end;
@@ -356,12 +369,13 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
             <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
               <Eyebrow>Payslips — {cutoffLabel}</Eyebrow>
               <div className="grid grid-cols-1 gap-2 w-full sm:flex sm:items-center sm:w-auto">
-                <Badge tone={attPeriod ? 'green' : 'amber'}>{attPeriod ? `DTR ${attPeriod.start} → ${attPeriod.end}` : 'No attendance imported'}</Badge>
+                <Badge tone={attPeriod ? 'green' : 'amber'}>{attPeriod ? `DTR ${attPeriod.start} → ${attPeriod.end}` : 'No attendance yet'}</Badge>
                 <Btn size="sm" fullMobile variant="outline" disabled={rows.length === 0 || printAll} onClick={() => setPrintAll(true)}>{printAll ? 'Preparing…' : 'Print All Payslips'}</Btn>
                 <Btn size="sm" fullMobile variant="outline" disabled={pending.length === 0} onClick={() => setConfirmApply(true)}>Apply Cutoff Deductions</Btn>
-                <Btn size="sm" fullMobile loading={finalizing} disabled={!attPeriod || finalizing} onClick={() => setConfirmFinalize(true)}>{finalizing ? 'Finalizing…' : 'Finalize / Release'}</Btn>
+                <Btn size="sm" fullMobile loading={finalizing} disabled={!attPeriod || rows.length === 0 || finalizing} onClick={() => setConfirmFinalize(true)}>{finalizing ? 'Finalizing…' : 'Finalize / Release'}</Btn>
               </div>
             </div>
+            {!loading && rows.length === 0 ? payrollEmpty : (<>
             <div className="md:hidden">
               {loading ? <SkeletonBlock /> : rows.map(({ emp, calc }) => (
                 <button key={emp.id} type="button" onClick={() => { setSelectedId(emp.id); setView('slip'); }}
@@ -420,6 +434,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
                 </tr>
               </tfoot>
             </table></div>
+            </>)}
           </Panel>
         </>
       )}
@@ -432,7 +447,9 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
           {historyLoading ? (
             <SkeletonBlock avatar={false} />
           ) : history.length === 0 ? (
-            <div className="p-8 text-center text-sm" style={{ color: T.soft, fontFamily: F_BODY }}>No cut-offs have been finalized yet. Release one from Staff Payroll.</div>
+            <EmptyState icon={ReceiptText} title="No released cutoffs yet"
+              desc="A cutoff is saved here, with every payslip, once you finalize it in Staff Payroll."
+              action={<Btn variant="outline" onClick={() => go('payroll', 'staff')}>Go to Staff Payroll</Btn>} />
           ) : (
             <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
               <thead><tr><Th>Cut-off Period</Th><Th center>Employees</Th><Th right>Total Gross</Th><Th right>Total Net</Th><Th>Status</Th><Th></Th></tr></thead>

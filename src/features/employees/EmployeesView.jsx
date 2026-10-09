@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Save, Clock, AlertTriangle } from 'lucide-react';
-import { Badge, Btn, Confirm, Eyebrow, Field, H1, Modal, Money, Panel, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
+import { Search, SearchX, Save, Clock, AlertTriangle, Users } from 'lucide-react';
+import { Badge, Btn, Confirm, EmptyState, Eyebrow, Field, H1, Modal, Money, Panel, SkeletonBlock, SkeletonRows, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { POSITIONS, positionLabel } from '@/data/seed';
 import { hasNoContributions, isDailyPosition, isNonRegularPosition } from '@/lib/positions';
 import { WEEKDAYS, describeEarlyShift } from '@/lib/attendance';
@@ -16,7 +16,7 @@ const BLANK_EMP = {
   earlyShiftDays: [], earlyShiftTime: '06:00',
 };
 
-export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillConsumed }) => {
+export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillConsumed, loading = false }) => {
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState('active');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -28,8 +28,9 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
   const [busy, setBusy] = useState(false);
   const ff = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
+  const query = q.trim().toLowerCase();
   const rows = useMemo(() => staff
-    .filter(r => r.name.toLowerCase().includes(q.toLowerCase()))
+    .filter(r => !query || r.name.toLowerCase().includes(query) || String(r.id).toLowerCase().includes(query))
     .filter(r => statusFilter === 'all'
       || (statusFilter === 'active' && r.status !== 'Inactive')
       || (statusFilter === 'inactive' && r.status === 'Inactive'))
@@ -39,7 +40,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
       return typeFilter === 'crew' ? crew : !crew;
     })
     .sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true, sensitivity: 'base' })),
-    [staff, q, statusFilter, typeFilter]);
+    [staff, query, statusFilter, typeFilter]);
 
   const counts = useMemo(() => {
     const crewOf = (r) => (typeof r.daily === 'boolean' ? r.daily : isDailyPosition(r.position));
@@ -159,6 +160,23 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
     );
   };
 
+  const resetFilters = () => { setQ(''); setStatusFilter('active'); setTypeFilter('all'); };
+  const filterLabel = statusFilter === 'inactive' ? 'resigned' : statusFilter === 'active' ? 'active' : '';
+  const typeLabel = typeFilter === 'crew' ? 'crew' : typeFilter === 'staff' ? 'staff' : '';
+  const emptyView = counts.all === 0 ? (
+    <EmptyState icon={Users} title="No employees yet"
+      desc="Register your staff and crew with their biometric ID so their scans match them."
+      action={<Btn onClick={openAdd}>Register Employee</Btn>} />
+  ) : query ? (
+    <EmptyState icon={SearchX} title={`No employees match "${q.trim()}"`}
+      desc="Check the spelling, or search by ID."
+      action={<Btn variant="outline" onClick={() => setQ('')}>Clear Search</Btn>} />
+  ) : (
+    <EmptyState icon={Users} title={`No ${[filterLabel, typeLabel].filter(Boolean).join(' ')} employees`}
+      desc={statusFilter === 'inactive' ? 'Employees you deactivate are listed here with their Final Pay.' : 'Change the filters to see other employees.'}
+      action={<Btn variant="outline" onClick={resetFilters}>Show All Active</Btn>} />
+  );
+
   if (finalPayFor) return (
     <FinalPayView employee={finalPayFor.emp} onBack={() => setFinalPayFor(null)} toast={toast}
       editable={finalPayFor.deactivate}
@@ -172,7 +190,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         <div className="relative flex-1" style={{ minWidth: 220 }}>
           <Search size={14} className="absolute left-3 top-2.5" color={T.soft} />
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search employees…"
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search by name or ID…"
             className={`${inputCls} pl-8 w-full`} style={inputStyle} />
         </div>
         <div className="flex items-center gap-2">
@@ -191,6 +209,9 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
         </div>
       </div>
 
+      {!loading && rows.length === 0 && <Panel>{emptyView}</Panel>}
+
+      {(loading || rows.length > 0) && (
       <Panel className="overflow-hidden hidden md:block">
         <div className="overflow-x-auto overflow-y-auto pd-scroll-shadow" style={{ maxHeight: 520 }}>
           <table className="w-full">
@@ -198,7 +219,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
               <tr><Th>ID</Th><Th>Employee</Th><Th>Position</Th><Th right>Daily Rate</Th><Th>Status</Th><Th>Actions</Th></tr>
             </thead>
             <tbody>
-              {rows.map(r => (
+              {loading ? <SkeletonRows cols={6} rows={5} /> : rows.map(r => (
                 <tr key={r.id}>
                   <Td mono>{r.id}</Td>
                   <Td>
@@ -226,9 +247,11 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
           </table>
         </div>
       </Panel>
+      )}
 
       <div className="md:hidden space-y-2.5">
-        {rows.map(r => (
+        {loading && <Panel><SkeletonBlock /></Panel>}
+        {!loading && rows.map(r => (
             <Panel key={r.id} className="p-3.5">
               <div className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">
@@ -254,9 +277,6 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
               </div>
             </Panel>
         ))}
-        {rows.length === 0 && (
-          <Panel className="p-6"><div className="text-sm text-center" style={{ color: T.soft }}>No employees to show.</div></Panel>
-        )}
       </div>
 
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit Employee' : 'Register Employee'} width={480}>

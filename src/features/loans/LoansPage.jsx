@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, Pause, Play, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, Pause, Play, Plus, SearchX, Wallet } from 'lucide-react';
 import { Btn, EmptyState, H1 } from '@/components/ui.jsx';
 import { balanceOf, carryOf, dueFor, grantedBy, isOpen, nextCutoff, shortDate } from '@/lib/loan-rules';
 import { peso } from '@/lib/utils';
@@ -90,8 +90,9 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
         </div>
 
         {shown.length === 0 ? (
-          <EmptyState title={rows.length ? 'No loans match this filter' : 'No active loans'}
-            desc={rows.length ? 'Try another name or filter.' : 'Loans that are fully paid are in History.'} />
+          <EmptyState icon={rows.length ? SearchX : Wallet} title={rows.length ? 'No loans match this filter' : 'No active loans'}
+            desc={rows.length ? 'Try another name or filter.' : 'Loans you grant appear here until fully paid. Paid-off loans move to History.'}
+            action={rows.length ? null : <Btn variant="outline" icon={Plus} onClick={() => setForm({ employeeId: null })}>New Loan</Btn>} />
         ) : (
           <>
           <div className="md:hidden">

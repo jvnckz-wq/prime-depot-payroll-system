@@ -95,7 +95,7 @@ export const CheckerView = ({ currentUser, deliveries, reloadDeliveries, rates, 
               <Eyebrow>Delivery History ({allTrips.length})</Eyebrow>
             </div>
             {allTrips.length === 0 ? (
-              <EmptyState icon={Truck} title="No entries yet" desc="Log the first delivery on the left for any truck." />
+              <EmptyState icon={Truck} title="No deliveries logged yet" desc="Deliveries you log today appear here, for every truck." />
             ) : (
               <div className="overflow-x-auto pd-scroll-shadow">
                 <table className="w-full">

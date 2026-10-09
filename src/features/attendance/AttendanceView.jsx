@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, ClipboardList, ArrowLeft, Pencil, Upload, Loader2 } from 'lucide-react';
+import { AlertTriangle, ClipboardList, ArrowLeft, Pencil, Upload, Loader2, CalendarX, CircleCheck, Users } from 'lucide-react';
 import { Av, Badge, BigStat, Btn, EmptyState, Eyebrow, Field, H1, Modal, Panel, SkeletonBlock, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { isDailyPosition } from '@/lib/positions';
@@ -50,7 +50,7 @@ const shiftCutoff = (sel, dir) => {
   return cutoffOf(yy, mi, half);
 };
 
-export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
+export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNavigate }) => {
   const [view, setView] = useState('list');
   const [selectedId, setSelectedId] = useState(null);
   const [subTab, setSubTab] = useState(navSub || 'live');
@@ -357,7 +357,7 @@ export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
             <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Tap a day to correct it.</div>
           </div>
           {dtrLoading ? <SkeletonBlock avatar={false} />
-            : rows.length === 0 ? <EmptyState icon={ClipboardList} title="No attendance yet" desc="Import a biometric .xls file to populate this employee's record." />
+            : rows.length === 0 ? <EmptyState icon={CalendarX} title="No attendance for this employee yet" desc="Scans appear here after you pull this cutoff from the device." />
             : (
             <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
               <thead><tr><Th>Date</Th><Th>Time In</Th><Th>Time Out</Th><Th center>Late (mins)</Th><Th center>OT (mins)</Th><Th></Th></tr></thead>
@@ -442,7 +442,7 @@ export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
 
       {subTab !== 'live' && (
         <div className="mb-4">
-          <Badge tone="blue">{data.period ? fmtPeriod(data.period) : 'No imports yet'}</Badge>
+          <Badge tone="blue">{data.period ? fmtPeriod(data.period) : 'No attendance yet'}</Badge>
         </div>
       )}
       {subTab === 'live' && (
@@ -632,7 +632,9 @@ export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
           )}
           <Panel className="overflow-hidden">
             {loading ? <SkeletonBlock />
-              : data.summaries.length === 0 ? <EmptyState icon={ClipboardList} title="No attendance yet" desc="Import a biometric .xls file to get started. Employees are matched by their biometric User ID." />
+              : data.summaries.length === 0 ? (staff.length === 0
+                ? <EmptyState icon={Users} title="No employees registered yet" desc="Scans are matched to employees by their biometric ID. Register them first, then pull from the device." action={onNavigate ? <Btn variant="outline" onClick={() => onNavigate('employees')}>Go to Employees</Btn> : null} />
+                : <EmptyState icon={CalendarX} title="No attendance for this cutoff yet" desc="Press Pull from device above to read this cutoff's scans from the scanner." />)
               : (
               <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
                 <thead><tr><Th>ID</Th><Th>Employee</Th><Th center>Present</Th><Th center>Days Late</Th><Th center>Late (mins)</Th><Th center>OT (mins)</Th><Th center>Absences</Th><Th center>Leave</Th><Th>Action</Th></tr></thead>
@@ -665,7 +667,7 @@ export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
             <div className="text-sm font-semibold" style={{ fontFamily: F_HEAD, color: T.ink }}>Unmapped Biometric IDs</div>
           </div>
           {unmappedLoading ? <SkeletonBlock avatar={false} />
-            : unmapped.length === 0 ? <EmptyState icon={ClipboardList} title="Nothing unmapped" desc="Every imported scan is matched to an employee." />
+            : unmapped.length === 0 ? <EmptyState icon={CircleCheck} title="All scans are matched" desc="Every scan from the device is linked to a registered employee." />
             : (
             <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
               <thead><tr><Th>Biometric ID</Th><Th>Name (from file)</Th><Th center>Scans</Th><Th>Dates</Th><Th>Action</Th></tr></thead>
@@ -699,7 +701,7 @@ export const AttendanceView = ({ staff, toast, onRegister, navSub }) => {
       {subTab === 'history' && (
         <Panel className="overflow-hidden">
           {loading ? <SkeletonBlock avatar={false} />
-            : data.batches.length === 0 ? <EmptyState icon={ClipboardList} title="No imports yet" desc="Upload an attendance .xls file to get started." /> : (
+            : data.batches.length === 0 ? <EmptyState icon={ClipboardList} title="No pulls or imports yet" desc="Each device pull, and any file import, is listed here so you can review its records later." /> : (
             <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
               <thead><tr><Th>Imported</Th><Th>Filename</Th><Th>Period</Th><Th center>Mapped</Th><Th center>Unmapped</Th><Th>Status</Th><Th></Th></tr></thead>
               <tbody>{data.batches.map((b) => (

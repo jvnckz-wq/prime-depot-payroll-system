@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, Download } from 'lucide-react';
+import { ChevronDown, ChevronRight, Download, History, SearchX } from 'lucide-react';
 import { Btn, EmptyState, H1, inputCls, inputStyle } from '@/components/ui.jsx';
 import { isOpen, shortDate } from '@/lib/loan-rules';
 import { exportXLSX, peso } from '@/lib/utils';
@@ -57,7 +57,9 @@ export const LoanHistoryPage = ({ loans }) => {
         </div>
 
         {shown.length === 0 ? (
-          <EmptyState title="Nothing here yet" desc="Loans move here once fully paid, and cash advances once deducted." />
+          done.length === 0
+            ? <EmptyState icon={History} title="No paid-off loans yet" desc="Loans move here once fully paid, and cash advances once deducted." />
+            : <EmptyState icon={SearchX} title="Nothing matches this search" desc="Try another name, type or year." />
         ) : (
           <div className="overflow-x-auto pd-scroll-shadow">
             <table className="w-full">

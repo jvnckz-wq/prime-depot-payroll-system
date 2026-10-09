@@ -15,7 +15,7 @@ export const PayrollView = (props) => {
           navView={staffView}
           staff={props.staff} loans={props.loans} reloadLoans={props.reloadLoans}
           statutory={props.statutory} toast={props.toast} cutoffLabel={props.cutoffLabel}
-          reloadStaff={props.reloadStaff} loading={props.staffLoading} />
+          reloadStaff={props.reloadStaff} loading={props.staffLoading} onNavigate={props.onNavigate} />
       ) : (
         <TruckPayrollView
           mode="payslips"

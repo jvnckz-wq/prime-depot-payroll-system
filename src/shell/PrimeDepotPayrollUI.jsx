@@ -220,6 +220,7 @@ export default function PrimeDepotPayroll() {
 
   const [cutoffPeriod, setCutoffPeriod] = useState(null);
   const [attSummaries, setAttSummaries] = useState([]);
+  const [attLoading, setAttLoading] = useState(true);
   const [unmappedCount, setUnmappedCount] = useState(0);
   useEffect(() => {
     if (!user || user.role !== 'ADMIN' || !user.totpEnabled) return;
@@ -232,7 +233,8 @@ export default function PrimeDepotPayroll() {
         setAttSummaries(d.summaries || []);
         setUnmappedCount(d.unmappedCount || 0);
       })
-      .catch(err => console.error('Could not load current cutoff:', err));
+      .catch(err => console.error('Could not load current cutoff:', err))
+      .finally(() => { if (!cancelled) setAttLoading(false); });
     return () => { cancelled = true; };
   }, [user, getJson]);
 
@@ -356,13 +358,13 @@ export default function PrimeDepotPayroll() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <main className="flex-1 overflow-y-auto">
           <div key={tab} className="pd-view-in">
-          {tab === 'dashboard' && <DashboardView deliveries={deliveries} staff={staff} totalEmployees={allStaff.filter(e => e.status !== 'Inactive').length} loans={loans} statutory={statutory} setTab={setTab} cutoffLabel={cutoffText} runKey={staffKey} attendanceSummaries={attSummaries} unmappedCount={unmappedCount} />}
-          {tab === 'employees' && <EmployeesView staff={allStaff} reloadStaff={reloadStaff} toast={toast} prefill={employeePrefill} onPrefillConsumed={() => setEmployeePrefill(null)} />}
-          {tab === 'attendance' && <AttendanceView navSub={subs.attendance} staff={allStaff} toast={toast} onRegister={(id, name) => { setEmployeePrefill({ id, name }); setTab('employees'); }} />}
-          {tab === 'payroll' && <PayrollView navSub={subs.payroll} staff={staff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} toast={toast} cutoffLabel={cutoffText} reloadStaff={reloadStaff} staffLoading={staffLoading} deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} crewRates={crewRates} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} />}
+          {tab === 'dashboard' && <DashboardView deliveries={deliveries} staff={staff} totalEmployees={allStaff.filter(e => e.status !== 'Inactive').length} loans={loans} statutory={statutory} setTab={setTab} onNavigate={navSelect} dataLoading={staffLoading || attLoading} cutoffLabel={cutoffText} runKey={staffKey} attendanceSummaries={attSummaries} unmappedCount={unmappedCount} />}
+          {tab === 'employees' && <EmployeesView staff={allStaff} loading={staffLoading} reloadStaff={reloadStaff} toast={toast} prefill={employeePrefill} onPrefillConsumed={() => setEmployeePrefill(null)} />}
+          {tab === 'attendance' && <AttendanceView navSub={subs.attendance} staff={allStaff} toast={toast} onNavigate={navSelect} onRegister={(id, name) => { setEmployeePrefill({ id, name }); setTab('employees'); }} />}
+          {tab === 'payroll' && <PayrollView navSub={subs.payroll} onNavigate={navSelect} staff={staff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} toast={toast} cutoffLabel={cutoffText} reloadStaff={reloadStaff} staffLoading={staffLoading} deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} crewRates={crewRates} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} />}
           {tab === 'deliveries' && <TruckPayrollView mode="logging" deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} crewRates={crewRates} loans={loans} reloadLoans={reloadLoans} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} toast={toast} />}
           {tab === 'loans' && <LoansView navSub={subs.loans} staff={allStaff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} cutoffPeriod={cutoffPeriod} toast={toast} />}
-          {tab === 'reports' && <ReportsView navTab={subs.reports} staff={staff} deliveries={deliveries} loans={loans} statutory={statutory} cutoffLabel={cutoffText} runKey={staffKey} attendanceSummaries={attSummaries} crewRates={crewRates} />}
+          {tab === 'reports' && <ReportsView navTab={subs.reports} onNavigate={navSelect} dataLoading={staffLoading || attLoading} staff={staff} deliveries={deliveries} loans={loans} statutory={statutory} cutoffLabel={cutoffText} runKey={staffKey} attendanceSummaries={attSummaries} crewRates={crewRates} />}
           {tab === 'settings' && <SettingsView navTab={subs.settings} currentUser={user} onUserChange={u => setUser(prev => ({ ...prev, ...u }))} onSignedOut={() => { setUser(null); setTab('dashboard'); }} checkers={checkers} setCheckers={setCheckers} sssTable={sssTable} setSssTable={setSssTable} philhealthRates={philhealthRates} setPhilhealthRates={setPhilhealthRates} pagibigRates={pagibigRates} setPagibigRates={setPagibigRates} birTable={birTable} setBirTable={setBirTable} toast={toast} />}
           </div>
         </main>

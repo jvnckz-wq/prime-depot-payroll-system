@@ -25,7 +25,7 @@ export const ADMIN_NAV = [
     { key: 'remittance', label: 'Government Remittance' },
     { key: '13th', label: '13th Month Pay' },
     { key: 'drivers', label: 'Crew Earnings' },
-    { key: 'bir', label: 'BIR Reference' },
+    { key: 'bir', label: 'Withholding Tax' },
   ] },
   { key: 'settings', label: 'Settings', icon: SettingsIcon, group: 'Administration', children: [
     { key: 'statutory', label: 'Statutory Deductions' },
