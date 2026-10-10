@@ -422,7 +422,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
               )}
               <Field label="Reason / note (optional)"><input value={editForm.note} onChange={(e) => setEditForm((f) => ({ ...f, note: e.target.value }))} placeholder="e.g. brownout, scanner down" className={inputCls} style={inputStyle} /></Field>
               <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
-                Tardiness is recomputed automatically from the times. Blank time-in = missing scan (30-min penalty); blank time-out = assumed 5:00 PM. This day will be marked EDITED and won&apos;t be overwritten by future imports.
+                Tardiness is recomputed automatically from the times. Blank time-in = missing scan (30-min penalty); blank time-out = assumed end of shift (5:00 PM, or 12:00 noon on Sunday). This day will be marked EDITED and won&apos;t be overwritten by future imports.
               </div>
               <div className="flex justify-end gap-2 pt-1">
                 <Btn variant="outline" onClick={() => setEditDay(null)} disabled={savingEdit}>Cancel</Btn>

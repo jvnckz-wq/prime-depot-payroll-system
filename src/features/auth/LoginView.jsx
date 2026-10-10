@@ -5,6 +5,9 @@ import { AlertTriangle, Loader2, Eye, EyeOff, CheckCircle2, Circle } from 'lucid
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { isEmail } from '@/lib/email-format';
 
+const TOO_MANY_TRIES = 'Too many attempts. Please wait a minute and try again.';
+const failMessage = (status, data, fallback) => (data && data.error) || (status === 429 ? TOO_MANY_TRIES : fallback);
+
 const TERMS_KEY = 'pd_terms_agreed';
 
 const subscribeNoop = () => () => {};
@@ -63,7 +66,7 @@ function ForgotPassword({ onBack }) {
       body: JSON.stringify(payload),
     });
     const data = await res.json().catch(() => ({}));
-    return { ok: res.ok, data };
+    return { ok: res.ok, status: res.status, data };
   };
 
   const checkUsername = async () => {
@@ -73,8 +76,8 @@ function ForgotPassword({ onBack }) {
     if (!name) { setError('Enter your username.'); return; }
     setBusy(true);
     try {
-      const { ok, data } = await post({ username: name });
-      if (!ok) { setError(data.error || 'Could not continue. Try again.'); return; }
+      const { ok, status, data } = await post({ username: name });
+      if (!ok) { setError(failMessage(status, data, 'Could not continue. Try again.')); return; }
       if (data.next === 'email') { setStep('email'); return; }
       setNotice(data.message || '');
       setStep('info');
@@ -89,8 +92,8 @@ function ForgotPassword({ onBack }) {
     if (!isEmail(addr)) { setError('Enter a valid email address, for example name@gmail.com.'); return; }
     setBusy(true);
     try {
-      const { ok, data } = await post({ username: username.trim().toLowerCase(), email: addr });
-      if (!ok) { setError(data.error || 'Could not continue. Try again.'); return; }
+      const { ok, status, data } = await post({ username: username.trim().toLowerCase(), email: addr });
+      if (!ok) { setError(failMessage(status, data, 'Could not continue. Try again.')); return; }
       setNotice(data.message || '');
       setStep('code');
       setCooldown(60);
@@ -110,8 +113,8 @@ function ForgotPassword({ onBack }) {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: username.trim().toLowerCase(), email: email.trim().toLowerCase(), code, newPassword: pw }),
       });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error || 'Could not reset the password.'); return; }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setError(failMessage(res.status, data, 'Could not reset the password.')); return; }
       onBack('Password reset. Please sign in with your new password.');
     } catch { setError('Could not reach the server. Try again.'); }
     finally { setBusy(false); }
@@ -251,6 +254,7 @@ function ForgotPassword({ onBack }) {
   );
 }
 
+
 export const LoginView = ({ onSignedIn, onShowLegal, notice = '' }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -284,9 +288,9 @@ export const LoginView = ({ onSignedIn, onShowLegal, notice = '' }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error || 'Could not sign in.');
+        setError(failMessage(res.status, data, 'Could not sign in.'));
         setPassword('');
         return;
       }
@@ -312,10 +316,10 @@ export const LoginView = ({ onSignedIn, onShowLegal, notice = '' }) => {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: tfaCode.trim() }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         if (res.status === 401 || res.status === 429) { setAwaiting2FA(false); setUseBackup(false); }
-        setError(data.error || 'Could not verify the code.');
+        setError(failMessage(res.status, data, 'Could not verify the code.'));
         setTfaCode('');
         return;
       }
