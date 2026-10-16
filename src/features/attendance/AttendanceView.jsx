@@ -152,8 +152,19 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
     return () => clearInterval(id);
   }, [pullReq?.status]);
 
+  const loadUnmappedSilent = async () => {
+    try {
+      const res = await fetch('/api/attendance/unmapped');
+      if (!res.ok) return;
+      const d = await res.json();
+      setUnmapped(d.groups || []);
+      setEnrolled(d.enrolled || []);
+    } catch { }
+  };
+  const goUnmapped = () => (onNavigate ? onNavigate('attendance', 'unmapped') : setSubTab('unmapped'));
+
   const loadRef = useRef(load);
-  useEffect(() => { loadRef.current = () => (subTab === 'live' ? (liveDate === null ? loadLive({ silent: true }) : undefined) : load({ silent: true })); });
+  useEffect(() => { loadRef.current = () => (subTab === 'live' ? (liveDate === null ? Promise.all([loadLive({ silent: true }), loadUnmappedSilent()]) : undefined) : load({ silent: true })); });
   const editingRef = useRef(false);
   useEffect(() => { editingRef.current = !!editDay; }, [editDay]);
   useEffect(() => {
@@ -202,7 +213,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
     finally { setUnmappedLoading(false); }
   };
   // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
-  useEffect(() => { if (subTab === 'unmapped') loadUnmapped(); }, [subTab]);
+  useEffect(() => { if (subTab === 'unmapped' || subTab === 'live') loadUnmapped(); }, [subTab]);
 
   const resolveId = async (biometricId) => {
     setResolvingId(biometricId);
@@ -462,6 +473,23 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
           <Badge tone="blue">{data.period ? fmtPeriod(data.period) : 'No attendance yet'}</Badge>
         </div>
       )}
+      {subTab === 'live' && (enrolled.length > 0 || unmapped.some((g) => !g.hasEmployee)) && (() => {
+        const ids = [...new Set([...enrolled.map((u) => u.userId), ...unmapped.filter((g) => !g.hasEmployee).map((g) => g.biometricId)])]
+          .sort((a, b) => Number(a) - Number(b));
+        const shown = ids.slice(0, 8);
+        return (
+          <button type="button" onClick={goUnmapped} className="pd-clickable w-full text-left mb-3 flex items-start gap-3 p-3 rounded-lg" style={{ backgroundColor: T.warnBg, border: `1px solid ${T.line}` }}>
+            <AlertTriangle size={16} color={T.warn} className="mt-0.5 shrink-0" aria-hidden="true" />
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>
+                {ids.length} biometric ID{ids.length > 1 ? 's are' : ' is'} not registered: {shown.join(', ')}{ids.length > shown.length ? ` and ${ids.length - shown.length} more` : ''}
+              </div>
+              <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft }}>Their scans are not counted yet. Open Unmapped IDs to register them.</div>
+            </div>
+            <span className="text-xs font-semibold shrink-0 self-center" style={{ fontFamily: F_HEAD, color: T.brand }}>View Unmapped IDs →</span>
+          </button>
+        );
+      })()}
       {subTab === 'live' && (
         <Panel className="overflow-hidden">
           <div className="flex items-center justify-between gap-4 flex-wrap" style={{ padding: '18px 18px 0' }}>
