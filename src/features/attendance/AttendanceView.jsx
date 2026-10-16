@@ -71,6 +71,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
   const [importing, setImporting] = useState(false);
   const [unmapped, setUnmapped] = useState([]);
   const [enrolled, setEnrolled] = useState([]);
+  const [unmappedError, setUnmappedError] = useState('');
   const [ignoringId, setIgnoringId] = useState(null);
   const [unmappedLoading, setUnmappedLoading] = useState(false);
   const [resolvingId, setResolvingId] = useState(null);
@@ -205,11 +206,12 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
     setUnmappedLoading(true);
     try {
       const res = await fetch('/api/attendance/unmapped');
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const d = await res.json();
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error || 'HTTP ' + res.status);
       setUnmapped(d.groups || []);
       setEnrolled(d.enrolled || []);
-    } catch (err) { console.error('Could not load unmapped IDs:', err); }
+      setUnmappedError(d.enrolledError || '');
+    } catch (err) { console.error('Could not load unmapped IDs:', err); setUnmappedError(err.message || 'Could not load unmapped IDs.'); }
     finally { setUnmappedLoading(false); }
   };
   // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
@@ -733,7 +735,14 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
               </table></div>
             </div>
           )}
+          {!unmappedLoading && unmappedError && (
+            <div role="alert" className="m-4 flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm" style={{ backgroundColor: T.brandBg, color: T.brandDark, fontFamily: F_BODY }}>
+              <span className="flex items-center gap-2"><AlertTriangle size={15} aria-hidden="true" /> {unmappedError}</span>
+              <Btn size="sm" variant="outline" onClick={loadUnmapped}>Try again</Btn>
+            </div>
+          )}
           {unmappedLoading ? <SkeletonBlock avatar={false} />
+            : unmappedError && !unmapped.length && !enrolled.length ? null
             : unmapped.length === 0 ? (enrolled.length ? null : <EmptyState icon={CircleCheck} title="All scans are matched" desc="Every scan from the device is linked to a registered employee." />)
             : (
             <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">

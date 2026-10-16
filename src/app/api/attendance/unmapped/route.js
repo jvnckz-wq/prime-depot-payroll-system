@@ -44,8 +44,15 @@ export async function GET() {
       .map((g) => ({ ...g, hasEmployee: empById.has(g.biometricId), employeeName: empById.get(g.biometricId) || null }))
       .sort((a, b) => Number(a.biometricId) - Number(b.biometricId) || a.biometricId.localeCompare(b.biometricId));
 
-    const enrolled = await enrolledNotRegistered().catch(() => ({ users: [], rosterAt: null }));
-    return NextResponse.json({ groups, enrolled: enrolled.users, rosterAt: enrolled.rosterAt });
+    let enrolled = { users: [], rosterAt: null };
+    let enrolledError = null;
+    try {
+      enrolled = await enrolledNotRegistered();
+    } catch (err) {
+      console.error('Reading the device enrollment list failed:', err);
+      enrolledError = 'Could not read the device enrollment list.';
+    }
+    return NextResponse.json({ groups, enrolled: enrolled.users, rosterAt: enrolled.rosterAt, enrolledError });
   } catch (err) {
     console.error('GET /api/attendance/unmapped failed:', err);
     return NextResponse.json({ error: 'Could not load unmapped IDs.' }, { status: 500 });

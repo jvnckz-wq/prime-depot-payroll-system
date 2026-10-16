@@ -18,7 +18,9 @@ export function cleanRoster(input) {
 
 export async function enrolledNotRegistered() {
   const sync = await prisma.deviceSync.findUnique({ where: { id: 'primary' }, select: { roster: true, rosterAt: true, ignoredIds: true } });
-  const roster = Array.isArray(sync?.roster) ? sync.roster : [];
+  let raw = sync?.roster;
+  if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch { raw = []; } }
+  const roster = cleanRoster(Array.isArray(raw) ? raw : []) || [];
   if (!roster.length) return { users: [], rosterAt: sync?.rosterAt || null };
   const ids = roster.map((u) => u.userId);
   const known = await prisma.employee.findMany({ where: { id: { in: ids } }, select: { id: true } });
