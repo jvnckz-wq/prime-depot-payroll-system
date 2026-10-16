@@ -9,6 +9,7 @@ import { crewDayPay, crewEarnings, dailyContributionFor, deliveriesToLog, flatte
 import { grantedBy, planDeductions, todayYmdManila } from '@/lib/loan-rules';
 import { peso, telHref, timeLabel } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
+import { labelTextError, moneyError, moneyInput, unitError, flagErrors } from '@/lib/field-rules';
 
 export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, rates, setRates, crewRates = CREW_RATE_FALLBACK, loans, reloadLoans, crewNames = [], toast, mode = 'logging' }) => {
   const payslipsMode = mode === 'payslips';
@@ -39,6 +40,8 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
   const [savingRates, setSavingRates] = useState(false);
   const [voidTarget, setVoidTarget] = useState(null);
   const [voidReason, setVoidReason] = useState('');
+  const [voidErr, setVoidErr] = useState('');
+  const [rateErrs, setRateErrs] = useState({});
   const [voiding, setVoiding] = useState(false);
   const [dblTarget, setDblTarget] = useState(null);
   const [dblBusy, setDblBusy] = useState(false);
@@ -151,8 +154,14 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
 
   const addRateItem = async () => {
     setRateError('');
-    if (!newRate.cat.trim()) { setRateError('Item name is required.'); return; }
-    if (!newRate.unit.trim()) { setRateError('Unit is required — bag, piece, box, elf, and so on.'); return; }
+    const fe = {
+      cat: labelTextError(newRate.cat, { label: 'Item category' }),
+      unit: unitError(newRate.unit),
+      driverRate: moneyError(newRate.driverRate, { label: 'Driver rate', max: 5000 }),
+      helperRate: moneyError(newRate.helperRate, { label: 'Helper rate', max: 5000 }),
+    };
+    setRateErrs(fe);
+    if (Object.values(fe).some(Boolean)) { flagErrors(); return; }
     try {
       const res = await fetch('/api/rates', {
         method: 'POST',
@@ -384,7 +393,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                               onClick={() => restoreDelivery(it)}>Restore</button>
                           ) : (
                             <button className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.red }}
-                              onClick={() => { setVoidReason(''); setVoidTarget(it); }}>Void</button>
+                              onClick={() => { setVoidReason(''); setVoidErr(''); setVoidTarget(it); }}>Void</button>
                           ))}
                         </span>
                       </Td>
@@ -542,12 +551,12 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                 The entry stays on record with your name against it, and stops counting toward anyone&apos;s
                 pay. Log the corrected delivery separately afterwards.
               </div>
-              <Field label="Reason">
-                <input value={voidReason} onChange={e => setVoidReason(e.target.value)}
+              <Field label="Reason" error={voidErr}>
+                <input value={voidReason} maxLength={200} onChange={e => setVoidReason(e.target.value)}
                   placeholder="e.g. wrong quantity, wrong truck" className={inputCls} style={inputStyle} />
               </Field>
               <div className="flex gap-2 mt-4">
-                <Btn onClick={submitVoid} loading={voiding} disabled={voiding || voidReason.trim().length < 3}>
+                <Btn onClick={() => { if (voidReason.trim().length < 3) { setVoidErr('Give a short reason (at least 3 characters).'); flagErrors(); return; } setVoidErr(''); submitVoid(); }} loading={voiding} disabled={voiding}>
                   {voiding ? 'Voiding...' : 'Void delivery'}
                 </Btn>
                 <Btn variant="outline" onClick={() => setVoidTarget(null)}>Cancel</Btn>
@@ -673,7 +682,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
           <Eyebrow>Piece-Rate Table</Eyebrow>
           {editingRates ? (
             <div className="flex gap-2">
-              <Btn size="sm" variant="outline" onClick={() => setAddRateOpen(true)}>Add item</Btn>
+              <Btn size="sm" variant="outline" onClick={() => { setRateErrs({}); setAddRateOpen(true); }}>Add item</Btn>
               <Btn size="sm" onClick={saveRates}>Save</Btn>
               <Btn size="sm" variant="outline" onClick={() => { setRatesDraft(rates); setEditingRates(false); }}>Cancel</Btn>
             </div>
@@ -876,25 +885,25 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
         confirmLabel="Apply Deductions" />
 
       <Modal open={addRateOpen} onClose={() => setAddRateOpen(false)} title="Add Rate Item" width={440}>
-        <Field label="Item category">
-          <input value={newRate.cat} onChange={e => setNewRate(f => ({ ...f, cat: e.target.value }))}
+        <Field label="Item category" error={rateErrs.cat}>
+          <input value={newRate.cat} maxLength={40} onChange={e => setNewRate(f => ({ ...f, cat: e.target.value }))}
             placeholder="e.g. Paint, Plywood, Roofing" className={inputCls} style={inputStyle} />
         </Field>
         <div className="mt-3">
-          <Field label="Unit">
-            <input value={newRate.unit} onChange={e => setNewRate(f => ({ ...f, unit: e.target.value }))}
+          <Field label="Unit" error={rateErrs.unit}>
+            <input value={newRate.unit} onChange={e => setNewRate(f => ({ ...f, unit: e.target.value.replace(/[^A-Za-z]/g, '').slice(0, 15) }))}
               placeholder="bag, piece, box, elf" className={inputCls} style={inputStyle} />
           </Field>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-          <Field label="Driver rate (₱)">
-            <input type="number" step="0.01" value={newRate.driverRate}
-              onChange={e => setNewRate(f => ({ ...f, driverRate: e.target.value }))}
+          <Field label="Driver rate (₱)" error={rateErrs.driverRate}>
+            <input inputMode="decimal" value={newRate.driverRate}
+              onChange={e => setNewRate(f => ({ ...f, driverRate: moneyInput(e.target.value) }))}
               className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
           </Field>
-          <Field label="Helper rate (₱)">
-            <input type="number" step="0.01" value={newRate.helperRate}
-              onChange={e => setNewRate(f => ({ ...f, helperRate: e.target.value }))}
+          <Field label="Helper rate (₱)" error={rateErrs.helperRate}>
+            <input inputMode="decimal" value={newRate.helperRate}
+              onChange={e => setNewRate(f => ({ ...f, helperRate: moneyInput(e.target.value) }))}
               className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
           </Field>
         </div>

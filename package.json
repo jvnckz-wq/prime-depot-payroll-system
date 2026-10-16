@@ -23,6 +23,7 @@
     "test:13th": "node tests/thirteenth-month.test.mjs",
     "test:audit": "node tests/audit-actions.test.mjs",
     "test:wht": "tsx tests/withholding.test.cjs",
+    "test:fields": "node tests/field-rules.test.mjs",
     "sync": "node scripts/sync-agent.js",
     "sync:live": "node scripts/sync-agent.js --live",
     "pull-cutoff": "node scripts/pull-cutoff.js",

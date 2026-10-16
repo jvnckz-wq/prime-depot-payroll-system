@@ -3,6 +3,7 @@ import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { withRetry } from '@/lib/server/db/db-retry';
 import { logSecurityEvent, requireUser } from '@/lib/server/security/auth';
 import { todayYmdManila } from '@/lib/loan-rules';
+import { freeTextError } from '@/lib/field-rules';
 
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
 
@@ -48,10 +49,12 @@ export async function PATCH(request, { params }) {
       if (delivery.voidedAt) {
         return NextResponse.json({ error: 'This delivery is already voided.' }, { status: 409 });
       }
-      const trimmed = typeof reason === 'string' ? reason.trim() : '';
+      const trimmed = typeof reason === 'string' ? reason.replace(/\s+/g, ' ').trim() : '';
       if (trimmed.length < 3) {
         return NextResponse.json({ error: 'Give a short reason so the correction can be understood later.' }, { status: 400 });
       }
+      const reasonErr = freeTextError(trimmed, { label: 'Reason', min: 3, max: 200 });
+      if (reasonErr) return NextResponse.json({ error: reasonErr }, { status: 400 });
 
       await prisma.delivery.update({
         where: { id },

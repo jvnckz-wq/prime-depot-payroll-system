@@ -4,6 +4,8 @@ import React, { useState, useEffect, useSyncExternalStore } from 'react';
 import { AlertTriangle, Loader2, Eye, EyeOff, CheckCircle2, Circle } from 'lucide-react';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { isEmail } from '@/lib/email-format';
+import CodeBoxes, { formatBackup } from '@/components/CodeBoxes';
+import { flagErrors, flagEmptyRequired } from '@/lib/field-rules';
 
 const TOO_MANY_TRIES = 'Too many attempts. Please wait a minute and try again.';
 const failMessage = (status, data, fallback) => (data && data.error) || (status === 429 ? TOO_MANY_TRIES : fallback);
@@ -73,7 +75,7 @@ function ForgotPassword({ onBack }) {
     if (busy) return;
     setError('');
     const name = username.trim().toLowerCase();
-    if (!name) { setError('Enter your username.'); return; }
+    if (!name) { setError('Enter your username.'); flagEmptyRequired(); return; }
     setBusy(true);
     try {
       const { ok, status, data } = await post({ username: name });
@@ -89,7 +91,7 @@ function ForgotPassword({ onBack }) {
     if (busy) return;
     setError('');
     const addr = email.trim().toLowerCase();
-    if (!isEmail(addr)) { setError('Enter a valid email address, for example name@gmail.com.'); return; }
+    if (!isEmail(addr)) { setError('Enter a valid email address, for example name@gmail.com.'); flagEmptyRequired(); return; }
     setBusy(true);
     try {
       const { ok, status, data } = await post({ username: username.trim().toLowerCase(), email: addr });
@@ -104,9 +106,9 @@ function ForgotPassword({ onBack }) {
   const reset = async () => {
     if (busy) return;
     setError('');
-    if (!code.trim()) { setError('Enter the 6-digit code from your email.'); return; }
-    if (!pwMeetsAll(pw)) { setError('Your new password does not meet all the requirements below.'); return; }
-    if (pw !== pw2) { setError('The two passwords do not match.'); return; }
+    if (!code.trim()) { setError('Enter the 6-digit code from your email.'); flagEmptyRequired(); return; }
+    if (!pwMeetsAll(pw)) { setError('Your new password does not meet all the requirements below.'); flagEmptyRequired(); return; }
+    if (pw !== pw2) { setError('The two passwords do not match.'); flagEmptyRequired(); return; }
     setBusy(true);
     try {
       const res = await fetch('/api/auth/reset-password', {
@@ -151,7 +153,7 @@ function ForgotPassword({ onBack }) {
       {step === 'username' && (
         <>
           <label className="block text-sm mb-1.5" style={{ color: T.soft }}>Username</label>
-          <input value={username} onChange={e => setUsername(e.target.value)} onKeyDown={onEnter(checkUsername)} autoComplete="username" autoCapitalize="none" spellCheck={false}
+          <input required value={username} onChange={e => setUsername(e.target.value)} onKeyDown={onEnter(checkUsername)} autoComplete="username" autoCapitalize="none" spellCheck={false}
             disabled={busy} aria-label="Username" className="w-full px-4 py-2.5 rounded-lg text-sm outline-none" style={field} />
         </>
       )}
@@ -159,7 +161,7 @@ function ForgotPassword({ onBack }) {
       {step === 'email' && (
         <>
           <label className="block text-sm mb-1.5" style={{ color: T.soft }}>Recovery email</label>
-          <input value={email} onChange={e => setEmail(e.target.value)} onKeyDown={onEnter(confirmEmail)} type="email" autoComplete="email" autoCapitalize="none" spellCheck={false}
+          <input required value={email} onChange={e => setEmail(e.target.value)} onKeyDown={onEnter(confirmEmail)} type="email" autoComplete="email" autoCapitalize="none" spellCheck={false}
             placeholder="name@gmail.com" disabled={busy} aria-label="Recovery email" className="w-full px-4 py-2.5 rounded-lg text-sm outline-none" style={field} />
         </>
       )}
@@ -167,8 +169,7 @@ function ForgotPassword({ onBack }) {
       {step === 'code' && (
         <>
           <label className="block text-sm mb-1.5" style={{ color: T.soft }}>Reset code</label>
-          <input value={code} onChange={e => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))} inputMode="numeric" maxLength={6} placeholder="6-digit code" disabled={busy}
-            className="w-full px-4 py-2.5 rounded-lg text-sm outline-none" style={{ ...field, fontFamily: F_MONO, letterSpacing: '0.3em' }} />
+          <CodeBoxes value={code} onChange={setCode} disabled={busy} autoFocus label="Reset code" />
 
           <label className="block text-sm mb-1.5 mt-4" style={{ color: T.soft }}>New password</label>
           <div className="relative">
@@ -269,16 +270,21 @@ export const LoginView = ({ onSignedIn, onShowLegal, notice = '' }) => {
   const [awaiting2FA, setAwaiting2FA] = useState(false);
   const [tfaCode, setTfaCode] = useState('');
   const [useBackup, setUseBackup] = useState(false);
+  const [missing, setMissing] = useState({});
 
   const submit = async () => {
     if (busy) return;
     setError('');
-    if (!username.trim() || !password) {
+    const miss = { username: !username.trim(), password: !password, agreed: !agreed };
+    setMissing(miss);
+    if (miss.username || miss.password) {
       setError('Enter your username and password.');
+      flagErrors();
       return;
     }
-    if (!agreed) {
+    if (miss.agreed) {
       setError('Please agree to the Terms and Conditions and Privacy Policy first.');
+      flagErrors();
       return;
     }
     setBusy(true);
@@ -309,12 +315,12 @@ export const LoginView = ({ onSignedIn, onShowLegal, notice = '' }) => {
   const verify2FA = async () => {
     if (busy) return;
     setError('');
-    if (!tfaCode.trim()) { setError(useBackup ? 'Enter a backup code.' : 'Enter your 6-digit code.'); return; }
+    if (tfaCode.length !== (useBackup ? 8 : 6)) { setError(useBackup ? 'Enter all 8 characters of a backup code.' : 'Enter all 6 digits of your code.'); setMissing(m => ({ ...m, code: true })); flagErrors(); return; }
     setBusy(true);
     try {
       const res = await fetch('/api/auth/2fa', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: tfaCode.trim() }),
+        body: JSON.stringify({ code: useBackup ? formatBackup(tfaCode) : tfaCode }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -365,18 +371,8 @@ export const LoginView = ({ onSignedIn, onShowLegal, notice = '' }) => {
           <label className="block text-sm mb-1.5" style={{ color: T.soft }}>
             {useBackup ? 'Backup code' : 'Authentication code'}
           </label>
-          <input
-            value={tfaCode}
-            onChange={e => setTfaCode(useBackup
-              ? e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 9)
-              : e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
-            onKeyDown={e => { if (e.key === 'Enter') verify2FA(); }}
-            inputMode={useBackup ? 'text' : 'numeric'}
-            autoComplete="one-time-code" autoCapitalize="characters" spellCheck={false} disabled={busy}
-            placeholder={useBackup ? 'XXXX-XXXX' : '------'}
-            className="w-full px-4 py-2.5 rounded-lg text-base outline-none"
-            style={{ ...fieldStyle, textAlign: 'center', letterSpacing: '0.34em', fontFamily: F_MONO }}
-          />
+          <CodeBoxes key={useBackup ? 'backup' : 'totp'} value={tfaCode} onChange={(v) => { setTfaCode(v); setMissing(m => ({ ...m, code: false })); }} backup={useBackup} invalid={!!missing.code}
+            disabled={busy} autoFocus onEnter={verify2FA} label={useBackup ? 'Backup code' : 'Authentication code'} />
 
           {error && (
             <div className="flex items-start gap-2 mt-4 px-3 py-2.5 rounded-lg text-xs" style={{ backgroundColor: T.brandBg, fontFamily: F_BODY, color: T.brandDark }}>
@@ -427,9 +423,10 @@ export const LoginView = ({ onSignedIn, onShowLegal, notice = '' }) => {
           )}
 
           <label className="block text-sm mb-1.5" style={{ color: T.soft }}>Username</label>
-          <input
+          <input required
             value={username}
-            onChange={e => setUsername(e.target.value)}
+            aria-invalid={missing.username || undefined}
+            onChange={e => { setUsername(e.target.value); setMissing(m => ({ ...m, username: false })); }}
             onKeyDown={onKeyDown}
             aria-label="Username"
             autoComplete="username"
@@ -444,7 +441,8 @@ export const LoginView = ({ onSignedIn, onShowLegal, notice = '' }) => {
           <div className="relative">
             <input
               value={password}
-              onChange={e => setPassword(e.target.value)}
+              aria-invalid={missing.password || undefined}
+              onChange={e => { setPassword(e.target.value); setMissing(m => ({ ...m, password: false })); }}
               onKeyDown={onKeyDown}
               aria-label="Password"
               type={showPw ? 'text' : 'password'}
@@ -480,7 +478,8 @@ export const LoginView = ({ onSignedIn, onShowLegal, notice = '' }) => {
               id="agree-terms"
               type="checkbox"
               checked={agreed}
-              onChange={e => setAgreed(e.target.checked)}
+              aria-invalid={missing.agreed || undefined}
+              onChange={e => { setAgreed(e.target.checked); setMissing(m => ({ ...m, agreed: false })); }}
               disabled={busy}
               className="mt-0.5 shrink-0"
               style={{ accentColor: T.brand, width: 15, height: 15 }}
@@ -495,10 +494,10 @@ export const LoginView = ({ onSignedIn, onShowLegal, notice = '' }) => {
 
           <button
             onClick={submit}
-            disabled={busy || !agreed}
+            disabled={busy}
             data-variant="amber"
             className="pd-btn w-full py-3 rounded-lg text-sm font-semibold inline-flex items-center justify-center gap-1.5 mt-4"
-            style={{ fontFamily: F_HEAD, backgroundColor: T.brand, color: '#fff', opacity: (busy || !agreed) ? 0.6 : 1, cursor: (busy || !agreed) ? 'not-allowed' : 'pointer' }}
+            style={{ fontFamily: F_HEAD, backgroundColor: T.brand, color: '#fff', opacity: busy ? 0.6 : 1, cursor: busy ? 'not-allowed' : 'pointer' }}
           >
             {busy && <Loader2 size={14} className="pd-spin" />}
             {busy ? 'Signing in...' : 'Sign In'}

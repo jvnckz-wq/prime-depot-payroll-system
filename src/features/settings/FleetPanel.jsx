@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Badge, Btn, Confirm, Eyebrow, Field, Modal, Panel, SkeletonRows, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
+import { labelTextError, plateError, flagErrors } from '@/lib/field-rules';
 
 export const FleetPanel = ({ toast }) => {
   const [trucks, setTrucks] = useState([]);
@@ -13,6 +14,7 @@ export const FleetPanel = ({ toast }) => {
   const [editingTruck, setEditingTruck] = useState(null);
   const [truckForm, setTruckForm] = useState({ id: '', vehicle: '', plate: '' });
   const [truckError, setTruckError] = useState('');
+  const [truckErrs, setTruckErrs] = useState({});
 
   const [confirm, setConfirm] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -36,17 +38,24 @@ export const FleetPanel = ({ toast }) => {
     setEditingTruck(null);
     setTruckForm({ id: '', vehicle: '', plate: '' });
     setTruckError('');
-    setTruckModal(true);
+    setTruckErrs({}); setTruckModal(true);
   };
 
   const openEditTruck = (t) => {
     setEditingTruck(t);
     setTruckForm({ id: t.id, vehicle: t.vehicle, plate: t.plate });
     setTruckError('');
-    setTruckModal(true);
+    setTruckErrs({}); setTruckModal(true);
   };
 
   const saveTruck = async () => {
+    const fe = {
+      id: !editingTruck && !/^[A-Z0-9-]{3,12}$/.test(truckForm.id || '') ? 'Truck ID must be 3-12 characters: letters, numbers, or dashes.' : '',
+      vehicle: labelTextError(truckForm.vehicle, { label: 'Vehicle description' }),
+      plate: plateError(truckForm.plate),
+    };
+    setTruckErrs(fe);
+    if (fe.id || fe.vehicle || fe.plate) { flagErrors(); return; }
     setTruckError(''); setBusy(true);
     try {
       const editing = !!editingTruck;
@@ -128,21 +137,21 @@ export const FleetPanel = ({ toast }) => {
       </Panel>
 
       <Modal open={truckModal} onClose={() => setTruckModal(false)} title={editingTruck ? `Edit ${editingTruck.id}` : 'Add Truck'} width={420}>
-        <Field label="Truck ID">
+        <Field label="Truck ID" error={truckErrs.id}>
           <input value={truckForm.id} readOnly={!!editingTruck}
-            onChange={e => setTruckForm(f => ({ ...f, id: e.target.value.toUpperCase() }))}
+            onChange={e => setTruckForm(f => ({ ...f, id: e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 12) }))}
             placeholder="TRK-14" className={inputCls}
             style={{ ...inputStyle, fontFamily: F_MONO, backgroundColor: editingTruck ? T.bg : T.surface, color: editingTruck ? T.soft : T.ink }} />
         </Field>
         <div className="mt-3">
-          <Field label="Vehicle">
-            <input value={truckForm.vehicle} onChange={e => setTruckForm(f => ({ ...f, vehicle: e.target.value }))}
+          <Field label="Vehicle" error={truckErrs.vehicle}>
+            <input value={truckForm.vehicle} maxLength={40} onChange={e => setTruckForm(f => ({ ...f, vehicle: e.target.value }))}
               placeholder="Blue MD" className={inputCls} style={inputStyle} />
           </Field>
         </div>
         <div className="mt-3">
-          <Field label="Plate number">
-            <input value={truckForm.plate} onChange={e => setTruckForm(f => ({ ...f, plate: e.target.value.toUpperCase() }))}
+          <Field label="Plate number" error={truckErrs.plate}>
+            <input value={truckForm.plate} onChange={e => setTruckForm(f => ({ ...f, plate: e.target.value.toUpperCase().replace(/[^A-Z0-9 -]/g, '').slice(0, 8) }))}
               placeholder="ABC1234" className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
           </Field>
         </div>

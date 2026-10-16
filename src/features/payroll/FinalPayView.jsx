@@ -6,6 +6,7 @@ import { Btn, Confirm, Field, Panel } from '@/components/ui.jsx';
 import { balanceOf, planDeductions, shortDate, todayYmdManila } from '@/lib/loan-rules';
 import { peso } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, F_SERIF, T } from '@/components/theme';
+import { digitsOnly, moneyInput } from '@/lib/field-rules';
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 const nf = (v) => (Number.isFinite(parseFloat(v)) ? parseFloat(v) : 0);
@@ -102,8 +103,8 @@ export const FinalPayView = ({ employee, onBack, toast, onDeactivate, editable =
     }
   };
 
-  const numInput = (value, onChange) => (
-    <input type="number" value={value} onChange={e => onChange(e.target.value)}
+  const numInput = (value, onChange, whole = false) => (
+    <input inputMode={whole ? 'numeric' : 'decimal'} value={value} onChange={e => onChange(whole ? digitsOnly(e.target.value, 3) : moneyInput(e.target.value))}
       className="px-2 py-1.5 rounded border text-sm w-32" style={{ borderColor: T.line, fontFamily: F_MONO, color: T.ink, backgroundColor: T.surface }} />
   );
 
@@ -136,10 +137,10 @@ export const FinalPayView = ({ employee, onBack, toast, onDeactivate, editable =
           </Field>
           <Field label="Last date of service"><input type="date" value={lastService} onChange={e => setLastService(e.target.value)} className="px-2 py-1.5 rounded border text-sm w-full" style={{ borderColor: T.line, fontFamily: F_BODY, color: T.ink, backgroundColor: T.surface, colorScheme: 'light' }} /></Field>
           <Field label="Daily rate (₱)">{numInput(rate, setRate)}</Field>
-          <Field label="Days worked (last cutoff)">{numInput(days, setDays)}</Field>
+          <Field label="Days worked (last cutoff)">{numInput(days, setDays, true)}</Field>
           <Field label="OT + other allowances (₱)">{numInput(otAllow, setOtAllow)}</Field>
           <Field label="Total basic salary this year (₱)">{numInput(yearBasic, setYearBasic)}</Field>
-          <Field label="Unused leave days">{numInput(leaveDays, setLeaveDays)}</Field>
+          <Field label="Unused leave days">{numInput(leaveDays, setLeaveDays, true)}</Field>
         </div>
       ) : (
         periodLabel && (

@@ -5,6 +5,7 @@ import { AlertTriangle, Copy, KeyRound, Link2, Plus, UserCheck, UserX } from 'lu
 import { Av, Badge, Btn, Confirm, Eyebrow, Field, Modal, Skeleton, inputCls, inputStyle } from '@/components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { suggestUsername } from '@/lib/checker-accounts';
+import { usernameInput, flagErrors, usernameError } from '@/lib/field-rules';
 
 const NoCheckers = ({ onGoToEmployees }) => (
   <div className="p-3.5 rounded" style={{ backgroundColor: T.bg }}>
@@ -21,8 +22,8 @@ const NoCheckers = ({ onGoToEmployees }) => (
   </div>
 );
 
-const CheckerSelect = ({ checkers, value, onChange }) => (
-  <Field label="Checker">
+const CheckerSelect = ({ checkers, value, onChange, error }) => (
+  <Field label="Checker" error={error}>
     <select value={value} onChange={e => onChange(e.target.value)} className={inputCls} style={inputStyle}>
       <option value="">Choose a checker</option>
       {checkers.map(c => <option key={c.id} value={c.id}>{c.name} (ID {c.id})</option>)}
@@ -39,6 +40,8 @@ export const AccountsPanel = ({ currentUser, toast, onGoToEmployees }) => {
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [form, setForm] = useState({ employeeId: '', username: '' });
+  const [createErrs, setCreateErrs] = useState({});
+  const [linkErr, setLinkErr] = useState('');
   const [usernameTouched, setUsernameTouched] = useState(false);
   const [linkFor, setLinkFor] = useState(null);
   const [linkEmployeeId, setLinkEmployeeId] = useState('');
@@ -64,6 +67,9 @@ export const AccountsPanel = ({ currentUser, toast, onGoToEmployees }) => {
   useEffect(() => { load(); }, []);
 
   const create = async () => {
+    const fe = { checker: form.employeeId ? '' : 'Choose a checker.', username: usernameError(form.username) };
+    setCreateErrs(fe);
+    if (fe.checker || fe.username) { flagErrors(); return; }
     setError(''); setBusy(true);
     try {
       const res = await fetch('/api/users', {
@@ -247,11 +253,11 @@ export const AccountsPanel = ({ currentUser, toast, onGoToEmployees }) => {
         {checkers.length === 0 ? (
           <NoCheckers onGoToEmployees={onGoToEmployees} />
         ) : (
-          <CheckerSelect checkers={checkers} value={form.employeeId} onChange={pickChecker} />
+          <CheckerSelect checkers={checkers} value={form.employeeId} onChange={(v) => { setCreateErrs((e) => ({ ...e, checker: '' })); pickChecker(v); }} error={createErrs.checker} />
         )}
         <div className="mt-3">
-          <Field label="Username">
-            <input value={form.username} onChange={e => { setUsernameTouched(true); setForm(f => ({ ...f, username: e.target.value.toLowerCase() })); }}
+          <Field label="Username" error={createErrs.username}>
+            <input value={form.username} onChange={e => { setUsernameTouched(true); setForm(f => ({ ...f, username: usernameInput(e.target.value) })); }}
               placeholder="checker2" autoCapitalize="none" spellCheck={false} disabled={checkers.length === 0}
               className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
           </Field>
@@ -269,7 +275,7 @@ export const AccountsPanel = ({ currentUser, toast, onGoToEmployees }) => {
         )}
 
         <div className="flex gap-2 mt-4">
-          <Btn onClick={create} loading={busy} disabled={busy || !form.employeeId}>{busy ? 'Creating...' : 'Create account'}</Btn>
+          <Btn onClick={create} loading={busy} disabled={busy}>{busy ? 'Creating...' : 'Create account'}</Btn>
           <Btn variant="outline" onClick={() => setAddOpen(false)}>Cancel</Btn>
         </div>
       </Modal>
@@ -281,7 +287,7 @@ export const AccountsPanel = ({ currentUser, toast, onGoToEmployees }) => {
         {checkers.length === 0 ? (
           <NoCheckers onGoToEmployees={onGoToEmployees} />
         ) : (
-          <CheckerSelect checkers={checkers} value={linkEmployeeId} onChange={setLinkEmployeeId} />
+          <CheckerSelect checkers={checkers} value={linkEmployeeId} onChange={(v) => { setLinkErr(''); setLinkEmployeeId(v); }} error={linkErr} />
         )}
         {error && (
           <div className="flex items-start gap-2 mt-3 px-3 py-2.5 rounded text-xs"
@@ -290,7 +296,7 @@ export const AccountsPanel = ({ currentUser, toast, onGoToEmployees }) => {
           </div>
         )}
         <div className="flex gap-2 mt-4">
-          <Btn onClick={link} loading={busy} disabled={busy || !linkEmployeeId}>{busy ? 'Linking...' : 'Link account'}</Btn>
+          <Btn onClick={() => { if (!linkEmployeeId) { setLinkErr('Choose a checker.'); flagErrors(); return; } link(); }} loading={busy} disabled={busy}>{busy ? 'Linking...' : 'Link account'}</Btn>
           <Btn variant="outline" onClick={() => setLinkFor(null)}>Cancel</Btn>
         </div>
       </Modal>

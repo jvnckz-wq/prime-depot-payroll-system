@@ -1,3 +1,4 @@
+import { moneyError } from '@/lib/field-rules';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';
@@ -42,11 +43,14 @@ export async function POST(request) {
     if (!employee) return bad('That employee no longer exists. Refresh and try again.');
     if (employee.status !== 'ACTIVE') return bad(`${employee.name} is inactive, so nothing can be granted.`);
 
+    const amountErr = moneyError(String(body.principal ?? ''), { label: 'Amount', max: 50000, allowZero: false });
+    if (amountErr) return bad(amountErr);
     const principal = money(body.principal);
     if (!Number.isFinite(principal) || principal <= 0) return bad('Enter an amount greater than zero.');
 
     const date = body.date == null || body.date === '' ? todayYmdManila() : String(body.date);
     if (!isYmd(date)) return bad('The date given is not a valid date.');
+    if (date > todayYmdManila()) return bad('Date given cannot be in the future.');
     const granted = new Date(date + 'T00:00:00Z');
 
     let data;

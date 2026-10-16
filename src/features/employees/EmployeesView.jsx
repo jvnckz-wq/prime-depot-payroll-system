@@ -8,11 +8,12 @@ import { hasNoContributions, isDailyPosition, isNonRegularPosition } from '@/lib
 import { WEEKDAYS, describeEarlyShift } from '@/lib/attendance';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { FinalPayView } from '@/features/payroll/FinalPayView.jsx';
+import { addressError, birthdateError, digitsOnly, employeeErrors, firstError, LIMITS, moneyInput, flagErrors } from '@/lib/field-rules';
 
 const BLANK_EMP = {
   id: '', name: '', position: '', rate: '', declaredSalary: '',
   status: 'Active', sssOn: false, phOn: false, piOn: false, mp2: 0, leaveCredits: 5,
-  address: '', contact: '', birthdate: '', dateHired: '',
+  address: '', contact: '', birthdate: '',
   earlyShiftDays: [], earlyShiftTime: '06:00',
 };
 
@@ -27,6 +28,9 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
   const [confirm, setConfirm] = useState(null);
   const [busy, setBusy] = useState(false);
   const ff = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const [showErrors, setShowErrors] = useState(false);
+  const idLocked = !!editing && editing.idLocked !== false;
+  const errs = showErrors && form ? employeeErrors(form, { crew: isDailyPosition(form.position), noContrib: hasNoContributions(form.position), skipId: !!editing && editing.idLocked !== false }) : {};
 
   const query = q.trim().toLowerCase();
   const rows = useMemo(() => staff
@@ -60,8 +64,8 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
       : [...f.earlyShiftDays, key],
   }));
 
-  const openAdd = () => { setEditing(null); setForm({ ...BLANK_EMP }); setModal(true); };
-  const openEdit = (r) => { setEditing(r); setForm({ ...BLANK_EMP, ...r, rate: String(r.rate), declaredSalary: String(r.declaredSalary || '') }); setModal(true); };
+  const openAdd = () => { setEditing(null); setForm({ ...BLANK_EMP }); setShowErrors(false); setModal(true); };
+  const openEdit = (r) => { setEditing(r); setForm({ ...BLANK_EMP, ...r, rate: String(r.rate), declaredSalary: String(r.declaredSalary || '') }); setShowErrors(false); setModal(true); };
 
   useEffect(() => {
     if (!prefill) return;
@@ -72,8 +76,8 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
     if (onPrefillConsumed) onPrefillConsumed();
   }, [prefill]); // eslint-disable-line react-hooks/exhaustive-deps
   const save = async () => {
-    if (!form.id.trim()) { toast('ID number is required — it links this employee to the biometric logs.', 'error'); return; }
-    if (!form.name.trim()) { toast('Name is required.', 'error'); return; }
+    const problems = employeeErrors(form, { crew: isDailyPosition(form.position), noContrib: hasNoContributions(form.position), skipId: !!editing && editing.idLocked !== false });
+    if (firstError(problems)) { setShowErrors(true); flagErrors(); return; }
     const dupe = staff.some(s => String(s.id).toLowerCase() === form.id.trim().toLowerCase() && (!editing || s.id !== editing.id));
     if (dupe) { toast(`ID ${form.id.trim()} is already used by another employee.`, 'error'); return; }
 
@@ -83,12 +87,13 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
 
     const payload = {
       id: form.id.trim(), name: form.name.trim(), position: form.position,
+      ...(editing && !idLocked && form.id.trim() !== editing.id ? { newId: form.id.trim() } : {}),
       rate: parseFloat(form.rate) || 0, declaredSalary: noContrib ? 0 : (parseFloat(form.declaredSalary) || 0),
       mp2: noContrib ? 0 : (parseFloat(form.mp2) || 0), status: form.status,
       leaveCredits: crew ? 0 : (parseInt(form.leaveCredits, 10) || 0),
       sssOn: !noContrib && form.sssOn, phOn: !noContrib && form.phOn, piOn: !noContrib && form.piOn,
       address: form.address, contact: form.contact,
-      birthdate: form.birthdate, dateHired: form.dateHired,
+      birthdate: form.birthdate,
       earlyShiftDays: form.earlyShiftDays, earlyShiftTime: form.earlyShiftTime,
     };
 
@@ -281,23 +286,20 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
 
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit Employee' : 'Register Employee'} width={480}>
         <div className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="ID number*">
-              <input value={form.id} onChange={e => ff('id', e.target.value)} placeholder="e.g. 7 (biometric ID)" className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
+          <Field label="ID number*" error={errs.id}>
+              <input value={form.id} onChange={e => ff('id', digitsOnly(e.target.value, 9))} readOnly={idLocked} inputMode="numeric" placeholder="e.g. 7 (biometric ID)" className={inputCls}
+                style={{ ...inputStyle, fontFamily: F_MONO, ...(idLocked ? { backgroundColor: T.bg, color: T.soft } : {}) }} />
+              {idLocked && <div className="text-xs mt-1" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.5 }}>Locked because this employee already has records.</div>}
             </Field>
-            <Field label="Date hired">
-              <input type="date" value={form.dateHired} onChange={e => ff('dateHired', e.target.value)} className={inputCls} style={inputStyle} />
-            </Field>
-          </div>
-          <Field label="Full name*"><input value={form.name} onChange={e => ff('name', e.target.value)} placeholder="Juan Dela Cruz" className={inputCls} style={inputStyle} /></Field>
-          <Field label="Position">
+          <Field label="Full name*" error={errs.name}><input value={form.name} maxLength={80} onChange={e => ff('name', e.target.value)} placeholder="Juan Dela Cruz" className={inputCls} style={inputStyle} /></Field>
+          <Field label="Position" error={errs.position}>
             <select value={form.position} onChange={e => ff('position', e.target.value)} className={inputCls} style={inputStyle}>
               {!form.position && <option value="">Choose a position</option>}
               {POSITIONS.map(p => <option key={p} value={p}>{positionLabel(p)}</option>)}
             </select>
           </Field>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="Daily rate (₱)"><input type="number" value={form.rate} onChange={e => { const v = e.target.value; setForm(f => ({ ...f, rate: v, declaredSalary: (v === '' || hasNoContributions(f.position)) ? '' : String((parseFloat(v) || 0) * 26) })); }} className={inputCls} style={inputStyle} /></Field>
+            <Field label="Daily rate (₱)" error={errs.rate}><input inputMode="decimal" value={form.rate} onChange={e => { const v = moneyInput(e.target.value); setForm(f => ({ ...f, rate: v, declaredSalary: (v === '' || hasNoContributions(f.position)) ? '' : String((parseFloat(v) || 0) * 26) })); }} className={inputCls} style={inputStyle} /></Field>
             <Field label="Status">
               <select value={form.status} onChange={e => ff('status', e.target.value)} className={inputCls} style={inputStyle}>
                 <option>Active</option><option>Inactive</option>
@@ -317,13 +319,13 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
           {(!hasNoContributions(form.position) || !isDailyPosition(form.position)) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
               {!hasNoContributions(form.position) && (
-                <Field label="Declared monthly salary (₱)">
-                  <input type="number" value={form.declaredSalary} onChange={e => ff('declaredSalary', e.target.value)} placeholder="e.g. daily rate × 26" className={inputCls} style={inputStyle} />
+                <Field label="Declared monthly salary (₱)" error={errs.declaredSalary}>
+                  <input inputMode="decimal" value={form.declaredSalary} onChange={e => ff('declaredSalary', moneyInput(e.target.value))} placeholder="e.g. daily rate × 26" className={inputCls} style={inputStyle} />
                 </Field>
               )}
               {!isDailyPosition(form.position) && (
-                <Field label="Leave credits (days/year)">
-                  <input type="number" min="0" value={form.leaveCredits} onChange={e => ff('leaveCredits', e.target.value)} className={inputCls} style={inputStyle} />
+                <Field label="Leave credits (days/year)" error={errs.leaveCredits}>
+                  <input inputMode="numeric" value={form.leaveCredits} onChange={e => ff('leaveCredits', digitsOnly(e.target.value, 2))} className={inputCls} style={inputStyle} />
                 </Field>
               )}
             </div>
@@ -374,14 +376,14 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
           <div className="p-3 rounded" style={{ backgroundColor: T.bg }}>
             <Eyebrow>Personal Information</Eyebrow>
             <div className="space-y-2.5 mt-2.5">
-              <Field label="Address">
-                <input value={form.address} onChange={e => ff('address', e.target.value)} placeholder="Brgy. Poblacion, Mabini, Batangas" className={inputCls} style={inputStyle} />
+              <Field label="Address" error={errs.address || (form.address && addressError(form.address))}>
+                <input value={form.address} maxLength={200} onChange={e => ff('address', e.target.value)} placeholder="Brgy. Poblacion, Mabini, Batangas" className={inputCls} style={inputStyle} />
               </Field>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Field label="Contact number">
-                  <input value={form.contact} onChange={e => ff('contact', e.target.value)} placeholder="09XX XXX XXXX" className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
+                <Field label="Contact number" error={errs.contact}>
+                  <input value={form.contact} inputMode="numeric" onChange={e => ff('contact', digitsOnly(e.target.value, 11))} placeholder="09XXXXXXXXX" className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
                 </Field>
-                <Field label="Birthdate">
+                <Field label="Birthdate" error={errs.birthdate || (form.birthdate && birthdateError(form.birthdate))}>
                   <input type="date" value={form.birthdate} onChange={e => ff('birthdate', e.target.value)} className={inputCls} style={inputStyle} />
                 </Field>
               </div>
@@ -403,7 +405,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
                 <input type="checkbox" checked={form[k]} onChange={e => ff(k, e.target.checked)} /> {l}
               </label>
             ))}
-            <Field label="Pag-IBIG MP2 (₱/cutoff)"><input type="number" value={form.mp2} onChange={e => ff('mp2', e.target.value)} className={inputCls} style={inputStyle} /></Field>
+            <Field label={`Pag-IBIG MP2 (₱/cutoff, 0 or ₱${LIMITS.mp2Min}+)`} error={errs.mp2}><input inputMode="decimal" value={form.mp2} onChange={e => ff('mp2', moneyInput(e.target.value))} className={inputCls} style={inputStyle} /></Field>
           </div>
           )}
           <div className="flex justify-end gap-2 pt-1">

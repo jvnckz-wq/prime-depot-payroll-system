@@ -40,7 +40,7 @@ ok('enum values and labels agree', () => {
 
 ok('removed positions are no longer accepted', () => {
   for (const p of ['Administrative Staff', 'Trainee', 'Secretary (Special Shift)']) {
-    assert.match(buildEmployeeData({ id: 'E1', name: 'X', position: p, rate: 600, declaredSalary: 0, mp2: 0, status: 'Active' }).error || '', /valid position/, p);
+    assert.match(buildEmployeeData({ id: 'E1', name: 'Juan Dela Cruz', position: p, rate: 600, declaredSalary: 0, mp2: 0, status: 'Active' }).error || '', /valid position/, p);
   }
 });
 
@@ -65,9 +65,9 @@ ok('semi-monthly regulars are shaped exactly as before (no payroll change)', () 
 ok('Job Order has no contributions, MP2, declared salary or early shift, in shape and on save', () => {
   const s = shapeEmployee(raw('JOB_ORDER'));
   assert.deepEqual([s.sssOn, s.phOn, s.piOn, s.mp2, s.declaredSalary, s.earlyShiftDays, s.nonRegular], [false, false, false, 0, 0, [], true]);
-  const { data } = buildEmployeeData({ id: 'E1', name: 'X', position: 'Job Order', rate: 600, declaredSalary: 15600, mp2: 200, sssOn: true, phOn: true, piOn: true, earlyShiftDays: ['SAT'], status: 'Active' });
+  const { data } = buildEmployeeData({ id: 'E1', name: 'Juan Dela Cruz', position: 'Job Order', rate: 600, declaredSalary: 15600, mp2: 200, sssOn: true, phOn: true, piOn: true, earlyShiftDays: ['SAT'], status: 'Active' });
   assert.deepEqual([data.sssEnrolled, data.philhealthEnrolled, data.pagibigEnrolled, Number(data.declaredSalary), Number(data.mp2Amount), data.earlyShiftDays], [false, false, false, 0, 0, []]);
-  const { data: reg } = buildEmployeeData({ id: 'E2', name: 'Y', position: 'Junior Secretary', rate: 600, declaredSalary: 15600, mp2: 0, sssOn: true, phOn: true, piOn: true, earlyShiftDays: ['SAT'], status: 'Active' });
+  const { data: reg } = buildEmployeeData({ id: 'E2', name: 'Maria Santos', position: 'Junior Secretary', rate: 600, declaredSalary: 15600, mp2: 0, sssOn: true, phOn: true, piOn: true, earlyShiftDays: ['SAT'], status: 'Active' });
   assert.deepEqual([reg.sssEnrolled, Number(reg.declaredSalary), reg.earlyShiftDays], [true, 15600, ['SAT']]);
 });
 
@@ -137,10 +137,10 @@ ok('daily-paid and Job Order never carry declared salary or contributions', () =
     assert.deepEqual([e.declaredSalary, e.sssOn, e.phOn, e.piOn, e.mp2], [0, false, false, false, 0], pos);
   }
   for (const pos of ['Driver', 'Pahinante', 'Checker', 'Warehouse Officer', 'Job Order']) {
-    const { data } = buildEmployeeData({ name: 'X', position: pos, rate: 280, declaredSalary: 7280, mp2: 100, sssOn: true, phOn: true, piOn: true });
+    const { data } = buildEmployeeData({ name: 'Juan Dela Cruz', position: pos, rate: 280, declaredSalary: 7280, mp2: 100, sssOn: true, phOn: true, piOn: true });
     assert.deepEqual([data.declaredSalary, data.mp2Amount, data.sssEnrolled, data.philhealthEnrolled, data.pagibigEnrolled], [0, 0, false, false, false], pos);
   }
-  const { data: chk } = buildEmployeeData({ name: 'X', position: 'Checker', rate: 450, declaredSalary: 0, mp2: 0, earlyShiftDays: ['SAT'] });
+  const { data: chk } = buildEmployeeData({ name: 'Juan Dela Cruz', position: 'Checker', rate: 450, declaredSalary: 0, mp2: 0, earlyShiftDays: ['SAT'] });
   assert.deepEqual(chk.earlyShiftDays, ['SAT']);
   const staff = shapeEmployee(raw('OPERATIONS_HEAD'));
   assert.deepEqual([staff.declaredSalary, staff.sssOn, staff.phOn, staff.piOn], [15600, true, true, true]);

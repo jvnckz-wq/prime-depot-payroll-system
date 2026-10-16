@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';
 import { isCalendarDate, isClockTime, minutesLate, shiftEndFor, summarizeAttendance } from '@/lib/attendance';
+import { timeOrderError } from '@/lib/field-rules';
 
 const hhmm = (d) => (d ? new Date(d).toISOString().slice(11, 16) : null);
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
@@ -22,12 +23,14 @@ export async function PATCH(request) {
     if (!body.isLeave && !body.isAbsent && [body.timeIn, body.timeOut].some((t) => t != null && t !== '' && !isClockTime(t))) {
       return NextResponse.json({ error: 'Times must be in 24-hour HH:MM, from 00:00 to 23:59.' }, { status: 400 });
     }
+    const orderErr = !body.isLeave && !body.isAbsent ? timeOrderError(body.timeIn, body.timeOut) : '';
+    if (orderErr) return NextResponse.json({ error: orderErr }, { status: 400 });
 
     const emp = await prisma.employee.findUnique({ where: { id: employeeId } });
     if (!emp) return NextResponse.json({ error: 'Employee not found.' }, { status: 404 });
 
     const date = new Date(`${dateStr}T00:00:00.000Z`);
-    const editNote = (body.editNote || '').toString().trim() || null;
+    const editNote = (body.editNote || '').toString().replace(/\s+/g, ' ').trim().slice(0, 200) || null;
     const clean = (t) => (isClockTime(t) ? String(t) : null);
 
     let fields;

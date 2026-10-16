@@ -2,10 +2,11 @@
 
 import React, { useMemo, useRef, useState } from 'react';
 import { Btn, Field, Modal, SearchSelect, inputCls, inputStyle } from '@/components/ui.jsx';
-import { LOAN_MAX_BALANCE, LOAN_PURPOSES, balanceOf, isOpen, loanRoomLeft, payoffPlan, shortDate } from '@/lib/loan-rules';
+import { LOAN_MAX_BALANCE, LOAN_PURPOSES, balanceOf, isOpen, loanRoomLeft, payoffPlan, shortDate, todayYmdManila } from '@/lib/loan-rules';
 import { peso } from '@/lib/utils';
 import { F_BODY, T } from '@/components/theme';
 import { todayLocalYmd } from '@/features/loans/parts.jsx';
+import { moneyInput, flagErrors } from '@/lib/field-rules';
 
 const Box = ({ tone, children }) => {
   const s = tone === 'warn'
@@ -52,6 +53,7 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmp
   const newBalance = topUp ? balance + (amt > 0 ? amt : 0) : (amt > 0 ? amt : 0);
   const plan = amt > 0 && perNum > 0 && !overLimit ? payoffPlan(newBalance, perNum, date) : null;
 
+  const [showErrors, setShowErrors] = useState(false);
   let problem = '';
   if (!emp) problem = 'Choose the employee.';
   else if (!(amt > 0)) problem = 'Enter an amount.';
@@ -61,8 +63,15 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmp
   else if (!(perNum > 0)) problem = `Enter the deduction per ${unit}.`;
   else if (perNum > newBalance) problem = `The deduction per ${unit} cannot be more than the ${topUp ? 'new balance' : 'loan'}.`;
 
+  const limitMsg = topUp ? `A loan balance can be at most ${peso(LOAN_MAX_BALANCE)}. At most ${peso(room)} can be added.` : `A loan can be at most ${peso(LOAN_MAX_BALANCE)}.`;
+  const fe = showErrors ? {
+    employee: emp ? '' : 'Choose the employee.',
+    amount: !(amt > 0) ? 'Enter an amount.' : (overLimit ? limitMsg : ''),
+    per: !(perNum > 0) ? `Enter the deduction per ${unit}.` : (perNum > newBalance ? `The deduction per ${unit} cannot be more than the ${topUp ? 'new balance' : 'loan'}.` : ''),
+  } : {};
+
   const save = async () => {
-    if (problem) { toast(problem, 'error'); return; }
+    if (problem) { setShowErrors(true); flagErrors(); return; }
     if (savingRef.current) return;
     savingRef.current = true;
     setBusy(true);
@@ -97,7 +106,7 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmp
   return (
     <Modal open={open} onClose={onClose} title={topUp ? 'Top-up Loan' : 'New Loan'} width={540}>
       <div className="space-y-3.5">
-        <Field label="Employee">
+        <Field label="Employee" error={fe.employee}>
           <SearchSelect value={emp ? labelOf(emp) : ''} placeholder="Start typing a name…"
             options={people.map(labelOf)} disabled={!!presetEmployeeId}
             onChange={(label) => { const e = byLabel.get(label); setEmpId(e ? e.id : null); setPer(''); }} />
@@ -118,20 +127,20 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmp
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field label={topUp ? 'Additional amount (₱)' : 'Amount (₱)'}>
+          <Field label={topUp ? 'Additional amount (₱)' : 'Amount (₱)'} error={fe.amount}>
             <div className="relative">
-              <input type="number" min="0" max={room} step="0.01" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)}
+              <input inputMode="decimal" value={amount} onChange={(e) => setAmount(moneyInput(e.target.value))}
                 className={inputCls} style={{ ...inputStyle, borderColor: overLimit ? T.brand : T.line, paddingRight: 132 }} aria-invalid={overLimit || undefined} />
               <span className="absolute right-9 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style={{ color: T.soft }}>max {peso(room)}</span>
             </div>
           </Field>
-          <Field label={`Deduction per ${unit} (₱)`}>
-            <input type="number" min="0" step="0.01" inputMode="decimal" value={perValue} onChange={(e) => setPer(e.target.value)} className={inputCls} style={inputStyle} />
+          <Field label={`Deduction per ${unit} (₱)`} error={fe.per}>
+            <input inputMode="decimal" value={perValue} onChange={(e) => setPer(moneyInput(e.target.value))} className={inputCls} style={inputStyle} />
           </Field>
         </div>
 
         <Field label="Date given">
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} style={inputStyle} />
+          <input type="date" value={date} max={todayYmdManila()} onChange={(e) => setDate(e.target.value)} className={inputCls} style={inputStyle} />
         </Field>
 
         {topUp && !overLimit && (
@@ -152,7 +161,7 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmp
 
         <div className="flex justify-end gap-2 pt-1">
           <Btn variant="outline" onClick={onClose} disabled={busy}>Cancel</Btn>
-          <Btn variant="amber" onClick={save} loading={busy} disabled={busy || !!problem}>{topUp ? 'Add to loan' : 'Save loan'}</Btn>
+          <Btn variant="amber" onClick={save} loading={busy} disabled={busy}>{topUp ? 'Add to loan' : 'Save loan'}</Btn>
         </div>
       </div>
     </Modal>

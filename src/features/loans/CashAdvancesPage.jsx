@@ -5,12 +5,12 @@ import { Plus, Wallet } from 'lucide-react';
 import { Btn, EmptyState, Field, H1, Modal, SearchSelect, inputCls, inputStyle } from '@/components/ui.jsx';
 import {
   advancedInCutoff, balanceOf, cutoffOf, dueFor, grantedBy, isOpen, nextCutoff, periodLabel, prevCutoff, projectedGross,
-  shortDate, shortPeriod, workingDaysIn,
-} from '@/lib/loan-rules';
+  shortDate, shortPeriod, workingDaysIn, todayYmdManila } from '@/lib/loan-rules';
 import { computeStaffPayroll } from '@/lib/payroll';
 import { peso } from '@/lib/utils';
 import { F_BODY, F_MONO, T } from '@/components/theme';
 import { D, H, Kpi, Person, Pill, todayLocalYmd } from '@/features/loans/parts.jsx';
+import { moneyInput, flagErrors } from '@/lib/field-rules';
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 const labelOf = (e) => `${e.name} · ${e.position}`;
@@ -46,13 +46,19 @@ const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
   const after = shortPeriod(nextCutoff(period.end));
   const first = emp ? emp.name.split(/\s+/)[0] : '';
 
+  const [showErrors, setShowErrors] = useState(false);
   let problem = '';
   if (!emp) problem = 'Choose the employee.';
   else if (!(amt > 0)) problem = 'Enter an amount.';
   else if (over) problem = `Over the limit. At most ${peso(room)} can be advanced for ${periodLabel(period)}.`;
 
+  const fe = showErrors ? {
+    employee: emp ? '' : 'Choose the employee.',
+    amount: !(amt > 0) ? 'Enter an amount.' : (over ? `Over the limit. At most ${peso(room)} can be advanced for ${periodLabel(period)}.` : ''),
+  } : {};
+
   const save = async () => {
-    if (problem) { toast(problem, 'error'); return; }
+    if (problem) { setShowErrors(true); flagErrors(); return; }
     setBusy(true);
     try {
       const res = await fetch('/api/loans', {
@@ -76,12 +82,12 @@ const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
     <Modal open onClose={onClose} title="New Cash Advance" width={560}>
       <div className="space-y-3.5" style={{ fontFamily: F_BODY }}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field label="Employee">
+          <Field label="Employee" error={fe.employee}>
             <SearchSelect value={emp ? labelOf(emp) : ''} placeholder="Start typing a name…" options={people.map(labelOf)}
               onChange={(label) => { const e = byLabel.get(label); setEmpId(e ? e.id : null); }} />
           </Field>
           <Field label="Date given">
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} style={inputStyle} />
+            <input type="date" value={date} max={todayYmdManila()} onChange={(e) => setDate(e.target.value)} className={inputCls} style={inputStyle} />
           </Field>
         </div>
 
@@ -93,9 +99,9 @@ const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
           </div>
         )}
 
-        <Field label="Amount (₱)">
+        <Field label="Amount (₱)" error={fe.amount}>
           <div className="relative">
-            <input type="number" min="0" step="0.01" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)}
+            <input inputMode="decimal" value={amount} onChange={(e) => setAmount(moneyInput(e.target.value))}
               className={inputCls} style={{ ...inputStyle, borderColor: over ? T.brand : T.line, paddingRight: 120 }} aria-invalid={over || undefined} />
             {emp && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: T.soft }}>max {peso(room)}</span>}
           </div>
@@ -117,7 +123,7 @@ const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
 
         <div className="flex justify-end gap-2 pt-1">
           <Btn variant="outline" onClick={onClose} disabled={busy}>Cancel</Btn>
-          <Btn variant="amber" onClick={save} loading={busy} disabled={busy || !!problem}>Save advance</Btn>
+          <Btn variant="amber" onClick={save} loading={busy} disabled={busy}>Save advance</Btn>
         </div>
       </div>
     </Modal>

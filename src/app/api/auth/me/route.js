@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { destroyAllSessions, getCurrentUser, logSecurityEvent, requireUser } from '@/lib/server/security/auth';
 import { MAX_AVATAR_BYTES, hasImageMagic, maxBase64Length } from '@/lib/server/security/uploads';
+import { personNameError } from '@/lib/field-rules';
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -49,7 +50,8 @@ export async function PATCH(request) {
       }
       const displayName = typeof body.displayName === 'string' ? body.displayName.trim() : '';
       if (!displayName) return NextResponse.json({ error: 'Name cannot be empty.' }, { status: 400 });
-      if (displayName.length > 80) return NextResponse.json({ error: 'Name is too long.' }, { status: 400 });
+      const nameErr = personNameError(displayName.replace(/\s+/g, ' '), 'Name');
+      if (nameErr) return NextResponse.json({ error: nameErr }, { status: 400 });
       data.displayName = displayName;
     }
 

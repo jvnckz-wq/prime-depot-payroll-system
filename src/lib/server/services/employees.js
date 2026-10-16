@@ -1,4 +1,5 @@
 import { hasNoContributions, isDailyPosition, isNonRegularPosition, isPieceRatePosition } from '../../positions';
+import { addressError, birthdateError, isUnpaidPosition, LIMITS, moneyError, mp2Error, personNameError, phMobileError, wholeNumberError } from '../../field-rules';
 
 export const POSITION_LABEL = {
   OPERATIONS_HEAD: 'Operations Head',
@@ -52,13 +53,13 @@ export function shapeEmployee(e) {
     address: e.address ?? '',
     contact: e.contactNumber ?? '',
     birthdate: e.birthdate ? e.birthdate.toISOString().slice(0, 10) : '',
-    dateHired: e.dateHired ? e.dateHired.toISOString().slice(0, 10) : '',
     earlyShiftDays: nonRegular ? [] : (e.earlyShiftDays ?? []),
     earlyShiftTime: e.earlyShiftTime ?? '06:00',
     crew: isPieceRatePosition(e.position),
     daily: isDailyPosition(e.position),
     nonRegular,
     account: e.account ? { username: e.account.username, active: e.account.isActive } : null,
+    idLocked: !!e.account || (e._count ? Object.values(e._count).some((n) => n > 0) : true),
   };
 }
 
@@ -69,8 +70,9 @@ export function buildEmployeeData(body, { partial = false } = {}) {
   const has = (k) => body[k] !== undefined;
 
   if (!partial || has('name')) {
-    const name = typeof body.name === 'string' ? body.name.trim() : '';
-    if (!name) return { error: 'Name is required.' };
+    const name = typeof body.name === 'string' ? body.name.replace(/\s+/g, ' ').trim() : '';
+    const nameErr = personNameError(name, 'Full name');
+    if (nameErr) return { error: nameErr };
     data.name = name;
   }
 
@@ -86,30 +88,30 @@ export function buildEmployeeData(body, { partial = false } = {}) {
     ['mp2', 'mp2Amount'],
   ]) {
     if (!partial || has(field)) {
-      const n = Number(body[field]);
-      if (!Number.isFinite(n) || n < 0) {
-        return { error: `${MONEY_LABEL[field]} must be a number that is zero or more.` };
-      }
-      data[column] = n;
+      const raw = String(body[field] ?? '0');
+      const skipContrib = field !== 'rate' && body.position !== undefined && hasNoContributions(body.position);
+      const err = skipContrib ? '' : field === 'rate'
+        ? moneyError(raw, { label: 'Daily rate', max: LIMITS.dailyRateMax, allowZero: isUnpaidPosition(body.position) })
+        : field === 'mp2'
+          ? mp2Error(raw)
+          : moneyError(raw, { label: 'Declared monthly salary', max: LIMITS.declaredSalaryMax });
+      if (err) return { error: err };
+      data[column] = Number.isFinite(Number(raw)) ? Number(raw) : 0;
     }
   }
 
   if (has('allowance')) {
-    const n = Number(body.allowance);
-    if (!Number.isFinite(n) || n < 0) {
-      return { error: `${MONEY_LABEL.allowance} must be a number that is zero or more.` };
-    }
-    data.otherAllowance = n;
+    const err = moneyError(String(body.allowance ?? '0'), { label: MONEY_LABEL.allowance, max: LIMITS.allowanceMax });
+    if (err) return { error: err };
+    data.otherAllowance = Number(body.allowance);
   } else if (!partial) {
     data.otherAllowance = 0;
   }
 
   if (has('leaveCredits')) {
-    const n = Math.trunc(Number(body.leaveCredits));
-    if (!Number.isFinite(n) || n < 0) {
-      return { error: 'Leave credits must be a whole number that is zero or more.' };
-    }
-    data.leaveCredits = n;
+    const err = wholeNumberError(String(body.leaveCredits ?? ''), { label: 'Leave credits', min: 0, max: LIMITS.leaveCreditsMax });
+    if (err) return { error: err };
+    data.leaveCredits = Number(body.leaveCredits);
   } else if (!partial) {
     data.leaveCredits = 5;
   }
@@ -122,14 +124,20 @@ export function buildEmployeeData(body, { partial = false } = {}) {
   if (!partial || has('phOn')) data.philhealthEnrolled = !!body.phOn;
   if (!partial || has('piOn')) data.pagibigEnrolled = !!body.piOn;
 
-  if (!partial || has('address')) data.address = (body.address || '').trim() || null;
-  if (!partial || has('contact')) data.contactNumber = (body.contact || '').trim() || null;
-
-  if (!partial || has('birthdate')) {
-    data.birthdate = body.birthdate ? new Date(body.birthdate + 'T00:00:00Z') : null;
+  if (!partial || has('address')) {
+    const err = addressError(body.address);
+    if (err) return { error: err };
+    data.address = String(body.address || '').replace(/\s+/g, ' ').trim() || null;
   }
-  if (!partial || has('dateHired')) {
-    data.dateHired = body.dateHired ? new Date(body.dateHired + 'T00:00:00Z') : null;
+  if (!partial || has('contact')) {
+    const err = phMobileError(body.contact);
+    if (err) return { error: err };
+    data.contactNumber = String(body.contact || '').replace(/\s/g, '') || null;
+  }
+  if (!partial || has('birthdate')) {
+    const err = birthdateError(body.birthdate);
+    if (err) return { error: err };
+    data.birthdate = body.birthdate ? new Date(body.birthdate + 'T00:00:00Z') : null;
   }
 
   if (!partial || has('earlyShiftDays')) {

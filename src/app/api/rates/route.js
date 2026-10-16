@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { logSecurityEvent, requireAdmin, requireUser } from '@/lib/server/security/auth';
+import { labelTextError, unitError } from '@/lib/field-rules';
 
 const num = (d) => (d == null ? 0 : Number(d));
 const shape = (r) => ({
@@ -111,8 +112,10 @@ export async function POST(request) {
     const itemName = typeof body.cat === 'string' ? body.cat.trim() : '';
     const unit = typeof body.unit === 'string' ? body.unit.trim() : '';
 
-    if (!itemName) return NextResponse.json({ error: 'Item name is required.' }, { status: 400 });
-    if (!unit) return NextResponse.json({ error: 'Unit is required (bag, piece, box, elf...).' }, { status: 400 });
+    const nameErr = labelTextError(itemName, { label: 'Item name' });
+    if (nameErr) return NextResponse.json({ error: nameErr }, { status: 400 });
+    const unitErr = unitError(unit);
+    if (unitErr) return NextResponse.json({ error: unitErr }, { status: 400 });
 
     const rate = (v) => {
       const n = parseFloat(v);

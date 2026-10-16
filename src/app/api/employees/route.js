@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';
 import { buildEmployeeData, shapeEmployee } from '@/lib/server/services/employees';
+import { employeeIdError } from '@/lib/field-rules';
 
 export async function GET() {
   const auth = await requireAdmin();
@@ -10,7 +11,7 @@ export async function GET() {
   try {
     const rows = await prisma.employee.findMany({
       orderBy: { id: 'asc' },
-      include: { account: { select: { username: true, isActive: true } } },
+      include: { account: { select: { username: true, isActive: true } }, _count: { select: { attendance: true, loans: true, payslips: true, drivenDeliveries: true, helper1Deliveries: true, helper2Deliveries: true } } },
     });
     return NextResponse.json({ employees: rows.map(shapeEmployee) });
   } catch (err) {
@@ -27,12 +28,8 @@ export async function POST(request) {
     const body = await request.json();
 
     const id = typeof body.id === 'string' ? body.id.trim() : '';
-    if (!id) {
-      return NextResponse.json(
-        { error: 'ID number is required — it links this employee to the biometric logs.' },
-        { status: 400 }
-      );
-    }
+    const idErr = employeeIdError(id);
+    if (idErr) return NextResponse.json({ error: idErr }, { status: 400 });
 
     const built = buildEmployeeData(body, { partial: false });
     if (built.error) return NextResponse.json({ error: built.error }, { status: 400 });

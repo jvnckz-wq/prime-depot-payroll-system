@@ -114,7 +114,7 @@ export const LegalView = ({ initialTab = 'terms', onBack, embedded = false }) =>
           <Section n="1" title="What information is collected">
             <p>For every employee on the payroll:</p>
             <Bullets items={[
-              'Identification — employee ID number, full name, position, date hired, employment status.',
+              'Identification — employee ID number, full name, position, employment status.',
               'Contact and personal details — address, contact number, birthdate.',
               'Attendance — daily time-in and time-out records imported from the biometric scanner, tardiness, overtime, and absences.',
               'Compensation — daily rate, declared salary, allowances, overtime pay, and for truck crews, delivery records and piece-rate earnings.',

@@ -7,6 +7,7 @@ import { computePagIBIG, computePhilHealth, computeSSS } from '@/lib/payroll';
 import { exportXLSX, peso } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { FleetPanel } from '@/features/settings/FleetPanel.jsx';
+import { moneyInput } from '@/lib/field-rules';
 
 export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers, setCheckers, sssTable, setSssTable, philhealthRates, setPhilhealthRates, pagibigRates, setPagibigRates, birTable, setBirTable, toast, navTab }) => {
   const [tab, setTab] = useState(navTab || 'statutory');
@@ -111,7 +112,7 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
                         return r.ceiling === null
                           ? <span className="text-xs" style={{ color: T.soft, fontFamily: F_MONO }}>{fromLabel} and up</span>
                           : <span className="flex items-center gap-1.5 text-xs" style={{ fontFamily: F_MONO, color: T.soft }}>{fromLabel} –
-                              <input type="number" value={r.ceiling} onChange={e => setSssDraft(p => p.map((x, j) => j === i ? { ...x, ceiling: parseFloat(e.target.value) || 0 } : x))} className="px-2 py-1 rounded border w-24" style={{ borderColor: T.line, fontFamily: F_MONO, color: T.ink }} />
+                              <input type="number" value={r.ceiling} onChange={e => setSssDraft(p => p.map((x, j) => j === i ? { ...x, ceiling: Math.max(0, parseFloat(moneyInput(e.target.value)) || 0) } : x))} className="px-2 py-1 rounded border w-24" style={{ borderColor: T.line, fontFamily: F_MONO, color: T.ink }} />
                             </span>;
                       }
                       if (r.ceiling === null) return <span style={{ fontFamily: F_MONO }}>{fromLabel} and up</span>;
@@ -120,7 +121,7 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
                     })()}
                     </Td>
                     <Td right mono>{editSss
-                      ? <input type="number" value={r.share} onChange={e => setSssDraft(p => p.map((x, j) => j === i ? { ...x, share: parseFloat(e.target.value) || 0 } : x))} className="px-2 py-1 rounded border text-xs w-24 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} />
+                      ? <input type="number" value={r.share} onChange={e => setSssDraft(p => p.map((x, j) => j === i ? { ...x, share: Math.max(0, parseFloat(moneyInput(e.target.value)) || 0) } : x))} className="px-2 py-1 rounded border text-xs w-24 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} />
                       : peso(r.share)}
                     </Td>
                     <Td right mono>{peso((editSss ? r.share : r.share) / 2)}</Td>
@@ -147,7 +148,7 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4">
               {[['rate', 'Premium rate (%)'], ['floor', 'Salary floor (₱)'], ['ceiling', 'Salary ceiling (₱)']].map(([k, l]) => (
                 <Field key={k} label={l}>
-                  {editPh ? <input type="number" value={phDraft[k]} onChange={e => setPhDraft(p => ({ ...p, [k]: parseFloat(e.target.value) || 0 }))} className={inputCls} style={inputStyle} />
+                  {editPh ? <input type="number" value={phDraft[k]} onChange={e => setPhDraft(p => ({ ...p, [k]: Math.max(0, parseFloat(moneyInput(e.target.value)) || 0) }))} className={inputCls} style={inputStyle} />
                     : <div className="text-sm font-semibold" style={{ fontFamily: F_MONO, color: T.ink }}>{k === 'rate' ? `${philhealthRates[k]}%` : peso(philhealthRates[k])}</div>}
                 </Field>
               ))}
@@ -171,11 +172,11 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
                   <tr key={i}>
                     <Td>{editPi
                       ? (b.ceiling === null ? <span className="text-xs" style={{ color: T.soft, fontFamily: F_BODY }}>and up</span>
-                        : <input type="number" value={b.ceiling} onChange={e => setPiDraft(p => ({ ...p, brackets: p.brackets.map((x, j) => j === i ? { ...x, ceiling: parseFloat(e.target.value) || 0 } : x) }))} className="px-2 py-1 rounded border text-xs w-24" style={{ borderColor: T.line, fontFamily: F_MONO }} />)
+                        : <input type="number" value={b.ceiling} onChange={e => setPiDraft(p => ({ ...p, brackets: p.brackets.map((x, j) => j === i ? { ...x, ceiling: Math.max(0, parseFloat(moneyInput(e.target.value)) || 0) } : x) }))} className="px-2 py-1 rounded border text-xs w-24" style={{ borderColor: T.line, fontFamily: F_MONO }} />)
                       : (b.ceiling === null ? 'and up' : peso(b.ceiling))}
                     </Td>
                     <Td right mono>{editPi
-                      ? <input type="number" value={b.eePct} onChange={e => setPiDraft(p => ({ ...p, brackets: p.brackets.map((x, j) => j === i ? { ...x, eePct: parseFloat(e.target.value) || 0 } : x) }))} className="px-2 py-1 rounded border text-xs w-16 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} />
+                      ? <input type="number" value={b.eePct} onChange={e => setPiDraft(p => ({ ...p, brackets: p.brackets.map((x, j) => j === i ? { ...x, eePct: Math.max(0, parseFloat(moneyInput(e.target.value)) || 0) } : x) }))} className="px-2 py-1 rounded border text-xs w-16 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} />
                       : `${b.eePct}%`}
                     </Td>
                   </tr>
@@ -183,7 +184,7 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
               </table></div>
               <div className="px-4 py-3 flex items-center justify-between" style={{ borderTop: `1px solid ${T.line}` }}>
                 <span className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.soft }}>Monthly cap (₱)</span>
-                {editPi ? <input type="number" value={piDraft.cap} onChange={e => setPiDraft(p => ({ ...p, cap: parseFloat(e.target.value) || 0 }))} className="px-2 py-1 rounded border text-xs w-24 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} />
+                {editPi ? <input type="number" value={piDraft.cap} onChange={e => setPiDraft(p => ({ ...p, cap: Math.max(0, parseFloat(moneyInput(e.target.value)) || 0) }))} className="px-2 py-1 rounded border text-xs w-24 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} />
                   : <span className="text-sm font-semibold" style={{ fontFamily: F_MONO }}>{peso(pagibigRates.cap)}</span>}
               </div>
             </Panel>
@@ -202,13 +203,13 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
                   <thead><tr><Th>Over</Th><Th>Not over</Th><Th right>Base</Th><Th right>Rate %</Th>{editBir && <Th></Th>}</tr></thead>
                   <tbody>{(editBir ? birDraft : birTable).map((r, i) => (
                     <tr key={i}>
-                      <Td mono>{editBir ? <input type="number" value={r.over} onChange={e => setBirDraft(p => p.map((x, j) => j === i ? { ...x, over: parseFloat(e.target.value) || 0 } : x))} className="px-2 py-1 rounded border text-xs w-20" style={{ borderColor: T.line, fontFamily: F_MONO }} /> : peso(r.over)}</Td>
+                      <Td mono>{editBir ? <input type="number" value={r.over} onChange={e => setBirDraft(p => p.map((x, j) => j === i ? { ...x, over: Math.max(0, parseFloat(moneyInput(e.target.value)) || 0) } : x))} className="px-2 py-1 rounded border text-xs w-20" style={{ borderColor: T.line, fontFamily: F_MONO }} /> : peso(r.over)}</Td>
                       <Td mono>{editBir
-                        ? (r.notOver === null ? <span className="text-xs" style={{ color: T.soft, fontFamily: F_BODY }}>above</span> : <input type="number" value={r.notOver} onChange={e => setBirDraft(p => p.map((x, j) => j === i ? { ...x, notOver: parseFloat(e.target.value) || 0 } : x))} className="px-2 py-1 rounded border text-xs w-20" style={{ borderColor: T.line, fontFamily: F_MONO }} />)
+                        ? (r.notOver === null ? <span className="text-xs" style={{ color: T.soft, fontFamily: F_BODY }}>above</span> : <input type="number" value={r.notOver} onChange={e => setBirDraft(p => p.map((x, j) => j === i ? { ...x, notOver: Math.max(0, parseFloat(moneyInput(e.target.value)) || 0) } : x))} className="px-2 py-1 rounded border text-xs w-20" style={{ borderColor: T.line, fontFamily: F_MONO }} />)
                         : (r.notOver === null ? 'Above' : peso(r.notOver))}
                       </Td>
-                      <Td right mono>{editBir ? <input type="number" value={r.base} onChange={e => setBirDraft(p => p.map((x, j) => j === i ? { ...x, base: parseFloat(e.target.value) || 0 } : x))} className="px-2 py-1 rounded border text-xs w-20 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} /> : peso(r.base)}</Td>
-                      <Td right mono>{editBir ? <input type="number" value={r.rate} onChange={e => setBirDraft(p => p.map((x, j) => j === i ? { ...x, rate: parseFloat(e.target.value) || 0 } : x))} className="px-2 py-1 rounded border text-xs w-14 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} /> : `${r.rate}%`}</Td>
+                      <Td right mono>{editBir ? <input type="number" value={r.base} onChange={e => setBirDraft(p => p.map((x, j) => j === i ? { ...x, base: Math.max(0, parseFloat(moneyInput(e.target.value)) || 0) } : x))} className="px-2 py-1 rounded border text-xs w-20 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} /> : peso(r.base)}</Td>
+                      <Td right mono>{editBir ? <input type="number" value={r.rate} onChange={e => setBirDraft(p => p.map((x, j) => j === i ? { ...x, rate: Math.max(0, parseFloat(moneyInput(e.target.value)) || 0) } : x))} className="px-2 py-1 rounded border text-xs w-14 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} /> : `${r.rate}%`}</Td>
                       {editBir && <Td><button onClick={() => setBirDraft(p => p.filter((_, j) => j !== i))}><Trash2 size={13} color={T.red} /></button></Td>}
                     </tr>
                   ))}</tbody>

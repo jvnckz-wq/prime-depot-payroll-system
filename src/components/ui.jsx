@@ -155,10 +155,11 @@ export const Btn = ({ children, onClick, variant = 'dark', icon: Icon, size = 'm
   );
 };
 
-export const Field = ({ label, children }) => (
-  <div>
+export const Field = ({ label, children, error }) => (
+  <div data-invalid={error ? '' : undefined}>
     {label && <Eyebrow>{label}</Eyebrow>}
     {children}
+    {error && <div role="alert" data-field-error className="text-xs mt-1" style={{ fontFamily: F_BODY, color: T.brandDark, lineHeight: 1.5 }}>{error}</div>}
   </div>
 );
 export const inputCls = "w-full px-3 py-2 rounded text-sm outline-none border min-h-11 sm:min-h-0";

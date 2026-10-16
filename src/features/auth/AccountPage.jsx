@@ -10,6 +10,8 @@ import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { ChangePasswordPanel, PasswordInput } from '@/features/auth/AccountView.jsx';
 import { isEmail } from '@/lib/email-format';
 import { AccountsPanel } from '@/features/settings/AccountsPanel.jsx';
+import CodeBoxes, { formatBackup } from '@/components/CodeBoxes';
+import { personNameError, flagEmptyRequired } from '@/lib/field-rules';
 /* eslint-disable @next/next/no-img-element -- avatars and TOTP QR codes are base64 data URIs; next/image cannot optimize data URIs and adds no value */
 
 const REGEN_URL = '/api/auth/2fa/backup-codes/regenerate';
@@ -78,8 +80,8 @@ const RecoveryEmailModal = ({ open, user, toast, onClose, onUserChange }) => {
   const sendCode = async () => {
     if (busy) return;
     setError('');
-    if (!isEmail(addr)) { setError('Enter a valid email address.'); return; }
-    if (!password) { setError('Enter your current password.'); return; }
+    if (!isEmail(addr)) { setError('Enter a valid email address.'); flagEmptyRequired(); return; }
+    if (!password) { setError('Enter your current password.'); flagEmptyRequired(); return; }
     setBusy(true);
     try {
       const res = await fetch('/api/auth/verify-email/start', {
@@ -96,7 +98,7 @@ const RecoveryEmailModal = ({ open, user, toast, onClose, onUserChange }) => {
   const verify = async () => {
     if (busy) return;
     setError('');
-    if (code.length !== 6) { setError('Enter the 6-digit code sent to your email.'); return; }
+    if (code.length !== 6) { setError('Enter the 6-digit code sent to your email.'); flagEmptyRequired(); return; }
     setBusy(true);
     try {
       const res = await fetch('/api/auth/verify-email/complete', {
@@ -118,7 +120,7 @@ const RecoveryEmailModal = ({ open, user, toast, onClose, onUserChange }) => {
       {step === 'edit' ? (
         <>
           <Field label="Recovery email">
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+            <input required type="email" value={email} onChange={e => setEmail(e.target.value)}
               placeholder="you@example.com" autoComplete="email" autoCapitalize="none" spellCheck={false}
               className={inputCls} style={inputStyle} />
           </Field>
@@ -139,9 +141,7 @@ const RecoveryEmailModal = ({ open, user, toast, onClose, onUserChange }) => {
           </div>
           <div className="mt-3">
             <Field label="Verification code">
-              <input value={code} onChange={e => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
-                inputMode="numeric" autoComplete="one-time-code" placeholder="------"
-                className={inputCls} style={{ ...inputStyle, textAlign: 'center', letterSpacing: '0.3em', fontFamily: F_MONO }} />
+              <CodeBoxes value={code} onChange={setCode} label="Code" />
             </Field>
           </div>
         </>
@@ -220,8 +220,8 @@ const RegenerateModal = ({ open, toast, onClose, onDone }) => {
   const submit = async () => {
     if (busy) return;
     setError('');
-    if (!password) { setError('Enter your current password.'); return; }
-    if (code.length !== 6) { setError('Enter the 6-digit code from your authenticator app.'); return; }
+    if (!password) { setError('Enter your current password.'); flagEmptyRequired(); return; }
+    if (code.length !== 6) { setError('Enter the 6-digit code from your authenticator app.'); flagEmptyRequired(); return; }
     setBusy(true);
     try {
       const res = await fetch(REGEN_URL, {
@@ -253,9 +253,7 @@ const RegenerateModal = ({ open, toast, onClose, onDone }) => {
           </Field>
           <div className="mt-3">
             <Field label="Authenticator code">
-              <input value={code} onChange={e => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
-                inputMode="numeric" autoComplete="one-time-code" placeholder="------"
-                className={inputCls} style={{ ...inputStyle, textAlign: 'center', letterSpacing: '0.3em', fontFamily: F_MONO }} />
+              <CodeBoxes value={code} onChange={setCode} label="Code" />
             </Field>
           </div>
           {error && (
@@ -282,17 +280,18 @@ const ReenrollModal = ({ open, toast, onClose }) => {
   const [qr, setQr] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [useBackupCode, setUseBackupCode] = useState(false);
 
   const start = async () => {
     if (busy) return;
     setError('');
-    if (!password) { setError('Enter your current password.'); return; }
-    if (!code.trim()) { setError('Enter a code from your current app, or a backup code.'); return; }
+    if (!password) { setError('Enter your current password.'); flagEmptyRequired(); return; }
+    if (code.length !== (useBackupCode ? 8 : 6)) { setError(useBackupCode ? 'Enter all 8 characters of a backup code.' : 'Enter all 6 digits of your code.'); return; }
     setBusy(true);
     try {
       const res = await fetch(REENROLL_START_URL, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPassword: password, code }),
+        body: JSON.stringify({ currentPassword: password, code: useBackupCode ? formatBackup(code) : code }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Could not start re-enrollment.'); return; }
@@ -304,7 +303,7 @@ const ReenrollModal = ({ open, toast, onClose }) => {
   const confirm = async () => {
     if (busy) return;
     setError('');
-    if (code.length !== 6) { setError('Enter the 6-digit code from your new authenticator app.'); return; }
+    if (code.length !== 6) { setError('Enter the 6-digit code from your new authenticator app.'); flagEmptyRequired(); return; }
     setBusy(true);
     try {
       const res = await fetch(REENROLL_CONFIRM_URL, {
@@ -331,11 +330,12 @@ const ReenrollModal = ({ open, toast, onClose }) => {
             <PasswordInput value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" />
           </Field>
           <div className="mt-3">
-            <Field label="Current authenticator code or a backup code">
-              <input value={code} onChange={e => setCode(e.target.value.toUpperCase().replace(/[^0-9A-Z-]/g, '').slice(0, 9))}
-                autoComplete="one-time-code" placeholder="000000 or XXXX-XXXX"
-                className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
+            <Field label={useBackupCode ? 'Backup code' : 'Current authenticator code'}>
+              <CodeBoxes key={useBackupCode ? 'b' : 't'} value={code} onChange={setCode} backup={useBackupCode} label={useBackupCode ? 'Backup code' : 'Authenticator code'} />
             </Field>
+            <button type="button" onClick={() => { setUseBackupCode(!useBackupCode); setCode(''); }} className="text-xs mt-2 underline" style={{ fontFamily: F_BODY, color: T.soft }}>
+              {useBackupCode ? 'Use your authenticator app instead' : 'Use a backup code instead'}
+            </button>
           </div>
           {error && (
             <div className="flex items-start gap-2 mt-3 px-3 py-2.5 rounded text-xs"
@@ -364,9 +364,7 @@ const ReenrollModal = ({ open, toast, onClose }) => {
             </div>
           )}
           <Field label="Code from the new app">
-            <input value={code} onChange={e => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
-              inputMode="numeric" autoComplete="one-time-code" placeholder="------"
-              className={inputCls} style={{ ...inputStyle, textAlign: 'center', letterSpacing: '0.3em', fontFamily: F_MONO }} />
+            <CodeBoxes value={code} onChange={setCode} label="Code from the new app" />
           </Field>
           {error && (
             <div className="flex items-start gap-2 mt-3 px-3 py-2.5 rounded text-xs"
@@ -427,8 +425,10 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut, on
   };
 
   const saveName = async () => {
-    const trimmed = name.trim();
-    if (!trimmed || trimmed === user.displayName) { setEditingName(false); setName(user.displayName); return; }
+    const trimmed = name.replace(/\s+/g, ' ').trim();
+    if (trimmed === user.displayName) { setEditingName(false); return; }
+    const nameErr = personNameError(trimmed, 'Name');
+    if (nameErr) { toast(nameErr, 'error'); return; }
     setSavingName(true);
     try { if (await patch({ displayName: trimmed }, 'Name updated.')) setEditingName(false); }
     catch { toast('Could not reach the server.', 'error'); }
@@ -549,7 +549,7 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut, on
                 <div className="min-w-0 flex-1">
                   {editingName ? (
                     <div className="max-w-sm">
-                      <input value={name} onChange={e => setName(e.target.value)} autoFocus
+                      <input value={name} maxLength={80} onChange={e => setName(e.target.value)} autoFocus
                         className={inputCls} style={{ ...inputStyle, fontSize: 18, fontWeight: 600 }} />
                       <div className="mt-2 flex gap-2">
                         <Btn size="sm" onClick={saveName} loading={savingName} disabled={savingName}>

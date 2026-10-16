@@ -5,6 +5,7 @@ import { AlertTriangle, Loader2, Check } from 'lucide-react';
 import { Btn, Field, inputCls, inputStyle } from '@/components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { GateShell } from '@/features/auth/AccountView.jsx';
+import CodeBoxes from '@/components/CodeBoxes';
 
 export default function TwoFactorSetup({ user, onDone }) {
   const [step, setStep] = useState('setup');
@@ -155,11 +156,7 @@ export default function TwoFactorSetup({ user, onDone }) {
             Use Google Authenticator, Microsoft Authenticator, or any TOTP app.
           </div>
           <Field label="6-digit code from your app">
-            <input
-              value={code} onChange={e => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
-              inputMode="numeric" autoComplete="one-time-code" placeholder="------"
-              className={inputCls} style={{ ...inputStyle, textAlign: 'center', letterSpacing: '0.3em', fontFamily: F_MONO }}
-            />
+            <CodeBoxes value={code} onChange={setCode} onEnter={enable} label="6-digit code from your app" />
           </Field>
           {errorBox}
           <div className="mt-4">

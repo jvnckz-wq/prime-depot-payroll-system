@@ -6,6 +6,7 @@ import { Btn, Eyebrow, Field, SearchSelect, inputCls, inputStyle } from '@/compo
 import { peso } from '@/lib/utils';
 import { PH_AREAS, PH_PROVINCES } from '@/data/batangas-areas';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
+import { deliveryErrors, digitsOnly, firstError, flagErrors } from '@/lib/field-rules';
 
 export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
   const [crewId, setCrewId] = useState(fixedCrewId || (crews[0] && crews[0].id) || '');
@@ -72,9 +73,10 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
   const totalD = computed.reduce((s, r) => s + r.d, 0), totalH = computed.reduce((s, r) => s + r.h, 0);
 
   const [busy, setBusy] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
   const submit = async () => {
     if (busy) return;
-    if (!driverId || !crewId || !customer.trim() || !contactNo.trim() || !province || !municipality || !barangay || !landmark.trim() || computed.every(r => !r.qty)) return;
+    if (firstError(deliveryErrors({ customer, contactNo, landmark, quantities: lineRows.map(r => r.qty), driverId, truckId: crewId, province, municipality, barangay, checkPlace: true }))) { setShowErrors(true); flagErrors(); return; }
     setBusy(true);
     try {
       const address = `${barangay}, ${municipality}, ${province}`;
@@ -90,19 +92,20 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
         items: computed.map(r => ({ ...r, dbl })),
       });
       if (ok !== false) {
-        setProvince('Batangas'); setMunicipality(''); setBarangay(''); setCustomer(''); setLandmark(''); setContactNo(''); setLineRows([{ item: rateKey(rates[0]), qty: '' }]);
+        setShowErrors(false); setProvince('Batangas'); setMunicipality(''); setBarangay(''); setCustomer(''); setLandmark(''); setContactNo(''); setLineRows([{ item: rateKey(rates[0]), qty: '' }]);
       }
     } finally {
       setBusy(false);
     }
   };
+  const errs = showErrors ? deliveryErrors({ customer, contactNo, landmark, quantities: lineRows.map(r => r.qty), driverId, truckId: crewId, province, municipality, barangay, checkPlace: true }) : {};
 
   return (
     <div>
       <div className="text-base font-bold mb-4" style={{ fontFamily: F_HEAD, color: T.ink }}>Trip details</div>
 
       <div className="mb-3">
-        <Field label={<>Driver <span style={{ color: T.brand }}>*</span></>}>
+        <Field label={<>Driver <span style={{ color: T.brand }}>*</span></>} error={errs.driver}>
           <select value={driverId} onChange={e => setDriverId(e.target.value)} className={inputCls} style={inputStyle}>
             <option value="">Select driver...</option>
             {pool.drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -111,7 +114,7 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-        <Field label={<>Truck <span style={{ color: T.brand }}>*</span></>}>
+        <Field label={<>Truck <span style={{ color: T.brand }}>*</span></>} error={errs.truck}>
           {fixedCrewId ? (
             <div className="flex items-center gap-2.5 px-3 py-2 rounded border" style={{ borderColor: T.line, backgroundColor: T.bg }}>
               <span className="text-sm font-semibold" style={{ fontFamily: F_MONO, color: T.ink }}>{crew?.id}</span>
@@ -144,28 +147,28 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 mb-1">
-        <Field label={<>Customer&rsquo;s name <span style={{ color: T.brand }}>*</span></>}>
-          <input placeholder="Customer's name" value={customer} onChange={e => setCustomer(e.target.value)} className={inputCls} style={inputStyle} />
+        <Field label={<>Customer&rsquo;s name <span style={{ color: T.brand }}>*</span></>} error={errs.customer}>
+          <input placeholder="Customer's name" maxLength={80} value={customer} onChange={e => setCustomer(e.target.value)} className={inputCls} style={inputStyle} />
         </Field>
-        <Field label={<>Contact number <span style={{ color: T.brand }}>*</span></>}>
-          <input type="tel" inputMode="numeric" maxLength={13} placeholder="e.g. 09171234567" value={contactNo} onChange={e => setContactNo(e.target.value.replace(/\D/g, '').slice(0, 13))} className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
+        <Field label={<>Contact number <span style={{ color: T.brand }}>*</span></>} error={errs.contactNo}>
+          <input type="tel" inputMode="numeric" maxLength={11} placeholder="e.g. 09171234567" value={contactNo} onChange={e => setContactNo(digitsOnly(e.target.value, 11))} className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
         </Field>
       </div>
 
       <div className="mt-3 mb-1">
-        <Field label={<>Province <span style={{ color: T.brand }}>*</span></>}>
+        <Field label={<>Province <span style={{ color: T.brand }}>*</span></>} error={errs.province}>
           <SearchSelect value={province} onChange={(v) => { setProvince(v); setMunicipality(''); setBarangay(''); }}
             options={PH_PROVINCES} placeholder="Search a province..." allowCustom />
         </Field>
       </div>
       <div className="mt-3 mb-1">
-        <Field label={<>Municipality <span style={{ color: T.brand }}>*</span></>}>
+        <Field label={<>Municipality <span style={{ color: T.brand }}>*</span></>} error={errs.municipality}>
           <SearchSelect value={municipality} onChange={(v) => { setMunicipality(v); setBarangay(''); }}
             options={Object.keys(PH_AREAS[province] || {})} placeholder="Search a town or city..." allowCustom />
         </Field>
       </div>
       <div className="mt-3 mb-1">
-        <Field label={<>Barangay <span style={{ color: T.brand }}>*</span></>}>
+        <Field label={<>Barangay <span style={{ color: T.brand }}>*</span></>} error={errs.barangay}>
           <SearchSelect value={barangay} onChange={setBarangay}
             options={(province && municipality) ? (PH_AREAS[province]?.[municipality] || []) : []}
             placeholder={municipality ? 'Search a barangay...' : 'Pick a municipality first'}
@@ -173,8 +176,8 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
         </Field>
       </div>
       <div className="mt-3 mb-1">
-        <Field label={<>Specific address / landmark <span style={{ color: T.brand }}>*</span></>}>
-          <input placeholder="Purok/sitio, kulay ng gate, katabi ng…" value={landmark} onChange={e => setLandmark(e.target.value)} className={inputCls} style={inputStyle} />
+        <Field label="Specific address / landmark" error={errs.landmark}>
+          <input placeholder="Purok/sitio, kulay ng gate, katabi ng…" maxLength={200} value={landmark} onChange={e => setLandmark(e.target.value)} className={inputCls} style={inputStyle} />
         </Field>
       </div>
 
@@ -207,8 +210,8 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
               <div className="flex items-end gap-3 flex-wrap">
                 <div style={{ width: 110 }}>
                   <div className="text-xs mb-1" style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.04em' }}>QTY</div>
-                  <input type="number" min="0" placeholder="0" value={row.qty}
-                    onChange={e => updateRow(i, { qty: e.target.value })}
+                  <input inputMode="numeric" placeholder="0" value={row.qty} aria-invalid={errs.items && !(Number(row.qty) > 0) ? true : undefined}
+                    onChange={e => updateRow(i, { qty: digitsOnly(e.target.value, 4) })}
                     className="w-full px-2.5 py-2 rounded border text-sm text-right"
                     style={{ fontFamily: F_MONO, borderColor: T.line, color: T.ink }} />
                 </div>
@@ -239,6 +242,7 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
         })}
       </div>
 
+      {errs.items && <div role="alert" data-field-error className="text-xs mb-3" style={{ fontFamily: F_BODY, color: T.brandDark, lineHeight: 1.5 }}>{errs.items}</div>}
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <button type="button" onClick={() => setDbl(v => !v)}
           className="flex items-center gap-2 px-3 py-1.5 rounded text-xs font-semibold border"
@@ -250,7 +254,7 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
         </button>
         <div className="text-sm" style={{ fontFamily: F_MONO, color: T.soft }}>Trip total: <span style={{ color: T.green, fontWeight: 600 }}>{peso(totalD)} / {peso(totalH)}</span></div>
       </div>
-      <Btn onClick={submit} loading={busy} disabled={!driverId || !crewId || !customer.trim() || !contactNo.trim() || !province || !municipality || !barangay || !landmark.trim() || busy} full>{busy ? 'Saving…' : 'Save delivery'}</Btn>
+      <Btn onClick={submit} loading={busy} disabled={busy} full>{busy ? 'Saving…' : 'Save delivery'}</Btn>
     </div>
   );
 };

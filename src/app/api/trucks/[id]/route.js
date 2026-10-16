@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';
+import { labelTextError, plateError } from '@/lib/field-rules';
 
 export async function PATCH(request, { params }) {
   const auth = await requireAdmin();
@@ -11,8 +12,16 @@ export async function PATCH(request, { params }) {
     const body = await request.json();
     const data = {};
 
-    if (typeof body.vehicle === 'string' && body.vehicle.trim()) data.vehicle = body.vehicle.trim();
-    if (typeof body.plate === 'string' && body.plate.trim()) data.plateNumber = body.plate.trim().toUpperCase();
+    if (body.vehicle !== undefined) {
+      const err = labelTextError(body.vehicle, { label: 'Vehicle description' });
+      if (err) return NextResponse.json({ error: err }, { status: 400 });
+      data.vehicle = String(body.vehicle).replace(/\s+/g, ' ').trim();
+    }
+    if (body.plate !== undefined) {
+      const err = plateError(body.plate);
+      if (err) return NextResponse.json({ error: err }, { status: 400 });
+      data.plateNumber = String(body.plate).replace(/\s+/g, ' ').trim().toUpperCase();
+    }
     if (typeof body.isActive === 'boolean') data.isActive = body.isActive;
 
     if (!Object.keys(data).length) {

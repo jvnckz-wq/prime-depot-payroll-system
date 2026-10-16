@@ -5,6 +5,7 @@ import { AlertTriangle, ClipboardList, ArrowLeft, Pencil, Upload, Loader2, Calen
 import { Av, Badge, BigStat, Btn, EmptyState, Eyebrow, Field, H1, Modal, Panel, SkeletonBlock, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { isDailyPosition } from '@/lib/positions';
+import { timeOrderError } from '@/lib/field-rules';
 
 const agoFrom = (iso) => {
   if (!iso) return null;
@@ -218,6 +219,8 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
   };
   const saveEdit = async () => {
     if (!editDay) return;
+    const orderErr = editForm.status === 'present' ? timeOrderError(editForm.timeIn, editForm.timeOut) : '';
+    if (orderErr) { toast(orderErr, 'error'); return; }
     setSavingEdit(true);
     try {
       const res = await fetch('/api/attendance', {
@@ -420,7 +423,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                   <Field label="Time Out"><input type="time" value={editForm.timeOut} onChange={(e) => setEditForm((f) => ({ ...f, timeOut: e.target.value }))} className={inputCls} style={inputStyle} /></Field>
                 </div>
               )}
-              <Field label="Reason / note (optional)"><input value={editForm.note} onChange={(e) => setEditForm((f) => ({ ...f, note: e.target.value }))} placeholder="e.g. brownout, scanner down" className={inputCls} style={inputStyle} /></Field>
+              <Field label="Reason / note (optional)"><input value={editForm.note} maxLength={200} onChange={(e) => setEditForm((f) => ({ ...f, note: e.target.value }))} placeholder="e.g. brownout, scanner down" className={inputCls} style={inputStyle} /></Field>
               <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
                 Tardiness is recomputed automatically from the times. Blank time-in = missing scan (30-min penalty); blank time-out = assumed end of shift (5:00 PM, or 12:00 noon on Sunday). This day will be marked EDITED and won&apos;t be overwritten by future imports.
               </div>

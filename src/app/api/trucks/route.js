@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin, requireUser } from '@/lib/server/security/auth';
+import { labelTextError, plateError } from '@/lib/field-rules';
 
 const shape = (t) => ({
   id: t.id, vehicle: t.vehicle, plate: t.plateNumber, isActive: t.isActive,
@@ -27,8 +28,10 @@ export async function POST(request) {
     if (!/^[A-Z0-9-]{3,12}$/.test(id)) {
       return NextResponse.json({ error: 'Truck ID must be 3-12 characters: letters, numbers, or dashes.' }, { status: 400 });
     }
-    if (!vehicle) return NextResponse.json({ error: 'Vehicle description is required.' }, { status: 400 });
-    if (!plateNumber) return NextResponse.json({ error: 'Plate number is required.' }, { status: 400 });
+    const vehErr = labelTextError(vehicle, { label: 'Vehicle description' });
+    if (vehErr) return NextResponse.json({ error: vehErr }, { status: 400 });
+    const plateErr = plateError(plateNumber);
+    if (plateErr) return NextResponse.json({ error: plateErr }, { status: 400 });
 
     if (await prisma.truck.findUnique({ where: { id } })) {
       return NextResponse.json({ error: `Truck ${id} already exists.` }, { status: 409 });

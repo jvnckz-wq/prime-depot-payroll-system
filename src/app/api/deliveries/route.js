@@ -3,6 +3,7 @@ import { prisma } from '@/lib/server/db/prisma';
 import { requireUser } from '@/lib/server/security/auth';
 import { isYmd, todayYmdManila } from '@/lib/loan-rules';
 import { deliveryRange } from '@/lib/delivery-range';
+import { deliveryErrors, firstError } from '@/lib/field-rules';
 
 const num = (d) => (d == null ? 0 : Number(d));
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
@@ -115,6 +116,13 @@ export async function POST(request) {
 
     if (!clean.length) {
       return NextResponse.json({ error: 'Add at least one item with a quantity above zero.' }, { status: 400 });
+    }
+    const fieldErr = firstError(deliveryErrors({
+      customer: body.customer, contactNo: body.contactNo, landmark: body.landmark,
+      quantities: (Array.isArray(body.items) ? body.items : []).map((i) => String(i.qty ?? '')),
+    }));
+    if (fieldErr) {
+      return NextResponse.json({ error: fieldErr }, { status: 400 });
     }
     if (clean.some((i) => isNaN(i.driverAmount) || isNaN(i.helperAmount) || i.driverAmount < 0 || i.helperAmount < 0)) {
       return NextResponse.json({ error: 'Item amounts must be zero or more.' }, { status: 400 });

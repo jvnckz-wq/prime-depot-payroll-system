@@ -5,6 +5,7 @@ import { AlertTriangle, CheckCircle2, Circle, Eye, EyeOff, KeyRound, Lock, Shiel
 import { Btn, Confirm, Eyebrow, Field, Panel, inputCls, inputStyle } from '@/components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { isEmail } from '@/lib/email-format';
+import { flagEmptyRequired } from '@/lib/field-rules';
 
 const PASSWORD_RULES = [
   { key: 'len', label: 'Minimum of 8 characters', test: (p) => p.length >= 8 },
@@ -22,6 +23,7 @@ export function PasswordInput({ value, onChange, placeholder, autoComplete }) {
   return (
     <div className="relative">
       <input
+        required
         type={show ? 'text' : 'password'}
         value={value}
         onChange={onChange}
@@ -98,9 +100,9 @@ export const ChangePasswordPanel = ({ onDone, toast, compact = false, twoFactor 
     if (busy) return;
     setError('');
 
-    if (next !== confirm) { setError('The two new passwords do not match.'); return; }
-    if (!passwordMeetsAll(next)) { setError('Your new password does not meet all the requirements below.'); return; }
-    if (twoFactor && code.length !== 6) { setError('Enter the 6-digit code from your authenticator app.'); return; }
+    if (next !== confirm) { setError('The two new passwords do not match.'); flagEmptyRequired(); return; }
+    if (!passwordMeetsAll(next)) { setError('Your new password does not meet all the requirements below.'); flagEmptyRequired(); return; }
+    if (twoFactor && code.length !== 6) { setError('Enter the 6-digit code from your authenticator app.'); flagEmptyRequired(); return; }
 
     setBusy(true);
     try {
@@ -219,10 +221,10 @@ const AdminGateVerify = ({ user, onDone }) => {
     if (busy) return;
     setError('');
     if (!isResend) {
-      if (next !== confirm) { setError('The two new passwords do not match.'); return; }
-      if (!passwordMeetsAll(next)) { setError('Your new password does not meet all the requirements below.'); return; }
+      if (next !== confirm) { setError('The two new passwords do not match.'); flagEmptyRequired(); return; }
+      if (!passwordMeetsAll(next)) { setError('Your new password does not meet all the requirements below.'); flagEmptyRequired(); return; }
     }
-    if (!isEmail(addr)) { setError('Enter a valid recovery email.'); return; }
+    if (!isEmail(addr)) { setError('Enter a valid recovery email.'); flagEmptyRequired(); return; }
     setBusy(true);
     try {
       const res = await fetch('/api/auth/verify-email/start', {
@@ -241,7 +243,7 @@ const AdminGateVerify = ({ user, onDone }) => {
   const verify = async () => {
     if (busy) return;
     setError('');
-    if (!code.trim()) { setError('Enter the code sent to your email.'); return; }
+    if (!code.trim()) { setError('Enter the code sent to your email.'); flagEmptyRequired(); return; }
     setBusy(true);
     try {
       const res = await fetch('/api/auth/verify-email/complete', {
@@ -323,7 +325,7 @@ const AdminGateVerify = ({ user, onDone }) => {
       </div>
       <div className="mt-4 pt-4" style={{ borderTop: `1px dashed ${T.line}` }}>
         <Field label={<>Recovery email <span style={{ color: T.brand }}>*</span></>}>
-          <input
+          <input required
             type="email" value={email} onChange={e => setEmail(e.target.value)}
             autoComplete="email" autoCapitalize="none" spellCheck={false}
             placeholder="you@example.com" className={inputCls} style={inputStyle}
