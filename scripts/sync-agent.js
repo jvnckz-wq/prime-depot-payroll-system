@@ -18,6 +18,9 @@ const PUSH_URL = env.PUSH_URL || 'http://localhost:3000/api/attendance/push';
 const PULL_URL = env.PULL_URL || PUSH_URL.replace(/\/push\/?$/, '/pull');
 const TOKEN = env.DEVICE_SYNC_TOKEN || '';
 const POLL_MS = Number(env.SYNC_POLL_MS || 15000);
+const ROSTER_MS = Number(env.SYNC_ROSTER_MS || 5 * 60 * 1000);
+let lastRosterRead = 0;
+let lastRosterSent = '';
 
 const hhmmFmt = new Intl.DateTimeFormat('en-GB', {
   timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hour12: false,
@@ -52,8 +55,19 @@ async function readToday() {
   const zk = new ZKLib(DEVICE_IP, DEVICE_PORT, 10000, 4000);
   await zk.createSocket();
   let logs;
+  let roster = null;
   try {
     logs = await zk.getAttendances();
+    if (Date.now() - lastRosterRead >= ROSTER_MS) {
+      const users = await zk.getUsers().catch(() => null);
+      if (users && Array.isArray(users.data)) {
+        roster = users.data
+          .map((u) => ({ userId: String(u.userId ?? u.uid ?? '').trim(), name: u.name || null }))
+          .filter((u) => u.userId)
+          .sort((a, b) => Number(a.userId) - Number(b.userId));
+        lastRosterRead = Date.now();
+      }
+    }
   } finally {
     await zk.disconnect().catch(() => {});
   }
@@ -75,7 +89,12 @@ async function readToday() {
     biometricId,
     times: [...set].sort(),
   }));
-  return { date: today, scans };
+  const payload = { date: today, scans };
+  if (roster) {
+    const key = JSON.stringify(roster);
+    if (key !== lastRosterSent) { payload.roster = roster; payload.rosterKey = key; }
+  }
+  return payload;
 }
 
 async function push(payload) {
@@ -178,8 +197,11 @@ async function cycle() {
       return;
     }
 
+    const rosterKey = payload.rosterKey;
+    delete payload.rosterKey;
     const { status, body } = await push(payload);
     if (status === 200 && body && body.ok) {
+      if (rosterKey) { lastRosterSent = rosterKey; console.log(`[${stamp}] Naipadala ang listahan ng naka-enroll sa device (${payload.roster.length}).`); }
       if (payload.scans.length) {
         const unmapped = (body.unmapped || []).join(', ');
         console.log(`[${stamp}] Naipadala: matched ${body.matched}, unmapped [${unmapped}]`);

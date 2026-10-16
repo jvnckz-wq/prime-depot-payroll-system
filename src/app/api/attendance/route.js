@@ -3,6 +3,7 @@ import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';
 import { isCalendarDate, isClockTime, minutesLate, shiftEndFor, summarizeAttendance } from '@/lib/attendance';
 import { timeOrderError } from '@/lib/field-rules';
+import { enrolledNotRegistered } from '@/lib/server/services/device-roster';
 
 const hhmm = (d) => (d ? new Date(d).toISOString().slice(11, 16) : null);
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
@@ -219,11 +220,13 @@ export async function GET(request) {
 
     const batches = await prisma.importBatch.findMany({ orderBy: { importedAt: 'desc' }, take: 30 });
     const unmappedCount = await prisma.unmappedLog.count({ where: { isResolved: false } });
+    const enrolledCount = await enrolledNotRegistered().then((r) => r.users.length).catch(() => 0);
 
     return NextResponse.json({
       period: rangeOut,
       summaries,
       unmappedCount,
+      enrolledCount,
       batches: batches.map((b) => ({
         id: b.id,
         filename: b.filename,

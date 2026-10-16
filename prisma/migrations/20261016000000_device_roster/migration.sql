@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "device_sync" ADD COLUMN IF NOT EXISTS "roster" JSONB;
+ALTER TABLE "device_sync" ADD COLUMN IF NOT EXISTS "rosterAt" TIMESTAMP(3);
+ALTER TABLE "device_sync" ADD COLUMN IF NOT EXISTS "ignoredIds" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];

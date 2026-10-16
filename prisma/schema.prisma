@@ -863,6 +863,12 @@ model DeviceSync {
   lastSyncAt DateTime                 // server time of the agent's last heartbeat
   lastScanAt DateTime?                // last cycle that actually carried scans
   matched    Int       @default(0)    // matched rows written on the last cycle (informative)
+  /// The device's enrolled users ({ userId, name }[]), sent by the sync agent
+  /// when it changes, so enrollments with no employee record show up before
+  /// any attendance is pulled. ignoredIds are enrollments the admin dismissed.
+  roster     Json?
+  rosterAt   DateTime?
+  ignoredIds String[]  @default([])
   createdAt  DateTime  @default(now())
   // DB default matches the table as created on Neon; Prisma still sets it on
   // every write through @updatedAt.

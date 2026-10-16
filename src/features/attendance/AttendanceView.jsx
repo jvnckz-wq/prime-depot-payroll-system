@@ -70,6 +70,8 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
   const [dtrLoading, setDtrLoading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [unmapped, setUnmapped] = useState([]);
+  const [enrolled, setEnrolled] = useState([]);
+  const [ignoringId, setIgnoringId] = useState(null);
   const [unmappedLoading, setUnmappedLoading] = useState(false);
   const [resolvingId, setResolvingId] = useState(null);
   const [editDay, setEditDay] = useState(null);
@@ -177,6 +179,17 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
     finally { setDtrLoading(false); }
   };
 
+  const ignoreEnrolled = async (biometricId) => {
+    setIgnoringId(biometricId);
+    try {
+      const res = await fetch('/api/attendance/unmapped', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ignore', biometricId }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { toast(data.error || 'Could not ignore that device ID.', 'error'); return; }
+      setEnrolled((list) => list.filter((u) => u.userId !== biometricId));
+      toast(`Device ID ${biometricId} will no longer be listed.`);
+    } finally { setIgnoringId(null); }
+  };
+
   const loadUnmapped = async () => {
     setUnmappedLoading(true);
     try {
@@ -184,6 +197,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const d = await res.json();
       setUnmapped(d.groups || []);
+      setEnrolled(d.enrolled || []);
     } catch (err) { console.error('Could not load unmapped IDs:', err); }
     finally { setUnmappedLoading(false); }
   };
@@ -669,8 +683,30 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
           <div className="px-4 py-3" style={{ borderBottom: `1px solid ${T.line}` }}>
             <div className="text-sm font-semibold" style={{ fontFamily: F_HEAD, color: T.ink }}>Unmapped Biometric IDs</div>
           </div>
+          {!unmappedLoading && enrolled.length > 0 && (
+            <div style={{ borderBottom: `1px solid ${T.line}` }}>
+              <div className="px-4 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide" style={{ fontFamily: F_HEAD, color: T.soft }}>Enrolled on the device, not registered</div>
+              <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
+                <thead><tr><Th>Biometric ID</Th><Th>Name (from device)</Th><Th>Action</Th></tr></thead>
+                <tbody>
+                  {enrolled.map((u) => (
+                    <tr key={u.userId}>
+                      <Td mono><span className="font-bold" style={{ color: T.ink }}>{u.userId}</span></Td>
+                      <Td><span style={{ fontFamily: F_BODY, color: T.ink }}>{u.name || '—'}</span></Td>
+                      <Td>
+                        <div className="flex gap-2">
+                          <Btn size="sm" variant="outline" onClick={() => onRegister && onRegister(u.userId, u.name)}>Register</Btn>
+                          <Btn size="sm" variant="ghost" disabled={ignoringId === u.userId} onClick={() => ignoreEnrolled(u.userId)}>{ignoringId === u.userId ? 'Ignoring…' : 'Ignore'}</Btn>
+                        </div>
+                      </Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table></div>
+            </div>
+          )}
           {unmappedLoading ? <SkeletonBlock avatar={false} />
-            : unmapped.length === 0 ? <EmptyState icon={CircleCheck} title="All scans are matched" desc="Every scan from the device is linked to a registered employee." />
+            : unmapped.length === 0 ? (enrolled.length ? null : <EmptyState icon={CircleCheck} title="All scans are matched" desc="Every scan from the device is linked to a registered employee." />)
             : (
             <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
               <thead><tr><Th>Biometric ID</Th><Th>Name (from file)</Th><Th center>Scans</Th><Th>Dates</Th><Th>Action</Th></tr></thead>

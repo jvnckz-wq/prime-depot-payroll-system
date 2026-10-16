@@ -3,6 +3,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { withRetry } from '@/lib/server/db/db-retry';
 import { pairPunches, buildAttendanceRow } from '@/lib/attendance';
+import { cleanRoster } from '@/lib/server/services/device-roster';
 
 export const runtime = 'nodejs';
 
@@ -40,6 +41,7 @@ export async function POST(request) {
       return NextResponse.json({ error: `Too many scans in one push (max ${MAX_SCANS}).` }, { status: 413 });
     }
 
+    const roster = cleanRoster(body?.roster);
     const employees = await prisma.employee.findMany();
     const empById = new Map(employees.map((e) => [String(e.id), e]));
 
@@ -86,8 +88,8 @@ export async function POST(request) {
       const now = new Date();
       await withRetry(() => prismaBase.deviceSync.upsert({
         where: { id: 'primary' },
-        create: { id: 'primary', lastSyncAt: now, lastScanAt: scans.length ? now : null, matched: writeIds.length },
-        update: { lastSyncAt: now, matched: writeIds.length, ...(scans.length ? { lastScanAt: now } : {}) },
+        create: { id: 'primary', lastSyncAt: now, lastScanAt: scans.length ? now : null, matched: writeIds.length, ...(roster ? { roster, rosterAt: now } : {}) },
+        update: { lastSyncAt: now, matched: writeIds.length, ...(scans.length ? { lastScanAt: now } : {}), ...(roster ? { roster, rosterAt: now } : {}) },
       }));
     } catch (hbErr) {
       console.error('Heartbeat write skipped:', hbErr?.message || hbErr);

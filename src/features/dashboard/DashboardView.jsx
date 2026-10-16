@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { Users, Truck, Wallet, FileText, AlertTriangle, TrendingUp, Check, CalendarX, BarChart3 } from 'lucide-react';
+import { Users, Truck, Wallet, FileText, AlertTriangle, TrendingUp, Check, CalendarX, BarChart3, UserPlus } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Av, EmptyState, Eyebrow, H1, Panel, Skeleton, SkeletonRows, StatCard, Td, Th } from '@/components/ui.jsx';
 import { computeStaffPayroll, flattenDeliveries, loanBalance } from '@/lib/payroll';
@@ -10,7 +10,7 @@ import { F_BODY, T } from '@/components/theme';
 
 const useIsoLayoutEffect = typeof document !== 'undefined' ? useLayoutEffect : useEffect;
 
-export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loans = [], statutory, setTab, onNavigate, dataLoading = false, cutoffLabel = '', runKey = '', attendanceSummaries = [], unmappedCount = 0 }) => {
+export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loans = [], statutory, setTab, onNavigate, dataLoading = false, cutoffLabel = '', runKey = '', attendanceSummaries = [], unmappedCount = 0, enrolledCount = 0 }) => {
   const loggedToday = Object.keys(deliveries).length;
   const deliveriesLogged = useMemo(() => flattenDeliveries(deliveries).length, [deliveries]);
 
@@ -124,6 +124,15 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
               </div>
             </button>
           )}
+          {enrolledCount > 0 && (
+            <button onClick={() => go('attendance', 'unmapped')} className="pd-clickable w-full text-left mt-2 flex items-start gap-3 p-3 rounded" style={{ backgroundColor: T.warnBg }}>
+              <UserPlus size={16} color={T.warn} className="mt-0.5 shrink-0" />
+              <div>
+                <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>{enrolledCount} enrolled on the device but not registered</div>
+                <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft }}>Register them so their scans count toward attendance and payroll.</div>
+              </div>
+            </button>
+          )}
           {unmappedCount > 0 && (
             <button onClick={() => go('attendance')} className="pd-clickable w-full text-left mt-2 flex items-start gap-3 p-3 rounded" style={{ backgroundColor: T.warnBg }}>
               <AlertTriangle size={16} color={T.warn} className="mt-0.5 shrink-0" />
@@ -142,7 +151,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
               </div>
             </button>
           )}
-          {!dataLoading && !noEmployees && !noAttendance && unmappedCount === 0 && activeLoanCount === 0 && (
+          {!dataLoading && !noEmployees && !noAttendance && unmappedCount === 0 && enrolledCount === 0 && activeLoanCount === 0 && (
             <div className="mt-2 flex items-start gap-3 p-3 rounded" style={{ backgroundColor: T.greenBg }}>
               <Check size={16} color={T.green} className="mt-0.5 shrink-0" />
               <div>
