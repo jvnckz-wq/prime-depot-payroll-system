@@ -3,7 +3,7 @@
 //
 // Loads the real reference data extracted from the client's own workbooks:
 //   PAYROLL_SHEET.xlsx  → office staff roster, daily rates, contribution flags
-//   TRUCK_PAYROLL.xlsx  → fleet, VALUES piece-rate table, DOBLE area list
+//   TRUCK_PAYROLL.xlsx  → fleet, VALUES piece-rate table
 //   Taxes.pdf           → 2026 SSS / PhilHealth / Pag-IBIG / BIR tables
 //
 // Safe to re-run: every write is an upsert keyed on a stable identifier, so
@@ -90,14 +90,6 @@ const RATES = [
   ['Tiles 30 x 30',                              'box',       0.5,  0.5,  1,    1],
 ];
 
-// DOBLE sheet — barangay / sitio names that pay double rates.
-const DOBLE_AREAS = [
-  'ESTRELLANG LANGIT', 'TULO LAUREL', 'LAUREL', 'MATALA GULUGOD', 'MALIMATOC 2',
-  'YONG YONG MALIMATOC 2', 'MAINIT', 'NAGIBA', 'STA MONIC NAGIBA', 'SAMPALUCAN',
-  'BALANOY', 'GULOD BAGALANGIT', 'MALAGAKLAK LIGAYA', 'PANAY', 'GUITISAN SAN TEODORO',
-  'HULO SOLO', 'KINA PIOLO PASCUAL', 'NANGKAAN SAN TEODORO', 'PANG AKLE',
-  'BAUAN', 'ORENSE',
-];
 
 // SSS — [salaryFrom, salaryTo, employeeShare]. Upper band has no ceiling.
 const SSS_CEILINGS = Array.from({ length: 61 }, (_, i) => [i === 60 ? null : 5250 + i * 500, 250 + i * 25]);
@@ -222,12 +214,7 @@ async function seedRates() {
       create: { itemName, unit, driverRate: d, helperRate: h, driverRateDouble: dd, helperRateDouble: hd },
     });
   }
-  for (const areaName of DOBLE_AREAS) {
-    await prisma.doubleRateArea.upsert({
-      where: { areaName }, update: {}, create: { areaName },
-    });
-  }
-  console.log(`  rate items: ${RATES.length}, double-rate areas: ${DOBLE_AREAS.length}`);
+  console.log(`  rate items: ${RATES.length}`);
 }
 
 async function seedUsers() {

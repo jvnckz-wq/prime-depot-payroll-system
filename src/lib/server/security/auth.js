@@ -6,6 +6,9 @@ import { prisma } from '../db/prisma';
 
 const COOKIE_NAME = 'pd_session';
 const SESSION_DAYS = 7;
+const IDLE_MS = 15 * 60 * 1000;
+const MAX_SESSION_MS = SESSION_DAYS * 24 * 60 * 60 * 1000;
+const REFRESH_STEP_MS = 60 * 1000;
 const BCRYPT_ROUNDS = 12;
 
 export function hashPassword(plain) {
@@ -33,8 +36,8 @@ export async function createSession(userId, { pendingTwoFactor = false } = {}) {
   }
 
   const token = randomBytes(32).toString('hex');
-  const ttlMs = pendingTwoFactor ? 10 * 60 * 1000 : SESSION_DAYS * 24 * 60 * 60 * 1000;
-  const expiresAt = new Date(Date.now() + ttlMs);
+  const now = Date.now();
+  const expiresAt = new Date(now + (pendingTwoFactor ? 10 * 60 * 1000 : IDLE_MS));
 
   await prisma.session.create({
     data: { tokenHash: hashToken(token), userId, expiresAt, pendingTwoFactor },
@@ -45,7 +48,7 @@ export async function createSession(userId, { pendingTwoFactor = false } = {}) {
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
-    expires: expiresAt,
+    expires: new Date(now + (pendingTwoFactor ? 10 * 60 * 1000 : MAX_SESSION_MS)),
   });
 }
 
@@ -80,6 +83,15 @@ export async function getCurrentUser() {
   }
 
   if (session.pendingTwoFactor) return null;
+
+  const slidTo = Math.min(Date.now() + IDLE_MS, new Date(session.createdAt).getTime() + MAX_SESSION_MS);
+  if (slidTo <= Date.now()) {
+    await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
+    return null;
+  }
+  if (Math.abs(slidTo - session.expiresAt.getTime()) > REFRESH_STEP_MS) {
+    await prisma.session.update({ where: { id: session.id }, data: { expiresAt: new Date(slidTo) } }).catch(() => {});
+  }
 
   const { id, username, displayName, avatar, role, mustChangePassword, totpEnabled } = session.user;
   return { id, username, displayName, avatar, role, mustChangePassword, totpEnabled };

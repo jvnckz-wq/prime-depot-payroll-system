@@ -9,7 +9,7 @@ export async function GET() {
   try {
     const [
       users, employees, attendance, importBatches, unmappedLogs, trucks,
-      deliveries, deliveryItems, rateItems, doubleRateAreas, loans, loanEntries,
+      deliveries, deliveryItems, rateItems, loans, loanEntries,
       sssBrackets, philhealthConfigs, pagibigConfigs, pagibigBrackets, birBrackets,
       payrollPeriods, payslips,
     ] = await Promise.all([
@@ -22,7 +22,6 @@ export async function GET() {
       prisma.delivery.findMany(),
       prisma.deliveryItem.findMany(),
       prisma.rateItem.findMany(),
-      prisma.doubleRateArea.findMany(),
       prisma.loan.findMany(),
       prisma.loanEntry.findMany(),
       prisma.sssBracket.findMany(),
@@ -37,7 +36,7 @@ export async function GET() {
     const data = {
       _meta: { app: 'Prime Depot Payroll System', exportedAt: new Date().toISOString(), version: 1 },
       users, employees, attendance, importBatches, unmappedLogs, trucks,
-      deliveries, deliveryItems, rateItems, doubleRateAreas, loans, loanEntries,
+      deliveries, deliveryItems, rateItems, loans, loanEntries,
       sssBrackets, philhealthConfigs, pagibigConfigs, pagibigBrackets, birBrackets,
       payrollPeriods, payslips,
     };

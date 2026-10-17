@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';
-import { loadCrewReport, loadDailyContributionsForMonth, loadDailyStaff } from '@/lib/server/services/payroll-inputs';
+import { loadCrewReport, loadDailyStaff } from '@/lib/server/services/payroll-inputs';
 import { deliveryRange } from '@/lib/delivery-range';
 
 export async function GET(request) {
@@ -31,9 +31,6 @@ export async function GET(request) {
   }
 
   try {
-    if (params.get('summary') === 'month') {
-      return NextResponse.json(await loadDailyContributionsForMonth(prisma, date));
-    }
     const staff = await loadDailyStaff(prisma, date);
     return NextResponse.json({ staff });
   } catch (err) {

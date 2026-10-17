@@ -627,15 +627,6 @@ model CrewRate {
   @@map("crew_rates")
 }
 
-/// Barangay / sitio names that qualify for double rates.
-model DoubleRateArea {
-  id       String  @id @default(cuid())
-  areaName String  @unique
-  isActive Boolean @default(true)
-
-  @@map("double_rate_areas")
-}
-
 // ============================================================================
 // LOANS & ADVANCES
 // ============================================================================

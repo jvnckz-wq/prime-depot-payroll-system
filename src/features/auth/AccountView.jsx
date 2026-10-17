@@ -6,6 +6,7 @@ import { Btn, Confirm, Eyebrow, Field, Panel, inputCls, inputStyle } from '@/com
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { isEmail } from '@/lib/email-format';
 import { flagEmptyRequired, flagField } from '@/lib/field-rules';
+import CodeBoxes from '@/components/CodeBoxes';
 
 const PASSWORD_RULES = [
   { key: 'len', label: 'Minimum of 8 characters', test: (p) => p.length >= 8 },
@@ -148,9 +149,7 @@ export const ChangePasswordPanel = ({ onDone, toast, compact = false, twoFactor 
       {twoFactor && (
         <div className="mt-3">
           <Field label="Authenticator code">
-            <input value={code} onChange={e => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
-              inputMode="numeric" autoComplete="one-time-code" placeholder="------"
-              className={inputCls} style={{ ...inputStyle, textAlign: 'center', letterSpacing: '0.3em', fontFamily: F_MONO }} />
+            <CodeBoxes value={code} onChange={setCode} label="Authenticator code" />
           </Field>
           <div className="text-xs mt-1.5" style={{ fontFamily: F_BODY, color: T.soft }}>
             Two-factor is on, so a current code is required to change your password.
@@ -244,7 +243,7 @@ const AdminGateVerify = ({ user, onDone }) => {
   const verify = async () => {
     if (busy) return;
     setError('');
-    if (!code.trim()) { setError('Enter the code sent to your email.'); flagEmptyRequired(); return; }
+    if (code.length !== 6) { setError('Enter all 6 digits of the code sent to your email.'); flagEmptyRequired(); return; }
     setBusy(true);
     try {
       const res = await fetch('/api/auth/verify-email/complete', {
@@ -274,11 +273,7 @@ const AdminGateVerify = ({ user, onDone }) => {
           We sent a 6-digit code to <span style={{ fontWeight: 700 }}>{addr}</span>. Enter it below to confirm this inbox is yours.
         </div>
         <Field label="Verification code">
-          <input
-            value={code} onChange={e => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
-            inputMode="numeric" autoComplete="one-time-code" placeholder="------"
-            className={inputCls} style={{ ...inputStyle, textAlign: 'center', letterSpacing: '0.3em', fontFamily: F_MONO }}
-          />
+          <CodeBoxes value={code} onChange={setCode} label="Verification code" />
         </Field>
         {errorBox}
         <div className="mt-4">
