@@ -86,7 +86,7 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
 
   return (
     <div className="p-4 sm:p-6">
-      <H1 sub="Admin-editable rates. Editing these changes real payslip numbers going forward — past payslips already computed are unaffected.">Settings</H1>
+      <H1>{{ statutory: 'Statutory Deductions', fleet: 'Fleet', backup: 'Backup' }[tab] || 'Settings'}</H1>
 
       {tab === 'statutory' && (
         <div className="space-y-4">

@@ -287,7 +287,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit Employee' : 'Register Employee'} width={480}>
         <div className="space-y-3">
           <Field label="ID number*" error={errs.id}>
-              <input value={form.id} onChange={e => ff('id', digitsOnly(e.target.value, 9))} readOnly={idLocked} inputMode="numeric" placeholder="e.g. 7 (biometric ID)" className={inputCls}
+              <input data-field="id" value={form.id} onChange={e => ff('id', digitsOnly(e.target.value, 9))} readOnly={idLocked} inputMode="numeric" placeholder="e.g. 7 (biometric ID)" className={inputCls}
                 style={{ ...inputStyle, fontFamily: F_MONO, ...(idLocked ? { backgroundColor: T.bg, color: T.soft } : {}) }} />
               {idLocked && <div className="text-xs mt-1" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.5 }}>Locked because this employee already has records.</div>}
             </Field>

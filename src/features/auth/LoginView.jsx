@@ -5,7 +5,7 @@ import { AlertTriangle, Loader2, Eye, EyeOff, CheckCircle2, Circle } from 'lucid
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { isEmail } from '@/lib/email-format';
 import CodeBoxes, { formatBackup } from '@/components/CodeBoxes';
-import { flagErrors, flagEmptyRequired } from '@/lib/field-rules';
+import { flagErrors, flagEmptyRequired, flagField } from '@/lib/field-rules';
 
 const TOO_MANY_TRIES = 'Too many attempts. Please wait a minute and try again.';
 const failMessage = (status, data, fallback) => (data && data.error) || (status === 429 ? TOO_MANY_TRIES : fallback);
@@ -108,7 +108,7 @@ function ForgotPassword({ onBack }) {
     setError('');
     if (!code.trim()) { setError('Enter the 6-digit code from your email.'); flagEmptyRequired(); return; }
     if (!pwMeetsAll(pw)) { setError('Your new password does not meet all the requirements below.'); flagEmptyRequired(); return; }
-    if (pw !== pw2) { setError('The two passwords do not match.'); flagEmptyRequired(); return; }
+    if (pw !== pw2) { setError('The two passwords do not match.'); flagField('confirmPassword'); return; }
     setBusy(true);
     try {
       const res = await fetch('/api/auth/reset-password', {
@@ -153,7 +153,7 @@ function ForgotPassword({ onBack }) {
       {step === 'username' && (
         <>
           <label className="block text-sm mb-1.5" style={{ color: T.soft }}>Username</label>
-          <input required value={username} onChange={e => setUsername(e.target.value)} onKeyDown={onEnter(checkUsername)} autoComplete="username" autoCapitalize="none" spellCheck={false}
+          <input required data-field="username" value={username} onChange={e => setUsername(e.target.value)} onKeyDown={onEnter(checkUsername)} autoComplete="username" autoCapitalize="none" spellCheck={false}
             disabled={busy} aria-label="Username" className="w-full px-4 py-2.5 rounded-lg text-sm outline-none" style={field} />
         </>
       )}
@@ -161,7 +161,7 @@ function ForgotPassword({ onBack }) {
       {step === 'email' && (
         <>
           <label className="block text-sm mb-1.5" style={{ color: T.soft }}>Recovery email</label>
-          <input required value={email} onChange={e => setEmail(e.target.value)} onKeyDown={onEnter(confirmEmail)} type="email" autoComplete="email" autoCapitalize="none" spellCheck={false}
+          <input required data-field="email" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={onEnter(confirmEmail)} type="email" autoComplete="email" autoCapitalize="none" spellCheck={false}
             placeholder="name@gmail.com" disabled={busy} aria-label="Recovery email" className="w-full px-4 py-2.5 rounded-lg text-sm outline-none" style={field} />
         </>
       )}
@@ -173,7 +173,7 @@ function ForgotPassword({ onBack }) {
 
           <label className="block text-sm mb-1.5 mt-4" style={{ color: T.soft }}>New password</label>
           <div className="relative">
-            <input value={pw} onChange={e => setPw(e.target.value)} type={showPw ? 'text' : 'password'} autoComplete="new-password" disabled={busy}
+            <input data-field="newPassword" value={pw} onChange={e => setPw(e.target.value)} type={showPw ? 'text' : 'password'} autoComplete="new-password" disabled={busy}
               className="w-full px-4 py-2.5 pr-11 rounded-lg text-sm outline-none" style={field} />
             <button type="button" onClick={() => setShowPw(s => !s)} tabIndex={-1} aria-label={showPw ? 'Hide password' : 'Show password'}
               className="absolute inset-y-0 right-0 flex items-center px-3" style={{ color: T.soft }}>
@@ -205,7 +205,7 @@ function ForgotPassword({ onBack }) {
 
           <label className="block text-sm mb-1.5 mt-4" style={{ color: T.soft }}>Confirm new password</label>
           <div className="relative">
-            <input value={pw2} onChange={e => setPw2(e.target.value)} type={showPw ? 'text' : 'password'} autoComplete="new-password" disabled={busy}
+            <input data-field="confirmPassword" value={pw2} onChange={e => setPw2(e.target.value)} type={showPw ? 'text' : 'password'} autoComplete="new-password" disabled={busy}
               className="w-full px-4 py-2.5 pr-11 rounded-lg text-sm outline-none" style={field} />
             <button type="button" onClick={() => setShowPw(s => !s)} tabIndex={-1} aria-label={showPw ? 'Hide password' : 'Show password'}
               className="absolute inset-y-0 right-0 flex items-center px-3" style={{ color: T.soft }}>
@@ -425,6 +425,7 @@ export const LoginView = ({ onSignedIn, onShowLegal, notice = '' }) => {
           <label className="block text-sm mb-1.5" style={{ color: T.soft }}>Username</label>
           <input required
             value={username}
+            data-field="username"
             aria-invalid={missing.username || undefined}
             onChange={e => { setUsername(e.target.value); setMissing(m => ({ ...m, username: false })); }}
             onKeyDown={onKeyDown}
@@ -441,6 +442,7 @@ export const LoginView = ({ onSignedIn, onShowLegal, notice = '' }) => {
           <div className="relative">
             <input
               value={password}
+              data-field="password"
               aria-invalid={missing.password || undefined}
               onChange={e => { setPassword(e.target.value); setMissing(m => ({ ...m, password: false })); }}
               onKeyDown={onKeyDown}

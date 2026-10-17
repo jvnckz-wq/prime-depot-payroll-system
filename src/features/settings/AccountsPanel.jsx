@@ -257,7 +257,7 @@ export const AccountsPanel = ({ currentUser, toast, onGoToEmployees }) => {
         )}
         <div className="mt-3">
           <Field label="Username" error={createErrs.username}>
-            <input value={form.username} onChange={e => { setUsernameTouched(true); setForm(f => ({ ...f, username: usernameInput(e.target.value) })); }}
+            <input value={form.username} onChange={e => { setUsernameTouched(true); setForm(f => ({ ...f, username: usernameInput(e.target.value) })); }} data-field="username"
               placeholder="checker2" autoCapitalize="none" spellCheck={false} disabled={checkers.length === 0}
               className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
           </Field>

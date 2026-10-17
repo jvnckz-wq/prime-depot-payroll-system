@@ -5,7 +5,7 @@ import { AlertTriangle, CheckCircle2, Circle, Eye, EyeOff, KeyRound, Lock, Shiel
 import { Btn, Confirm, Eyebrow, Field, Panel, inputCls, inputStyle } from '@/components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { isEmail } from '@/lib/email-format';
-import { flagEmptyRequired } from '@/lib/field-rules';
+import { flagEmptyRequired, flagField } from '@/lib/field-rules';
 
 const PASSWORD_RULES = [
   { key: 'len', label: 'Minimum of 8 characters', test: (p) => p.length >= 8 },
@@ -18,12 +18,13 @@ const PASSWORD_RULES = [
 const passwordMeetsAll = (p) => PASSWORD_RULES.every((r) => r.test(p));
 
 
-export function PasswordInput({ value, onChange, placeholder, autoComplete }) {
+export function PasswordInput({ value, onChange, placeholder, autoComplete, field }) {
   const [show, setShow] = useState(false);
   return (
     <div className="relative">
       <input
         required
+        data-field={field || (autoComplete === 'current-password' ? 'currentPassword' : autoComplete === 'new-password' ? 'newPassword' : undefined)}
         type={show ? 'text' : 'password'}
         value={value}
         onChange={onChange}
@@ -100,7 +101,7 @@ export const ChangePasswordPanel = ({ onDone, toast, compact = false, twoFactor 
     if (busy) return;
     setError('');
 
-    if (next !== confirm) { setError('The two new passwords do not match.'); flagEmptyRequired(); return; }
+    if (next !== confirm) { setError('The two new passwords do not match.'); flagField('confirmPassword'); return; }
     if (!passwordMeetsAll(next)) { setError('Your new password does not meet all the requirements below.'); flagEmptyRequired(); return; }
     if (twoFactor && code.length !== 6) { setError('Enter the 6-digit code from your authenticator app.'); flagEmptyRequired(); return; }
 
@@ -137,7 +138,7 @@ export const ChangePasswordPanel = ({ onDone, toast, compact = false, twoFactor 
       </div>
       <div className="mt-3">
         <Field label="Confirm new password">
-          <PasswordInput value={confirm} onChange={e => setConfirm(e.target.value)} autoComplete="new-password" />
+          <PasswordInput value={confirm} onChange={e => setConfirm(e.target.value)} autoComplete="new-password" field="confirmPassword" />
         </Field>
         {confirm && next !== confirm && (
           <div className="text-xs mt-1.5" style={{ fontFamily: F_BODY, color: T.red }}>Passwords do not match yet.</div>
@@ -221,7 +222,7 @@ const AdminGateVerify = ({ user, onDone }) => {
     if (busy) return;
     setError('');
     if (!isResend) {
-      if (next !== confirm) { setError('The two new passwords do not match.'); flagEmptyRequired(); return; }
+      if (next !== confirm) { setError('The two new passwords do not match.'); flagField('confirmPassword'); return; }
       if (!passwordMeetsAll(next)) { setError('Your new password does not meet all the requirements below.'); flagEmptyRequired(); return; }
     }
     if (!isEmail(addr)) { setError('Enter a valid recovery email.'); flagEmptyRequired(); return; }
@@ -317,7 +318,7 @@ const AdminGateVerify = ({ user, onDone }) => {
       </div>
       <div className="mt-3">
         <Field label="Confirm new password">
-          <PasswordInput value={confirm} onChange={e => setConfirm(e.target.value)} autoComplete="new-password" />
+          <PasswordInput value={confirm} onChange={e => setConfirm(e.target.value)} autoComplete="new-password" field="confirmPassword" />
         </Field>
         {confirm && next !== confirm && (
           <div className="text-xs mt-1.5" style={{ fontFamily: F_BODY, color: T.red }}>Passwords do not match yet.</div>

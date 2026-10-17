@@ -34,7 +34,7 @@ export async function POST(request) {
     if (plateErr) return NextResponse.json({ error: plateErr }, { status: 400 });
 
     if (await prisma.truck.findUnique({ where: { id } })) {
-      return NextResponse.json({ error: `Truck ${id} already exists.` }, { status: 409 });
+      return NextResponse.json({ error: `Truck ${id} already exists.`, field: 'truckId' }, { status: 409 });
     }
 
     const truck = await prisma.truck.create({ data: { id, vehicle, plateNumber } });

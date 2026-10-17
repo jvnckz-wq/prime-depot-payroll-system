@@ -236,3 +236,17 @@ export const flagEmptyRequired = () => {
   });
   flagErrors();
 };
+
+export const flagField = (field) => {
+  if (typeof document === 'undefined' || !field) return;
+  const names = Array.isArray(field) ? field : [field];
+  names.forEach((name) => {
+    const els = [...document.querySelectorAll(`[data-field="${name}"]`)];
+    els.forEach((el) => {
+      el.setAttribute('aria-invalid', 'true');
+      el.addEventListener('input', () => els.forEach((x) => x.removeAttribute('aria-invalid')), { once: true });
+    });
+  });
+  window.dispatchEvent(new CustomEvent('pd-field-error', { detail: names }));
+  flagErrors();
+};

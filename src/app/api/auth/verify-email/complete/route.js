@@ -30,7 +30,7 @@ export async function POST(request) {
     const code = typeof body.code === 'string' ? body.code.trim() : '';
 
     const ok = await verifyPassword(currentPassword, record.passwordHash);
-    if (!ok) return NextResponse.json({ error: 'Current password is incorrect.' }, { status: 400 });
+    if (!ok) return NextResponse.json({ error: 'Current password is incorrect.', field: 'currentPassword' }, { status: 400 });
 
     const changingPassword = !!newPassword || record.mustChangePassword;
     if (changingPassword) {
@@ -42,7 +42,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Enter a valid recovery email address.' }, { status: 400 });
     }
     if (!CODE_RE.test(code)) {
-      return NextResponse.json({ error: 'Enter the 6-digit code sent to your email.' }, { status: 400 });
+      return NextResponse.json({ error: 'Enter the 6-digit code sent to your email.', field: 'code' }, { status: 400 });
     }
 
     const pending = await prisma.passwordReset.findFirst({
@@ -62,7 +62,7 @@ export async function POST(request) {
     }
 
     if (pending.codeHash !== hashFor(code, email)) {
-      return NextResponse.json({ error: 'That code did not match. Try again.' }, { status: 400 });
+      return NextResponse.json({ error: 'That code did not match. Try again.', field: 'code' }, { status: 400 });
     }
 
     const newHash = changingPassword ? await hashPassword(newPassword) : null;

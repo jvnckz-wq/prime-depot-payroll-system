@@ -472,7 +472,6 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
 
       {subTab !== 'live' && (
         <div className="mb-4">
-          <Badge tone="blue">{data.period ? fmtPeriod(data.period) : 'No attendance yet'}</Badge>
         </div>
       )}
       {subTab === 'live' && (enrolled.length > 0 || unmapped.some((g) => !g.hasEmployee)) && (() => {
@@ -486,7 +485,6 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
               <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>
                 {ids.length} biometric ID{ids.length > 1 ? 's are' : ' is'} not registered: {shown.join(', ')}{ids.length > shown.length ? ` and ${ids.length - shown.length} more` : ''}
               </div>
-              <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft }}>Their scans are not counted yet. Open Unmapped IDs to register them.</div>
             </div>
             <span className="text-xs font-semibold shrink-0 self-center" style={{ fontFamily: F_HEAD, color: T.brand }}>View Unmapped IDs →</span>
           </button>
@@ -619,7 +617,6 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                 <button onClick={() => setPullSel(shiftCutoff(pullSel, 1))} disabled={pullActive || !canGoNext} className="rounded-lg flex items-center justify-center pd-clickable" style={{ width: 30, height: 30, border: `1px solid ${T.line}`, background: T.surface, color: T.ink, fontSize: 16, lineHeight: 1, opacity: canGoNext ? 1 : 0.35 }} aria-label="Next cutoff">&rsaquo;</button>
                 <div style={{ minWidth: 190 }}>
                   <div style={{ fontFamily: F_HEAD, fontWeight: 700, fontSize: 17, color: T.ink }}>{cutoffLabel(pullSel)}</div>
-                  <div style={{ fontFamily: F_BODY, fontSize: 12, color: T.soft, marginTop: 1 }}>Cutoff to pull from the device</div>
                 </div>
               </div>
               <div className="flex items-center gap-2.5 flex-wrap">
@@ -635,7 +632,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                   );
                 })()}
                 <Btn onClick={queuePull} loading={pullBusy || pullActive} disabled={pullBusy || pullActive}>{pullActive ? 'Pulling…' : 'Pull from device'}</Btn>
-                <Btn variant="ghost" onClick={() => setShowImport(true)}>Import .xls</Btn>
+                <Btn variant="outline" onClick={() => setShowImport(true)}>Import .xls</Btn>
               </div>
             </div>
             {(() => {
@@ -715,7 +712,6 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
           </div>
           {!unmappedLoading && enrolled.length > 0 && (
             <div style={{ borderBottom: `1px solid ${T.line}` }}>
-              <div className="px-4 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide" style={{ fontFamily: F_HEAD, color: T.soft }}>Enrolled on the device, not registered</div>
               <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
                 <thead><tr><Th>Biometric ID</Th><Th>Name (from device)</Th><Th>Action</Th></tr></thead>
                 <tbody>
@@ -726,7 +722,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                       <Td>
                         <div className="flex gap-2">
                           <Btn size="sm" variant="outline" onClick={() => onRegister && onRegister(u.userId, u.name)}>Register</Btn>
-                          <Btn size="sm" variant="ghost" disabled={ignoringId === u.userId} onClick={() => ignoreEnrolled(u.userId)}>{ignoringId === u.userId ? 'Ignoring…' : 'Ignore'}</Btn>
+                          <Btn size="sm" variant="outline" disabled={ignoringId === u.userId} onClick={() => ignoreEnrolled(u.userId)}>{ignoringId === u.userId ? 'Ignoring…' : 'Ignore'}</Btn>
                         </div>
                       </Td>
                     </tr>
@@ -783,7 +779,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
               <tbody>{data.batches.map((b) => (
                 <tr key={b.id}>
                   <Td mono>{new Date(b.importedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</Td>
-                  <Td mono>{b.filename}</Td>
+                  <Td mono>{/^Device pull/i.test(b.filename || '') ? 'Device pull' : b.filename}</Td>
                   <Td mono>{b.periodStart ? `${b.periodStart} → ${b.periodEnd}` : '—'}</Td>
                   <Td center mono>{b.mappedRows}</Td>
                   <Td center mono><span style={{ color: b.unmappedRows > 0 ? T.amber : T.soft }}>{b.unmappedRows}</span></Td>

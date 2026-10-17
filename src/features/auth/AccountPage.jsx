@@ -120,7 +120,7 @@ const RecoveryEmailModal = ({ open, user, toast, onClose, onUserChange }) => {
       {step === 'edit' ? (
         <>
           <Field label="Recovery email">
-            <input required type="email" value={email} onChange={e => setEmail(e.target.value)}
+            <input required data-field="email" type="email" value={email} onChange={e => setEmail(e.target.value)}
               placeholder="you@example.com" autoComplete="email" autoCapitalize="none" spellCheck={false}
               className={inputCls} style={inputStyle} />
           </Field>

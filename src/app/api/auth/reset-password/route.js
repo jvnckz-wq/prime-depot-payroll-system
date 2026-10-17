@@ -9,7 +9,7 @@ const CODE_RE = /^\d{6}$/;
 const hashCode = (code) => createHash('sha256').update(code).digest('hex');
 
 const INVALID = () => NextResponse.json(
-  { error: 'That code is invalid or has expired. Request a new one and try again.' },
+  { error: 'That code is invalid or has expired. Request a new one and try again.', field: 'code' },
   { status: 400 },
 );
 
@@ -41,7 +41,7 @@ export async function POST(request) {
     if (reset.codeHash !== hashCode(code)) return INVALID();
 
     const problem = validatePassword(newPassword);
-    if (problem) return NextResponse.json({ error: problem }, { status: 400 });
+    if (problem) return NextResponse.json({ error: problem, field: 'newPassword' }, { status: 400 });
 
     const newHash = await hashPassword(newPassword);
 

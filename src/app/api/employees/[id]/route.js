@@ -22,7 +22,7 @@ export async function PATCH(request, { params }) {
       const idErr = employeeIdError(newId);
       if (idErr) return NextResponse.json({ error: idErr }, { status: 400 });
       const taken = await prisma.employee.findUnique({ where: { id: newId }, select: { id: true } });
-      if (taken) return NextResponse.json({ error: `ID ${newId} is already used by another employee.` }, { status: 409 });
+      if (taken) return NextResponse.json({ error: `ID ${newId} is already used by another employee.`, field: 'id' }, { status: 409 });
     }
 
     const built = buildEmployeeData(body, { partial: true });
@@ -37,7 +37,7 @@ export async function PATCH(request, { params }) {
     });
     if (!existing) return NextResponse.json({ error: `No employee found with ID ${id}.` }, { status: 404 });
     if (changingId && (existing.account || Object.values(existing._count).some((n) => n > 0))) {
-      return NextResponse.json({ error: ID_LOCKED }, { status: 409 });
+      return NextResponse.json({ error: ID_LOCKED, field: 'id' }, { status: 409 });
     }
 
     const { disable, rename } = accountAfterEmployeeChange(existing, built.data);
@@ -71,7 +71,7 @@ export async function PATCH(request, { params }) {
       results = await withRetry(() => prismaBase.$transaction(buildOps()));
     } catch (err) {
       if (changingId && (err?.code === 'P2025' || err?.code === 'P2002')) {
-        return NextResponse.json({ error: err.code === 'P2002' ? `ID ${newId} is already used by another employee.` : ID_LOCKED }, { status: 409 });
+        return NextResponse.json({ error: err.code === 'P2002' ? `ID ${newId} is already used by another employee.` : ID_LOCKED, field: 'id' }, { status: 409 });
       }
       throw err;
     }

@@ -6,7 +6,7 @@ import { Badge, Btn, EmptyState, Eyebrow, H1, Panel, Skeleton, SkeletonRows, Td,
 import { positionLabel } from '@/data/seed';
 import { computeStaffPayroll } from '@/lib/payroll';
 import { shortDate, todayYmdManila } from '@/lib/loan-rules';
-import { cutoffThreshold, cutoffWithholding, taxableForCutoff } from '@/lib/withholding';
+import { cutoffWithholding, taxableForCutoff } from '@/lib/withholding';
 import { deliveryRange } from '@/lib/delivery-range';
 import { exportXLSX, peso } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
@@ -90,9 +90,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
     const taxable = taxableForCutoff(r.calc);
     return { id: r.emp.id, name: r.emp.name, taxable, tax: cutoffWithholding(taxable, statutory.bir || []) };
   });
-  const whtTotal = whtRows.reduce((sum, r) => sum + r.tax, 0);
-  const whtAbove = whtRows.filter(r => r.tax > 0).length;
-  const whtThreshold = cutoffThreshold(statutory.bir || []);
+  const whtAbove = whtRows.filter(r => r.tax > 0);
   const crewRowsAll = rangeApi;
   const crewRows = rangeError ? [] : crewRowsAll;
 
@@ -100,7 +98,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
   const exportRemit = () => exportXLSX('Gov-Remittance.xlsx', [
     { name: 'Remittance', rows: remitRows.map(r => ({ Employee: r.emp.name, SSS: r.calc.sss, PhilHealth: r.calc.phic, 'Pag-IBIG': r.calc.hdmf, Total: r.calc.sss + r.calc.phic + r.calc.hdmf })) },
   ]);
-  const exportWht = () => exportXLSX('Withholding-Tax.xlsx', [{ name: 'Withholding Tax', rows: whtRows.map(r => ({ Employee: r.name, 'Taxable Pay': r.taxable, 'Estimated Tax': r.tax, Status: r.tax > 0 ? 'Above threshold' : 'Below threshold' })) }]);
+  const exportWht = () => exportXLSX('Withholding-Tax.xlsx', [{ name: 'Withholding Tax', rows: whtAbove.map(r => ({ Employee: r.name, 'Taxable Pay': r.taxable, 'Withholding Tax': r.tax })) }]);
   const export13 = () => exportXLSX('13th-Month-Pay.xlsx', [{ name: '13th Month', rows: t13.rows.map(r => ({ Employee: r.name, 'Months Worked': r.months, 'Total Basic': r.basic, '13th Month Pay': r.pay })) }]);
   const exportDriver = () => exportXLSX('Crew-Earnings.xlsx', [{ name: 'Crew', rows: crewRows.map(r => ({
     Name: r.name, Role: positionLabel(r.role), Trucks: r.trucks.join(', '), Days: r.days, Trips: r.trips,
@@ -164,7 +162,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
             </div>
           ) : !t13.loading && !t13.rows.length ? (
             <EmptyState icon={ReceiptText} title={`No released payroll in ${year13} yet`}
-              desc="13th month pay is the basic pay from released payslips this year, divided by 12. It fills in after you finalize a cutoff."
+              desc="It fills in after you finalize a cutoff."
               action={<Btn variant="outline" onClick={() => go('payroll', 'staff')}>Go to Staff Payroll</Btn>} />
           ) : (
             <>
@@ -199,11 +197,6 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
               <span>{rangeError}</span>
             </div>
           )}
-          <p className="text-xs px-4 pb-3" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
-            One row per person, totalled across every truck they rode. A pahinante who worked with two
-            different drivers appears once here, not twice. Net is gross minus late and loan
-            deductions, the same as the daily payslips.
-          </p>
           {!rangeError && !loadingRange && !crewRows.length ? (
             <EmptyState icon={Truck}
               title={from === to ? (from === todayStr ? 'No crew earnings today' : `No crew earnings on ${shortDate(from, true)}`) : 'No crew earnings in this date range'}
@@ -238,37 +231,15 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
         <Panel className="overflow-hidden">
           <div className="flex justify-between items-center px-4 py-2.5" style={{ borderBottom: `1px solid ${T.line}` }}>
             <Eyebrow>Withholding Tax — {cutoffLabel || 'Current cutoff'}</Eyebrow>
-            <Btn size="sm" variant="outline" onClick={exportWht} disabled={!payrollReady}>Export Excel</Btn>
+            <Btn size="sm" variant="outline" onClick={exportWht} disabled={dataLoading || !whtAbove.length}>Export Excel</Btn>
           </div>
-          {!dataLoading && !whtRows.length ? payrollEmpty : (
-            <>
-              {!dataLoading && (whtAbove > 0 ? (
-                <div role="alert" className="px-4 py-3 text-xs flex items-start gap-2" style={{ fontFamily: F_BODY, color: T.ink, lineHeight: 1.6, backgroundColor: T.warnBg, borderBottom: `1px solid ${T.line}` }}>
-                  <AlertTriangle size={14} color={T.warn} className="shrink-0 mt-0.5" aria-hidden="true" />
-                  <span><strong>{whtAbove} of {whtRows.length} staff {whtAbove === 1 ? 'is' : 'are'} above the BIR threshold this cutoff.</strong> Estimated tax: {peso(whtTotal)}. Payslips do not deduct withholding tax, following the current payroll, so this is for the owner to act on.</span>
-                </div>
-              ) : (
-                <div className="px-4 py-2.5 text-xs flex items-center gap-2" style={{ fontFamily: F_BODY, color: T.green, backgroundColor: T.greenBg, borderBottom: `1px solid ${T.line}` }}>
-                  <CircleCheck size={13} className="shrink-0" aria-hidden="true" />
-                  All {whtRows.length} staff are below the BIR threshold this cutoff, so no withholding tax is due.
-                </div>
-              ))}
-              <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
-                <thead><tr><Th>Employee</Th><Th right>Taxable Pay</Th><Th right>Estimated Tax</Th></tr></thead>
-                <tbody>{dataLoading ? <SkeletonRows cols={3} rows={5} /> : whtRows.map(r => (
-                  <tr key={r.id}>
-                    <Td>{r.name}{r.tax > 0 && <span className="ml-2 align-middle"><Badge tone="amber">Above threshold</Badge></span>}</Td>
-                    <Td right mono>{peso(r.taxable)}</Td>
-                    <Td right mono>{r.tax > 0 ? <b>{peso(r.tax)}</b> : peso(0)}</Td>
-                  </tr>
-                ))}</tbody>
-              </table></div>
-              {!dataLoading && (
-                <p className="px-4 py-3 text-xs" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6, borderTop: `1px solid ${T.line}` }}>
-                  Taxable pay is gross pay, overtime and allowance, minus tardiness and the employee&apos;s SSS, PhilHealth and Pag-IBIG share. The estimate uses the BIR table in Settings on a semi-monthly basis, so tax starts above {peso(whtThreshold)} per cutoff. It is not deducted on the payslip.
-                </p>
-              )}
-            </>
+          {!dataLoading && !whtAbove.length ? (
+            <EmptyState icon={CircleCheck} title="No staff above the withholding tax threshold" />
+          ) : (
+            <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
+              <thead><tr><Th>Employee</Th><Th right>Taxable Pay</Th><Th right>Withholding Tax</Th></tr></thead>
+              <tbody>{dataLoading ? <SkeletonRows cols={3} rows={3} /> : whtAbove.map(r => <tr key={r.id}><Td>{r.name}</Td><Td right mono>{peso(r.taxable)}</Td><Td right mono>{peso(r.tax)}</Td></tr>)}</tbody>
+            </table></div>
           )}
         </Panel>
       )}

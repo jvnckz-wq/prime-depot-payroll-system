@@ -44,7 +44,7 @@ export const LoanHistoryPage = ({ loans }) => {
 
   return (
     <div className="p-4 sm:p-6">
-      <H1 action={<Btn variant="outline" icon={Download} onClick={exportRows} disabled={shown.length === 0}>Export</Btn>}>History</H1>
+      <H1 action={<Btn variant="outline" icon={Download} onClick={exportRows} disabled={shown.length === 0}>Export</Btn>}>Loan History</H1>
 
       <div className="rounded-lg border overflow-hidden" style={{ backgroundColor: T.surface, borderColor: T.line }}>
         <div className="flex items-center gap-2.5 flex-wrap px-3.5 py-3" style={{ borderBottom: `1px solid ${T.line}` }}>

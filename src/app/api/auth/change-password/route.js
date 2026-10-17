@@ -17,7 +17,7 @@ export async function POST(request) {
     if (!record) return NextResponse.json({ error: 'Account not found.' }, { status: 404 });
 
     const ok = await verifyPassword(currentPassword ?? '', record.passwordHash);
-    if (!ok) return NextResponse.json({ error: 'Current password is incorrect.' }, { status: 400 });
+    if (!ok) return NextResponse.json({ error: 'Current password is incorrect.', field: 'currentPassword' }, { status: 400 });
 
     if (record.totpEnabled) {
       const key = `chpwd:${record.id}`;
@@ -39,7 +39,7 @@ export async function POST(request) {
       }
       if (!codeOk) {
         return NextResponse.json(
-          { error: 'That authentication code did not match. Check your authenticator app and try again.' },
+          { error: 'That authentication code did not match. Check your authenticator app and try again.', field: 'code' },
           { status: 400 },
         );
       }
@@ -47,10 +47,10 @@ export async function POST(request) {
     }
 
     const problem = validatePassword(newPassword);
-    if (problem) return NextResponse.json({ error: problem }, { status: 400 });
+    if (problem) return NextResponse.json({ error: problem, field: 'newPassword' }, { status: 400 });
 
     if (await verifyPassword(newPassword, record.passwordHash)) {
-      return NextResponse.json({ error: 'New password must be different from the current one.' }, { status: 400 });
+      return NextResponse.json({ error: 'New password must be different from the current one.', field: 'newPassword' }, { status: 400 });
     }
 
     await prisma.user.update({

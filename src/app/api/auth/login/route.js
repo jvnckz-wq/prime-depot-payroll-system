@@ -48,7 +48,7 @@ export async function POST(request) {
 
     const reject = async () => {
       await logSecurityEvent('LOGIN_FAILURE', { actorId: user?.id ?? null, actorLabel: username, ip });
-      return NextResponse.json({ error: 'Incorrect username or password.' }, { status: 401 });
+      return NextResponse.json({ error: 'Incorrect username or password.', field: ['username', 'password'] }, { status: 401 });
     };
 
     if (!user || !user.isActive || (user.employeeId && !isActiveChecker(user.employee))) {

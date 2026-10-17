@@ -105,7 +105,7 @@ export async function POST(request) {
     return NextResponse.json({ user, tempPassword });
   } catch (err) {
     if (err?.code === 'P2002') {
-      return NextResponse.json({ error: 'That checker or username was just taken. Refresh and try again.' }, { status: 409 });
+      return NextResponse.json({ error: 'That checker or username was just taken. Refresh and try again.', field: 'username' }, { status: 409 });
     }
     console.error('POST /api/users failed:', err);
     return NextResponse.json({ error: 'Could not create the account.' }, { status: 500 });

@@ -13,6 +13,7 @@ import { labelTextError, moneyError, moneyInput, unitError, flagErrors } from '@
 
 export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, rates, setRates, crewRates = CREW_RATE_FALLBACK, loans, reloadLoans, crewNames = [], toast, mode = 'logging' }) => {
   const payslipsMode = mode === 'payslips';
+  const ratesMode = mode === 'rates';
   const roleLabel = (r) => (r === 'Pahinante' ? 'Helper' : r);
   const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
   const isCustomDouble = (r) => (r.s || []).some((v, k) => round2(r.d?.[k] ?? 0) !== round2((v || 0) * 2));
@@ -656,16 +657,14 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
 
   return (
     <div className="p-4 sm:p-6">
-      <H1 sub={payslipsMode
-          ? 'One full slip per person for the day, totalled across every truck.'
-          : 'Log the crew’s trips per day and manage the piece-rate table.'}
-        action={readOnly ? null : <div className="flex items-center gap-2">
+      <H1
+        action={readOnly || ratesMode ? null : <div className="flex items-center gap-2">
           {payslipsMode
             ? <Btn variant="outline" disabled={dueLoans.length === 0} onClick={() => setConfirmApply(true)}>Apply Today&apos;s Deductions</Btn>
             : <Btn onClick={() => setLogOpen(true)}>Log Delivery</Btn>}
-        </div>}>{payslipsMode ? 'Crew Payroll — Piece-rate' : 'Deliveries — Piece-rate'}</H1>
+        </div>}>{ratesMode ? 'Piece Rates' : payslipsMode ? 'Crew Payroll' : 'Deliveries'}</H1>
 
-      <div className="flex items-center flex-wrap gap-2 mb-5">
+      {!ratesMode && <div className="flex items-center flex-wrap gap-2 mb-5">
         <span className="text-xs" style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.04em' }}>VIEWING</span>
         <input type="date" max={todayStr} value={viewDate || todayStr}
           onChange={e => loadHistory(e.target.value === todayStr ? null : e.target.value)}
@@ -674,9 +673,9 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
           <Btn variant="outline" onClick={() => loadHistory(null)}>Back to Today</Btn>
         )}
         {histLoading && <Skeleton w={72} h={11} />}
-      </div>
+      </div>}
 
-      {!payslipsMode && (
+      {ratesMode && (
       <Panel className="overflow-hidden mb-5">
         <div className="px-4 py-2.5 flex items-center justify-between" style={{ borderBottom: `1px solid ${T.line}` }}>
           <Eyebrow>Piece-Rate Table</Eyebrow>
@@ -765,7 +764,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
         <Panel className="overflow-hidden"><EmptyState title="No crew pay for this day" desc="Crew payslips appear here once deliveries are logged or daily staff time in for the day." /></Panel>
       )}
 
-      {!payslipsMode && (<>
+      {mode === 'logging' && (<>
       <Panel className="overflow-hidden">
         <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
           <Eyebrow>All Deliveries ({allTrips.length})</Eyebrow>

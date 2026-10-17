@@ -65,7 +65,7 @@ export async function POST(request) {
     if (!(await reserveAttempt(`forgot-ip|${ip}`, { max: MAX_IP_TRIES, windowMs: WINDOW_MS }))) return TOO_MANY();
 
     const user = await findAccount(username);
-    if (!user) return reply({ error: 'We could not find an active account with that username.' }, 404);
+    if (!user) return reply({ error: 'We could not find an active account with that username.', field: 'username' }, 404);
 
     if (user.role !== 'ADMIN') {
       return reply({ next: 'ask-admin', message: 'Checker passwords are reset by the Operations Head. Ask them to reset yours in Settings, Accounts.' });
@@ -87,7 +87,7 @@ export async function POST(request) {
         actorLabel: username, targetType: 'user', targetId: user.id,
         detail: 'Reset attempt with a recovery email that does not match.',
       });
-      return reply({ error: 'That is not the recovery email for this account.' }, 400);
+      return reply({ error: 'That is not the recovery email for this account.', field: 'email' }, 400);
     }
 
     await releaseAttempt(key).catch(() => {});

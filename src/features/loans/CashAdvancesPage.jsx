@@ -163,9 +163,8 @@ export const CashAdvancesPage = ({ staff, loans, reloadLoans, statutory, period:
         </div>
       }>Cash Advances</H1>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3.5 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3.5 mb-4">
         <Kpi label="Advanced this cutoff" value={peso(total)} sub={`${people} employee${people === 1 ? '' : 's'}`} />
-        <Kpi label="Deducted in full on" value={`${shortDate(period.end)} payroll`} sub="Staff only · crew are paid daily" />
         <Kpi label={`Carried over from ${prev}`} value={peso(earlierTotal)}
           sub={earlier.length ? `${earlier.length} advance${earlier.length === 1 ? '' : 's'} due on ${shortDate(period.end)}` : 'No short payslips last cutoff'} />
       </div>

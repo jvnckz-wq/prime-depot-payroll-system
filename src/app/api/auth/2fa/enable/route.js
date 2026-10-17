@@ -23,7 +23,7 @@ export async function POST(request) {
     const step = totpStep(code, record.totpSecret);
     if (step === null) {
       return NextResponse.json(
-        { error: 'That code did not match. Check your authenticator app and try again.' },
+        { error: 'That code did not match. Check your authenticator app and try again.', field: 'code' },
         { status: 400 },
       );
     }

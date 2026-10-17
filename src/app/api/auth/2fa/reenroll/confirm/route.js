@@ -27,7 +27,7 @@ export async function POST(request) {
     const step = totpStep(entered, secret);
     if (step === null) {
       return NextResponse.json(
-        { error: 'That code did not match the new app. Check it and try again.' },
+        { error: 'That code did not match the new app. Check it and try again.', field: 'code' },
         { status: 400 },
       );
     }

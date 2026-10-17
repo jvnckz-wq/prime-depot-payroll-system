@@ -37,7 +37,7 @@ export async function POST(request) {
 
     const { code } = await request.json();
     const entered = typeof code === 'string' ? code.trim() : '';
-    if (!entered) return NextResponse.json({ error: 'Enter your authentication code.' }, { status: 400 });
+    if (!entered) return NextResponse.json({ error: 'Enter your authentication code.', field: 'code' }, { status: 400 });
 
     const key = accountKey(user.id);
     if (!(await reserveAccountAttempt(key))) {
@@ -87,7 +87,7 @@ export async function POST(request) {
         detail: 'Wrong two-factor code entered.',
       });
       return NextResponse.json(
-        { error: 'That code did not match. Try again, or use a backup code.' },
+        { error: 'That code did not match. Try again, or use a backup code.', field: 'code' },
         { status: 400 },
       );
     }

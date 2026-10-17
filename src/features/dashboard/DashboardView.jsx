@@ -99,9 +99,9 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <div className="lg:col-span-2 grid grid-cols-2 gap-4 pd-stagger">
           <StatCard label="Total Employees" value={totalEmployees} icon={Users} onClick={() => go('employees')} />
-          <StatCard label="Net Pay This Cutoff" value={peso(netThisCutoff)} tone="amber" icon={Wallet} onClick={() => go('payroll')} />
+          <StatCard label="Net Pay This Cutoff" value={peso(netThisCutoff)} tone="neutral" icon={Wallet} onClick={() => go('payroll')} />
           <StatCard label="Deliveries Logged" value={deliveriesLogged} tone="green" icon={Truck} onClick={() => go('deliveries')} />
-          <StatCard label="Active Loans & Advances" value={peso(activeLoans)} tone="amber" icon={FileText} onClick={() => go('loans')} />
+          <StatCard label="Active Loans & Advances" value={peso(activeLoans)} tone="neutral" icon={FileText} onClick={() => go('loans')} />
         </div>
         <Panel className="p-4">
           <Eyebrow>Attention Needed</Eyebrow>
@@ -190,7 +190,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
                       </div>
                     </Td>
                     <Td right mono>{peso(r.gross)}</Td>
-                    <Td right mono style={{ color: r.net < 0 ? T.red : T.brand, fontWeight: 700 }}>{peso(r.net)}</Td>
+                    <Td right mono style={{ color: r.net < 0 ? T.red : T.ink, fontWeight: 700 }}>{peso(r.net)}</Td>
                   </tr>
                 ))}
               </tbody>
@@ -209,7 +209,6 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
         <div className="flex flex-col gap-4" ref={chartsColRef}>
           <Panel className="p-4">
             <Eyebrow>Attendance</Eyebrow>
-            <div className="text-xs mb-3" style={{ fontFamily: F_BODY, color: T.soft }}>Present / Late / Absent · recent cutoffs</div>
             {!attTrendLoading && !dataLoading && !hasAttendanceData ? (
               <div className="flex items-center justify-center" style={{ height: 170 }}>
                 <EmptyState compact icon={BarChart3} title="No attendance recorded yet" desc="Present, late and absent counts appear once attendance is pulled." />

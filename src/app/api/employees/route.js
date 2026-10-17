@@ -35,7 +35,7 @@ export async function POST(request) {
     if (built.error) return NextResponse.json({ error: built.error }, { status: 400 });
 
     if (await prisma.employee.findUnique({ where: { id } })) {
-      return NextResponse.json({ error: `ID ${id} is already used by another employee.` }, { status: 409 });
+      return NextResponse.json({ error: `ID ${id} is already used by another employee.`, field: 'id' }, { status: 409 });
     }
 
     const employee = await prisma.employee.create({ data: { id, ...built.data } });

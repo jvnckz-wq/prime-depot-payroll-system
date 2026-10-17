@@ -139,7 +139,7 @@ export const FleetPanel = ({ toast }) => {
       <Modal open={truckModal} onClose={() => setTruckModal(false)} title={editingTruck ? `Edit ${editingTruck.id}` : 'Add Truck'} width={420}>
         <Field label="Truck ID" error={truckErrs.id}>
           <input value={truckForm.id} readOnly={!!editingTruck}
-            onChange={e => setTruckForm(f => ({ ...f, id: e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 12) }))}
+            data-field="truckId" onChange={e => setTruckForm(f => ({ ...f, id: e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 12) }))}
             placeholder="TRK-14" className={inputCls}
             style={{ ...inputStyle, fontFamily: F_MONO, backgroundColor: editingTruck ? T.bg : T.surface, color: editingTruck ? T.soft : T.ink }} />
         </Field>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useLayoutEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { F_MONO, T } from '@/components/theme';
 
 const BACKUP_CHARS = /[ABCDEFGHJKMNPQRSTUVWXYZ23456789]/;
@@ -14,7 +14,7 @@ export const cleanCode = (raw, backup) => {
 
 export const formatBackup = (v) => (v.length > 4 ? `${v.slice(0, 4)}-${v.slice(4)}` : v);
 
-export default function CodeBoxes({ value = '', onChange, backup = false, disabled = false, autoFocus = false, onEnter, label = 'Code', invalid = false }) {
+export default function CodeBoxes({ value = '', onChange, backup = false, disabled = false, autoFocus = false, onEnter, label = 'Code', invalid = false, field = 'code' }) {
   const length = backup ? 8 : 6;
   const group = backup ? 4 : 3;
   const refs = useRef([]);
@@ -22,6 +22,19 @@ export default function CodeBoxes({ value = '', onChange, backup = false, disabl
   const current = useRef(clean);
   useLayoutEffect(() => { current.current = clean; }, [clean]);
   const chars = clean.padEnd(length, ' ').split('');
+  const onChangeRef = useRef(onChange);
+  useLayoutEffect(() => { onChangeRef.current = onChange; }, [onChange]);
+  useEffect(() => {
+    const onFieldError = (e) => {
+      if (!Array.isArray(e.detail) || !e.detail.includes(field)) return;
+      current.current = '';
+      onChangeRef.current('');
+      const first = refs.current[0];
+      if (first) first.focus();
+    };
+    window.addEventListener('pd-field-error', onFieldError);
+    return () => window.removeEventListener('pd-field-error', onFieldError);
+  }, [field]);
 
   const focusAt = (i) => {
     const el = refs.current[Math.max(0, Math.min(length - 1, i))];
@@ -72,6 +85,7 @@ export default function CodeBoxes({ value = '', onChange, backup = false, disabl
             spellCheck={false}
             aria-label={`${label}, character ${i + 1} of ${length}`}
             aria-invalid={invalid && c === ' ' ? true : undefined}
+            data-field={field}
             className="pd-codebox text-center outline-none min-w-0"
             style={{
               flex: '1 1 0', maxWidth: 48, height: 54, borderRadius: 10,

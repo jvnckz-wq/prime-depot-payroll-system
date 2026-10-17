@@ -28,15 +28,15 @@ export async function POST(request) {
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
 
     const ok = await verifyPassword(currentPassword, record.passwordHash);
-    if (!ok) return NextResponse.json({ error: 'Current password is incorrect.' }, { status: 400 });
+    if (!ok) return NextResponse.json({ error: 'Current password is incorrect.', field: 'currentPassword' }, { status: 400 });
 
     const changingPassword = !!newPassword || record.mustChangePassword;
     if (changingPassword) {
       const problem = validatePassword(newPassword);
-      if (problem) return NextResponse.json({ error: problem }, { status: 400 });
+      if (problem) return NextResponse.json({ error: problem, field: 'newPassword' }, { status: 400 });
 
       if (await verifyPassword(newPassword, record.passwordHash)) {
-        return NextResponse.json({ error: 'New password must be different from the current one.' }, { status: 400 });
+        return NextResponse.json({ error: 'New password must be different from the current one.', field: 'newPassword' }, { status: 400 });
       }
     }
 

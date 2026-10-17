@@ -18,7 +18,7 @@ export async function POST(request) {
     }
 
     if (!(await verifyPassword(currentPassword ?? '', record.passwordHash))) {
-      return NextResponse.json({ error: 'Current password is incorrect.' }, { status: 400 });
+      return NextResponse.json({ error: 'Current password is incorrect.', field: 'currentPassword' }, { status: 400 });
     }
 
     const key = `regen:${record.id}`;
@@ -41,7 +41,7 @@ export async function POST(request) {
     }
     if (!codeOk) {
       return NextResponse.json(
-        { error: 'That authentication code did not match. Check your authenticator app and try again.' },
+        { error: 'That authentication code did not match. Check your authenticator app and try again.', field: 'code' },
         { status: 400 },
       );
     }

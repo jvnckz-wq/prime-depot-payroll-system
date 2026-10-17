@@ -73,6 +73,7 @@ const PayslipCard = ({ e, calc, cutoffLabel, attPeriod, att, statutory, classNam
     <div className="px-6 py-4" style={{ borderBottom: `1px solid ${T.line}` }}>
       <div className="text-sm italic mb-1.5" style={{ fontFamily: F_BODY, color: T.soft }}>Deductions</div>
       {[
+        ['Withholding Tax:', 0, false],
         ['HDMF MP1 Contribution:', calc.mp1 ?? 0, false],
         ['HDMF MP2 Contribution:', calc.mp2 ?? 0, false, e.piOn && (Number(e.mp2) || 0) > (calc.mp2 ?? 0) + 0.004 ? `Not enough pay this cutoff for the full ${peso(Number(e.mp2) || 0)}` : null],
         ['PHIC Contribution:', calc.phic, false],
@@ -356,7 +357,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
 
   return (
     <div className="p-4 sm:p-6">
-      <H1 sub="Bi-monthly payroll, computed for each staff member from their current-cutoff attendance.">Staff Payroll</H1>
+      <H1>{subTab === 'history' ? 'Payroll History' : 'Staff Payroll'}</H1>
 
       {subTab === 'current' && (
         <>
@@ -369,7 +370,6 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
             <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
               <Eyebrow>Payslips — {cutoffLabel}</Eyebrow>
               <div className="grid grid-cols-1 gap-2 w-full sm:flex sm:items-center sm:w-auto">
-                <Badge tone={attPeriod ? 'green' : 'amber'}>{attPeriod ? `DTR ${attPeriod.start} → ${attPeriod.end}` : 'No attendance yet'}</Badge>
                 <Btn size="sm" fullMobile variant="outline" disabled={rows.length === 0 || printAll} onClick={() => setPrintAll(true)}>{printAll ? 'Preparing…' : 'Print All Payslips'}</Btn>
                 <Btn size="sm" fullMobile variant="outline" disabled={pending.length === 0} onClick={() => setConfirmApply(true)}>Apply Cutoff Deductions</Btn>
                 <Btn size="sm" fullMobile loading={finalizing} disabled={!attPeriod || rows.length === 0 || finalizing} onClick={() => setConfirmFinalize(true)}>{finalizing ? 'Finalizing…' : 'Finalize / Release'}</Btn>
@@ -424,15 +424,6 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
                   </tr>
                 ))}
               </tbody>
-              <tfoot>
-                <tr>
-                  <Td colSpan={2}><b>Totals</b></Td>
-                  <Td right mono>{peso(rows.reduce((s, r) => s + r.calc.gross, 0))}</Td>
-                  <Td /><Td />
-                  <Td right mono><b style={{ color: T.amber }}>{peso(totalNet)}</b></Td>
-                  <Td />
-                </tr>
-              </tfoot>
             </table></div>
             </>)}
           </Panel>
@@ -442,7 +433,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
       {subTab === 'history' && (
         <Panel className="overflow-hidden">
           <div className="px-4 py-2.5" style={{ borderBottom: `1px solid ${T.line}` }}>
-            <Eyebrow>Released cut-offs</Eyebrow>
+            <Eyebrow>Released cutoffs</Eyebrow>
           </div>
           {historyLoading ? (
             <SkeletonBlock avatar={false} />

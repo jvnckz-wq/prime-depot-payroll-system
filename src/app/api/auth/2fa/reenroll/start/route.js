@@ -21,7 +21,7 @@ export async function POST(request) {
     }
 
     if (!(await verifyPassword(currentPassword ?? '', record.passwordHash))) {
-      return NextResponse.json({ error: 'Current password is incorrect.' }, { status: 400 });
+      return NextResponse.json({ error: 'Current password is incorrect.', field: 'currentPassword' }, { status: 400 });
     }
 
     const key = `reenroll:${record.id}`;
@@ -51,7 +51,7 @@ export async function POST(request) {
     }
     if (!authed) {
       return NextResponse.json(
-        { error: 'That code did not match. Use a code from your current app, or a backup code.' },
+        { error: 'That code did not match. Use a code from your current app, or a backup code.', field: 'code' },
         { status: 400 },
       );
     }
