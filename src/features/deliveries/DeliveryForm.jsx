@@ -12,12 +12,12 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
   const [crewId, setCrewId] = useState(fixedCrewId || (crews[0] && crews[0].id) || '');
   const crew = crews.find(c => c.id === crewId) || crews[0];
 
-  const [pool, setPool] = useState({ drivers: [], helpers: [] });
+  const [pool, setPool] = useState({ drivers: [], helpers: [], scanned: new Set(), online: true });
   useEffect(() => {
     let cancelled = false;
     fetch('/api/crew')
       .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
-      .then(data => { if (!cancelled) setPool({ drivers: data.drivers, helpers: data.helpers }); })
+      .then(data => { if (!cancelled) setPool({ drivers: data.drivers, helpers: data.helpers, scanned: new Set(data.scannedIds || []), online: data.deviceOnline !== false }); })
       .catch(err => console.error('Could not load crew roster:', err));
     return () => { cancelled = true; };
   }, []);
@@ -74,6 +74,13 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
 
   const [busy, setBusy] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
+  const scannedFirst = (list) => [...list].sort((a, b) => (Number(pool.scanned.has(b.id)) - Number(pool.scanned.has(a.id))) || a.name.localeCompare(b.name));
+  const crewLabel = (p) => (pool.scanned.has(p.id) ? p.name : `${p.name} (no scan today)`);
+  const noScanNote = (id) => (id && !pool.scanned.has(id) ? (
+    <div className="text-xs mt-1" style={{ fontFamily: F_BODY, color: T.warn, lineHeight: 1.5 }}>
+      No scan today. You can still save; the Operations Head will review it.{pool.online ? '' : ' The scanner is offline, so scans may be missing.'}
+    </div>
+  ) : null);
   const submit = async () => {
     if (busy) return;
     if (firstError(deliveryErrors({ customer, contactNo, landmark, quantities: lineRows.map(r => r.qty), driverId, truckId: crewId, province, municipality, barangay, checkPlace: true }))) { setShowErrors(true); flagErrors(); return; }
@@ -108,8 +115,9 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
         <Field label={<>Driver <span style={{ color: T.brand }}>*</span></>} error={errs.driver}>
           <select value={driverId} onChange={e => setDriverId(e.target.value)} className={inputCls} style={inputStyle}>
             <option value="">Select driver...</option>
-            {pool.drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+            {scannedFirst(pool.drivers).map(d => <option key={d.id} value={d.id}>{crewLabel(d)}</option>)}
           </select>
+          {noScanNote(driverId)}
         </Field>
       </div>
 
@@ -135,14 +143,16 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
         <Field label="Delivery Helper 1">
           <select value={helper1Id} onChange={e => setHelper1Id(e.target.value)} className={inputCls} style={inputStyle}>
             <option value="">None</option>
-            {pool.helpers.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+            {scannedFirst(pool.helpers).map(h => <option key={h.id} value={h.id}>{crewLabel(h)}</option>)}
           </select>
+          {noScanNote(helper1Id)}
         </Field>
         <Field label="Delivery Helper 2">
           <select value={helper2Id} onChange={e => setHelper2Id(e.target.value)} className={inputCls} style={inputStyle}>
             <option value="">None</option>
-            {pool.helpers.filter(h => h.id !== helper1Id).map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+            {scannedFirst(pool.helpers.filter(h => h.id !== helper1Id)).map(h => <option key={h.id} value={h.id}>{crewLabel(h)}</option>)}
           </select>
+          {noScanNote(helper2Id)}
         </Field>
       </div>
 

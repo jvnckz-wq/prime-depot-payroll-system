@@ -106,7 +106,7 @@ export const CheckerView = ({ currentUser, deliveries, reloadDeliveries, rates, 
                       <tr key={i} style={{ backgroundColor: isBonusTrip ? '#FBF0DE' : 'transparent' }}>
                         <Td mono>{t.date}</Td>
                         <Td mono>{t.crewId}</Td>
-                        <Td>{t.driver || '—'}</Td>
+                        <Td>{t.driver || '—'}{t.noScan?.length > 0 && <div className="mt-1"><Badge tone="amber">NO SCAN: {t.noScan.join(', ')}</Badge></div>}</Td>
                         <Td>{t.helpers?.length ? <span className="flex items-center gap-1.5">{t.helpers.join(' & ')}{t.swap && <Badge tone="amber">SUB</Badge>}</span> : '—'}</Td>
                         <Td>
                           <div>{t.address}</div>

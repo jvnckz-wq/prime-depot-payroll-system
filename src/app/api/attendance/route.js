@@ -5,6 +5,7 @@ import { isCalendarDate, isClockTime, minutesLate, shiftEndFor, summarizeAttenda
 import { timeOrderError } from '@/lib/field-rules';
 import { enrolledNotRegistered } from '@/lib/server/services/device-roster';
 import { cutoffsWithAttendance, finalizedCutoffsBetween, lockedMessage } from '@/lib/server/services/cutoff-lock';
+import { countNoScanDeliveries } from '@/lib/server/services/crew-scans';
 
 const hhmm = (d) => (d ? new Date(d).toISOString().slice(11, 16) : null);
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
@@ -224,6 +225,7 @@ export async function GET(request) {
     const batches = await prisma.importBatch.findMany({ orderBy: { importedAt: 'desc' }, take: 30 });
     const unmappedCount = await prisma.unmappedLog.count({ where: { isResolved: false } });
     const enrolledCount = await enrolledNotRegistered().then((r) => r.users.length).catch(() => 0);
+    const noScanDeliveries = await countNoScanDeliveries().catch(() => 0);
 
     const finalized = rangeOut ? (await finalizedCutoffsBetween(rangeOut.start, rangeOut.end)).some((c) => c.start === rangeOut.start && c.end === rangeOut.end) : false;
     const cutoffs = await cutoffsWithAttendance().catch(() => []);
@@ -235,6 +237,7 @@ export async function GET(request) {
       summaries,
       unmappedCount,
       enrolledCount,
+      noScanDeliveries,
       batches: batches.map((b) => ({
         id: b.id,
         filename: b.filename,

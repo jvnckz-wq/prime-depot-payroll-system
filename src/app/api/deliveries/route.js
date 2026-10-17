@@ -4,6 +4,7 @@ import { requireUser } from '@/lib/server/security/auth';
 import { isYmd, todayYmdManila } from '@/lib/loan-rules';
 import { deliveryRange } from '@/lib/delivery-range';
 import { deliveryErrors, firstError } from '@/lib/field-rules';
+import { withNoScan } from '@/lib/server/services/crew-scans';
 
 const num = (d) => (d == null ? 0 : Number(d));
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
@@ -73,7 +74,14 @@ export async function GET(request) {
     ...(range.take ? { take: range.take } : {}),
   });
 
-  return NextResponse.json({ deliveries: deliveries.map(shape) });
+  const names = new Map();
+  for (const d of deliveries) {
+    if (d.driverId && d.driver) names.set(d.driverId, d.driver.name);
+    if (d.helper1Id && d.helper1) names.set(d.helper1Id, d.helper1.name);
+    if (d.helper2Id && d.helper2) names.set(d.helper2Id, d.helper2.name);
+  }
+  const flagged = await withNoScan(deliveries.map(shape), names).catch(() => deliveries.map(shape));
+  return NextResponse.json({ deliveries: flagged });
 }
 
 export async function POST(request) {

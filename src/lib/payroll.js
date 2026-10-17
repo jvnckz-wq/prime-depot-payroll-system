@@ -30,6 +30,7 @@ export function deliveriesToLog(apiDeliveries) {
         dbl: d.dbl,
         helpers: first ? d.helpers : undefined,
         driver: first ? d.driver : undefined,
+        noScan: first ? (d.noScan || []) : undefined,
         voided: d.voided,
         voidedBy: d.voidedBy,
         voidReason: d.voidReason,

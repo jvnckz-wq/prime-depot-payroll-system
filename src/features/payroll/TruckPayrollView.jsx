@@ -303,7 +303,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
       log.items.forEach(it => {
         if (it.seq) {
           cur = { seq: it.seq, address: it.address, customer: it.customer,
-                  driver: it.driver || null, helpers: it.helpers || [], items: [] };
+                  driver: it.driver || null, helpers: it.helpers || [], noScan: it.noScan || [], items: [] };
           trips.push(cur);
         }
         if (cur && !it.voided) cur.items.push({ item: it.item, qty: it.qty, unit: it.unit, dbl: it.dbl, d: it.d, h: it.h });
@@ -374,6 +374,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                       <Td>{it.seq ? (
                         <span className="flex items-center gap-1.5">
                           {it.helpers?.length ? it.helpers.join(' & ') : '—'}
+                          {it.noScan?.length > 0 && <span className="ml-2"><Badge tone="amber">NO SCAN: {it.noScan.join(', ')}</Badge></span>}
                         </span>
                       ) : ''}</Td>
                       <Td>{it.item}</Td>
