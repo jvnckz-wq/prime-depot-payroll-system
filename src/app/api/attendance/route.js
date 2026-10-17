@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/server/security/auth';
 import { isCalendarDate, isClockTime, minutesLate, shiftEndFor, summarizeAttendance } from '@/lib/attendance';
 import { timeOrderError } from '@/lib/field-rules';
 import { enrolledNotRegistered } from '@/lib/server/services/device-roster';
+import { cutoffsWithAttendance, finalizedCutoffsBetween, lockedMessage } from '@/lib/server/services/cutoff-lock';
 
 const hhmm = (d) => (d ? new Date(d).toISOString().slice(11, 16) : null);
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
@@ -21,6 +22,8 @@ export async function PATCH(request) {
     if (!employeeId || !isCalendarDate(dateStr)) {
       return NextResponse.json({ error: 'employeeId and a valid date are required.' }, { status: 400 });
     }
+    const locked = await finalizedCutoffsBetween(dateStr, dateStr);
+    if (locked.length) return NextResponse.json({ error: lockedMessage(locked) }, { status: 409 });
     if (!body.isLeave && !body.isAbsent && [body.timeIn, body.timeOut].some((t) => t != null && t !== '' && !isClockTime(t))) {
       return NextResponse.json({ error: 'Times must be in 24-hour HH:MM, from 00:00 to 23:59.' }, { status: 400 });
     }
@@ -222,8 +225,13 @@ export async function GET(request) {
     const unmappedCount = await prisma.unmappedLog.count({ where: { isResolved: false } });
     const enrolledCount = await enrolledNotRegistered().then((r) => r.users.length).catch(() => 0);
 
+    const finalized = rangeOut ? (await finalizedCutoffsBetween(rangeOut.start, rangeOut.end)).some((c) => c.start === rangeOut.start && c.end === rangeOut.end) : false;
+    const cutoffs = await cutoffsWithAttendance().catch(() => []);
+
     return NextResponse.json({
       period: rangeOut,
+      finalized,
+      cutoffs,
       summaries,
       unmappedCount,
       enrolledCount,

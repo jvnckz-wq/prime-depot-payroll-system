@@ -5,6 +5,7 @@ import { requireAdmin } from '@/lib/server/security/auth';
 import { MAX_IMPORT_BYTES, base64TooLarge } from '@/lib/server/security/uploads';
 import { parseZktecoXls } from '@/lib/server/services/attendance-import';
 import { buildAttendanceRow } from '@/lib/attendance';
+import { finalizedCutoffsBetween, lockedMessage } from '@/lib/server/services/cutoff-lock';
 
 const atTime = (dateStr, hhmm) => (hhmm ? new Date(`${dateStr}T${hhmm}:00.000Z`) : null);
 const dayStr = (d) => d.toISOString().slice(0, 10);
@@ -23,6 +24,9 @@ export async function POST(request) {
     if (tooLarge) return NextResponse.json({ error: tooLarge }, { status: 413 });
 
     const { period, roster, punches } = parseZktecoXls(Buffer.from(body.dataBase64, 'base64'));
+
+    const lockedImport = await finalizedCutoffsBetween(dayStr(period.start), dayStr(period.end));
+    if (lockedImport.length) return NextResponse.json({ error: lockedMessage(lockedImport) }, { status: 409 });
 
     const days = [];
     for (let d = new Date(period.start); d <= period.end; d.setUTCDate(d.getUTCDate() + 1)) {
@@ -92,6 +96,7 @@ export async function POST(request) {
     await withRetry(() => prismaBase.$transaction(ops));
 
     return NextResponse.json({
+      periodStart: dayStr(period.start),
       ok: true,
       period: { start: days[0], end: days[days.length - 1] },
       matchedEmployees: matchedIds.length,

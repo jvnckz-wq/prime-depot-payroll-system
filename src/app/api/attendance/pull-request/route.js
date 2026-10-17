@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';
+import { finalizedCutoffsBetween, lockedMessage } from '@/lib/server/services/cutoff-lock';
 
 export const runtime = 'nodejs';
 
@@ -52,6 +53,8 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid or missing from/to (expected YYYY-MM-DD).' }, { status: 400 });
     }
     if (to < from) return NextResponse.json({ error: 'The "to" date is before "from".' }, { status: 400 });
+    const lockedPull = await finalizedCutoffsBetween(from, to);
+    if (lockedPull.length) return NextResponse.json({ error: lockedMessage(lockedPull) }, { status: 409 });
 
     const active = await prisma.pullRequest.findFirst({
       where: { status: { in: ['PENDING', 'RUNNING'] } },

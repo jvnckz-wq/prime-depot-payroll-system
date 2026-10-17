@@ -107,7 +107,7 @@ const PayslipCard = ({ e, calc, cutoffLabel, attPeriod, att, statutory, classNam
   );
 };
 
-export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, cutoffLabel = '', reloadStaff, loading: staffLoading = false, navView, onNavigate }) => {
+export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, cutoffLabel: shellCutoffLabel = '', reloadStaff, loading: staffLoading = false, navView, onNavigate }) => {
   const [view, setView] = useState('list');
   const [selectedId, setSelectedId] = useState(null);
   const [subTab, setSubTab] = useState(navView || 'current');
@@ -139,6 +139,19 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
   const [savingAllowance, setSavingAllowance] = useState(false);
   const [attById, setAttById] = useState({});
   const [attPeriod, setAttPeriod] = useState(null);
+  const [sel, setSel] = useState(null);
+  const [attFinalized, setAttFinalized] = useState(false);
+  const [openCutoffs, setOpenCutoffs] = useState([]);
+  const [attTick, setAttTick] = useState(0);
+  const cutoffLabel = sel ? staffRunKey(sel.start).replace(/^staff-/, '') : shellCutoffLabel;
+  const latestStart = currentCutoffPeriod().start;
+  const goCutoff = (dir) => {
+    if (!sel) return;
+    const d = new Date(`${dir < 0 ? sel.start : sel.end}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + (dir < 0 ? -1 : 1));
+    setAttLoading(true);
+    setSel(cutoffOf(d.toISOString().slice(0, 10)));
+  };
   const [attLoading, setAttLoading] = useState(true);
   const loading = staffLoading || attLoading;
   const cutoffKey = staffRunKey(attPeriod?.start || currentCutoffPeriod().start);
@@ -151,19 +164,22 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/attendance')
+    fetch(sel ? `/api/attendance?from=${sel.start}&to=${sel.end}` : '/api/attendance')
       .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
       .then(d => {
         if (cancelled) return;
         const map = {};
         for (const s of d.summaries || []) map[s.id] = s;
         setAttById(map);
-        setAttPeriod(d.period || null);
+        setAttPeriod(d.summaries && d.summaries.length ? d.period : null);
+        setAttFinalized(!!d.finalized);
+        setOpenCutoffs((d.cutoffs || []).filter(c => !c.finalized));
+        if (!sel) setSel(cutoffOf((d.period && d.period.start) || latestStart));
       })
       .catch(err => console.error('Could not load attendance for payroll:', err))
       .finally(() => { if (!cancelled) setAttLoading(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, [sel, attTick, latestStart]);
 
   const loadHistory = async () => {
     setHistoryLoading(true);
@@ -248,6 +264,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
     })
     : null;
   const pending = plan ? plan.writes : [];
+  const olderOpen = attPeriod ? openCutoffs.filter(c => c.end < attPeriod.start) : [];
   const applyDeductions = async () => {
     setConfirmApply(false);
     if (!attPeriod) { toast("Import this cutoff's attendance first.", 'error'); return; }
@@ -368,14 +385,23 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
           </div>
           <Panel className="overflow-hidden">
             <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
-              <Eyebrow>Payslips — {cutoffLabel}</Eyebrow>
+              <div className="flex items-center gap-2">
+                <button type="button" aria-label="Previous cutoff" onClick={() => goCutoff(-1)} className="rounded-lg flex items-center justify-center pd-clickable" style={{ width: 28, height: 28, border: `1px solid ${T.line}`, background: T.surface, color: T.ink }}>‹</button>
+                <button type="button" aria-label="Next cutoff" disabled={!sel || sel.start >= latestStart} onClick={() => goCutoff(1)} className="rounded-lg flex items-center justify-center pd-clickable" style={{ width: 28, height: 28, border: `1px solid ${T.line}`, background: T.surface, color: T.ink, opacity: !sel || sel.start >= latestStart ? 0.4 : 1 }}>›</button>
+                <Eyebrow>Payslips — {cutoffLabel}</Eyebrow>
+                {attFinalized && <Badge tone="green">Finalized</Badge>}
+              </div>
+              {attFinalized ? (
+                <Btn size="sm" fullMobile variant="outline" onClick={() => onNavigate && onNavigate('payroll', 'staff-history')}>View in Payroll History</Btn>
+              ) : (
               <div className="grid grid-cols-1 gap-2 w-full sm:flex sm:items-center sm:w-auto">
                 <Btn size="sm" fullMobile variant="outline" disabled={rows.length === 0 || printAll} onClick={() => setPrintAll(true)}>{printAll ? 'Preparing…' : 'Print All Payslips'}</Btn>
                 <Btn size="sm" fullMobile variant="outline" disabled={pending.length === 0} onClick={() => setConfirmApply(true)}>Apply Cutoff Deductions</Btn>
                 <Btn size="sm" fullMobile loading={finalizing} disabled={!attPeriod || rows.length === 0 || finalizing} onClick={() => setConfirmFinalize(true)}>{finalizing ? 'Finalizing…' : 'Finalize / Release'}</Btn>
               </div>
+              )}
             </div>
-            {!loading && rows.length === 0 ? payrollEmpty : (<>
+            {attFinalized ? <EmptyState compact icon={ReceiptText} title="This cutoff is finalized" desc="Its payslips are in Payroll History." /> : !loading && rows.length === 0 ? payrollEmpty : (<>
             <div className="md:hidden">
               {loading ? <SkeletonBlock /> : rows.map(({ emp, calc }) => (
                 <button key={emp.id} type="button" onClick={() => { setSelectedId(emp.id); setView('slip'); }}
@@ -475,7 +501,8 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
         message={`This snapshots all ${rows.length} staff payslip(s) for this cutoff and applies their loan deductions.`
           + (plan && plan.total > 0 ? ` It also takes ${peso(plan.total)} in deductions not applied yet, so the total net released will be ${peso(totalNet - plan.total)}.` : ` Total net ${peso(totalNet)}.`)
           + (plan && plan.short.length ? ` ${plan.short.length} will carry over to the ${shortDate(nextEnd)} payroll: ${shortNames(plan.short)}.` : '')
-          + " The figures are frozen once released, even if rates or records change later. You can un-finalize this cutoff from History if a correction is needed."}
+          + " The figures are frozen once released, even if rates or records change later. You can un-finalize this cutoff from History if a correction is needed."
+          + (olderOpen.length ? ` Note: ${olderOpen.map(c => staffRunKey(c.start).replace(/^staff-/, '')).join(', ')} still ${olderOpen.length > 1 ? 'have' : 'has'} attendance that is not finalized.` : '')}
         confirmLabel="Finalize / Release" />
 
       <Confirm open={!!confirmUnfinalize} onCancel={() => setConfirmUnfinalize(null)} onConfirm={() => unfinalize(confirmUnfinalize)} busy={unfinalizing}

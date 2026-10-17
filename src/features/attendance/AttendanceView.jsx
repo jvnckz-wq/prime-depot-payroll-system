@@ -43,6 +43,7 @@ const recentCutoffs = (todayStr, n = 3) => {
   return list;
 };
 const cutoffLabel = (c) => `${asUTC(c.from).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })} – ${asUTC(c.to).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}`;
+const cutoffFor = (ymd) => { const [y, m, d] = ymd.split('-').map(Number); return cutoffOf(y, m - 1, d <= 15 ? 'A' : 'B'); };
 const shiftCutoff = (sel, dir) => {
   const [y, m] = sel.from.split('-').map(Number);
   let yy = y, mi = m - 1, half = sel.from.slice(8) === '01' ? 'A' : 'B';
@@ -90,7 +91,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
   const load = async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
     try {
-      const res = await fetch('/api/attendance');
+      const res = await fetch(`/api/attendance?from=${pullSel.from}&to=${pullSel.to}`);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       setData(await res.json());
     } catch (err) { console.error('Could not load attendance:', err); }
@@ -133,7 +134,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
   // eslint-disable-next-line react-hooks/set-state-in-effect -- sync the sub-tab from the sidebar selection
   useEffect(() => { if (navSub) setSubTab(navSub); }, [navSub]);
   // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- intentional: load the active tab's data on mount and when the tab or selected day changes
-  useEffect(() => { if (subTab === 'live') loadLive(); else if (subTab === 'dtr' || subTab === 'history') load(); }, [subTab, liveDate]);
+  useEffect(() => { if (subTab === 'live') loadLive(); else if (subTab === 'dtr' || subTab === 'history') load(); }, [subTab, liveDate, pullSel]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot fetch of pull status when the DTR tab opens
   useEffect(() => { if (subTab === 'dtr') fetchPull(); }, [subTab]);
@@ -151,6 +152,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
       } catch { }
     }, 3000);
     return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- load reads the selected cutoff; adding it would restart the poll on every render
   }, [pullReq?.status]);
 
   const loadUnmappedSilent = async () => {
@@ -184,7 +186,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
   const loadDtr = async (id) => {
     setDtrLoading(true);
     try {
-      const res = await fetch(`/api/attendance?employeeId=${encodeURIComponent(id)}`);
+      const res = await fetch(`/api/attendance?employeeId=${encodeURIComponent(id)}&from=${pullSel.from}&to=${pullSel.to}`);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       setDtr(await res.json());
     } catch (err) { console.error('Could not load DTR:', err); }
@@ -238,9 +240,11 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
     if (view === 'dtr' && selectedId) loadDtr(selectedId);
-  }, [view, selectedId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- reload the employee's DTR when the view, employee or selected cutoff changes
+  }, [view, selectedId, pullSel]);
 
   const openEdit = (a) => {
+    if (data.finalized) return;
     setEditForm({ status: a.leave ? 'leave' : (a.absent ? 'absent' : 'present'), timeIn: a.in || '', timeOut: a.out || '', note: '' });
     setEditDay(a);
   };
@@ -291,7 +295,8 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
       const result = await res.json();
       if (!res.ok) { toast(result.error || 'Import failed.', 'error'); return; }
       toast(`Imported ${result.mappedRows} rows for ${result.matchedEmployees} employee(s)` + (result.unmappedUsers ? ` · ${result.unmappedUsers} unmapped ID(s).` : '.'));
-      await load();
+      const importedStart = result.periodStart || result.period?.start;
+      if (importedStart && importedStart !== pullSel.from) setPullSel(cutoffFor(importedStart)); else await load();
       setShowImport(false);
     } catch (err) {
       toast(err.message || 'Could not import the file.', 'error');
@@ -396,7 +401,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                   const isLate = a.late > 0, isOt = a.ot > 0;
                   const rowBg = isLate ? T.redBg : a.absent ? T.amberBg : 'transparent';
                   return (
-                    <tr key={a.date} onClick={() => openEdit(a)} style={{ backgroundColor: rowBg, cursor: 'pointer' }}>
+                    <tr key={a.date} onClick={() => openEdit(a)} style={{ backgroundColor: rowBg, cursor: data.finalized ? 'default' : 'pointer' }}>
                       <Td>
                         <span className="font-bold mr-2" style={{ fontFamily: F_MONO, color: T.ink }}>{a.date.slice(8)}</span>
                         <span className="text-xs" style={{ fontFamily: F_BODY, color: isLate ? T.red : a.absent ? T.amber : T.soft }}>{a.weekday}</span>
@@ -410,7 +415,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                       <Td mono>{a.out || '—'}</Td>
                       <Td center mono><span style={{ fontWeight: isLate ? 700 : 400, color: isLate ? T.red : T.soft }}>{isLate ? a.late : '--'}</span></Td>
                       <Td center mono><span style={{ fontWeight: isOt ? 700 : 400, color: isOt ? T.green : T.soft }}>{isOt ? a.ot : '--'}</span></Td>
-                      <Td right><Pencil size={13} style={{ color: T.soft }} /></Td>
+                      <Td right>{!data.finalized && <Pencil size={13} style={{ color: T.soft }} />}</Td>
                     </tr>
                   );
                 })}
@@ -616,7 +621,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                 <button onClick={() => setPullSel(shiftCutoff(pullSel, -1))} disabled={pullActive} className="rounded-lg flex items-center justify-center pd-clickable" style={{ width: 30, height: 30, border: `1px solid ${T.line}`, background: T.surface, color: T.ink, fontSize: 16, lineHeight: 1 }} aria-label="Previous cutoff">&lsaquo;</button>
                 <button onClick={() => setPullSel(shiftCutoff(pullSel, 1))} disabled={pullActive || !canGoNext} className="rounded-lg flex items-center justify-center pd-clickable" style={{ width: 30, height: 30, border: `1px solid ${T.line}`, background: T.surface, color: T.ink, fontSize: 16, lineHeight: 1, opacity: canGoNext ? 1 : 0.35 }} aria-label="Next cutoff">&rsaquo;</button>
                 <div style={{ minWidth: 190 }}>
-                  <div style={{ fontFamily: F_HEAD, fontWeight: 700, fontSize: 17, color: T.ink }}>{cutoffLabel(pullSel)}</div>
+                  <div className="flex items-center gap-2" style={{ fontFamily: F_HEAD, fontWeight: 700, fontSize: 17, color: T.ink }}>{cutoffLabel(pullSel)}{data.finalized && <Badge tone="green">Finalized</Badge>}</div>
                 </div>
               </div>
               <div className="flex items-center gap-2.5 flex-wrap">
@@ -631,8 +636,8 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                     </span>
                   );
                 })()}
-                <Btn onClick={queuePull} loading={pullBusy || pullActive} disabled={pullBusy || pullActive}>{pullActive ? 'Pulling…' : 'Pull from device'}</Btn>
-                <Btn variant="outline" onClick={() => setShowImport(true)}>Import .xls</Btn>
+                {!data.finalized && <Btn onClick={queuePull} loading={pullBusy || pullActive} disabled={pullBusy || pullActive}>{pullActive ? 'Pulling…' : 'Pull from device'}</Btn>}
+                {!data.finalized && <Btn variant="outline" onClick={() => setShowImport(true)}>Import .xls</Btn>}
               </div>
             </div>
             {(() => {
