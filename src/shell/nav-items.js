@@ -4,7 +4,7 @@ export const ADMIN_NAV = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, group: null },
   { key: 'payroll', label: 'Payroll', icon: FileText, group: 'Payroll', children: [
     { key: 'staff', label: 'Staff Payroll' },
-    { key: 'crew', label: 'Crew (Truck) Payroll' },
+    { key: 'crew', label: 'Crew Payroll' },
     { key: 'staff-history', label: 'History' },
   ] },
   { key: 'loans', label: 'Loans & Advances', icon: Wallet, group: 'Payroll', children: [
@@ -32,6 +32,7 @@ export const ADMIN_NAV = [
     { key: 'fleet', label: 'Fleet' },
     { key: 'rates', label: 'Piece Rates' },
     { key: 'backup', label: 'Backup' },
+    { key: 'audit', label: 'Audit Log' },
   ] },
 ];
 

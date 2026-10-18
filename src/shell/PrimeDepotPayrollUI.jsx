@@ -26,6 +26,7 @@ import { SettingsView } from '@/features/settings/SettingsView.jsx';
 import { PayrollView } from '@/features/payroll/PayrollView.jsx';
 import { TruckPayrollView } from '@/features/payroll/TruckPayrollView.jsx';
 import { installFieldErrorFetch } from '@/lib/field-error-fetch';
+import { AuditLogPanel } from '@/features/settings/AuditLogPanel.jsx';
 
 const AUTH_RETRY_MS = 5000;
 const AUTH_RETRIES = 3;
@@ -372,7 +373,8 @@ export default function PrimeDepotPayroll() {
           {tab === 'loans' && <LoansView navSub={subs.loans} staff={allStaff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} cutoffPeriod={cutoffPeriod} toast={toast} />}
           {tab === 'reports' && <ReportsView navTab={subs.reports} onNavigate={navSelect} dataLoading={staffLoading || attLoading} staff={staff} deliveries={deliveries} loans={loans} statutory={statutory} cutoffLabel={cutoffText} runKey={staffKey} attendanceSummaries={attSummaries} crewRates={crewRates} />}
           {tab === 'settings' && subs.settings === 'rates' && <TruckPayrollView mode="rates" deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} crewRates={crewRates} loans={loans} reloadLoans={reloadLoans} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} toast={toast} />}
-          {tab === 'settings' && subs.settings !== 'rates' && <SettingsView navTab={subs.settings} currentUser={user} onUserChange={u => setUser(prev => ({ ...prev, ...u }))} onSignedOut={() => { setUser(null); setTab('dashboard'); }} checkers={checkers} setCheckers={setCheckers} sssTable={sssTable} setSssTable={setSssTable} philhealthRates={philhealthRates} setPhilhealthRates={setPhilhealthRates} pagibigRates={pagibigRates} setPagibigRates={setPagibigRates} birTable={birTable} setBirTable={setBirTable} toast={toast} />}
+          {tab === 'settings' && subs.settings === 'audit' && <AuditLogPanel toast={toast} />}
+          {tab === 'settings' && subs.settings !== 'rates' && subs.settings !== 'audit' && <SettingsView navTab={subs.settings} currentUser={user} onUserChange={u => setUser(prev => ({ ...prev, ...u }))} onSignedOut={() => { setUser(null); setTab('dashboard'); }} checkers={checkers} setCheckers={setCheckers} sssTable={sssTable} setSssTable={setSssTable} philhealthRates={philhealthRates} setPhilhealthRates={setPhilhealthRates} pagibigRates={pagibigRates} setPagibigRates={setPagibigRates} birTable={birTable} setBirTable={setBirTable} toast={toast} />}
           </div>
         </main>
       </div>

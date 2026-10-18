@@ -228,7 +228,8 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
       });
       const result = await res.json();
       if (!res.ok) { toast(result.error || 'Could not resolve.', 'error'); return; }
-      toast(`Resolved ${result.present} day(s) present for ${result.employee}.`);
+      toast(`Resolved ${result.present} day(s) present for ${result.employee}.`
+        + (result.skippedDays ? ` ${result.skippedDays} day(s) in ${result.skippedCutoffs.join(', ')} were skipped because that payroll is finalized.` : ''));
       await Promise.all([loadUnmapped(), load()]);
     } catch {
       toast('Could not reach the server.', 'error');
@@ -514,10 +515,11 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                 aria-label="Next day"
               >&rsaquo;</button>
               <div style={{ minWidth: 200 }}>
-                <div style={{ fontFamily: F_HEAD, fontWeight: 700, fontSize: 17, color: T.ink }}>{liveData.isToday ? 'Today' : (liveData.date ? fmtDay(liveData.date) : ' ')}</div>
+                <div className="flex items-center gap-2" style={{ fontFamily: F_HEAD, fontWeight: 700, fontSize: 17, color: T.ink }}>{liveData.isToday ? 'Today' : (liveData.date ? fmtDay(liveData.date) : ' ')}{liveData.finalized && <Badge tone="green">Finalized</Badge>}</div>
                 <div style={{ fontFamily: F_BODY, fontSize: 12, color: T.soft, marginTop: 1 }}>
                   {liveData.date ? asUTC(liveData.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : ' '}
                 </div>
+                {liveData.finalized && liveData.isToday && <div className="text-xs mt-1" style={{ fontFamily: F_BODY, color: T.warn, maxWidth: 360, lineHeight: 1.5 }}>This cutoff’s payroll is finalized. New scans stay on the device and are not added.</div>}
               </div>
               {!liveData.isToday && (
                 <button onClick={() => setLiveDate(null)} className="rounded-full pd-clickable" style={{ fontFamily: F_HEAD, fontSize: 12, fontWeight: 600, color: T.brand, background: T.brandBg, border: 'none', padding: '5px 11px' }}>Back to today</button>

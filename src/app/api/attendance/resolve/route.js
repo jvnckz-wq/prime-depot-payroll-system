@@ -3,6 +3,7 @@ import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { withRetry } from '@/lib/server/db/db-retry';
 import { requireAdmin } from '@/lib/server/security/auth';
 import { minutesLate, shiftEndFor } from '@/lib/attendance';
+import { lockedDays } from '@/lib/server/services/cutoff-lock';
 
 const toMin = (t) => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
 const atTime = (dateStr, hhmm) => (hhmm ? new Date(`${dateStr}T${hhmm}:00.000Z`) : null);
@@ -54,9 +55,12 @@ export async function POST(request) {
     });
     const manualDays = new Set(manual.map((m) => dayStr(m.date)));
 
+    const { set: lockedSet, labels: lockedLabels } = await lockedDays(dayStr(start), dayStr(end));
+    const skippedDays = days.filter((ds) => lockedSet.has(ds) && punchByDate.has(ds)).length;
+    const openDates = days.filter((ds) => !lockedSet.has(ds)).map((ds) => new Date(`${ds}T00:00:00.000Z`));
     const rows = [];
     for (const ds of days) {
-      if (manualDays.has(ds)) continue;
+      if (manualDays.has(ds) || lockedSet.has(ds)) continue;
       const date = new Date(`${ds}T00:00:00.000Z`);
       const p = punchByDate.get(ds);
       if (!p) {
@@ -78,7 +82,7 @@ export async function POST(request) {
 
     await withRetry(() => prismaBase.$transaction([
       prismaBase.attendance.deleteMany({
-        where: { employeeId: emp.id, date: { gte: start, lte: end }, isManualEdit: false },
+        where: { employeeId: emp.id, date: { in: openDates }, isManualEdit: false },
       }),
       prismaBase.attendance.createMany({ data: rows }),
       prismaBase.unmappedLog.updateMany({
@@ -93,6 +97,8 @@ export async function POST(request) {
       biometricId,
       daysResolved: rows.length,
       present: rows.filter((r) => !r.isAbsent).length,
+      skippedDays,
+      skippedCutoffs: skippedDays ? lockedLabels : [],
     });
   } catch (err) {
     console.error('POST /api/attendance/resolve failed:', err);

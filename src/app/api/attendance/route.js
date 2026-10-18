@@ -141,7 +141,8 @@ export async function GET(request) {
         } catch { }
       }
 
-      return NextResponse.json({ date: dateStr, today: todayStr, isToday, rows: present, stats, sync });
+      return NextResponse.json({
+        finalized: (await finalizedCutoffsBetween(dateStr, dateStr)).length > 0, date: dateStr, today: todayStr, isToday, rows: present, stats, sync });
     }
 
     if (searchParams.get('trend')) {

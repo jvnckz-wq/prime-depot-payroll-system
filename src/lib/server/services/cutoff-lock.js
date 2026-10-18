@@ -35,3 +35,15 @@ export async function cutoffsWithAttendance() {
     .sort((a, b) => (a.start < b.start ? -1 : 1))
     .map((c) => ({ ...c, finalized: done.has(`${c.start}|${c.end}`) }));
 }
+
+// Days between from and to (inclusive) that fall inside a finalized cutoff.
+export async function lockedDays(fromYmd, toYmd) {
+  const locked = await finalizedCutoffsBetween(fromYmd, toYmd);
+  const set = new Set();
+  for (const c of locked) {
+    for (let d = new Date(`${c.start}T00:00:00Z`); d <= new Date(`${c.end}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + 1)) {
+      set.add(d.toISOString().slice(0, 10));
+    }
+  }
+  return { set, labels: locked.map((c) => c.label || `${c.start} to ${c.end}`) };
+}

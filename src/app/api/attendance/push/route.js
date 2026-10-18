@@ -4,6 +4,7 @@ import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { withRetry } from '@/lib/server/db/db-retry';
 import { pairPunches, buildAttendanceRow } from '@/lib/attendance';
 import { cleanRoster } from '@/lib/server/services/device-roster';
+import { finalizedCutoffsBetween } from '@/lib/server/services/cutoff-lock';
 
 export const runtime = 'nodejs';
 
@@ -75,7 +76,8 @@ export async function POST(request) {
     const rows = presentRows.filter((r) => !manualSet.has(r.employeeId));
     const writeIds = rows.map((r) => r.employeeId);
 
-    if (writeIds.length) {
+    const dayLocked = (await finalizedCutoffsBetween(date, date)).length > 0;
+    if (writeIds.length && !dayLocked) {
       await withRetry(() => prismaBase.$transaction([
         prismaBase.attendance.deleteMany({
           where: { date: day, employeeId: { in: writeIds }, isManualEdit: false },

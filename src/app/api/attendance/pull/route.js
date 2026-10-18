@@ -3,6 +3,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { withRetry } from '@/lib/server/db/db-retry';
 import { pairPunches, buildAttendanceRow } from '@/lib/attendance';
+import { lockedDays } from '@/lib/server/services/cutoff-lock';
 
 export const runtime = 'nodejs';
 
@@ -110,13 +111,19 @@ export async function POST(request) {
       }
     }
 
+    const { set: lockedSet } = await lockedDays(dayStr(start), dayStr(end));
+    const openDates = days.filter((ds) => !lockedSet.has(ds)).map((ds) => new Date(`${ds}T00:00:00.000Z`));
+    const isOpen = (r) => !lockedSet.has(dayStr(r.date));
+    attendanceRows.splice(0, attendanceRows.length, ...attendanceRows.filter(isOpen));
+    unmappedRows.splice(0, unmappedRows.length, ...unmappedRows.filter(isOpen));
+
     const ops = [];
     if (matchedIds.length) {
       ops.push(prismaBase.attendance.deleteMany({
-        where: { date: { gte: start, lte: end }, employeeId: { in: matchedIds }, isManualEdit: false },
+        where: { date: { in: openDates }, employeeId: { in: matchedIds }, isManualEdit: false },
       }));
     }
-    ops.push(prismaBase.unmappedLog.deleteMany({ where: { date: { gte: start, lte: end } } }));
+    ops.push(prismaBase.unmappedLog.deleteMany({ where: { date: { in: openDates } } }));
     if (attendanceRows.length) ops.push(prismaBase.attendance.createMany({ data: attendanceRows }));
     if (unmappedRows.length) ops.push(prismaBase.unmappedLog.createMany({ data: unmappedRows }));
     ops.push(prismaBase.importBatch.update({
