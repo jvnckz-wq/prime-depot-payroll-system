@@ -3,6 +3,7 @@ import { randomBytes } from 'crypto';
 import { prisma } from '@/lib/server/db/prisma';
 import { destroyAllSessions, hashPassword, logSecurityEvent, requireAdmin } from '@/lib/server/security/auth';
 import { checkerLinkProblem, isActiveChecker } from '@/lib/checker-accounts';
+import { usernameError } from '@/lib/field-rules';
 
 function generateTempPassword() {
   const letters = 'abcdefghjkmnpqrstuvwxyz';
@@ -19,13 +20,31 @@ export async function PATCH(request, { params }) {
   const { id } = await params;
 
   try {
-    const { action, employeeId } = await request.json();
+    const { action, employeeId, username: rawUsername } = await request.json();
 
     const target = await prisma.user.findUnique({
       where: { id },
       include: { employee: { select: { name: true, status: true, position: true } } },
     });
     if (!target) return NextResponse.json({ error: 'Account not found.' }, { status: 404 });
+
+    if (action === 'rename') {
+      if (target.role !== 'CHECKER') {
+        return NextResponse.json({ error: 'Change your own username from My Account.' }, { status: 400 });
+      }
+      const username = typeof rawUsername === 'string' ? rawUsername.trim().toLowerCase() : '';
+      const problem = usernameError(username);
+      if (problem) return NextResponse.json({ error: problem, field: 'username' }, { status: 400 });
+      if (username === target.username) return NextResponse.json({ error: 'That is already the username.', field: 'username' }, { status: 400 });
+      const taken = await prisma.user.findUnique({ where: { username }, select: { id: true } });
+      if (taken) return NextResponse.json({ error: 'That username is already taken.', field: 'username' }, { status: 409 });
+      await prisma.user.update({ where: { id }, data: { username } });
+      await logSecurityEvent('USERNAME_CHANGED', {
+        actorId: auth.user.id, actorLabel: auth.user.username, targetType: 'user', targetId: id,
+        detail: `Changed a checker username from "${target.username}" to "${username}".`,
+      });
+      return NextResponse.json({ ok: true, username });
+    }
 
     if (action === 'disable') {
       if (target.id === auth.user.id) {

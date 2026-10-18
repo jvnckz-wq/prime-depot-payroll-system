@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, Copy, KeyRound, Link2, Plus, UserCheck, UserX } from 'lucide-react';
+import { AlertTriangle, Copy, KeyRound, Link2, Pencil, Plus, UserCheck, UserX } from 'lucide-react';
 import { Av, Badge, Btn, Confirm, Eyebrow, Field, Modal, Skeleton, inputCls, inputStyle } from '@/components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { suggestUsername } from '@/lib/checker-accounts';
-import { usernameInput, flagErrors, usernameError } from '@/lib/field-rules';
+import { usernameInput, flagErrors, flagField, usernameError } from '@/lib/field-rules';
 
 const NoCheckers = ({ onGoToEmployees }) => (
   <div className="p-3.5 rounded" style={{ backgroundColor: T.bg }}>
@@ -44,6 +44,26 @@ export const AccountsPanel = ({ currentUser, toast, onGoToEmployees }) => {
   const [linkErr, setLinkErr] = useState('');
   const [usernameTouched, setUsernameTouched] = useState(false);
   const [linkFor, setLinkFor] = useState(null);
+  const [renameFor, setRenameFor] = useState(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [renameErr, setRenameErr] = useState('');
+  const [renaming, setRenaming] = useState(false);
+  const saveRename = async () => {
+    const problem = usernameError(renameValue);
+    if (problem) { setRenameErr(problem); flagField('rename'); return; }
+    setRenaming(true); setRenameErr('');
+    try {
+      const res = await fetch(`/api/users/${renameFor.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'rename', username: renameValue }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setRenameErr(data.error || 'Could not change the username.'); if (data.field) flagField('rename'); return; }
+      setRenameFor(null);
+      await load();
+    } catch { setRenameErr('Could not reach the server. Try again.'); }
+    finally { setRenaming(false); }
+  };
   const [linkEmployeeId, setLinkEmployeeId] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -63,7 +83,7 @@ export const AccountsPanel = ({ currentUser, toast, onGoToEmployees }) => {
     }
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect -- deps intentionally limited to avoid re-running this load; intentional: load/sync state on mount or when deps change
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
   useEffect(() => { load(); }, []);
 
   const create = async () => {
@@ -197,6 +217,9 @@ export const AccountsPanel = ({ currentUser, toast, onGoToEmployees }) => {
                 <div className="text-xs mt-0.5 truncate" style={{ fontFamily: F_BODY, color: T.soft }}>
                   {u.employee ? `${u.employee.name}, ID ${u.employee.id}` : u.displayName} <span aria-hidden="true">&middot;</span> last sign-in {fmtDate(u.lastLoginAt)}
                 </div>
+                {u.role === 'CHECKER' && u.employee && u.employee.status !== 'ACTIVE' && (
+                  <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.warn }}>Employee is inactive. Create a new account for the new checker.</div>
+                )}
               </div>
 
               <div className="hidden sm:flex items-center gap-2 shrink-0">
@@ -211,6 +234,13 @@ export const AccountsPanel = ({ currentUser, toast, onGoToEmployees }) => {
                     style={{ border: `1px solid ${T.line}` }}
                     onClick={() => { setError(''); setLinkEmployeeId(''); setLinkFor(u); }}>
                     <Link2 size={14} color={T.brand} />
+                  </button>
+                )}
+                {u.role === 'CHECKER' && (
+                  <button className="pd-clickable p-2 rounded" title="Change username" aria-label={`Change username of ${u.username}`}
+                    style={{ border: `1px solid ${T.line}` }}
+                    onClick={() => { setRenameErr(''); setRenameValue(u.username); setRenameFor(u); }}>
+                    <Pencil size={14} color={T.soft} />
                   </button>
                 )}
                 <button className="pd-clickable p-2 rounded" title="Reset password"
@@ -280,6 +310,17 @@ export const AccountsPanel = ({ currentUser, toast, onGoToEmployees }) => {
         </div>
       </Modal>
 
+      <Modal open={!!renameFor} onClose={() => setRenameFor(null)} title={renameFor ? `Change username of ${renameFor.username}` : 'Change username'} width={420}>
+        <Field label="New username" error={renameErr}>
+          <input data-field="rename" value={renameValue} onChange={e => { setRenameErr(''); setRenameValue(usernameInput(e.target.value)); }}
+            onKeyDown={e => { if (e.key === 'Enter') saveRename(); }} autoCapitalize="none" spellCheck={false}
+            className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
+        </Field>
+        <div className="mt-4 flex gap-2">
+          <Btn onClick={saveRename} loading={renaming} disabled={renaming}>{renaming ? 'Saving...' : 'Save'}</Btn>
+          <Btn variant="outline" onClick={() => setRenameFor(null)} disabled={renaming}>Cancel</Btn>
+        </div>
+      </Modal>
       <Modal open={!!linkFor} onClose={() => setLinkFor(null)} title={linkFor ? `Link ${linkFor.username}` : 'Link account'} width={420}>
         <div className="text-sm mb-3" style={{ fontFamily: F_BODY, color: T.ink, lineHeight: 1.6 }}>
           Pick the employee who uses this account. Their name replaces the one typed when the account was made.

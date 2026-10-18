@@ -133,6 +133,8 @@ enum AuditAction {
   /// Added with the manual double-rate toggle: an Operations Head re-priced a
   /// logged trip between single and double rate before the cutoff closed.
   DELIVERY_DOUBLE_CHANGED
+  /// Added Oct 2026 when usernames became editable.
+  USERNAME_CHANGED
 }
 
 /// Which flow an emailed code belongs to. Password resets and recovery-email
