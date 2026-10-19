@@ -141,7 +141,7 @@ ok('daily-paid and Job Order never carry declared salary or contributions', () =
     assert.deepEqual([data.declaredSalary, data.mp2Amount, data.sssEnrolled, data.philhealthEnrolled, data.pagibigEnrolled], [0, 0, false, false, false], pos);
   }
   const { data: chk } = buildEmployeeData({ name: 'Juan Dela Cruz', position: 'Checker', rate: 450, declaredSalary: 0, mp2: 0, earlyShiftDays: ['SAT'] });
-  assert.deepEqual(chk.earlyShiftDays, ['SAT']);
+  assert.deepEqual(chk.earlyShiftDays, []); // Oct 18: Operations Head and crew never have an early shift
   const staff = shapeEmployee(raw('OPERATIONS_HEAD'));
   assert.deepEqual([staff.declaredSalary, staff.sssOn, staff.phOn, staff.piOn], [15600, true, true, true]);
 });

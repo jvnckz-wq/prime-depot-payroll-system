@@ -1,4 +1,4 @@
-import { isDailyPosition, isNonRegularPosition } from './positions.js';
+import { hasNoEarlyShift, isDailyPosition } from './positions.js';
 
 export const WEEKDAYS = [
   { key: 'MON', label: 'Mon' }, { key: 'TUE', label: 'Tue' }, { key: 'WED', label: 'Wed' },
@@ -9,15 +9,30 @@ export const WEEKDAYS = [
 const DEFAULT_CALL = { crew: '06:30', staff: '06:40' };
 const DEFAULT_EARLY = '06:00';
 
+const ymdOf = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : String(d).slice(0, 10));
+
+// The early-shift schedule in effect on a date. Schedules are effective-dated:
+// the latest one starting on or before the date applies; dates before the first
+// one use the first one. With no schedules, the employee's current fields apply.
+export function scheduleOn(employee, date) {
+  const list = Array.isArray(employee?.shiftSchedules) ? [...employee.shiftSchedules] : [];
+  if (!list.length || !date) return { days: employee?.earlyShiftDays || [], time: employee?.earlyShiftTime || DEFAULT_EARLY };
+  list.sort((a, b) => (ymdOf(a.effectiveFrom) < ymdOf(b.effectiveFrom) ? -1 : 1));
+  const day = ymdOf(date);
+  let pick = list[0];
+  for (const s of list) if (ymdOf(s.effectiveFrom) <= day) pick = s;
+  return { days: pick.days || [], time: pick.time || DEFAULT_EARLY };
+}
+
 export function callTimeFor(employee, date) {
   if (!employee) return DEFAULT_CALL.staff;
 
-  const days = isNonRegularPosition(employee.position) ? [] : (employee.earlyShiftDays || []);
+  const { days, time } = hasNoEarlyShift(employee.position) ? { days: [] } : scheduleOn(employee, date);
   if (days.length && date) {
     const d = date instanceof Date ? date : new Date(date);
     if (!isNaN(d.getTime())) {
       const key = WEEKDAYS[(d.getUTCDay() + 6) % 7].key;
-      if (days.includes(key)) return employee.earlyShiftTime || DEFAULT_EARLY;
+      if (days.includes(key)) return time || DEFAULT_EARLY;
     }
   }
 

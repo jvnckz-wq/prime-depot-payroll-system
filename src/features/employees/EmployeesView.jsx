@@ -4,11 +4,14 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Search, SearchX, Save, Clock, AlertTriangle, Users } from 'lucide-react';
 import { Badge, Btn, Confirm, EmptyState, Eyebrow, Field, H1, Modal, Money, Panel, SkeletonBlock, SkeletonRows, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { POSITIONS, positionLabel } from '@/data/seed';
-import { hasNoContributions, isDailyPosition, isNonRegularPosition } from '@/lib/positions';
+import { hasNoContributions, hasNoEarlyShift, isDailyPosition, isNonRegularPosition } from '@/lib/positions';
 import { WEEKDAYS, describeEarlyShift } from '@/lib/attendance';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { FinalPayView } from '@/features/payroll/FinalPayView.jsx';
 import { addressError, birthdateError, digitsOnly, employeeErrors, firstError, LIMITS, moneyInput, flagErrors } from '@/lib/field-rules';
+const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const dayBefore = (ymd) => { const d = new Date(`${ymd}T00:00:00Z`); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10); };
+const fmtShort = (ymd) => new Date(`${ymd}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
 const BLANK_EMP = {
   id: '', name: '', position: '', rate: '', declaredSalary: '',
@@ -29,6 +32,16 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
   const [busy, setBusy] = useState(false);
   const ff = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const [showErrors, setShowErrors] = useState(false);
+  const shiftChanged = !!editing && !!form && !hasNoEarlyShift(form.position)
+    && ([...(editing.earlyShiftDays || [])].sort().join(',') !== [...(form.earlyShiftDays || [])].sort().join(',')
+      || (editing.earlyShiftTime || '06:00') !== (form.earlyShiftTime || '06:00'));
+  const scheduleHistory = editing && Array.isArray(editing.shiftSchedules) ? editing.shiftSchedules.map((sch, i, all) => {
+    const label = sch.days && sch.days.length ? (sch.days.length === 7 ? `every day ${sch.time}` : `${WEEKDAYS.filter(w => sch.days.includes(w.key)).map(w => w.label).join(', ')} ${sch.time}`) : 'none';
+    const next = all[i + 1];
+    if (i === 0 && next) return `${label}, until ${fmtShort(dayBefore(next.from))}`;
+    if (next) return `${label}, ${fmtShort(sch.from)} to ${fmtShort(dayBefore(next.from))}`;
+    return i === 0 ? label : `${label}, from ${fmtShort(sch.from)}`;
+  }) : [];
   const idLocked = !!editing && editing.idLocked !== false;
   const errs = showErrors && form ? employeeErrors(form, { crew: isDailyPosition(form.position), noContrib: hasNoContributions(form.position), skipId: !!editing && editing.idLocked !== false }) : {};
 
@@ -95,6 +108,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
       address: form.address, contact: form.contact,
       birthdate: form.birthdate,
       earlyShiftDays: form.earlyShiftDays, earlyShiftTime: form.earlyShiftTime,
+      ...(shiftChanged ? { earlyShiftFrom: form.earlyShiftFrom || todayLocal() } : {}),
     };
 
     setBusy(true);
@@ -331,7 +345,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
             </div>
           )}
 
-          {!isNonRegularPosition(form.position) && (
+          {!hasNoEarlyShift(form.position) && (
           <div className="p-3 rounded" style={{ backgroundColor: T.bg }}>
             <Eyebrow>Early Shift</Eyebrow>
             <div className="flex flex-wrap gap-1.5 mb-2.5 mt-2.5">
@@ -368,6 +382,18 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
               <div className="text-xs mt-2.5 flex items-start gap-1.5" style={{ fontFamily: F_BODY, color: T.warn }}>
                 <Clock size={12} className="mt-0.5 shrink-0" />
                 <span>On those days, arriving after {form.earlyShiftTime || '06:00'} counts as late.</span>
+              </div>
+            )}
+            {shiftChanged && (
+              <div className="flex items-center gap-2 mt-3">
+                <span className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.ink }}>Starts on</span>
+                <input type="date" value={form.earlyShiftFrom || todayLocal()} onChange={e => ff('earlyShiftFrom', e.target.value)}
+                  className="px-2 py-1 rounded border text-xs" style={{ borderColor: T.line, fontFamily: F_MONO, color: T.ink }} />
+              </div>
+            )}
+            {scheduleHistory.length > 1 && (
+              <div className="text-xs mt-2" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
+                {scheduleHistory.join(' · ')}
               </div>
             )}
           </div>

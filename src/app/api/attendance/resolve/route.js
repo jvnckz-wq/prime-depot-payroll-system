@@ -19,7 +19,7 @@ export async function POST(request) {
     const biometricId = String(body.biometricId || '').trim();
     if (!biometricId) return NextResponse.json({ error: 'Missing biometric ID.' }, { status: 400 });
 
-    const emp = await prisma.employee.findUnique({ where: { id: biometricId } });
+    const emp = await prisma.employee.findUnique({ where: { id: biometricId }, include: { shiftSchedules: true } });
     if (!emp) {
       return NextResponse.json(
         { error: `No employee is registered with ID ${biometricId}. Register them first, then resolve.` },

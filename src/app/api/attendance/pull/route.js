@@ -60,7 +60,7 @@ export async function POST(request) {
     const days = [];
     for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) days.push(dayStr(d));
 
-    const employees = await prisma.employee.findMany();
+    const employees = await prisma.employee.findMany({ include: { shiftSchedules: true } });
     const empById = new Map(employees.map((e) => [String(e.id), e]));
 
     batch = await prisma.importBatch.create({

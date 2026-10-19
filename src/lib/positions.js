@@ -23,3 +23,6 @@ export const isDailyAttendancePosition = (position) => DAILY_ATTENDANCE.has(posi
 export const isDailyPosition = (position) => isPieceRatePosition(position) || isDailyAttendancePosition(position);
 export const isNonRegularPosition = (position) => NON_REGULAR.has(position);
 export const hasNoContributions = (position) => isDailyPosition(position) || isNonRegularPosition(position);
+
+// Operations Head and crew (Crew Payroll positions) never have an early shift.
+export const hasNoEarlyShift = (position) => position === 'OPERATIONS_HEAD' || position === 'Operations Head' || isDailyPosition(position) || isNonRegularPosition(position);

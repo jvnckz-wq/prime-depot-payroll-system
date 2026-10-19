@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/server/db/prisma';
+import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';
-import { buildEmployeeData, shapeEmployee } from '@/lib/server/services/employees';
+import { buildEmployeeData, shapeEmployee, shiftScheduleOps } from '@/lib/server/services/employees';
 import { employeeIdError } from '@/lib/field-rules';
+import { todayYmdManila } from '@/lib/loan-rules';
+import { withRetry } from '@/lib/server/db/db-retry';
 
 export async function GET() {
   const auth = await requireAdmin();
@@ -11,7 +13,7 @@ export async function GET() {
   try {
     const rows = await prisma.employee.findMany({
       orderBy: { id: 'asc' },
-      include: { account: { select: { username: true, isActive: true } }, _count: { select: { attendance: true, loans: true, payslips: true, drivenDeliveries: true, helper1Deliveries: true, helper2Deliveries: true } } },
+      include: { account: { select: { username: true, isActive: true } }, shiftSchedules: true, _count: { select: { attendance: true, loans: true, payslips: true, drivenDeliveries: true, helper1Deliveries: true, helper2Deliveries: true } } },
     });
     return NextResponse.json({ employees: rows.map(shapeEmployee) });
   } catch (err) {
@@ -39,7 +41,10 @@ export async function POST(request) {
     }
 
     const employee = await prisma.employee.create({ data: { id, ...built.data } });
-    return NextResponse.json({ employee: shapeEmployee(employee) });
+    const ops = shiftScheduleOps(prismaBase, null, employee, body, todayYmdManila());
+    if (ops.length) await withRetry(() => prismaBase.$transaction(ops));
+    const fresh = await prisma.employee.findUnique({ where: { id: employee.id }, include: { shiftSchedules: true } });
+    return NextResponse.json({ employee: shapeEmployee(fresh || employee) });
   } catch (err) {
     console.error('POST /api/employees failed:', err);
     return NextResponse.json({ error: 'Could not register the employee.' }, { status: 500 });

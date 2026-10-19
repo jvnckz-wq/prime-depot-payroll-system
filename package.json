@@ -25,6 +25,7 @@
     "test:wht": "tsx tests/withholding.test.cjs",
     "test:fields": "node tests/field-rules.test.mjs",
     "test:cutoffs": "tsx tests/past-cutoff-loans.test.cjs",
+    "test:shifts": "node tests/shift-schedule.test.mjs",
     "sync": "node scripts/sync-agent.js",
     "sync:live": "node scripts/sync-agent.js --live",
     "pull-cutoff": "node scripts/pull-cutoff.js",

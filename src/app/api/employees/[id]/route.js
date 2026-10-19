@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { withRetry } from '@/lib/server/db/db-retry';
 import { logSecurityEvent, requireAdmin } from '@/lib/server/security/auth';
-import { buildEmployeeData, shapeEmployee } from '@/lib/server/services/employees';
+import { buildEmployeeData, shapeEmployee, shiftScheduleOps } from '@/lib/server/services/employees';
 import { accountAfterEmployeeChange } from '@/lib/checker-accounts';
 import { employeeIdError } from '@/lib/field-rules';
+import { todayYmdManila } from '@/lib/loan-rules';
+import { hasNoEarlyShift } from '@/lib/positions';
 
 const ID_LOCKED = 'This ID can no longer be changed because the employee already has attendance, payroll, deliveries, loans or a linked account. Deactivate and register again if the ID is wrong.';
 
@@ -33,9 +35,10 @@ export async function PATCH(request, { params }) {
 
     const existing = await prisma.employee.findUnique({
       where: { id },
-      include: { account: { select: { id: true, username: true, isActive: true } }, _count: { select: { attendance: true, loans: true, payslips: true, drivenDeliveries: true, helper1Deliveries: true, helper2Deliveries: true } } },
+      include: { shiftSchedules: true, account: { select: { id: true, username: true, isActive: true } }, _count: { select: { attendance: true, loans: true, payslips: true, drivenDeliveries: true, helper1Deliveries: true, helper2Deliveries: true } } },
     });
     if (!existing) return NextResponse.json({ error: `No employee found with ID ${id}.` }, { status: 404 });
+    if (hasNoEarlyShift(built.data.position || existing.position) && 'earlyShiftDays' in built.data) built.data.earlyShiftDays = [];
     if (changingId && (existing.account || Object.values(existing._count).some((n) => n > 0))) {
       return NextResponse.json({ error: ID_LOCKED, field: 'id' }, { status: 409 });
     }
@@ -76,6 +79,8 @@ export async function PATCH(request, { params }) {
       throw err;
     }
     const employee = changingId ? results[1] : results[0];
+    const schedOps = shiftScheduleOps(prismaBase, existing, employee, body, todayYmdManila());
+    if (schedOps.length) await withRetry(() => prismaBase.$transaction(schedOps));
 
     if (disable) {
       await logSecurityEvent('ACCOUNT_DISABLED', {

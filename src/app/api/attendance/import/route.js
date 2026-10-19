@@ -33,7 +33,7 @@ export async function POST(request) {
       days.push(dayStr(d));
     }
 
-    const employees = await prisma.employee.findMany();
+    const employees = await prisma.employee.findMany({ include: { shiftSchedules: true } });
     const empById = new Map(employees.map((e) => [String(e.id), e]));
 
     batch = await prisma.importBatch.create({

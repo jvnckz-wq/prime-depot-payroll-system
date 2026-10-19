@@ -385,6 +385,7 @@ model Employee {
   @@index([position])
   @@index([status])
   @@map("employees")
+  shiftSchedules    EmployeeShiftSchedule[]
 }
 
 // ============================================================================
@@ -901,4 +902,20 @@ model PullRequest {
   error         String?
 
   @@map("pull_requests")
+}
+
+/// Effective-dated early-shift schedule. Late minutes for a day use the
+/// schedule in effect on that day, so changing an employee's early days never
+/// rewrites how earlier days were judged, even when attendance is pulled again.
+model EmployeeShiftSchedule {
+  id            String    @id @default(cuid())
+  employeeId    String
+  effectiveFrom DateTime  @db.Date
+  days          Weekday[]
+  time          String    @default("06:00")
+  createdAt     DateTime  @default(now())
+  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([employeeId, effectiveFrom])
+  @@map("employee_shift_schedules")
 }

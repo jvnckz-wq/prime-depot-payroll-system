@@ -43,7 +43,7 @@ export async function POST(request) {
     }
 
     const roster = cleanRoster(body?.roster);
-    const employees = await prisma.employee.findMany();
+    const employees = await prisma.employee.findMany({ include: { shiftSchedules: true } });
     const empById = new Map(employees.map((e) => [String(e.id), e]));
 
     const matchedIds = [];

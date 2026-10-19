@@ -1,4 +1,4 @@
-import { hasNoContributions, isDailyPosition, isNonRegularPosition, isPieceRatePosition } from '../../positions';
+import { hasNoContributions, hasNoEarlyShift, isDailyPosition, isNonRegularPosition, isPieceRatePosition } from '../../positions';
 import { addressError, birthdateError, isUnpaidPosition, LIMITS, moneyError, mp2Error, personNameError, phMobileError, wholeNumberError } from '../../field-rules';
 
 export const POSITION_LABEL = {
@@ -55,6 +55,9 @@ export function shapeEmployee(e) {
     birthdate: e.birthdate ? e.birthdate.toISOString().slice(0, 10) : '',
     earlyShiftDays: nonRegular ? [] : (e.earlyShiftDays ?? []),
     earlyShiftTime: e.earlyShiftTime ?? '06:00',
+    shiftSchedules: (e.shiftSchedules || [])
+      .map((x) => ({ from: x.effectiveFrom.toISOString().slice(0, 10), days: x.days, time: x.time }))
+      .sort((a, b) => (a.from < b.from ? -1 : 1)),
     crew: isPieceRatePosition(e.position),
     daily: isDailyPosition(e.position),
     nonRegular,
@@ -157,7 +160,33 @@ export function buildEmployeeData(body, { partial = false } = {}) {
       sssEnrolled: false, philhealthEnrolled: false, pagibigEnrolled: false,
     });
   }
-  if (isNonRegularPosition(data.position)) data.earlyShiftDays = [];
+  if (hasNoEarlyShift(data.position)) data.earlyShiftDays = [];
 
   return { data };
+}
+
+const sameDays = (a = [], b = []) => [...a].sort().join(',') === [...b].sort().join(',');
+
+// Writes for an early-shift change. The first schedule (from 2000-01-01) keeps
+// the old days so that earlier dates stay judged the way they were.
+export function shiftScheduleOps(prismaClient, before, after, body, todayYmd) {
+  if (hasNoEarlyShift(after.position)) return [];
+  const changed = !before || !sameDays(before.earlyShiftDays, after.earlyShiftDays) || (before.earlyShiftTime || '06:00') !== (after.earlyShiftTime || '06:00');
+  if (!changed) return [];
+  const from = /^\d{4}-\d{2}-\d{2}$/.test(body?.earlyShiftFrom || '') ? body.earlyShiftFrom : (before ? todayYmd : '2000-01-01');
+  const ops = [];
+  if (before && !(before.shiftSchedules || []).length) {
+    ops.push(prismaClient.employeeShiftSchedule.upsert({
+      where: { employeeId_effectiveFrom: { employeeId: after.id, effectiveFrom: new Date('2000-01-01T00:00:00Z') } },
+      create: { employeeId: after.id, effectiveFrom: new Date('2000-01-01T00:00:00Z'), days: before.earlyShiftDays || [], time: before.earlyShiftTime || '06:00' },
+      update: {},
+    }));
+  }
+  const at = new Date(`${from}T00:00:00Z`);
+  ops.push(prismaClient.employeeShiftSchedule.upsert({
+    where: { employeeId_effectiveFrom: { employeeId: after.id, effectiveFrom: at } },
+    create: { employeeId: after.id, effectiveFrom: at, days: after.earlyShiftDays || [], time: after.earlyShiftTime || '06:00' },
+    update: { days: after.earlyShiftDays || [], time: after.earlyShiftTime || '06:00' },
+  }));
+  return ops;
 }

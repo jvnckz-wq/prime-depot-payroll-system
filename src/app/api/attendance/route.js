@@ -31,7 +31,7 @@ export async function PATCH(request) {
     const orderErr = !body.isLeave && !body.isAbsent ? timeOrderError(body.timeIn, body.timeOut) : '';
     if (orderErr) return NextResponse.json({ error: orderErr }, { status: 400 });
 
-    const emp = await prisma.employee.findUnique({ where: { id: employeeId } });
+    const emp = await prisma.employee.findUnique({ where: { id: employeeId }, include: { shiftSchedules: true } });
     if (!emp) return NextResponse.json({ error: 'Employee not found.' }, { status: 404 });
 
     const date = new Date(`${dateStr}T00:00:00.000Z`);
