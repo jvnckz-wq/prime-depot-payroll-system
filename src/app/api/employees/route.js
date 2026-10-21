@@ -3,8 +3,9 @@ import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';
 import { buildEmployeeData, shapeEmployee, shiftScheduleOps } from '@/lib/server/services/employees';
 import { employeeIdError } from '@/lib/field-rules';
-import { todayYmdManila } from '@/lib/loan-rules';
+import { cutoffOf, todayYmdManila } from '@/lib/loan-rules';
 import { withRetry } from '@/lib/server/db/db-retry';
+import { finalizedCutoffsBetween } from '@/lib/server/services/cutoff-lock';
 
 export async function GET() {
   const auth = await requireAdmin();
@@ -44,9 +45,29 @@ export async function POST(request) {
     const ops = shiftScheduleOps(prismaBase, null, employee, body, todayYmdManila());
     if (ops.length) await withRetry(() => prismaBase.$transaction(ops));
     const fresh = await prisma.employee.findUnique({ where: { id: employee.id }, include: { shiftSchedules: true } });
-    return NextResponse.json({ employee: shapeEmployee(fresh || employee) });
+    const pullQueued = await queueCutoffPullFor(employee.id).catch((err) => { console.error('Could not queue a pull for the new employee:', err); return false; });
+    return NextResponse.json({ employee: shapeEmployee(fresh || employee), pullQueued });
   } catch (err) {
     console.error('POST /api/employees failed:', err);
     return NextResponse.json({ error: 'Could not register the employee.' }, { status: 500 });
   }
+}
+
+// A new employee who is already enrolled on the device may have scans from
+// earlier in this cutoff that live sync skipped. Queue a pull of the cutoff so
+// the sync agent brings them in. Skipped when the device has not reported this
+// ID, a pull is already waiting, or the cutoff is finalized.
+async function queueCutoffPullFor(employeeId) {
+  const sync = await prisma.deviceSync.findUnique({ where: { id: 'primary' }, select: { roster: true } });
+  const roster = Array.isArray(sync?.roster) ? sync.roster : [];
+  if (!roster.some((u) => String(u.userId) === String(employeeId))) return false;
+  const today = todayYmdManila();
+  const { start } = cutoffOf(today);
+  if ((await finalizedCutoffsBetween(start, today)).length) return false;
+  const waiting = await prisma.pullRequest.findFirst({ where: { status: { in: ['PENDING', 'RUNNING'] } }, select: { id: true } });
+  if (waiting) return false;
+  await prisma.pullRequest.create({
+    data: { periodStart: new Date(`${start}T00:00:00.000Z`), periodEnd: new Date(`${today}T00:00:00.000Z`), status: 'PENDING' },
+  });
+  return true;
 }

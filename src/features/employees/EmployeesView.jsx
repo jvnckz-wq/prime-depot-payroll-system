@@ -123,7 +123,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
       setModal(false);
       toast(data.accountDisabled
         ? `Employee updated. The checker account "${data.accountDisabled}" was disabled.`
-        : (editing ? 'Employee updated.' : 'Employee registered.'));
+        : (editing ? 'Employee updated.' : data.pullQueued ? 'Employee registered. Getting this cutoff’s earlier scans from the device.' : 'Employee registered.'));
       await reloadStaff();
     } catch {
       toast('Could not reach the server.', 'error');

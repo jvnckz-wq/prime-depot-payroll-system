@@ -110,7 +110,7 @@ export async function GET(request) {
         include: { employee: { select: { name: true, position: true } } },
         orderBy: { timeIn: 'asc' },
       });
-      const activeCount = await prisma.employee.count({ where: { status: 'ACTIVE' } });
+      const activeCount = await prisma.employee.count({ where: { status: 'ACTIVE', createdAt: { lte: new Date(`${dateStr}T23:59:59.999+08:00`) } } });
       const present = rows
         .filter((a) => !a.isAbsent && !a.isLeave)
         .map((a) => ({

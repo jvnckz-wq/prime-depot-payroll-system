@@ -198,3 +198,6 @@ button:not(.pd-btn):not(.pd-nav-item):not(:disabled):active {
 }
 .pd-shake { animation: pd-shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
 @media (prefers-reduced-motion: reduce) { .pd-shake { animation: none; } }
+
+/* Action cells keep their buttons on one line. */
+.pd-actions, .pd-actions .flex { flex-wrap: nowrap !important; }

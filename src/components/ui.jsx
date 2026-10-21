@@ -47,18 +47,25 @@ export const H1 = ({ children, action }) => (
   </div>
 );
 
-export const Th = ({ children, right = false, center = false, colSpan }) => (
-  <th colSpan={colSpan} className={`text-xs font-semibold uppercase px-3 py-2 ${center ? 'text-center' : right ? 'text-right' : 'text-left'}`}
-    style={{ fontFamily: F_HEAD, color: T.soft, borderBottom: `1px solid ${T.line}`, letterSpacing: '0.04em' }}>
-    {children}
-  </th>
-);
-export const Td = ({ children, right = false, center = false, mono = false, colSpan, style = {} }) => (
-  <td colSpan={colSpan} className={`px-3 py-2 text-sm ${center ? 'text-center' : right ? 'text-right' : 'text-left'}${mono ? ' pd-num whitespace-nowrap' : ''}`}
-    style={{ fontFamily: mono ? F_MONO : F_BODY, color: T.ink, borderBottom: `1px solid ${T.lineSoft}`, ...style }}>
-    {children}
-  </td>
-);
+export const Th = ({ children, right = false, center = false, num = false, money = false, action = false, colSpan }) => {
+  const align = money || right ? 'text-right' : num || action || center ? 'text-center' : 'text-left';
+  return (
+    <th colSpan={colSpan} className={`text-xs font-semibold uppercase px-4 py-2.5 ${align}${action ? ' whitespace-nowrap' : ''}`}
+      style={{ fontFamily: F_HEAD, color: T.soft, borderBottom: `1px solid ${T.line}`, letterSpacing: '0.04em', backgroundColor: '#FAF8F7' }}>
+      {children}
+    </th>
+  );
+};
+export const Td = ({ children, right = false, center = false, mono = false, num = false, money = false, action = false, colSpan, style = {} }) => {
+  const align = money || right ? 'text-right' : num || action || center ? 'text-center' : 'text-left';
+  const digits = mono || num || money;
+  return (
+    <td colSpan={colSpan} className={`px-4 py-2.5 text-sm ${align}${digits ? ' pd-num whitespace-nowrap' : ''}${action ? ' whitespace-nowrap' : ''}`}
+      style={{ fontFamily: digits ? F_MONO : F_BODY, color: T.ink, borderBottom: `1px solid ${T.lineSoft}`, ...(digits ? { fontVariantNumeric: 'tabular-nums' } : {}), ...style }}>
+      {action ? <div className="pd-actions inline-flex items-center justify-center gap-2">{children}</div> : children}
+    </td>
+  );
+};
 
 export const StatCard = ({ label, value, tone = 'neutral', icon: Icon, onClick, compact = false }) => {
   const fg = { green: T.green, amber: T.amber, red: T.red, blue: T.blue, neutral: T.ink }[tone];
