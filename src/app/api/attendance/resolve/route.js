@@ -33,19 +33,17 @@ export async function POST(request) {
     });
     if (!logs.length) return NextResponse.json({ error: 'Nothing left to resolve for this ID.' }, { status: 400 });
 
-    const batch = logs.find((l) => l.importBatch?.periodStart && l.importBatch?.periodEnd)?.importBatch;
-    let start, end;
-    if (batch) {
-      start = new Date(batch.periodStart);
-      end = new Date(batch.periodEnd);
-    } else {
-      const dates = logs.map((l) => dayStr(l.date)).sort();
-      start = new Date(`${dates[0]}T00:00:00.000Z`);
-      end = new Date(`${dates[dates.length - 1]}T00:00:00.000Z`);
+    const daySet = new Set();
+    for (const l of logs) {
+      const b = l.importBatch;
+      const from = b?.periodStart ? new Date(b.periodStart) : new Date(l.date);
+      const to = b?.periodEnd ? new Date(b.periodEnd) : new Date(l.date);
+      for (let d = new Date(from); d <= to; d.setUTCDate(d.getUTCDate() + 1)) daySet.add(dayStr(d));
+      daySet.add(dayStr(l.date));
     }
-
-    const days = [];
-    for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) days.push(dayStr(d));
+    const days = [...daySet].sort();
+    const start = new Date(`${days[0]}T00:00:00.000Z`);
+    const end = new Date(`${days[days.length - 1]}T00:00:00.000Z`);
 
     const punchByDate = new Map(logs.map((l) => [dayStr(l.date), { timeIn: hhmm(l.timeIn), timeOut: hhmm(l.timeOut) }]));
 

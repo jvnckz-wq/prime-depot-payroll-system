@@ -230,8 +230,9 @@ export default function PrimeDepotPayroll() {
   useEffect(() => {
     if (!user || user.role !== 'ADMIN' || !user.totpEnabled) return;
     let cancelled = false;
+    const today = currentCutoffPeriod();
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
-    getJson('/api/attendance')
+    getJson(`/api/attendance?from=${today.start}&to=${today.end}`)
       .then(d => {
         if (cancelled || !d) return;
         setCutoffPeriod(d.period || null);

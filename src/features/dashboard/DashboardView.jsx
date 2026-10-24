@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { Users, Truck, Wallet, FileText, AlertTriangle, TrendingUp, Check, CalendarX, BarChart3, UserPlus } from 'lucide-react';
+import { Users, Truck, Wallet, FileText, AlertTriangle, TrendingUp, Check, CalendarX, BarChart3, UserPlus, ArrowRight } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Av, EmptyState, Eyebrow, H1, Panel, Skeleton, SkeletonRows, StatCard, Td, Th } from '@/components/ui.jsx';
 import { computeStaffPayroll, flattenDeliveries, loanBalance } from '@/lib/payroll';
@@ -9,6 +9,129 @@ import { peso } from '@/lib/utils';
 import { F_BODY, T } from '@/components/theme';
 
 const useIsoLayoutEffect = typeof document !== 'undefined' ? useLayoutEffect : useEffect;
+
+const MAX_LATE = 5;
+const MAX_MISSING = 8;
+const todayHeading = (ymd) => (ymd
+  ? new Date(`${ymd}T00:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
+  : '');
+const SYNC_LOOK = {
+  live: { label: 'Live', color: T.green },
+  stale: { label: 'Delayed', color: T.warn },
+  offline: { label: 'Scanner offline', color: T.red },
+};
+
+const MoreLink = ({ count, onClick }) => (
+  <button onClick={onClick} className="pd-clickable text-xs font-semibold mt-1" style={{ fontFamily: F_BODY, color: T.brand }}>
+    +{count} more
+  </button>
+);
+
+const TodayCard = ({ onOpenLive }) => {
+  const [data, setData] = useState(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetch('/api/attendance?live=1')
+        .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+        .then(d => { if (!cancelled) { setData(d); setFailed(false); } })
+        .catch(err => { console.error('Could not load today\u2019s attendance:', err); if (!cancelled) setFailed(true); });
+    };
+    load();
+    const id = setInterval(load, 60000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
+  const late = (data?.rows || []).filter(r => r.late > 0).sort((a, b) => b.late - a.late);
+  const missing = data?.notYetIn || [];
+  const sync = SYNC_LOOK[data?.sync?.status] || SYNC_LOOK.offline;
+  const stats = [
+    ['Present', data?.stats?.present ?? 0, T.green],
+    ['Late', data?.stats?.late ?? 0, T.brand],
+    ['Not yet in', data?.stats?.notYetIn ?? 0, T.warn],
+  ];
+
+  return (
+    <Panel className="p-4">
+      <div className="flex items-center justify-between mb-3">
+        <Eyebrow>Today{data?.date ? ` \u00b7 ${todayHeading(data.date)}` : ''}</Eyebrow>
+        {data && (
+          <span className="flex items-center gap-1.5 text-xs font-semibold" style={{ fontFamily: F_BODY, color: sync.color }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: sync.color }} />
+            {sync.label}
+          </span>
+        )}
+      </div>
+
+      {!data && !failed && (
+        <div className="flex flex-col gap-2">
+          <Skeleton h={52} w="100%" />
+          <Skeleton h={12} w="60%" />
+          <Skeleton h={12} w="80%" />
+        </div>
+      )}
+      {!data && failed && (
+        <div className="text-sm" style={{ fontFamily: F_BODY, color: T.soft }}>Could not load today&apos;s attendance.</div>
+      )}
+
+      {data && (
+        <>
+          {data.sync?.status === 'offline' && (
+            <div className="text-xs mb-3 p-2 rounded flex items-start gap-2" style={{ fontFamily: F_BODY, backgroundColor: T.warnBg, color: T.ink, lineHeight: 1.5 }}>
+              <AlertTriangle size={14} color={T.warn} className="mt-0.5 shrink-0" />
+              <span>Scans after the scanner went offline are not counted yet.</span>
+            </div>
+          )}
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            {stats.map(([label, value, color]) => (
+              <div key={label} className="rounded p-2.5" style={{ backgroundColor: T.bg }}>
+                <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>{label}</div>
+                <div className="pd-num text-2xl font-bold" style={{ fontFamily: F_BODY, color }}>{value}</div>
+              </div>
+            ))}
+          </div>
+
+          {late.length > 0 && (
+            <div className="mb-3">
+              <div className="text-xs mb-1" style={{ fontFamily: F_BODY, color: T.soft }}>Late</div>
+              {late.slice(0, MAX_LATE).map(r => (
+                <div key={r.id} className="flex items-center justify-between text-sm py-1.5" style={{ fontFamily: F_BODY, borderBottom: `1px solid ${T.lineSoft}` }}>
+                  <span style={{ color: T.ink }}>{r.name}</span>
+                  <span className="pd-num" style={{ color: T.brand }}>{`In ${r.in || '--:--'} \u00b7 ${r.late}m late`}</span>
+                </div>
+              ))}
+              {late.length > MAX_LATE && <MoreLink count={late.length - MAX_LATE} onClick={onOpenLive} />}
+            </div>
+          )}
+
+          {missing.length > 0 && (
+            <div className="mb-3">
+              <div className="text-xs mb-1" style={{ fontFamily: F_BODY, color: T.soft }}>Not yet in</div>
+              <div className="text-sm" style={{ fontFamily: F_BODY, color: T.ink, lineHeight: 1.7 }}>
+                {missing.slice(0, MAX_MISSING).map(e => e.name).join(', ')}
+              </div>
+              {missing.length > MAX_MISSING && <MoreLink count={missing.length - MAX_MISSING} onClick={onOpenLive} />}
+            </div>
+          )}
+
+          {late.length === 0 && missing.length === 0 && (data.stats?.present ?? 0) > 0 && (
+            <div className="text-sm mb-3 flex items-center gap-2" style={{ fontFamily: F_BODY, color: T.green }}>
+              <Check size={14} /> Everyone is in and on time.
+            </div>
+          )}
+
+          <div className="flex justify-end">
+            <button onClick={onOpenLive} className="pd-clickable text-sm font-semibold flex items-center gap-1" style={{ fontFamily: F_BODY, color: T.brand }}>
+              Open Live <ArrowRight size={14} />
+            </button>
+          </div>
+        </>
+      )}
+    </Panel>
+  );
+};
 
 export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loans = [], statutory, setTab, onNavigate, dataLoading = false, cutoffLabel = '', runKey = '', attendanceSummaries = [], unmappedCount = 0, enrolledCount = 0, noScanDeliveries = 0 }) => {
   const loggedToday = Object.keys(deliveries).length;
@@ -53,18 +176,10 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
       .finally(() => { if (!cancelled) setAttTrendLoading(false); });
     return () => { cancelled = true; };
   }, []);
-  const attendanceData = useMemo(() => {
-    if (attTrend.length) {
-      return attTrend.map(t => ({ label: t.label, Present: t.present || 0, Late: t.late || 0, Absent: t.absent || 0 }));
-    }
-    let present = 0, late = 0, absent = 0;
-    for (const s of attendanceSummaries) {
-      present += s.present || 0;
-      late += s.daysLate || 0;
-      absent += s.absent || 0;
-    }
-    return [{ label: cutoffLabel || 'This cutoff', Present: present, Late: late, Absent: absent }];
-  }, [attTrend, attendanceSummaries, cutoffLabel]);
+  const attendanceData = useMemo(
+    () => attTrend.map(t => ({ label: t.label, Present: t.present || 0, Late: t.late || 0, Absent: t.absent || 0 })),
+    [attTrend]
+  );
 
   const snapshot = useMemo(
     () => staff.filter(e => Number(e.rate) > 0).map(e => ({ e, c: computeStaffPayroll(e, loans, statutory, attById[e.id], cutoffKey) })).filter(({ c }) => c.hasAttendance).map(({ e, c }) => ({ name: e.name, gross: c.gross, net: c.net })),
@@ -216,9 +331,16 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
         </Panel>
 
         <div className="flex flex-col gap-4" ref={chartsColRef}>
+          <TodayCard onOpenLive={() => go('attendance', 'live')} />
           <Panel className="p-4">
             <Eyebrow>Attendance</Eyebrow>
-            {!attTrendLoading && !dataLoading && !hasAttendanceData ? (
+            {attTrendLoading || dataLoading ? (
+              <div className="flex flex-col justify-end gap-2" style={{ height: 170 }}>
+                <Skeleton h={14} w="70%" />
+                <Skeleton h={11} w="90%" />
+                <Skeleton h={110} w="100%" />
+              </div>
+            ) : !hasAttendanceData ? (
               <div className="flex items-center justify-center" style={{ height: 170 }}>
                 <EmptyState compact icon={BarChart3} title="No attendance recorded yet" desc="Present, late and absent counts appear once attendance is pulled." />
               </div>

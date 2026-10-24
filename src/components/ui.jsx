@@ -231,7 +231,7 @@ export const Modal = ({ open, onClose, title, children, width = 520 }) => {
   );
 };
 
-export const Confirm = ({ open, onConfirm, onCancel, title, message, confirmLabel = 'Confirm', danger = false, busy = false }) => {
+export const Confirm = ({ open, onConfirm, onCancel, title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger = false, busy = false }) => {
   if (!open) return null;
   return (
     <div className="pd-overlay fixed inset-0 flex items-center justify-center p-5 z-50" style={{ backgroundColor: 'rgba(27,36,48,0.55)' }}>
@@ -239,7 +239,7 @@ export const Confirm = ({ open, onConfirm, onCancel, title, message, confirmLabe
         <div className="text-base font-bold mb-2" style={{ fontFamily: F_HEAD, color: T.ink }}>{title}</div>
         <div className="text-sm mb-5" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>{message}</div>
         <div className="flex justify-end gap-2">
-          <Btn variant="outline" onClick={onCancel} disabled={busy}>Cancel</Btn>
+          <Btn variant="outline" onClick={onCancel} disabled={busy}>{cancelLabel}</Btn>
           <Btn variant={danger ? 'amber' : 'dark'} onClick={onConfirm} loading={busy}>{confirmLabel}</Btn>
         </div>
       </div>

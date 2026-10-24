@@ -12,6 +12,8 @@ function fracToHHMM(f) {
 
 const ymd = (d) => d.toISOString().slice(0, 10);
 
+const importError = (message) => Object.assign(new Error(message), { status: 400 });
+
 export function parseZktecoXls(buffer) {
   const wb = XLSX.read(buffer, { type: 'buffer', cellDates: false });
 
@@ -28,7 +30,7 @@ export function parseZktecoXls(buffer) {
       break;
     }
   }
-  if (!period) throw new Error('Could not read the reporting period from the file. Is this a ZKTeco attendance export?');
+  if (!period) throw importError('Could not read the reporting period from the file. Is this a ZKTeco attendance export?');
 
   const roster = [];
   const seen = new Set();
@@ -86,6 +88,13 @@ export function parseZktecoXls(buffer) {
       }
     }
   }
+
+  for (const [userId, rec] of punchMap) {
+    if (!seen.has(userId)) { seen.add(userId); roster.push({ userId, name: rec.name || '' }); }
+  }
+  if (!roster.length) throw importError('No employees were found in this file. Nothing was imported.');
+  const hasScans = [...punchMap.values()].some((rec) => Object.keys(rec.days).length > 0);
+  if (!hasScans) throw importError(`This file has no scans from ${ymd(period.start)} to ${ymd(period.end)}. Nothing was imported.`);
 
   return { period, roster, punches: punchMap };
 }

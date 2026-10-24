@@ -46,7 +46,8 @@ export async function POST(request) {
     if (ops.length) await withRetry(() => prismaBase.$transaction(ops));
     const fresh = await prisma.employee.findUnique({ where: { id: employee.id }, include: { shiftSchedules: true } });
     const pullQueued = await queueCutoffPullFor(employee.id).catch((err) => { console.error('Could not queue a pull for the new employee:', err); return false; });
-    return NextResponse.json({ employee: shapeEmployee(fresh || employee), pullQueued });
+    const pendingScans = await unmappedScansFor(employee.id).catch((err) => { console.error('Could not check saved scans for the new employee:', err); return null; });
+    return NextResponse.json({ employee: shapeEmployee(fresh || employee), pullQueued, pendingScans });
   } catch (err) {
     console.error('POST /api/employees failed:', err);
     return NextResponse.json({ error: 'Could not register the employee.' }, { status: 500 });
@@ -70,4 +71,24 @@ async function queueCutoffPullFor(employeeId) {
     data: { periodStart: new Date(`${start}T00:00:00.000Z`), periodEnd: new Date(`${today}T00:00:00.000Z`), status: 'PENDING' },
   });
   return true;
+}
+
+async function unmappedScansFor(employeeId) {
+  const logs = await prisma.unmappedLog.findMany({
+    where: { biometricId: String(employeeId), isResolved: false },
+    select: { date: true },
+  });
+  if (!logs.length) return null;
+  const byStart = new Map();
+  for (const { date } of logs) {
+    const c = cutoffOf(date.toISOString().slice(0, 10));
+    const entry = byStart.get(c.start) || { ...c, days: 0 };
+    entry.days += 1;
+    byStart.set(c.start, entry);
+  }
+  const all = [...byStart.values()].sort((a, b) => (a.start < b.start ? -1 : 1));
+  const locked = new Set((await finalizedCutoffsBetween(all[0].start, all[all.length - 1].end)).map((c) => c.start));
+  const open = all.filter((c) => !locked.has(c.start));
+  if (!open.length) return null;
+  return { days: open.reduce((n, c) => n + c.days, 0), cutoffs: open.map(({ start, end }) => ({ start, end })) };
 }

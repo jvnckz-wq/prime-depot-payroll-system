@@ -35,3 +35,7 @@ next-env.d.ts
 env.txt
 
 sync-agent.log
+
+# npx skills installs (machine-local; symlinks are absolute paths)
+/.agents/
+/.claude/skills/design-taste-frontend/

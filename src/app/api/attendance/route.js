@@ -6,6 +6,7 @@ import { timeOrderError } from '@/lib/field-rules';
 import { enrolledNotRegistered } from '@/lib/server/services/device-roster';
 import { cutoffsWithAttendance, finalizedCutoffsBetween, lockedMessage } from '@/lib/server/services/cutoff-lock';
 import { countNoScanDeliveries } from '@/lib/server/services/crew-scans';
+import { cutoffOf } from '@/lib/loan-rules';
 
 const hhmm = (d) => (d ? new Date(d).toISOString().slice(11, 16) : null);
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
@@ -110,7 +111,15 @@ export async function GET(request) {
         include: { employee: { select: { name: true, position: true } } },
         orderBy: { timeIn: 'asc' },
       });
-      const activeCount = await prisma.employee.count({ where: { status: 'ACTIVE', createdAt: { lte: new Date(`${dateStr}T23:59:59.999+08:00`) } } });
+      const expected = await prisma.employee.findMany({
+        where: { status: 'ACTIVE', position: { not: 'OPERATIONS_HEAD' }, createdAt: { lte: new Date(`${dateStr}T23:59:59.999+08:00`) } },
+        select: { id: true, name: true },
+      });
+      const withRow = new Set(rows.map((a) => a.employeeId));
+      const notYetIn = expected
+        .filter((e) => !withRow.has(e.id))
+        .map((e) => ({ id: e.id, name: e.name }))
+        .sort((a, b) => a.name.localeCompare(b.name));
       const present = rows
         .filter((a) => !a.isAbsent && !a.isLeave)
         .map((a) => ({
@@ -126,7 +135,7 @@ export async function GET(request) {
       const stats = {
         present: present.length,
         late: present.filter((r) => r.late > 0).length,
-        notYetIn: Math.max(0, activeCount - present.length),
+        notYetIn: notYetIn.length,
       };
 
       let sync = { status: 'offline', lastSyncAt: null, lastScanAt: null };
@@ -142,39 +151,29 @@ export async function GET(request) {
       }
 
       return NextResponse.json({
-        finalized: (await finalizedCutoffsBetween(dateStr, dateStr)).length > 0, date: dateStr, today: todayStr, isToday, rows: present, stats, sync });
+        finalized: (await finalizedCutoffsBetween(dateStr, dateStr)).length > 0, date: dateStr, today: todayStr, isToday, rows: present, notYetIn, stats, sync });
     }
 
     if (searchParams.get('trend')) {
-      const batches = await prisma.importBatch.findMany({
-        where: { status: 'COMPLETED' },
-        orderBy: { importedAt: 'desc' },
-        take: 6,
-      });
-      const ids = batches.map((b) => b.id);
-      const rows = ids.length
+      const recent = (await cutoffsWithAttendance()).slice(-6);
+      const MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const agg = new Map(recent.map((c) => {
+        const [, m, d] = c.start.split('-').map(Number);
+        return [c.start, { label: `${MO[m - 1]} ${d}\u2013${Number(c.end.slice(8, 10))}`, present: 0, late: 0, absent: 0 }];
+      }));
+      const rows = recent.length
         ? await prisma.attendance.findMany({
-            where: { importBatchId: { in: ids } },
-            select: { importBatchId: true, isAbsent: true, isLeave: true, tardinessMins: true },
+            where: { date: { gte: new Date(`${recent[0].start}T00:00:00.000Z`), lte: new Date(`${recent[recent.length - 1].end}T00:00:00.000Z`) } },
+            select: { date: true, isAbsent: true, isLeave: true, tardinessMins: true },
           })
         : [];
-      const agg = {};
-      for (const b of batches) agg[b.id] = { present: 0, late: 0, absent: 0 };
       for (const r of rows) {
-        const a = agg[r.importBatchId];
+        const a = agg.get(cutoffOf(ymd(r.date)).start);
         if (!a) continue;
         if (r.isAbsent) a.absent++;
-        else if (r.isLeave) { }
-        else { a.present++; if (r.tardinessMins > 0) a.late++; }
+        else if (!r.isLeave) { a.present++; if (r.tardinessMins > 0) a.late++; }
       }
-      const MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const label = (b) => {
-        if (!b.periodStart || !b.periodEnd) return b.filename || 'Cutoff';
-        const s = new Date(b.periodStart), e = new Date(b.periodEnd);
-        return `${MO[s.getUTCMonth()]} ${s.getUTCDate()}\u2013${e.getUTCDate()}`;
-      };
-      const trend = batches.slice().reverse().map((b) => ({ label: label(b), ...agg[b.id] }));
-      return NextResponse.json({ trend });
+      return NextResponse.json({ trend: [...agg.values()] });
     }
 
     const latest = await prisma.importBatch.findFirst({

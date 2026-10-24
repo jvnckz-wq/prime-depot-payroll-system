@@ -8,6 +8,7 @@ import { hasNoContributions, hasNoEarlyShift, isDailyPosition, isNonRegularPosit
 import { WEEKDAYS, describeEarlyShift } from '@/lib/attendance';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { FinalPayView } from '@/features/payroll/FinalPayView.jsx';
+import { cutoffLabel } from '@/lib/utils';
 import { addressError, birthdateError, digitsOnly, employeeErrors, firstError, LIMITS, moneyInput, flagErrors } from '@/lib/field-rules';
 const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const dayBefore = (ymd) => { const d = new Date(`${ymd}T00:00:00Z`); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10); };
@@ -29,6 +30,8 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
   const [finalPayFor, setFinalPayFor] = useState(null);
   const [form, setForm] = useState(BLANK_EMP);
   const [confirm, setConfirm] = useState(null);
+  const [scanPrompt, setScanPrompt] = useState(null);
+  const [addingScans, setAddingScans] = useState(false);
   const [busy, setBusy] = useState(false);
   const ff = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const [showErrors, setShowErrors] = useState(false);
@@ -124,11 +127,32 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
       toast(data.accountDisabled
         ? `Employee updated. The checker account "${data.accountDisabled}" was disabled.`
         : (editing ? 'Employee updated.' : data.pullQueued ? 'Employee registered. Getting this cutoff’s earlier scans from the device.' : 'Employee registered.'));
+      if (!editing && data.pendingScans) setScanPrompt({ id: payload.id, name: payload.name, ...data.pendingScans });
       await reloadStaff();
     } catch {
       toast('Could not reach the server.', 'error');
     } finally {
       setBusy(false);
+    }
+  };
+  const addSavedScans = async () => {
+    if (!scanPrompt) return;
+    setAddingScans(true);
+    try {
+      const res = await fetch('/api/attendance/resolve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ biometricId: scanPrompt.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast(data.error || 'Could not add the scans.', 'error'); return; }
+      toast(`Added ${data.present} day(s) with scans to ${scanPrompt.name}'s attendance.`
+        + (data.skippedDays ? ` ${data.skippedDays} day(s) in a finalized cutoff were skipped.` : ''));
+      setScanPrompt(null);
+    } catch {
+      toast('Could not reach the server.', 'error');
+    } finally {
+      setAddingScans(false);
     }
   };
   const toggleStatus = async (r) => {
@@ -445,6 +469,11 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
         title={confirm?.status === 'Active' ? 'Deactivate employee?' : 'Reactivate employee?'}
         message={`${confirm?.name} will be marked ${confirm?.status === 'Active' ? 'inactive and excluded from payroll' : 'active'}.`}
         confirmLabel={confirm?.status === 'Active' ? 'Deactivate' : 'Reactivate'} danger={confirm?.status === 'Active'} />
+
+      <Confirm open={!!scanPrompt} onCancel={() => setScanPrompt(null)} onConfirm={addSavedScans} busy={addingScans}
+        title={`${scanPrompt?.name} has saved scans`}
+        message={`ID ${scanPrompt?.id} has scans from ${(scanPrompt?.cutoffs || []).map(c => cutoffLabel(c)).join(' and ')} that are not in attendance yet. Add them now?`}
+        confirmLabel="Add scans" cancelLabel="Not now" />
     </div>
   );
 };
