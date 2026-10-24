@@ -29,3 +29,10 @@ export async function enrolledNotRegistered() {
   const users = roster.filter((u) => !knownIds.has(u.userId) && !ignored.has(u.userId));
   return { users, rosterAt: sync.rosterAt };
 }
+
+export async function deviceRoster() {
+  const sync = await prisma.deviceSync.findUnique({ where: { id: 'primary' }, select: { roster: true } });
+  let raw = sync?.roster;
+  if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch { raw = []; } }
+  return cleanRoster(Array.isArray(raw) ? raw : []) || [];
+}

@@ -4,6 +4,9 @@ import { withRetry } from '@/lib/server/db/db-retry';
 import { requireAdmin } from '@/lib/server/security/auth';
 import { MAX_IMPORT_BYTES, base64TooLarge } from '@/lib/server/security/uploads';
 import { parseZktecoXls } from '@/lib/server/services/attendance-import';
+import { deviceRoster } from '@/lib/server/services/device-roster';
+import { attlogForCutoff, decodeAttlog, isAttlogName } from '@/lib/attlog';
+import { todayYmdManila } from '@/lib/loan-rules';
 import { buildAttendanceRow } from '@/lib/attendance';
 import { finalizedCutoffsBetween, lockedMessage } from '@/lib/server/services/cutoff-lock';
 
@@ -23,7 +26,24 @@ export async function POST(request) {
     const tooLarge = base64TooLarge(body.dataBase64, MAX_IMPORT_BYTES, 'That file');
     if (tooLarge) return NextResponse.json({ error: tooLarge }, { status: 413 });
 
-    const { period, roster, punches } = parseZktecoXls(Buffer.from(body.dataBase64, 'base64'));
+    const fileBuffer = Buffer.from(body.dataBase64, 'base64');
+    let parsed;
+    try {
+      if (isAttlogName(filename)) {
+        parsed = attlogForCutoff(decodeAttlog(fileBuffer), String(body.cutoffStart || ''), todayYmdManila());
+        const known = new Map(parsed.roster.map((u) => [u.userId, u]));
+        for (const u of await deviceRoster()) {
+          if (known.has(u.userId)) known.get(u.userId).name = u.name || '';
+          else parsed.roster.push({ userId: u.userId, name: u.name || '' });
+        }
+      } else {
+        parsed = parseZktecoXls(fileBuffer);
+      }
+    } catch (err) {
+      if (err?.status) return NextResponse.json({ error: err.message }, { status: err.status });
+      throw err;
+    }
+    const { period, roster, punches } = parsed;
 
     const lockedImport = await finalizedCutoffsBetween(dayStr(period.start), dayStr(period.end));
     if (lockedImport.length) return NextResponse.json({ error: lockedMessage(lockedImport) }, { status: 409 });
@@ -98,6 +118,8 @@ export async function POST(request) {
     return NextResponse.json({
       periodStart: dayStr(period.start),
       ok: true,
+      cutoffEnd: parsed.cutoffEnd || null,
+      skippedLines: parsed.badLines || 0,
       period: { start: days[0], end: days[days.length - 1] },
       matchedEmployees: matchedIds.length,
       mappedRows: attendanceRows.length,

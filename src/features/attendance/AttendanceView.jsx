@@ -280,7 +280,8 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
 
   const importFile = async (file) => {
     if (!file) return;
-    if (!/\.(xls|xlsx)$/i.test(file.name)) { toast('Please choose a .xls or .xlsx biometric export.', 'error'); return; }
+    if (!/\.(dat|xls|xlsx)$/i.test(file.name)) { toast('Please choose the device\'s .dat file or a .xls or .xlsx export.', 'error'); return; }
+    const isDat = /\.dat$/i.test(file.name);
     setImporting(true);
     try {
       const dataBase64 = await new Promise((resolve, reject) => {
@@ -291,11 +292,13 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
       });
       const res = await fetch('/api/attendance/import', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: file.name, dataBase64 }),
+        body: JSON.stringify({ filename: file.name, dataBase64, ...(isDat ? { cutoffStart: pullSel.from } : {}) }),
       });
       const result = await res.json();
       if (!res.ok) { toast(result.error || 'Import failed.', 'error'); return; }
-      toast(`Imported ${result.mappedRows} rows for ${result.matchedEmployees} employee(s)` + (result.unmappedUsers ? ` · ${result.unmappedUsers} unmapped ID(s).` : '.'));
+      const upTo = result.cutoffEnd && result.period?.end && result.period.end < result.cutoffEnd ? ` · scans up to ${fmtDay(result.period.end)}` : '';
+      const skipped = result.skippedLines ? ` · ${result.skippedLines} unreadable line(s) skipped` : '';
+      toast(`Imported ${result.mappedRows} rows for ${result.matchedEmployees} employee(s)${upTo}${skipped}` + (result.unmappedUsers ? ` · ${result.unmappedUsers} unmapped ID(s).` : '.'));
       const importedStart = result.periodStart || result.period?.start;
       if (importedStart && importedStart !== pullSel.from) setPullSel(cutoffFor(importedStart)); else await load();
       setShowImport(false);
@@ -473,7 +476,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
 
   return (
     <div className="p-4 sm:p-6">
-      <input ref={fileRef} type="file" accept=".xls,.xlsx" onChange={onFile} style={{ display: 'none' }} />
+      <input ref={fileRef} type="file" accept=".dat,.xls,.xlsx" onChange={onFile} style={{ display: 'none' }} />
       <H1>Attendance</H1>
 
       {subTab !== 'live' && (
@@ -639,7 +642,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                   );
                 })()}
                 {!data.finalized && <Btn onClick={queuePull} loading={pullBusy || pullActive} disabled={pullBusy || pullActive}>{pullActive ? 'Pulling…' : 'Pull from device'}</Btn>}
-                {!data.finalized && <Btn variant="outline" onClick={() => setShowImport(true)}>Import .xls</Btn>}
+                {!data.finalized && <Btn variant="outline" onClick={() => setShowImport(true)}>Import file</Btn>}
               </div>
             </div>
             {(() => {
@@ -663,8 +666,8 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                 className="border-2 border-dashed flex flex-col items-center justify-center text-center gap-2 px-4 py-6 m-4 rounded-md transition-colors"
                 style={{ borderColor: dragOver ? T.brand : T.line, backgroundColor: dragOver ? T.brandBg : T.surface }}>
                 {importing ? <Loader2 size={22} color={T.brand} className="pd-spin" /> : <Upload size={22} color={dragOver ? T.brand : T.soft} />}
-                <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>{importing ? 'Reading and matching the attendance file…' : 'Drag & drop the biometric .xls here'}</div>
-                <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Fallback if the device pull is unavailable — .xls or .xlsx</div>
+                <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>{importing ? 'Reading and matching the attendance file…' : 'Drag & drop the biometric file here'}</div>
+                <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>USB .dat goes into {cutoffLabel(pullSel)}. A .xls or .xlsx uses its own dates.</div>
                 <div className="flex gap-2">
                   <Btn variant="outline" onClick={() => fileRef.current?.click()} loading={importing} disabled={importing}>{importing ? 'Importing…' : 'Browse for a file'}</Btn>
                   {!importing && <Btn variant="ghost" onClick={() => setShowImport(false)}>Cancel</Btn>}
