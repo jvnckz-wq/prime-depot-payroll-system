@@ -44,8 +44,10 @@ const FILTERS = [
   ['voided', 'Voided'],
 ];
 
-export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = Infinity, toast, onChanged, onOpenDtr, initialFilter = 'all', title = 'Deliveries', reviewDays = 0 }) => {
-  const [filter, setFilter] = useState(initialFilter);
+export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = Infinity, toast, onChanged, onOpenDtr, initialFilter = 'all', title = 'Deliveries', reviewDays = 0, filter: controlledFilter, onFilterChange }) => {
+  const [innerFilter, setInnerFilter] = useState(initialFilter);
+  const filter = controlledFilter ?? innerFilter;
+  const setFilter = (v) => (onFilterChange ? onFilterChange(v) : setInnerFilter(v));
   const [truckFilter, setTruckFilter] = useState('');
   const [openId, setOpenId] = useState(null);
   const [voiding, setVoiding] = useState(false);

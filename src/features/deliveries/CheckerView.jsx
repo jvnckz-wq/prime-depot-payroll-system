@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { LogOut } from 'lucide-react';
 import { DeliveryForm } from '@/features/deliveries/DeliveryForm.jsx';
-import { DeliveryTable } from '@/features/deliveries/DeliveryTable.jsx';
+import { DeliveryTable, tripsFromLog } from '@/features/deliveries/DeliveryTable.jsx';
 import { Av, BigStat, Confirm, Eyebrow, Panel } from '@/components/ui.jsx';
 import { CREW_RATE_FALLBACK } from '@/data/seed';
-import { flattenDeliveries } from '@/lib/payroll';
 import { FONTS, F_HEAD, T } from '@/components/theme';
 /* eslint-disable @next/next/no-img-element -- user avatars are base64 data URIs; next/image adds no value and cannot optimize data URIs */
 
@@ -40,12 +39,21 @@ export const CheckerView = ({ currentUser, deliveries, reloadDeliveries, rates, 
     }
   };
 
-  const allTrips = useMemo(() => flattenDeliveries(deliveries), [deliveries]);
-  const trucksActive = new Set(allTrips.map(t => t.crewId)).size;
-  const bonusTrucks = Object.values(deliveries).filter(log => {
-    const tc = new Set((log.items || []).map(i => i.seq).filter(Boolean)).size;
-    return tc >= crewRates.bonusTrips;
-  }).length;
+  const trips = useMemo(() => tripsFromLog(deliveries), [deliveries]);
+  const loggedCount = trips.filter(t => !t.voided).length;
+  const reviewCount = trips.filter(t => !t.voided && t.noScan.length > 0).length;
+  const voidedCount = trips.filter(t => t.voided).length;
+  const [tableFilter, setTableFilter] = useState('all');
+  const tableRef = useRef(null);
+  const showFilter = (f) => {
+    setTableFilter(f);
+    if (tableRef.current) tableRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  const stats = [
+    ['all', loggedCount, 'Deliveries Logged', T.ink],
+    ['review', reviewCount, 'Needs Review', reviewCount ? T.warn : T.soft],
+    ['voided', voidedCount, 'Voided Today', voidedCount ? T.red : T.soft],
+  ];
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: T.bg }}>
@@ -77,9 +85,13 @@ export const CheckerView = ({ currentUser, deliveries, reloadDeliveries, rates, 
       <div className="max-w-6xl mx-auto p-3.5 sm:p-5">
         <Panel className="p-4 mb-4">
           <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:justify-around sm:gap-3">
-            <BigStat value={allTrips.length} label="Deliveries Logged" />
-            <BigStat value={trucksActive} label="Trucks Active" tone={T.blue} />
-            <BigStat value={bonusTrucks} label="Trucks at Bonus" tone={T.amber} />
+            {stats.map(([f, value, label, tone]) => (
+              <button key={f} type="button" onClick={() => showFilter(f)} aria-pressed={tableFilter === f}
+                className="pd-clickable rounded py-1.5" title={`Show ${label.toLowerCase()} in the table`}
+                style={{ borderBottom: `2px solid ${tableFilter === f ? T.brand : 'transparent'}` }}>
+                <BigStat value={value} label={label} tone={tone} />
+              </button>
+            ))}
           </div>
         </Panel>
 
@@ -90,8 +102,10 @@ export const CheckerView = ({ currentUser, deliveries, reloadDeliveries, rates, 
             <DeliveryForm crews={trucks} rates={rates} onSubmit={logDelivery} />
           </Panel>
 
-          <DeliveryTable log={deliveries} trucks={trucks} bonusTrips={crewRates.bonusTrips} toast={toast}
-            title="Delivery History" onChanged={reloadDeliveries} />
+          <div ref={tableRef} style={{ scrollMarginTop: 12 }}>
+            <DeliveryTable log={deliveries} trucks={trucks} bonusTrips={crewRates.bonusTrips} toast={toast}
+              title="Delivery History" onChanged={reloadDeliveries} filter={tableFilter} onFilterChange={setTableFilter} />
+          </div>
         </div>
       </div>
     </div>
