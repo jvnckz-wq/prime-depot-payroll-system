@@ -115,13 +115,13 @@ export async function GET(request) {
         where: { status: 'ACTIVE', position: { not: 'OPERATIONS_HEAD' }, createdAt: { lte: new Date(`${dateStr}T23:59:59.999+08:00`) } },
         select: { id: true, name: true },
       });
-      const withRow = new Set(rows.map((a) => a.employeeId));
+      const accounted = new Set(rows.filter((a) => !a.isAbsent || a.isLeave || a.isManualEdit).map((a) => a.employeeId));
       const notYetIn = expected
-        .filter((e) => !withRow.has(e.id))
+        .filter((e) => !accounted.has(e.id))
         .map((e) => ({ id: e.id, name: e.name }))
         .sort((a, b) => a.name.localeCompare(b.name));
       const present = rows
-        .filter((a) => !a.isAbsent && !a.isLeave)
+        .filter((a) => !a.isAbsent && !a.isLeave && a.employee?.position !== 'OPERATIONS_HEAD')
         .map((a) => ({
           id: a.employeeId,
           name: (a.employee && a.employee.name) || a.employeeId,

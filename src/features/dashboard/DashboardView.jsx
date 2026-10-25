@@ -137,10 +137,10 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
   const loggedToday = Object.keys(deliveries).length;
   const deliveriesLogged = useMemo(() => flattenDeliveries(deliveries).length, [deliveries]);
 
-  const chartsColRef = useRef(null);
+  const todayColRef = useRef(null);
   const [snapshotHeight, setSnapshotHeight] = useState(undefined);
   useIsoLayoutEffect(() => {
-    const el = chartsColRef.current;
+    const el = todayColRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return undefined;
     const mq = window.matchMedia('(min-width: 1024px)');
     const sync = () => setSnapshotHeight(mq.matches ? el.offsetHeight : undefined);
@@ -287,7 +287,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
         </Panel>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4 items-start">
+      <div className="grid lg:grid-cols-2 gap-4">
         <Panel className="overflow-hidden lg:flex lg:flex-col" style={{ height: snapshotHeight }}>
           <div className="px-4 pt-4 pb-2 shrink-0 flex items-center justify-between gap-2 flex-wrap">
             <Eyebrow>{cutoffLabel} · Payroll Snapshot</Eyebrow>
@@ -330,60 +330,61 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
           )}
         </Panel>
 
-        <div className="flex flex-col gap-4" ref={chartsColRef}>
+        <div ref={todayColRef} className="self-start">
           <TodayCard onOpenLive={() => go('attendance', 'live')} />
-          <Panel className="p-4">
-            <Eyebrow>Attendance</Eyebrow>
-            {attTrendLoading || dataLoading ? (
-              <div className="flex flex-col justify-end gap-2" style={{ height: 170 }}>
-                <Skeleton h={14} w="70%" />
-                <Skeleton h={11} w="90%" />
-                <Skeleton h={110} w="100%" />
-              </div>
-            ) : !hasAttendanceData ? (
-              <div className="flex items-center justify-center" style={{ height: 170 }}>
-                <EmptyState compact icon={BarChart3} title="No attendance recorded yet" desc="Present, late and absent counts appear once attendance is pulled." />
-              </div>
-            ) : (
-            <ResponsiveContainer width="100%" height={170}>
-              <BarChart data={attendanceData} margin={{ left: -20, right: 5, top: 5, bottom: 0 }} barGap={2} barCategoryGap="22%">
-                <CartesianGrid strokeDasharray="3 3" stroke={T.lineSoft} vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 10, fill: T.soft }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: T.soft }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ borderRadius: 8, border: `1px solid ${T.line}`, fontSize: 12, fontFamily: F_BODY }} />
-                <Legend wrapperStyle={{ fontSize: 11, fontFamily: F_BODY }} iconType="circle" iconSize={8} />
-                <Bar dataKey="Present" fill={T.green} radius={[2, 2, 0, 0]} animationDuration={800} />
-                <Bar dataKey="Late" fill={T.brand} radius={[2, 2, 0, 0]} animationDuration={800} />
-                <Bar dataKey="Absent" fill={T.warn} radius={[2, 2, 0, 0]} animationDuration={800} />
-              </BarChart>
-            </ResponsiveContainer>
-            )}
-          </Panel>
-          <Panel className="p-4">
-            <div className="flex items-center justify-between mb-1">
-              <Eyebrow>Bi-monthly Payroll Cost</Eyebrow>
-              <TrendingUp size={14} color={T.soft} />
-            </div>
-            <div className="text-xs mb-3" style={{ fontFamily: F_BODY, color: T.soft }}>Net salary released · last 6 cutoffs</div>
-            {releasesLoading ? (
-              <div className="flex items-center justify-center" style={{ height: 150 }}><Skeleton w="85%" h={110} /></div>
-            ) : trendData.length === 0 ? (
-              <div className="flex items-center justify-center" style={{ height: 150 }}>
-                <EmptyState compact icon={TrendingUp} title="No released cutoffs yet" desc="Finalize a cutoff in Staff Payroll to start this trend." />
-              </div>
-            ) : (
-            <ResponsiveContainer width="100%" height={150}>
-              <LineChart data={trendData} margin={{ left: -20, right: 5, top: 5, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={T.lineSoft} vertical={false} />
-                <XAxis dataKey="mo" tick={{ fontSize: 11, fill: T.soft }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: T.soft }} axisLine={false} tickLine={false} tickFormatter={v => `₱${v / 1000}k`} />
-                <Tooltip formatter={v => [peso(v), 'Payroll']} contentStyle={{ borderRadius: 8, border: `1px solid ${T.line}`, fontSize: 12, fontFamily: F_BODY }} />
-                <Line type="monotone" dataKey="payroll" stroke={T.brand} strokeWidth={2.5} dot={{ r: 3, fill: T.brand }} activeDot={{ r: 5 }} animationDuration={800} />
-              </LineChart>
-            </ResponsiveContainer>
-            )}
-          </Panel>
         </div>
+
+        <Panel className="p-4">
+          <div className="flex items-center justify-between mb-1">
+            <Eyebrow>Bi-monthly Payroll Cost</Eyebrow>
+            <TrendingUp size={14} color={T.soft} />
+          </div>
+          <div className="text-xs mb-3" style={{ fontFamily: F_BODY, color: T.soft }}>Net salary released · last 6 cutoffs</div>
+          {releasesLoading ? (
+            <div className="flex items-center justify-center" style={{ height: 170 }}><Skeleton w="85%" h={110} /></div>
+          ) : trendData.length === 0 ? (
+            <div className="flex items-center justify-center" style={{ height: 170 }}>
+              <EmptyState compact icon={TrendingUp} title="No released cutoffs yet" desc="Finalize a cutoff in Staff Payroll to start this trend." />
+            </div>
+          ) : (
+          <ResponsiveContainer width="100%" height={170}>
+            <LineChart data={trendData} margin={{ left: -20, right: 5, top: 5, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={T.lineSoft} vertical={false} />
+              <XAxis dataKey="mo" tick={{ fontSize: 11, fill: T.soft }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: T.soft }} axisLine={false} tickLine={false} tickFormatter={v => `₱${v / 1000}k`} />
+              <Tooltip formatter={v => [peso(v), 'Payroll']} contentStyle={{ borderRadius: 8, border: `1px solid ${T.line}`, fontSize: 12, fontFamily: F_BODY }} />
+              <Line type="monotone" dataKey="payroll" stroke={T.brand} strokeWidth={2.5} dot={{ r: 3, fill: T.brand }} activeDot={{ r: 5 }} animationDuration={800} />
+            </LineChart>
+          </ResponsiveContainer>
+          )}
+        </Panel>
+        <Panel className="p-4">
+          <Eyebrow>Attendance</Eyebrow>
+          {attTrendLoading || dataLoading ? (
+            <div className="flex flex-col justify-end gap-2" style={{ height: 170 }}>
+              <Skeleton h={14} w="70%" />
+              <Skeleton h={11} w="90%" />
+              <Skeleton h={110} w="100%" />
+            </div>
+          ) : !hasAttendanceData ? (
+            <div className="flex items-center justify-center" style={{ height: 170 }}>
+              <EmptyState compact icon={BarChart3} title="No attendance recorded yet" desc="Present, late and absent counts appear once attendance is pulled." />
+            </div>
+          ) : (
+          <ResponsiveContainer width="100%" height={170}>
+            <BarChart data={attendanceData} margin={{ left: -20, right: 5, top: 5, bottom: 0 }} barGap={2} barCategoryGap="22%">
+              <CartesianGrid strokeDasharray="3 3" stroke={T.lineSoft} vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 10, fill: T.soft }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: T.soft }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={{ borderRadius: 8, border: `1px solid ${T.line}`, fontSize: 12, fontFamily: F_BODY }} />
+              <Legend wrapperStyle={{ fontSize: 11, fontFamily: F_BODY }} iconType="circle" iconSize={8} />
+              <Bar dataKey="Present" fill={T.green} radius={[2, 2, 0, 0]} animationDuration={800} />
+              <Bar dataKey="Late" fill={T.brand} radius={[2, 2, 0, 0]} animationDuration={800} />
+              <Bar dataKey="Absent" fill={T.warn} radius={[2, 2, 0, 0]} animationDuration={800} />
+            </BarChart>
+          </ResponsiveContainer>
+          )}
+        </Panel>
       </div>
     </div>
   );
