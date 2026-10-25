@@ -1,17 +1,18 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Package, ArrowLeft, Trash2, AlertTriangle, MapPin, Phone, Printer } from 'lucide-react';
 import { DeliveryForm } from '@/features/deliveries/DeliveryForm.jsx';
+import { DeliveryTable } from '@/features/deliveries/DeliveryTable.jsx';
 import { Av, Badge, Btn, Confirm, EmptyState, Eyebrow, Field, H1, Modal, Panel, Skeleton, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { CREW_RATE_FALLBACK } from '@/data/seed';
-import { crewDayPay, crewEarnings, dailyContributionFor, deliveriesToLog, flattenDeliveries, loanBalance } from '@/lib/payroll';
+import { crewDayPay, crewEarnings, dailyContributionFor, deliveriesToLog, loanBalance } from '@/lib/payroll';
 import { grantedBy, planDeductions, todayYmdManila } from '@/lib/loan-rules';
-import { peso, telHref, timeLabel } from '@/lib/utils';
+import { peso, telHref } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { labelTextError, moneyError, moneyInput, unitError, flagErrors } from '@/lib/field-rules';
 
-export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, rates, setRates, crewRates = CREW_RATE_FALLBACK, loans, reloadLoans, crewNames = [], toast, mode = 'logging' }) => {
+export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, rates, setRates, crewRates = CREW_RATE_FALLBACK, loans, reloadLoans, crewNames = [], toast, mode = 'logging', onOpenDtr, deliveriesFilter = 'all' }) => {
   const payslipsMode = mode === 'payslips';
   const ratesMode = mode === 'rates';
   const roleLabel = (r) => (r === 'Pahinante' ? 'Helper' : r);
@@ -32,7 +33,6 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
   const [editingRates, setEditingRates] = useState(false);
   const [ratesDraft, setRatesDraft] = useState(rates);
   const [logOpen, setLogOpen] = useState(false);
-  const [filterCrew, setFilterCrew] = useState('');
   const [confirmApply, setConfirmApply] = useState(false);
   const [addRateOpen, setAddRateOpen] = useState(false);
   const [newRate, setNewRate] = useState({ cat: '', unit: '', driverRate: '', helperRate: '' });
@@ -263,8 +263,6 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
       setHistLoading(false);
     }
   };
-
-  const allTrips = useMemo(() => flattenDeliveries(D, filterCrew), [D, filterCrew]);
 
   const [dailyStaff, setDailyStaff] = useState([]);
   const dailyDate = viewDate || todayYmdManila();
@@ -766,37 +764,9 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
       )}
 
       {mode === 'logging' && (<>
-      <Panel className="overflow-hidden">
-        <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
-          <Eyebrow>All Deliveries ({allTrips.length})</Eyebrow>
-          <select value={filterCrew} onChange={e => setFilterCrew(e.target.value)} className="px-2 py-1.5 rounded border text-xs" style={{ borderColor: T.line, fontFamily: F_BODY, color: T.ink, backgroundColor: T.surface }}>
-            <option value="">All crews</option>
-            {trucks.map(c => <option key={c.id} value={c.id}>{c.id} — {c.vehicle}</option>)}
-          </select>
-        </div>
-        {allTrips.length === 0 ? <EmptyState title="No trips logged" desc="Deliveries will appear here once a Checker logs them." /> : (
-          <div className="overflow-x-auto pd-scroll-shadow">
-            <table className="w-full">
-              <thead><tr><Th>Date</Th><Th>Crew</Th><Th>Helper</Th><Th>Address</Th><Th>Customer</Th><Th right>Driver Earn</Th><Th>Logged by</Th></tr></thead>
-              <tbody>{allTrips.map((t, i) => (
-                <tr key={i}>
-                  <Td mono>{t.date}</Td>
-                  <Td>{t.crewId}</Td>
-                  <Td>{t.helpers?.length ? t.helpers.join(' & ') : '—'}</Td>
-                  <Td>
-                    <div>{t.address}</div>
-                    {t.landmark && <div className="flex items-center gap-1 text-xs mt-0.5" style={{ color: T.soft }}><MapPin size={11} className="shrink-0" />{t.landmark}</div>}
-                    {t.contactNo && <a href={telHref(t.contactNo)} className="flex items-center gap-1 text-xs mt-0.5" style={{ color: T.brand }}><Phone size={11} className="shrink-0" />{t.contactNo}</a>}
-                  </Td>
-                  <Td>{t.customer}</Td>
-                  <Td right mono>{peso(t.d)}</Td>
-                  <Td>{t.loggedBy ? <span className="text-xs" style={{ color: T.ink }}>{t.loggedBy}{t.loggedAt && <span style={{ color: T.soft }}> · {timeLabel(t.loggedAt)}</span>}</span> : <span style={{ color: T.soft }}>—</span>}</Td>
-                </tr>
-              ))}</tbody>
-            </table>
-          </div>
-        )}
-      </Panel>
+      <DeliveryTable key={`${viewDate || 'today'}|${deliveriesFilter}`} log={D} trucks={trucks} isAdmin bonusTrips={crewRates.bonusTrips} toast={toast}
+        title="All Deliveries" initialFilter={deliveriesFilter} onOpenDtr={onOpenDtr} reviewDays={31}
+        onChanged={() => (viewDate ? loadHistory(viewDate) : reloadDeliveries())} />
 
       <Modal open={logOpen} onClose={() => setLogOpen(false)} title="Log Delivery" width={560}>
         <DeliveryForm crews={trucks} rates={rates} onSubmit={logDelivery} />

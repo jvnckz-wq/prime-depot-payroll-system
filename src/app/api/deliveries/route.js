@@ -19,6 +19,11 @@ function shape(d) {
     helpers: [d.helper1?.name, d.helper2?.name].filter(Boolean),
     helper1Id: d.helper1Id,
     helper2Id: d.helper2Id,
+    crew: [
+      { role: 'Driver', id: d.driverId, name: d.driver?.name ?? '' },
+      { role: 'Helper 1', id: d.helper1Id, name: d.helper1?.name ?? '' },
+      { role: 'Helper 2', id: d.helper2Id, name: d.helper2?.name ?? '' },
+    ].filter((c) => c.id),
     seq: d.sequenceNo,
     customer: d.customerName ?? '',
     address: d.address,

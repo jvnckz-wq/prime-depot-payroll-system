@@ -26,11 +26,9 @@ export async function withNoScan(shaped, namesById) {
   const live = shaped.filter((d) => !d.voided);
   const seen = await scannedSet(live.map((d) => d.date), live.flatMap((d) => [d.driverId, d.helper1Id, d.helper2Id]));
   return shaped.map((d) => {
-    if (d.voided) return { ...d, noScan: [] };
-    const missing = [d.driverId, d.helper1Id, d.helper2Id]
-      .filter((id) => id && !seen.has(`${id}|${d.date}`))
-      .map((id) => namesById.get(id) || id);
-    return { ...d, noScan: missing };
+    if (d.voided) return { ...d, noScan: [], noScanIds: [] };
+    const missingIds = [d.driverId, d.helper1Id, d.helper2Id].filter((id) => id && !seen.has(`${id}|${d.date}`));
+    return { ...d, noScan: missingIds.map((id) => namesById.get(id) || id), noScanIds: missingIds };
   });
 }
 

@@ -52,10 +52,10 @@ const shiftCutoff = (sel, dir) => {
   return cutoffOf(yy, mi, half);
 };
 
-export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNavigate }) => {
-  const [view, setView] = useState('list');
-  const [selectedId, setSelectedId] = useState(null);
-  const [subTab, setSubTab] = useState(navSub || 'live');
+export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNavigate, focus = null, onFocusConsumed }) => {
+  const [view, setView] = useState(focus ? 'dtr' : 'list');
+  const [selectedId, setSelectedId] = useState(focus ? focus.employeeId : null);
+  const [subTab, setSubTab] = useState(focus ? 'dtr' : (navSub || 'live'));
   const [data, setData] = useState({ period: null, summaries: [], unmappedCount: 0, batches: [] });
   const [loading, setLoading] = useState(true);
   const [liveDate, setLiveDate] = useState(null);
@@ -64,7 +64,8 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
   const [pullReq, setPullReq] = useState(null);
   const [pullBusy, setPullBusy] = useState(false);
   const [pullError, setPullError] = useState(null);
-  const [pullSel, setPullSel] = useState(() => recentCutoffs(manilaTodayStr(), 2)[1]);
+  const [pullSel, setPullSel] = useState(() => (focus ? cutoffFor(focus.date) : recentCutoffs(manilaTodayStr(), 2)[1]));
+  useEffect(() => { if (focus && onFocusConsumed) onFocusConsumed(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [pullDevice, setPullDevice] = useState({ status: 'offline' });
   const [, setAgoTick] = useState(0);
   const [dtr, setDtr] = useState({ period: null, rows: [] });

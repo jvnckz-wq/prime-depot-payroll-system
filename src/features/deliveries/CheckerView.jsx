@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Truck, LogOut, Star, MapPin, Phone } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { DeliveryForm } from '@/features/deliveries/DeliveryForm.jsx';
-import { Av, Badge, BigStat, Confirm, EmptyState, Eyebrow, Panel, Td, Th } from '@/components/ui.jsx';
+import { DeliveryTable } from '@/features/deliveries/DeliveryTable.jsx';
+import { Av, BigStat, Confirm, Eyebrow, Panel } from '@/components/ui.jsx';
 import { CREW_RATE_FALLBACK } from '@/data/seed';
 import { flattenDeliveries } from '@/lib/payroll';
-import { peso, telHref, timeLabel } from '@/lib/utils';
 import { FONTS, F_HEAD, T } from '@/components/theme';
 /* eslint-disable @next/next/no-img-element -- user avatars are base64 data URIs; next/image adds no value and cannot optimize data URIs */
 
@@ -90,52 +90,8 @@ export const CheckerView = ({ currentUser, deliveries, reloadDeliveries, rates, 
             <DeliveryForm crews={trucks} rates={rates} onSubmit={logDelivery} />
           </Panel>
 
-          <Panel className="overflow-hidden">
-            <div className="px-4 py-2.5" style={{ borderBottom: `1px solid ${T.line}` }}>
-              <Eyebrow>Delivery History ({allTrips.length})</Eyebrow>
-            </div>
-            {allTrips.length === 0 ? (
-              <EmptyState icon={Truck} title="No deliveries logged yet" desc="Deliveries you log today appear here, for every truck." />
-            ) : (
-              <div className="overflow-x-auto pd-scroll-shadow">
-                <table className="w-full">
-                  <thead><tr><Th>Date</Th><Th>Truck</Th><Th>Driver</Th><Th>Pahinante</Th><Th>Address</Th><Th right>Driver Earn</Th><Th>Logged by</Th><Th>Trip</Th></tr></thead>
-                  <tbody>{allTrips.slice().reverse().map((t, i) => {
-                    const isBonusTrip = t.seq >= crewRates.bonusTrips;
-                    return (
-                      <tr key={i} style={{ backgroundColor: isBonusTrip ? '#FBF0DE' : 'transparent' }}>
-                        <Td mono>{t.date}</Td>
-                        <Td mono>{t.crewId}</Td>
-                        <Td>{t.driver || '—'}{t.noScan?.length > 0 && <div className="mt-1"><Badge tone="amber">NO SCAN: {t.noScan.join(', ')}</Badge></div>}</Td>
-                        <Td>{t.helpers?.length ? <span className="flex items-center gap-1.5">{t.helpers.join(' & ')}{t.swap && <Badge tone="amber">SUB</Badge>}</span> : '—'}</Td>
-                        <Td>
-                          <div>{t.address}</div>
-                          {t.landmark && <div className="flex items-center gap-1 text-xs mt-0.5" style={{ color: T.soft }}><MapPin size={11} className="shrink-0" />{t.landmark}</div>}
-                          {t.contactNo && <a href={telHref(t.contactNo)} className="flex items-center gap-1 text-xs mt-0.5" style={{ color: T.brand }}><Phone size={11} className="shrink-0" />{t.contactNo}</a>}
-                        </Td>
-                        <Td right mono>{peso(t.d)}</Td>
-                        <Td>
-                          {t.loggedBy ? (
-                            <span className="text-xs" style={{ color: T.ink }}>
-                              {t.loggedBy}
-                              {t.loggedAt && <span style={{ color: T.soft }}> · {timeLabel(t.loggedAt)}</span>}
-                            </span>
-                          ) : <span style={{ color: T.soft }}>—</span>}
-                        </Td>
-                        <Td>
-                          {t.seq && (
-                            <span className="flex items-center gap-1">
-                              #{t.seq}{isBonusTrip && <Star size={11} color={T.amber} fill={T.amber} />}
-                            </span>
-                          )}
-                        </Td>
-                      </tr>
-                    );
-                  })}</tbody>
-                </table>
-              </div>
-            )}
-          </Panel>
+          <DeliveryTable log={deliveries} trucks={trucks} bonusTrips={crewRates.bonusTrips} toast={toast}
+            title="Delivery History" onChanged={reloadDeliveries} />
         </div>
       </div>
     </div>

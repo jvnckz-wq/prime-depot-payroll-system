@@ -240,7 +240,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
             </button>
           )}
           {noScanDeliveries > 0 && (
-            <button onClick={() => go('deliveries')} className="pd-clickable w-full text-left mt-2 flex items-start gap-3 p-3 rounded" style={{ backgroundColor: T.warnBg }}>
+            <button onClick={() => go('deliveries', 'review')} className="pd-clickable w-full text-left mt-2 flex items-start gap-3 p-3 rounded" style={{ backgroundColor: T.warnBg }}>
               <AlertTriangle size={16} color={T.warn} className="mt-0.5 shrink-0" />
               <div>
                 <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>{noScanDeliveries} {noScanDeliveries === 1 ? 'delivery has' : 'deliveries have'} crew with no scan that day</div>
