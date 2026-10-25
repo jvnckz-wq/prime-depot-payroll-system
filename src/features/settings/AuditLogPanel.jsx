@@ -76,7 +76,7 @@ export const AuditLogPanel = ({ toast }) => {
   const ctrl = { ...inputStyle, height: 38 };
 
   return (
-    <div>
+    <div className="p-4 sm:p-6">
       <H1 action={<Btn variant="outline" onClick={exportRows} disabled={!data.rows.length}>Export</Btn>}>Audit Log</H1>
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <input type="date" value={from} max={to} onChange={change(setFrom)} aria-label="From" className={inputCls} style={{ ...ctrl, width: 160 }} />
