@@ -5,6 +5,7 @@ import { ChevronRight, MapPin, Phone, Star, AlertTriangle, Truck } from 'lucide-
 import { Badge, Btn, EmptyState, Eyebrow, Field, Modal, Panel, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { telHref, timeLabel } from '@/lib/utils';
 import { deliveriesToLog } from '@/lib/payroll';
+import { OTHER_REASON, VOID_REASONS, buildVoidReason, voidChoiceError } from '@/lib/void-reasons';
 import { cutoffOf, todayYmdManila } from '@/lib/loan-rules';
 import { F_BODY, F_HEAD, T } from '@/components/theme';
 
@@ -51,7 +52,8 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
   const [truckFilter, setTruckFilter] = useState('');
   const [openId, setOpenId] = useState(null);
   const [voiding, setVoiding] = useState(false);
-  const [reason, setReason] = useState('');
+  const [reasonChoice, setReasonChoice] = useState('');
+  const [otherText, setOtherText] = useState('');
   const [reasonErr, setReasonErr] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -79,7 +81,8 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
   const refresh = async () => { setReviewTick((n) => n + 1); if (onChanged) await onChanged(); };
   const canVoid = open && !open.voided && (isAdmin || open.date === today);
 
-  const close = () => { setOpenId(null); setVoiding(false); setReason(''); setReasonErr(''); };
+  const resetVoid = () => { setVoiding(false); setReasonChoice(''); setOtherText(''); setReasonErr(''); };
+  const close = () => { setOpenId(null); resetVoid(); };
 
   const patch = async (body) => {
     const res = await fetch(`/api/deliveries/${open.id}`, {
@@ -89,11 +92,11 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
   };
 
   const submitVoid = async () => {
-    const trimmed = reason.replace(/\s+/g, ' ').trim();
-    if (trimmed.length < 3) { setReasonErr('Give a short reason so the correction can be understood later.'); return; }
+    const err = voidChoiceError(reasonChoice, otherText);
+    if (err) { setReasonErr(err); return; }
     setBusy(true);
     try {
-      const { res, data } = await patch({ action: 'void', reason: trimmed });
+      const { res, data } = await patch({ action: 'void', reason: buildVoidReason(reasonChoice, otherText) });
       if (!res.ok) { setReasonErr(data.error || 'Could not void the delivery.'); return; }
       toast(data.warning || 'Delivery voided. It no longer counts toward pay.', data.warning ? 'error' : 'success');
       close();
@@ -253,13 +256,10 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
 
             {voiding ? (
               <div className="mt-4">
-                <Field label="Why is this trip being voided?" error={reasonErr}>
-                  <input autoFocus value={reason} maxLength={200} onChange={(e) => { setReason(e.target.value); setReasonErr(''); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter') submitVoid(); }}
-                    placeholder="e.g. Wrong helper picked, logged again as trip #3" className={inputCls} style={inputStyle} />
-                </Field>
+                <VoidReasonField choice={reasonChoice} otherText={otherText} error={reasonErr} disabled={busy}
+                  onChoice={(v) => { setReasonChoice(v); setReasonErr(''); }} onOther={(v) => { setOtherText(v); setReasonErr(''); }} onEnter={submitVoid} />
                 <div className="flex justify-end gap-2 mt-3">
-                  <Btn variant="outline" onClick={() => { setVoiding(false); setReason(''); setReasonErr(''); }} disabled={busy}>Cancel</Btn>
+                  <Btn variant="outline" onClick={resetVoid} disabled={busy}>Cancel</Btn>
                   <Btn variant="amber" onClick={submitVoid} disabled={busy}>{busy ? 'Voiding...' : 'Void delivery'}</Btn>
                 </div>
               </div>
@@ -291,5 +291,26 @@ const Line = ({ left, right }) => (
   <div className="flex items-center justify-between gap-3 text-sm py-1.5" style={{ color: T.ink, borderBottom: `1px solid ${T.lineSoft}` }}>
     <span className="min-w-0">{left}</span>
     <span className="shrink-0">{right}</span>
+  </div>
+);
+
+export const VoidReasonField = ({ choice, otherText, error, disabled = false, onChoice, onOther, onEnter }) => (
+  <div>
+    <Field label="Why is this trip being voided?" error={choice === OTHER_REASON ? '' : error}>
+      <select value={choice} disabled={disabled} onChange={(e) => onChoice(e.target.value)} className={inputCls} style={inputStyle} aria-label="Void reason">
+        <option value="">Pick a reason</option>
+        {VOID_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
+        <option value={OTHER_REASON}>Other (type the reason)</option>
+      </select>
+    </Field>
+    {choice === OTHER_REASON && (
+      <div className="mt-3">
+        <Field label="Type the reason" error={error}>
+          <input autoFocus value={otherText} maxLength={160} disabled={disabled} onChange={(e) => onOther(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && onEnter) onEnter(); }}
+            placeholder="At least 5 characters" className={inputCls} style={inputStyle} />
+        </Field>
+      </div>
+    )}
   </div>
 );

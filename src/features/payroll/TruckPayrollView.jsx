@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { Package, ArrowLeft, Trash2, AlertTriangle, MapPin, Phone, Printer } from 'lucide-react';
 import { DeliveryForm } from '@/features/deliveries/DeliveryForm.jsx';
-import { DeliveryTable } from '@/features/deliveries/DeliveryTable.jsx';
+import { DeliveryTable, VoidReasonField } from '@/features/deliveries/DeliveryTable.jsx';
+import { buildVoidReason, voidChoiceError } from '@/lib/void-reasons';
 import { Av, Badge, Btn, Confirm, EmptyState, Eyebrow, Field, H1, Modal, Panel, Skeleton, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { CREW_RATE_FALLBACK } from '@/data/seed';
 import { crewDayPay, crewEarnings, dailyContributionFor, deliveriesToLog, loanBalance } from '@/lib/payroll';
@@ -40,7 +41,8 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
   const [confirmRetire, setConfirmRetire] = useState(null);
   const [savingRates, setSavingRates] = useState(false);
   const [voidTarget, setVoidTarget] = useState(null);
-  const [voidReason, setVoidReason] = useState('');
+  const [voidChoice, setVoidChoice] = useState('');
+  const [voidOther, setVoidOther] = useState('');
   const [voidErr, setVoidErr] = useState('');
   const [rateErrs, setRateErrs] = useState({});
   const [voiding, setVoiding] = useState(false);
@@ -58,12 +60,12 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
       const res = await fetch(`/api/deliveries/${voidTarget.deliveryId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'void', reason: voidReason }),
+        body: JSON.stringify({ action: 'void', reason: buildVoidReason(voidChoice, voidOther) }),
       });
       const data = await res.json();
       if (!res.ok) { toast(data.error || 'Could not void the delivery.', 'error'); return; }
       await reloadDeliveries();
-      setVoidTarget(null); setVoidReason('');
+      setVoidTarget(null); setVoidChoice(''); setVoidOther('');
       toast(data.warning || 'Delivery voided. It no longer counts toward pay.', data.warning ? 'error' : 'success');
     } catch {
       toast('Could not reach the server.', 'error');
@@ -393,7 +395,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                               onClick={() => restoreDelivery(it)}>Restore</button>
                           ) : (
                             <button className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.red }}
-                              onClick={() => { setVoidReason(''); setVoidErr(''); setVoidTarget(it); }}>Void</button>
+                              onClick={() => { setVoidChoice(''); setVoidOther(''); setVoidErr(''); setVoidTarget(it); }}>Void</button>
                           ))}
                         </span>
                       </Td>
@@ -551,12 +553,10 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                 The entry stays on record with your name against it, and stops counting toward anyone&apos;s
                 pay. Log the corrected delivery separately afterwards.
               </div>
-              <Field label="Reason" error={voidErr}>
-                <input value={voidReason} maxLength={200} onChange={e => setVoidReason(e.target.value)}
-                  placeholder="e.g. wrong quantity, wrong truck" className={inputCls} style={inputStyle} />
-              </Field>
+              <VoidReasonField choice={voidChoice} otherText={voidOther} error={voidErr} disabled={voiding}
+                onChoice={(v) => { setVoidChoice(v); setVoidErr(''); }} onOther={(v) => { setVoidOther(v); setVoidErr(''); }} />
               <div className="flex gap-2 mt-4">
-                <Btn onClick={() => { if (voidReason.trim().length < 3) { setVoidErr('Give a short reason (at least 3 characters).'); flagErrors(); return; } setVoidErr(''); submitVoid(); }} loading={voiding} disabled={voiding}>
+                <Btn onClick={() => { const err = voidChoiceError(voidChoice, voidOther); if (err) { setVoidErr(err); flagErrors(); return; } setVoidErr(''); submitVoid(); }} loading={voiding} disabled={voiding}>
                   {voiding ? 'Voiding...' : 'Void delivery'}
                 </Btn>
                 <Btn variant="outline" onClick={() => setVoidTarget(null)}>Cancel</Btn>
