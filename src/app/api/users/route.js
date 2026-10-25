@@ -3,7 +3,7 @@ import { randomBytes } from 'crypto';
 import { prisma } from '@/lib/server/db/prisma';
 import { hashPassword, logSecurityEvent, requireAdmin } from '@/lib/server/security/auth';
 import { POSITION_LABEL } from '@/lib/server/services/employees';
-import { checkerLinkProblem } from '@/lib/checker-accounts';
+import { checkerLinkProblem, isActiveChecker } from '@/lib/checker-accounts';
 
 export async function GET() {
   const auth = await requireAdmin();
@@ -29,7 +29,7 @@ export async function GET() {
     users: users.map(({ employee, ...u }) => ({
       ...u,
       employee: employee
-        ? { id: employee.id, name: employee.name, position: POSITION_LABEL[employee.position] ?? employee.position, active: employee.status === 'ACTIVE' }
+        ? { id: employee.id, name: employee.name, position: POSITION_LABEL[employee.position] ?? employee.position, active: employee.status === 'ACTIVE', canSignIn: isActiveChecker(employee) }
         : null,
     })),
     availableCheckers: checkers,

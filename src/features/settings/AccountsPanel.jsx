@@ -201,7 +201,8 @@ export const AccountsPanel = ({ currentUser, toast, onGoToEmployees }) => {
         ))}
 
         {!loading && users.map(u => {
-          const statusBadge = !u.isActive
+          const blockedByEmployee = u.role === 'CHECKER' && !!u.employee && !u.employee.canSignIn;
+          const statusBadge = !u.isActive || blockedByEmployee
             ? <Badge tone="red">Disabled</Badge>
             : u.mustChangePassword
               ? <Badge tone="amber">Temp password</Badge>
@@ -209,7 +210,7 @@ export const AccountsPanel = ({ currentUser, toast, onGoToEmployees }) => {
 
           return (
             <div key={u.id} className="flex items-center gap-4 py-4"
-              style={{ borderBottom: `1px solid ${T.lineSoft}`, opacity: u.isActive ? 1 : 0.65 }}>
+              style={{ borderBottom: `1px solid ${T.lineSoft}`, opacity: u.isActive && !blockedByEmployee ? 1 : 0.65 }}>
               <Av name={u.displayName} size={40} tone={u.role === 'ADMIN' ? T.brand : T.soft} />
 
               <div className="flex-1 min-w-0">
@@ -217,8 +218,12 @@ export const AccountsPanel = ({ currentUser, toast, onGoToEmployees }) => {
                 <div className="text-xs mt-0.5 truncate" style={{ fontFamily: F_BODY, color: T.soft }}>
                   {u.employee ? `${u.employee.name}, ID ${u.employee.id}` : u.displayName} <span aria-hidden="true">&middot;</span> last sign-in {fmtDate(u.lastLoginAt)}
                 </div>
-                {u.role === 'CHECKER' && u.employee && u.employee.status !== 'ACTIVE' && (
-                  <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.warn }}>Employee is inactive. Create a new account for the new checker.</div>
+                {blockedByEmployee && (
+                  <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.warn }}>
+                    {u.employee.active
+                      ? `${u.employee.name} is no longer a Checker, so this account cannot sign in.`
+                      : 'Employee is inactive. Create a new account for the new checker.'}
+                  </div>
                 )}
               </div>
 
@@ -252,7 +257,7 @@ export const AccountsPanel = ({ currentUser, toast, onGoToEmployees }) => {
                   })}>
                   <KeyRound size={14} color={T.soft} />
                 </button>
-                {u.id !== currentUser.id && (
+                {u.id !== currentUser.id && !blockedByEmployee && (
                   u.isActive ? (
                     <button className="pd-clickable p-2 rounded" title="Disable account"
                       style={{ border: `1px solid ${T.line}` }}

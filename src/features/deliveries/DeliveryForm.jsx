@@ -100,6 +100,7 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
       });
       if (ok !== false) {
         setShowErrors(false); setProvince('Batangas'); setMunicipality(''); setBarangay(''); setCustomer(''); setLandmark(''); setContactNo(''); setLineRows([{ item: rateKey(rates[0]), qty: '' }]);
+        setCrewId(fixedCrewId || (crews[0] && crews[0].id) || ''); setDriverId(''); setHelper1Id(''); setHelper2Id(''); setDbl(false);
       }
     } finally {
       setBusy(false);
