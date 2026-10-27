@@ -460,7 +460,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
   return (
     <div className="p-4 sm:p-6">
       <input ref={fileRef} type="file" accept=".dat,.xls,.xlsx" onChange={onFile} style={{ display: 'none' }} />
-      <H1>Attendance</H1>
+      <H1>{({ dtr: 'Employee DTR', unmapped: 'Unmapped IDs', history: 'Import History' })[subTab] || 'Attendance'}</H1>
 
       {subTab !== 'live' && (
         <div className="mb-4">

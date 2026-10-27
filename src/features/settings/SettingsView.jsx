@@ -92,7 +92,7 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
         <div className="space-y-4">
           <Panel className="overflow-hidden">
             <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
-              <Eyebrow>SSS Contribution Table: employee share by declared monthly salary</Eyebrow>
+              <Eyebrow>SSS Contribution Table</Eyebrow>
               {editSss ? (
                 <div className="flex gap-2">
                   <Btn size="sm" onClick={async () => { if (await saveTable('sss', sssDraft, 'SSS table')) { setSssTable(sssDraft); setEditSss(false); } }}>Save</Btn>
@@ -137,7 +137,7 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
 
           <Panel className="overflow-hidden">
             <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
-              <Eyebrow>PhilHealth: % of declared salary, split 50/50 employer/employee</Eyebrow>
+              <Eyebrow>PhilHealth</Eyebrow>
               {editPh ? (
                 <div className="flex gap-2">
                   <Btn size="sm" onClick={async () => { if (await saveTable('philhealth', phDraft, 'PhilHealth rate')) { setPhilhealthRates(phDraft); setEditPh(false); } }}>Save</Btn>

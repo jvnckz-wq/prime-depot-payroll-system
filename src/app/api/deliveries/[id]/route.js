@@ -25,9 +25,9 @@ export async function PATCH(request, { params }) {
     const isAdmin = auth.user.role === 'ADMIN';
     const isToday = ymd(delivery.date) === todayYmdManila();
 
-    if (!isAdmin && !isToday) {
+    if (!isToday) {
       return NextResponse.json(
-        { error: "Checkers can only correct today's deliveries. Ask the Operations Head to correct an earlier entry." },
+        { error: 'Past days are view only. A delivery can only be changed on the day it was logged.' },
         { status: 403 }
       );
     }

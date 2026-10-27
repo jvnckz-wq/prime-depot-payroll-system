@@ -23,17 +23,11 @@ export const Pill = ({ tone = 'slate', children }) => {
   );
 };
 
-const initials = (name) => String(name || '?').split(/[\s,]+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('') || '?';
 
 export const Person = ({ name, role }) => (
-  <div className="flex items-center gap-2.5">
-    <div className="rounded-full flex items-center justify-center shrink-0" style={{ width: 30, height: 30, backgroundColor: T.brandBg, color: T.brand, fontFamily: F_HEAD, fontWeight: 700, fontSize: 11.5 }}>
-      {initials(name)}
-    </div>
-    <div className="min-w-0">
-      <div className="text-sm font-semibold truncate" style={{ fontFamily: F_BODY, color: T.ink }}>{name}</div>
-      {role && <div className="text-xs truncate" style={{ fontFamily: F_BODY, color: T.soft }}>{role}</div>}
-    </div>
+  <div className="min-w-0">
+    <div className="text-sm font-semibold truncate" style={{ fontFamily: F_BODY, color: T.ink }}>{name}</div>
+    {role && <div className="text-xs truncate" style={{ fontFamily: F_BODY, color: T.soft }}>{role}</div>}
   </div>
 );
 
@@ -57,7 +51,7 @@ export const Seg = ({ value, onChange, options }) => (
 );
 
 export const SearchBox = ({ value, onChange, placeholder = 'Search employee…' }) => (
-  <label className="flex items-center gap-2 rounded-lg border px-3 py-2 flex-1 min-w-48" style={{ borderColor: T.line, maxWidth: 340 }}>
+  <label className="flex items-center gap-2 rounded-lg border px-3 py-2 flex-1 min-w-48" style={{ borderColor: T.line }}>
     <Search size={14} color={T.soft} aria-hidden="true" />
     <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={placeholder}
       className="w-full text-sm outline-none bg-transparent" style={{ fontFamily: F_BODY, color: T.ink }} />

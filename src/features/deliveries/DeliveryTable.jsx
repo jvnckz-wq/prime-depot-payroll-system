@@ -79,7 +79,8 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
   const shown = filter === 'review' ? needsReview : filter === 'voided' ? voided : inTruck;
   const open = trips.find((t) => t.id === openId) || reviewTrips.find((t) => t.id === openId) || null;
   const refresh = async () => { setReviewTick((n) => n + 1); if (onChanged) await onChanged(); };
-  const canVoid = open && !open.voided && (isAdmin || open.date === today);
+  const isPast = !!open && open.date !== today;
+  const canVoid = open && !open.voided && !isPast;
 
   const resetVoid = () => { setVoiding(false); setReasonChoice(''); setOtherText(''); setReasonErr(''); };
   const close = () => { setOpenId(null); resetVoid(); };
@@ -209,7 +210,7 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
                 <span>
                   <span className="font-semibold">{open.noScan.length === 1 ? '1 crew member has' : `${open.noScan.length} crew members have`} no scan on this day.</span>{' '}
                   {isAdmin
-                    ? 'If the scanner was offline, pull attendance. If they worked but forgot to scan, fix their DTR. If they were not on this trip, void it.'
+                    ? `If the scanner was offline, pull attendance. If they worked but forgot to scan, fix their DTR.${isPast ? '' : ' If they were not on this trip, void it.'}`
                     : 'The Operations Head will review it. If the wrong person was picked, void this trip and log it again.'}
                 </span>
               </div>
@@ -258,10 +259,10 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
             ) : (
               <div className="flex justify-end gap-2 mt-5 flex-wrap">
                 {isAdmin && !open.voided && open.noScan.length > 0 && <Btn variant="outline" onClick={queuePull} disabled={busy}>Pull attendance</Btn>}
-                {isAdmin && open.voided && <Btn variant="outline" onClick={undoVoid} disabled={busy}>Undo void</Btn>}
+                {isAdmin && open.voided && !isPast && <Btn variant="outline" onClick={undoVoid} disabled={busy}>Undo void</Btn>}
                 {canVoid && <Btn variant="amber" onClick={() => setVoiding(true)} disabled={busy}>Void delivery</Btn>}
-                {!open.voided && !canVoid && (
-                  <div className="text-xs" style={{ color: T.soft }}>Only today&apos;s trips can be voided here. Ask the Operations Head to correct an earlier trip.</div>
+                {isPast && (
+                  <div className="text-xs" style={{ color: T.soft }}>Past days are view only.</div>
                 )}
               </div>
             )}

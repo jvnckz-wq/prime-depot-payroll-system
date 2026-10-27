@@ -10,7 +10,7 @@ import { F_BODY, T } from '@/components/theme';
 
 const useIsoLayoutEffect = typeof document !== 'undefined' ? useLayoutEffect : useEffect;
 
-const MAX_LATE = 5;
+const MAX_ROWS = 5;
 const todayHeading = (ymd) => (ymd
   ? new Date(`${ymd}T00:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
   : '');
@@ -43,9 +43,8 @@ const TodayCard = ({ onOpenLive }) => {
     return () => { cancelled = true; clearInterval(id); };
   }, []);
 
-  const late = (data?.rows || []).filter(r => r.late > 0).sort((a, b) => b.late - a.late);
-  const maxLate = data?.sync?.status === 'offline' ? MAX_LATE - 2 : MAX_LATE;
-  const missing = data?.notYetIn || [];
+  const inToday = (data?.rows || []).filter(r => r.in).sort((a, b) => String(b.in).localeCompare(String(a.in)));
+  const maxRows = data?.sync?.status === 'offline' ? MAX_ROWS - 2 : MAX_ROWS;
   const sync = SYNC_LOOK[data?.sync?.status] || SYNC_LOOK.offline;
   const stats = [
     ['Present', data?.stats?.present ?? 0, T.green],
@@ -100,26 +99,20 @@ const TodayCard = ({ onOpenLive }) => {
             ))}
           </div>
 
-          {late.length > 0 && (
+          {inToday.length > 0 ? (
             <div className="mb-3">
-              <div className="text-xs mb-1" style={{ fontFamily: F_BODY, color: T.soft }}>Late</div>
-              {late.slice(0, maxLate).map(r => (
+              <div className="text-xs mb-1" style={{ fontFamily: F_BODY, color: T.soft }}>In today</div>
+              {inToday.slice(0, maxRows).map(r => (
                 <div key={r.id} className="flex items-center justify-between text-sm py-1.5" style={{ fontFamily: F_BODY, borderBottom: `1px solid ${T.lineSoft}` }}>
                   <span style={{ color: T.ink }}>{r.name}</span>
-                  <span className="pd-num" style={{ color: T.brand }}>{`In ${r.in || '--:--'} \u00b7 ${r.late}m late`}</span>
+                  <span className="pd-num" style={{ color: r.late > 0 ? T.brand : T.ink }}>{r.in}</span>
                 </div>
               ))}
-              {late.length > maxLate && <MoreLink count={late.length - maxLate} onClick={onOpenLive} />}
+              {inToday.length > maxRows && <MoreLink count={inToday.length - maxRows} onClick={onOpenLive} />}
             </div>
+          ) : (
+            <div className="text-sm flex items-center justify-center h-full" style={{ fontFamily: F_BODY, color: T.soft }}>No scans yet today.</div>
           )}
-
-
-          {late.length === 0 && missing.length === 0 && (data.stats?.present ?? 0) > 0 && (
-            <div className="text-sm mb-3 flex items-center gap-2" style={{ fontFamily: F_BODY, color: T.green }}>
-              <Check size={14} /> Everyone is in and on time.
-            </div>
-          )}
-
           </div>
 
           <div className="flex justify-end pt-2">
@@ -209,7 +202,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
 
   return (
     <div className="p-4 sm:p-6">
-      <H1 sub="Snapshot of headcount, this cutoff's payroll, deliveries, and outstanding advances.">Dashboard Overview</H1>
+      <H1 sub="Snapshot of headcount, this cutoff's payroll, deliveries, and outstanding advances.">Dashboard</H1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <div className="lg:col-span-2 grid grid-cols-2 gap-4 pd-stagger">

@@ -110,8 +110,8 @@ export async function POST(request) {
       const asked = String(body.date).slice(0, 10);
       if (!isYmd(asked)) return NextResponse.json({ error: 'Invalid date.' }, { status: 400 });
       if (asked > today) return NextResponse.json({ error: 'A delivery cannot be logged for a future date.' }, { status: 400 });
-      if (auth.user.role !== 'ADMIN' && asked !== today) {
-        return NextResponse.json({ error: "Checkers can only log today's deliveries. Ask the Operations Head to add a missed trip." }, { status: 403 });
+      if (asked !== today) {
+        return NextResponse.json({ error: 'Deliveries can only be logged for today. Past days are view only.' }, { status: 403 });
       }
       dayYmd = asked;
     }

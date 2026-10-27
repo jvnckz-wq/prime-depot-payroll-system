@@ -152,7 +152,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
       {tab === '13th' && (
         <Panel className="overflow-hidden">
           <div className="px-4 py-2.5 flex justify-between items-center" style={{ borderBottom: `1px solid ${T.line}` }}>
-            <Eyebrow>13th Month Pay: FY {year13} (Basic ÷ 12)</Eyebrow>
+            <Eyebrow>13th Month Pay: FY {year13}</Eyebrow>
             <Btn size="sm" variant="outline" onClick={export13} disabled={t13.loading || !t13.rows.length}>Export Excel</Btn>
           </div>
           {t13.error ? (
@@ -170,11 +170,6 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
                 <thead><tr><Th>Employee</Th><Th center>Months Worked</Th><Th right>Total Basic</Th><Th right>13th Month Pay</Th></tr></thead>
                 <tbody>{t13.loading ? <SkeletonRows cols={4} rows={5} /> : t13.rows.map(r => <tr key={r.employeeId}><Td>{r.name}</Td><Td center mono>{r.months}</Td><Td right mono>{peso(r.basic)}</Td><Td right mono>{peso(r.pay)}</Td></tr>)}</tbody>
               </table></div>
-              {!t13.loading && (
-                <p className="text-xs px-4 py-3" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6, borderTop: `1px solid ${T.line}` }}>
-                  Basic pay from released staff payslips in {year13}, divided by 12, the same source as Final Pay. Resigned employees receive theirs through Final Pay.
-                </p>
-              )}
             </>
           )}
         </Panel>
