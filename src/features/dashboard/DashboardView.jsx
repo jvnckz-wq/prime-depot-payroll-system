@@ -133,7 +133,7 @@ const TodayCard = ({ onOpenLive }) => {
   );
 };
 
-export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loans = [], statutory, setTab, onNavigate, dataLoading = false, cutoffLabel = '', runKey = '', attendanceSummaries = [], unmappedCount = 0, enrolledCount = 0, noScanDeliveries = 0 }) => {
+export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loans = [], statutory, setTab, onNavigate, dataLoading = false, cutoffLabel = '', runKey = '', attendanceSummaries = [], unmappedCount = 0, unregisteredIds = 0, noScanDeliveries = 0 }) => {
   const loggedToday = Object.keys(deliveries).length;
   const deliveriesLogged = useMemo(() => flattenDeliveries(deliveries).length, [deliveries]);
 
@@ -248,21 +248,16 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
               </div>
             </button>
           )}
-          {enrolledCount > 0 && (
+          {unregisteredIds > 0 && (
             <button onClick={() => go('attendance', 'unmapped')} className="pd-clickable w-full text-left mt-2 flex items-start gap-3 p-3 rounded" style={{ backgroundColor: T.warnBg }}>
               <UserPlus size={16} color={T.warn} className="mt-0.5 shrink-0" />
               <div>
-                <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>{enrolledCount} enrolled on the device but not registered</div>
-                <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft }}>Register them so their scans count toward attendance and payroll.</div>
-              </div>
-            </button>
-          )}
-          {unmappedCount > 0 && (
-            <button onClick={() => go('attendance')} className="pd-clickable w-full text-left mt-2 flex items-start gap-3 p-3 rounded" style={{ backgroundColor: T.warnBg }}>
-              <AlertTriangle size={16} color={T.warn} className="mt-0.5 shrink-0" />
-              <div>
-                <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>{unmappedCount} biometric ID{unmappedCount > 1 ? 's are' : ' is'} unmapped</div>
-                <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft }}>Scans aren&apos;t linked to a registered employee yet — resolve them so their attendance counts.</div>
+                <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>{unregisteredIds} biometric ID{unregisteredIds === 1 ? ' is' : 's are'} not registered</div>
+                <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft }}>
+                  {unmappedCount > 0
+                    ? `${unregisteredIds === 1 ? 'Its' : 'Their'} ${unmappedCount} scan${unmappedCount === 1 ? '' : 's'} ${unmappedCount === 1 ? 'doesn\u2019t' : 'don\u2019t'} count toward attendance yet. Register them in Unmapped IDs.`
+                    : 'Register them in Unmapped IDs so their scans count toward attendance.'}
+                </div>
               </div>
             </button>
           )}
@@ -275,7 +270,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
               </div>
             </button>
           )}
-          {!dataLoading && !noEmployees && !noAttendance && unmappedCount === 0 && enrolledCount === 0 && noScanDeliveries === 0 && activeLoanCount === 0 && (
+          {!dataLoading && !noEmployees && !noAttendance && unregisteredIds === 0 && noScanDeliveries === 0 && activeLoanCount === 0 && (
             <div className="mt-2 flex items-start gap-3 p-3 rounded" style={{ backgroundColor: T.greenBg }}>
               <Check size={16} color={T.green} className="mt-0.5 shrink-0" />
               <div>

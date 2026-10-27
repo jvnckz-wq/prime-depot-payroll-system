@@ -3,7 +3,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { withRetry } from '@/lib/server/db/db-retry';
 import { pairPunches, buildAttendanceRow } from '@/lib/attendance';
-import { cleanRoster } from '@/lib/server/services/device-roster';
+import { cleanRoster, deviceRoster } from '@/lib/server/services/device-roster';
 import { finalizedCutoffsBetween } from '@/lib/server/services/cutoff-lock';
 
 export const runtime = 'nodejs';
@@ -49,6 +49,7 @@ export async function POST(request) {
     const matchedIds = [];
     const presentRows = [];
     const unmapped = [];
+    const unknownScans = [];
 
     for (const s of scans) {
       const bid = String(s?.biometricId ?? '').trim();
@@ -57,7 +58,7 @@ export async function POST(request) {
         ? s.times.map((t) => String(t).slice(0, 5)).filter((t) => /^\d{2}:\d{2}$/.test(t))
         : [];
       const emp = empById.get(bid);
-      if (!emp) { unmapped.push(bid); continue; }
+      if (!emp) { unmapped.push(bid); if (times.length) unknownScans.push({ bid, times }); continue; }
       if (!times.length) continue;
       matchedIds.push(emp.id);
       const paired = pairPunches(times);
@@ -84,6 +85,25 @@ export async function POST(request) {
         }),
         prismaBase.attendance.createMany({ data: rows }),
       ]));
+    }
+
+    if (unknownScans.length && !dayLocked) {
+      try {
+        const names = new Map((roster || await deviceRoster()).map((u) => [u.userId, u.name]));
+        const at = (hhmm) => (hhmm ? new Date(`${date}T${hhmm}:00.000Z`) : null);
+        const liveRows = unknownScans.map(({ bid, times }) => {
+          const paired = pairPunches(times);
+          return { importBatchId: null, biometricId: bid, biometricName: names.get(bid) || null, date: day, timeIn: at(paired.timeIn), timeOut: at(paired.timeOut) };
+        });
+        await withRetry(() => prismaBase.$transaction([
+          prismaBase.unmappedLog.deleteMany({
+            where: { date: day, importBatchId: null, isResolved: false, biometricId: { in: liveRows.map((r) => r.biometricId) } },
+          }),
+          prismaBase.unmappedLog.createMany({ data: liveRows }),
+        ]));
+      } catch (liveErr) {
+        console.error('Saving scans of unregistered IDs skipped:', liveErr?.message || liveErr);
+      }
     }
 
     try {

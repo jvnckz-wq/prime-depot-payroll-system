@@ -228,7 +228,10 @@ export async function GET(request) {
 
     const batches = await prisma.importBatch.findMany({ orderBy: { importedAt: 'desc' }, take: 30 });
     const unmappedCount = await prisma.unmappedLog.count({ where: { isResolved: false } });
-    const enrolledCount = await enrolledNotRegistered().then((r) => r.users.length).catch(() => 0);
+    const unmappedIdRows = await prisma.unmappedLog.groupBy({ by: ['biometricId'], where: { isResolved: false } });
+    const enrolledUsers = await enrolledNotRegistered().then((r) => r.users).catch(() => []);
+    const enrolledCount = enrolledUsers.length;
+    const unregisteredIds = new Set([...unmappedIdRows.map((r) => r.biometricId), ...enrolledUsers.map((u) => u.userId)]).size;
     const noScanDeliveries = await countNoScanDeliveries().catch(() => 0);
 
     const finalized = rangeOut ? (await finalizedCutoffsBetween(rangeOut.start, rangeOut.end)).some((c) => c.start === rangeOut.start && c.end === rangeOut.end) : false;
@@ -241,6 +244,7 @@ export async function GET(request) {
       summaries,
       unmappedCount,
       enrolledCount,
+      unregisteredIds,
       noScanDeliveries,
       batches: batches.map((b) => ({
         id: b.id,

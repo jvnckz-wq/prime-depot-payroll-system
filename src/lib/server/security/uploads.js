@@ -1,6 +1,6 @@
 const BASE64_OVERHEAD = 4 / 3;
 
-export const MAX_IMPORT_BYTES = 6 * 1024 * 1024;
+export { MAX_IMPORT_BYTES } from '@/lib/import-limits';
 
 export const MAX_AVATAR_BYTES = 150 * 1024;
 

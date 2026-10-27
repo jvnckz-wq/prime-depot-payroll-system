@@ -461,7 +461,7 @@ model ImportBatch {
 /// and then resolve the backlog — this is the dashboard's "Unmapped IDs" count.
 model UnmappedLog {
   id            String      @id @default(cuid())
-  importBatchId String
+  importBatchId String?
   biometricId   String
   biometricName String?
   date          DateTime    @db.Date
@@ -470,7 +470,7 @@ model UnmappedLog {
   isResolved    Boolean     @default(false)
   resolvedAt    DateTime?
 
-  importBatch   ImportBatch @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+  importBatch   ImportBatch? @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
 
   @@index([isResolved])
   @@map("unmapped_logs")

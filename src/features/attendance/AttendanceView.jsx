@@ -5,6 +5,7 @@ import { AlertTriangle, ClipboardList, ArrowLeft, Pencil, Upload, Loader2, Calen
 import { Av, Badge, BigStat, Btn, EmptyState, Eyebrow, Field, H1, Modal, Panel, SkeletonBlock, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { timeOrderError } from '@/lib/field-rules';
+import { MAX_IMPORT_BYTES, MAX_IMPORT_MB, tooBigMessage } from '@/lib/import-limits';
 
 const agoFrom = (iso) => {
   if (!iso) return null;
@@ -57,7 +58,6 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
   const [liveLoading, setLiveLoading] = useState(true);
   const [pullReq, setPullReq] = useState(null);
   const [pullBusy, setPullBusy] = useState(false);
-  const [pullError, setPullError] = useState(null);
   const [pullSel, setPullSel] = useState(() => (focus ? cutoffFor(focus.date) : recentCutoffs(manilaTodayStr(), 2)[1]));
   useEffect(() => { if (focus && onFocusConsumed) onFocusConsumed(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [pullDevice, setPullDevice] = useState({ status: 'offline' });
@@ -68,7 +68,6 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
   const [unmapped, setUnmapped] = useState([]);
   const [enrolled, setEnrolled] = useState([]);
   const [unmappedError, setUnmappedError] = useState('');
-  const [ignoringId, setIgnoringId] = useState(null);
   const [unmappedLoading, setUnmappedLoading] = useState(false);
   const [resolvingId, setResolvingId] = useState(null);
   const [editDay, setEditDay] = useState(null);
@@ -114,7 +113,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
     } catch { }
   };
   const queuePull = async () => {
-    setPullBusy(true); setPullError(null);
+    setPullBusy(true);
     try {
       const r = await fetch('/api/attendance/pull-request', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -122,8 +121,8 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
       });
       const j = await r.json();
       if (r.ok) { setPullReq(j.request); }
-      else { setPullReq(j.request || pullReq); setPullError(j.error || 'Could not queue the pull.'); }
-    } catch { setPullError('Could not queue the pull.'); }
+      else { setPullReq(j.request || pullReq); toast(j.error || 'Could not queue the pull.', 'error'); }
+    } catch { toast('Could not queue the pull.', 'error'); }
     finally { setPullBusy(false); }
   };
   // eslint-disable-next-line react-hooks/set-state-in-effect -- sync the sub-tab from the sidebar selection
@@ -143,7 +142,13 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
         const j = await r.json();
         setPullReq(j.request);
         if (j.device) setPullDevice(j.device);
-        if (j.request && j.request.status === 'DONE') load({ silent: true });
+        if (j.request && j.request.status === 'DONE') {
+          const q = j.request;
+          toast(`Pulled ${fmtDay(q.from)} – ${fmtDay(q.to)}: ${q.mappedRows} rows for ${q.matched} employee${q.matched === 1 ? '' : 's'}${q.unmappedUsers ? `, ${q.unmappedUsers} unregistered ID${q.unmappedUsers === 1 ? '' : 's'}` : ''}.`);
+          load({ silent: true });
+        } else if (j.request && j.request.status === 'FAILED') {
+          toast(`Pull failed: ${j.request.error || 'the device did not answer.'}`, 'error');
+        }
       } catch { }
     }, 3000);
     return () => clearInterval(id);
@@ -186,17 +191,6 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
       setDtr(await res.json());
     } catch (err) { console.error('Could not load DTR:', err); }
     finally { setDtrLoading(false); }
-  };
-
-  const ignoreEnrolled = async (biometricId) => {
-    setIgnoringId(biometricId);
-    try {
-      const res = await fetch('/api/attendance/unmapped', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ignore', biometricId }) });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) { toast(data.error || 'Could not ignore that device ID.', 'error'); return; }
-      setEnrolled((list) => list.filter((u) => u.userId !== biometricId));
-      toast(`Device ID ${biometricId} will no longer be listed.`);
-    } finally { setIgnoringId(null); }
   };
 
   const loadUnmapped = async () => {
@@ -276,6 +270,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
   const importFile = async (file) => {
     if (!file) return;
     if (!/\.(dat|xls|xlsx)$/i.test(file.name)) { toast('Please choose the device\'s .dat file or a .xls or .xlsx export.', 'error'); return; }
+    if (file.size > MAX_IMPORT_BYTES) { toast(tooBigMessage(), 'error'); return; }
     const isDat = /\.dat$/i.test(file.name);
     setImporting(true);
     try {
@@ -633,23 +628,10 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                     </span>
                   );
                 })()}
-                {!data.finalized && <Btn onClick={queuePull} loading={pullBusy || pullActive} disabled={pullBusy || pullActive}>{pullActive ? 'Pulling…' : 'Pull from device'}</Btn>}
+                {!data.finalized && <Btn onClick={queuePull} loading={pullBusy || pullActive} disabled={pullBusy || pullActive}>{pullReq?.status === 'RUNNING' ? 'Pulling…' : pullBusy || pullActive ? 'Queued…' : 'Pull from device'}</Btn>}
                 {!data.finalized && <Btn variant="outline" onClick={() => setShowImport(true)}>Import file</Btn>}
               </div>
             </div>
-            {(() => {
-              let banner = null;
-              const devOffline = pullDevice.status !== 'live';
-              if (pullActive && devOffline) banner = { tone: 'warn', text: `${pullReq.status === 'RUNNING' ? 'Started, but the' : 'Queued, but the'} device or agent looks offline, so it can't be read right now. It will run automatically once they are back online on the warehouse PC — or press "Pull from device" again to retry.` };
-              else if (pullActive) banner = { tone: 'info', text: pullReq.status === 'PENDING' ? 'Queued — the device agent will run it on its next sync…' : `Pulling ${pullReq.from} to ${pullReq.to} from the device…` };
-              else if (pullError) banner = { tone: 'warn', text: pullError };
-              else if (pullReq && pullReq.status === 'DONE') banner = { tone: 'ok', text: `Pulled ${pullReq.from} to ${pullReq.to}: ${pullReq.mappedRows} rows across ${pullReq.matched} employees${pullReq.unmappedUsers ? `, ${pullReq.unmappedUsers} unmapped` : ''}. Review below, then run payroll.` };
-              else if (pullReq && pullReq.status === 'FAILED') banner = { tone: 'warn', text: `Pull failed: ${pullReq.error || 'unknown error'}` };
-              if (!banner) return null;
-              const bg = banner.tone === 'ok' ? T.greenBg : banner.tone === 'warn' ? T.brandBg : T.warnBg;
-              const fg = banner.tone === 'ok' ? T.green : banner.tone === 'warn' ? T.red : T.warn;
-              return <div style={{ padding: '11px 18px', background: bg, color: fg, fontFamily: F_BODY, fontSize: 13, borderTop: `1px solid ${T.line}` }}>{banner.text}</div>;
-            })()}
             {showImport && (
               <div
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -659,7 +641,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                 style={{ borderColor: dragOver ? T.brand : T.line, backgroundColor: dragOver ? T.brandBg : T.surface }}>
                 {importing ? <Loader2 size={22} color={T.brand} className="pd-spin" /> : <Upload size={22} color={dragOver ? T.brand : T.soft} />}
                 <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>{importing ? 'Reading and matching the attendance file…' : 'Drag & drop the biometric file here'}</div>
-                <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>USB .dat goes into {cutoffLabel(pullSel)}. A .xls or .xlsx uses its own dates.</div>
+                <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Accepted files: .dat, .xls, .xlsx (up to {MAX_IMPORT_MB} MB)</div>
                 <div className="flex gap-2">
                   <Btn variant="outline" onClick={() => fileRef.current?.click()} loading={importing} disabled={importing}>{importing ? 'Importing…' : 'Browse for a file'}</Btn>
                   {!importing && <Btn variant="ghost" onClick={() => setShowImport(false)}>Cancel</Btn>}
@@ -712,63 +694,54 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
           <div className="px-4 py-3" style={{ borderBottom: `1px solid ${T.line}` }}>
             <div className="text-sm font-semibold" style={{ fontFamily: F_HEAD, color: T.ink }}>Unmapped Biometric IDs</div>
           </div>
-          {!unmappedLoading && enrolled.length > 0 && (
-            <div style={{ borderBottom: `1px solid ${T.line}` }}>
-              <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
-                <thead><tr><Th>Biometric ID</Th><Th>Name (from device)</Th><Th>Action</Th></tr></thead>
-                <tbody>
-                  {enrolled.map((u) => (
-                    <tr key={u.userId}>
-                      <Td mono><span className="font-bold" style={{ color: T.ink }}>{u.userId}</span></Td>
-                      <Td><span style={{ fontFamily: F_BODY, color: T.ink }}>{u.name || '—'}</span></Td>
-                      <Td>
-                        <div className="flex gap-2">
-                          <Btn size="sm" variant="outline" onClick={() => onRegister && onRegister(u.userId, u.name)}>Register</Btn>
-                          <Btn size="sm" variant="outline" disabled={ignoringId === u.userId} onClick={() => ignoreEnrolled(u.userId)}>{ignoringId === u.userId ? 'Ignoring…' : 'Ignore'}</Btn>
-                        </div>
-                      </Td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table></div>
-            </div>
-          )}
           {!unmappedLoading && unmappedError && (
             <div role="alert" className="m-4 flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm" style={{ backgroundColor: T.brandBg, color: T.brandDark, fontFamily: F_BODY }}>
               <span className="flex items-center gap-2"><AlertTriangle size={15} aria-hidden="true" /> {unmappedError}</span>
               <Btn size="sm" variant="outline" onClick={loadUnmapped}>Try again</Btn>
             </div>
           )}
-          {unmappedLoading ? <SkeletonBlock avatar={false} />
-            : unmappedError && !unmapped.length && !enrolled.length ? null
-            : unmapped.length === 0 ? (enrolled.length ? null : <EmptyState icon={CircleCheck} title="All scans are matched" desc="Every scan from the device is linked to a registered employee." />)
-            : (
-            <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
-              <thead><tr><Th>Biometric ID</Th><Th>Name (from file)</Th><Th center>Scans</Th><Th>Dates</Th><Th>Action</Th></tr></thead>
-              <tbody>
-                {unmapped.map((g) => (
-                  <tr key={g.biometricId}>
-                    <Td mono><span className="font-bold" style={{ color: T.ink }}>{g.biometricId}</span></Td>
-                    <Td>
-                      <span style={{ fontFamily: F_BODY, color: T.ink }}>{g.biometricName || '—'}</span>
-                      {g.hasEmployee && <span className="ml-2"><Badge tone="green">registered</Badge></span>}
-                    </Td>
-                    <Td center mono>{g.punchCount}</Td>
-                    <Td mono><span className="text-xs" style={{ color: T.soft }}>{g.firstDate} → {g.lastDate}</span></Td>
-                    <Td>
-                      {g.hasEmployee ? (
-                        <Btn size="sm" disabled={resolvingId === g.biometricId} onClick={() => resolveId(g.biometricId)}>
-                          {resolvingId === g.biometricId ? 'Resolving…' : 'Resolve'}
-                        </Btn>
-                      ) : (
-                        <Btn size="sm" variant="outline" onClick={() => onRegister && onRegister(g.biometricId, g.biometricName)}>Register</Btn>
-                      )}
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table></div>
-          )}
+          {(() => {
+            if (unmappedLoading) return <SkeletonBlock avatar={false} />;
+            const byId = new Map(unmapped.map((g) => [g.biometricId, { ...g }]));
+            for (const u of enrolled) {
+              const g = byId.get(u.userId);
+              if (g) { if (!g.biometricName && u.name) g.biometricName = u.name; }
+              else byId.set(u.userId, { biometricId: u.userId, biometricName: u.name, punchCount: 0, firstDate: null, lastDate: null, hasEmployee: false });
+            }
+            const list = [...byId.values()].sort((a, b) => Number(a.biometricId) - Number(b.biometricId) || String(a.biometricId).localeCompare(String(b.biometricId)));
+            if (!list.length) return unmappedError ? null : <EmptyState icon={CircleCheck} title="All scans are matched" desc="Every scan from the device is linked to a registered employee." />;
+            return (
+              <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
+                <thead><tr><Th>Biometric ID</Th><Th>Name</Th><Th center>Scans</Th><Th center>Dates</Th><Th center>Action</Th></tr></thead>
+                <tbody>
+                  {list.map((g) => (
+                    <tr key={g.biometricId}>
+                      <Td mono><span className="font-bold" style={{ color: T.ink }}>{g.biometricId}</span></Td>
+                      <Td>
+                        <span style={{ fontFamily: F_BODY, color: T.ink }}>{g.biometricName || '—'}</span>
+                        {g.hasEmployee && <span className="ml-2"><Badge tone="green">registered</Badge></span>}
+                      </Td>
+                      <Td center mono>{g.punchCount > 0 ? g.punchCount : <span style={{ color: T.soft }}>—</span>}</Td>
+                      <Td center mono>
+                        <span className="text-xs" style={{ color: T.soft }}>
+                          {!g.firstDate ? 'No scans yet' : g.firstDate === g.lastDate ? g.firstDate : `${g.firstDate} → ${g.lastDate}`}
+                        </span>
+                      </Td>
+                      <Td center>
+                        {g.hasEmployee ? (
+                          <Btn size="sm" disabled={resolvingId === g.biometricId} onClick={() => resolveId(g.biometricId)}>
+                            {resolvingId === g.biometricId ? 'Resolving…' : 'Resolve'}
+                          </Btn>
+                        ) : (
+                          <Btn size="sm" variant="outline" onClick={() => onRegister && onRegister(g.biometricId, g.biometricName)}>Register</Btn>
+                        )}
+                      </Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table></div>
+            );
+          })()}
         </Panel>
       )}
 

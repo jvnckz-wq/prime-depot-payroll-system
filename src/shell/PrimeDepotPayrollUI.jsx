@@ -234,7 +234,7 @@ export default function PrimeDepotPayroll() {
   const [attSummaries, setAttSummaries] = useState([]);
   const [attLoading, setAttLoading] = useState(true);
   const [unmappedCount, setUnmappedCount] = useState(0);
-  const [enrolledCount, setEnrolledCount] = useState(0);
+  const [unregisteredIds, setUnregisteredIds] = useState(0);
   const [noScanDeliveries, setNoScanDeliveries] = useState(0);
   useEffect(() => {
     if (!user || user.role !== 'ADMIN' || !user.totpEnabled) return;
@@ -247,7 +247,7 @@ export default function PrimeDepotPayroll() {
         setCutoffPeriod(d.period || null);
         setAttSummaries(d.summaries || []);
         setUnmappedCount(d.unmappedCount || 0);
-        setEnrolledCount(d.enrolledCount || 0);
+        setUnregisteredIds(d.unregisteredIds || 0);
         setNoScanDeliveries(d.noScanDeliveries || 0);
       })
       .catch(err => console.error('Could not load current cutoff:', err))
@@ -375,7 +375,7 @@ export default function PrimeDepotPayroll() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <main className="flex-1 overflow-y-auto">
           <div key={tab} className="pd-view-in">
-          {tab === 'dashboard' && <DashboardView deliveries={deliveries} staff={staff} totalEmployees={allStaff.filter(e => e.status !== 'Inactive').length} loans={loans} statutory={statutory} setTab={setTab} onNavigate={navSelect} dataLoading={staffLoading || attLoading} cutoffLabel={cutoffText} runKey={staffKey} attendanceSummaries={attSummaries} unmappedCount={unmappedCount} enrolledCount={enrolledCount} noScanDeliveries={noScanDeliveries} />}
+          {tab === 'dashboard' && <DashboardView deliveries={deliveries} staff={staff} totalEmployees={allStaff.filter(e => e.status !== 'Inactive').length} loans={loans} statutory={statutory} setTab={setTab} onNavigate={navSelect} dataLoading={staffLoading || attLoading} cutoffLabel={cutoffText} runKey={staffKey} attendanceSummaries={attSummaries} unmappedCount={unmappedCount} unregisteredIds={unregisteredIds} noScanDeliveries={noScanDeliveries} />}
           {tab === 'employees' && <EmployeesView staff={allStaff} loading={staffLoading} reloadStaff={reloadStaff} toast={toast} prefill={employeePrefill} onPrefillConsumed={() => setEmployeePrefill(null)} />}
           {tab === 'attendance' && <AttendanceView navSub={subs.attendance} staff={allStaff} toast={toast} onNavigate={navSelect} focus={attendanceFocus} onFocusConsumed={() => setAttendanceFocus(null)} onRegister={(id, name) => { setEmployeePrefill({ id, name }); setTab('employees'); }} />}
           {tab === 'payroll' && <PayrollView navSub={subs.payroll} onNavigate={navSelect} staff={staff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} toast={toast} cutoffLabel={cutoffText} reloadStaff={reloadStaff} staffLoading={staffLoading} deliveries={deliveries} setDeliveries={setDeliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} crewRates={crewRates} crewNames={allStaff.filter(e => e.crew).map(e => e.name)} />}
