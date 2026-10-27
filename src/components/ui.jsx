@@ -150,7 +150,7 @@ export const Btn = ({ children, onClick, variant = 'dark', icon: Icon, size = 'm
     dark: { backgroundColor: T.ink, color: '#fff' },
     outline: { backgroundColor: 'transparent', color: T.ink, border: `1.5px solid ${T.line}` },
     amber: { backgroundColor: T.amber, color: '#fff' },
-    ghost: { backgroundColor: 'transparent', color: T.soft },
+    ghost: { backgroundColor: 'transparent', color: T.ink, border: `1.5px solid ${T.line}` },
   };
   return (
     <button onClick={onClick} disabled={isDisabled} data-variant={variant}
@@ -223,13 +223,20 @@ export const Modal = ({ open, onClose, title, children, width = 520 }) => {
       <div onClick={e => e.stopPropagation()} className="pd-modal w-full rounded-lg overflow-hidden flex flex-col" style={{ backgroundColor: T.surface, maxWidth: width, maxHeight: '88vh' }}>
         <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${T.line}` }}>
           <span className="text-sm font-bold" style={{ fontFamily: F_HEAD, color: T.ink }}>{title}</span>
-          <button type="button" onClick={onClose} aria-label="Close" className="-my-3 -mr-3 w-10 h-10 shrink-0 flex items-center justify-center rounded"><X size={16} color={T.soft} /></button>
+          <button type="button" onClick={onClose} aria-label="Close" className="pd-icon-btn -my-3 -mr-3 w-10 h-10 shrink-0"><X size={16} color={T.soft} /></button>
         </div>
         <div className="p-5 overflow-y-auto">{children}</div>
       </div>
     </div>
   );
 };
+
+export const Chip = ({ on = false, onClick, disabled = false, children, title, ariaLabel }) => (
+  <button type="button" className="pd-chip" data-on={on ? 'true' : 'false'} aria-pressed={on} onClick={onClick} disabled={disabled}
+    title={title} aria-label={ariaLabel} style={{ fontFamily: F_BODY }}>
+    {children}
+  </button>
+);
 
 export const Confirm = ({ open, onConfirm, onCancel, title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger = false, busy = false, confirmDisabled = false, children = null }) => {
   if (!open) return null;

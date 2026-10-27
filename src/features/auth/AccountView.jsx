@@ -284,14 +284,14 @@ const AdminGateVerify = ({ user, onDone }) => {
             <span>Didn&apos;t receive it? You can resend in {cooldown}s.</span>
           ) : (
             <button type="button" onClick={() => sendCode(true)} disabled={busy}
-              className="underline" style={{ color: T.brand, opacity: busy ? 0.6 : 1 }}>
+              className="pd-link" style={{ opacity: busy ? 0.6 : 1 }}>
               Didn&apos;t receive the code? Resend it
             </button>
           )}
         </div>
         <div className="text-center mt-2">
           <button type="button" onClick={() => { setStep('setup'); setError(''); }}
-            className="text-xs underline" style={{ fontFamily: F_BODY, color: T.soft }}>
+            className="pd-link text-xs" style={{ fontFamily: F_BODY }}>
             Use a different email
           </button>
         </div>

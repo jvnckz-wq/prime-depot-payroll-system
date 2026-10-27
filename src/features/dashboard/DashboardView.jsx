@@ -21,7 +21,7 @@ const SYNC_LOOK = {
 };
 
 const MoreLink = ({ count, onClick }) => (
-  <button onClick={onClick} className="pd-clickable text-xs font-semibold mt-1" style={{ fontFamily: F_BODY, color: T.brand }}>
+  <button onClick={onClick} className="pd-link text-xs mt-1" style={{ fontFamily: F_BODY }}>
     +{count} more
   </button>
 );
@@ -123,7 +123,7 @@ const TodayCard = ({ onOpenLive }) => {
           </div>
 
           <div className="flex justify-end pt-2">
-            <button onClick={onOpenLive} className="pd-clickable text-sm font-semibold flex items-center gap-1" style={{ fontFamily: F_BODY, color: T.brand }}>
+            <button onClick={onOpenLive} className="pd-link text-sm" style={{ fontFamily: F_BODY }}>
               Open Live <ArrowRight size={14} />
             </button>
           </div>

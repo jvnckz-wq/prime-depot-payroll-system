@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, ClipboardList, ArrowLeft, Pencil, Upload, Loader2, CalendarX, CircleCheck, Users } from 'lucide-react';
-import { Av, Badge, BigStat, Btn, EmptyState, Eyebrow, Field, H1, Modal, Panel, SkeletonBlock, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
+import { Av, Badge, BigStat, Btn, Chip, EmptyState, Eyebrow, Field, H1, Modal, Panel, SkeletonBlock, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { timeOrderError } from '@/lib/field-rules';
 import { positionLabel } from '@/data/seed';
@@ -361,7 +361,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
 
     return (
       <div className="p-4 sm:p-6">
-        <button onClick={() => { setView('list'); setSelectedId(null); }} className="flex items-center gap-1.5 text-sm mb-4" style={{ fontFamily: F_BODY, color: T.soft }}>
+        <button onClick={() => { setView('list'); setSelectedId(null); }} className="pd-link text-sm mb-4" style={{ fontFamily: F_BODY }}>
           <ArrowLeft size={14} /> Back to Attendance
         </button>
         <Panel className="p-5 mb-5">
@@ -432,11 +432,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
               <Field label="Status">
                 <div className="flex gap-2">
                   {(isCrew ? [['present', 'Present'], ['absent', 'Absent']] : [['present', 'Present'], ['leave', 'On Leave'], ['absent', 'Absent']]).map(([val, lbl]) => (
-                    <button key={val} type="button" onClick={() => setEditForm((f) => ({ ...f, status: val }))}
-                      className="flex-1 px-2 py-2 rounded border text-sm font-semibold transition-colors"
-                      style={{ borderColor: editForm.status === val ? T.brand : T.line, backgroundColor: editForm.status === val ? T.brandBg : T.surface, color: editForm.status === val ? T.brand : T.soft, fontFamily: F_HEAD }}>
-                      {lbl}
-                    </button>
+                    <Chip key={val} on={editForm.status === val} onClick={() => setEditForm((f) => ({ ...f, status: val }))}>{lbl}</Chip>
                   ))}
                 </div>
               </Field>
@@ -497,7 +493,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                 {liveData.finalized && liveData.isToday && <div className="text-xs mt-1" style={{ fontFamily: F_BODY, color: T.warn, maxWidth: 360, lineHeight: 1.5 }}>This cutoff’s payroll is finalized. New scans stay on the device and are not added.</div>}
               </div>
               {!liveData.isToday && (
-                <button onClick={() => setLiveDate(null)} className="rounded-full pd-clickable" style={{ fontFamily: F_HEAD, fontSize: 12, fontWeight: 600, color: T.brand, background: T.brandBg, border: 'none', padding: '5px 11px' }}>Back to today</button>
+                <button onClick={() => setLiveDate(null)} className="pd-link text-sm" style={{ fontFamily: F_BODY }}>Back to today</button>
               )}
             </div>
             {(() => {
@@ -629,7 +625,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                 <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Accepted files: .dat, .xls, .xlsx (up to {MAX_IMPORT_MB} MB)</div>
                 <div className="flex gap-2">
                   <Btn variant="outline" onClick={() => fileRef.current?.click()} loading={importing} disabled={importing}>{importing ? 'Importing…' : 'Browse for a file'}</Btn>
-                  {!importing && <Btn variant="ghost" onClick={() => setShowImport(false)}>Cancel</Btn>}
+                  {!importing && <Btn variant="outline" onClick={() => setShowImport(false)}>Cancel</Btn>}
                 </div>
               </div>
             )}

@@ -194,7 +194,7 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
 
       <div className="flex items-center justify-between mt-4 mb-2">
         <Eyebrow>Items Delivered</Eyebrow>
-        <button onClick={addRow} disabled={lineRows.length >= rates.length} className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold border disabled:opacity-40" style={{ fontFamily: F_HEAD, color: T.ink, borderColor: T.line, backgroundColor: T.surface }}><Plus size={13} /> Add item</button>
+        <Btn size="sm" variant="outline" icon={Plus} onClick={addRow} disabled={lineRows.length >= rates.length}>Add item</Btn>
       </div>
       <div className="flex flex-col gap-2 mb-3">
         {lineRows.map((row, i) => {
@@ -212,8 +212,8 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
                   {rates.filter(r => rateKey(r) === row.item || !usedKeys.has(rateKey(r))).map(r => <option key={rateKey(r)} value={rateKey(r)}>{rateLabel(r)}</option>)}
                 </select>
                 {lineRows.length > 1 && (
-                  <button onClick={() => removeRow(i)} className="shrink-0 p-1.5" title="Remove this item">
-                    <Trash2 size={14} color={T.red} />
+                  <button onClick={() => removeRow(i)} className="pd-icon-btn pd-icon-danger shrink-0" title="Remove this item">
+                    <Trash2 size={15} color={T.soft} />
                   </button>
                 )}
               </div>

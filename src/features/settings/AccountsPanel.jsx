@@ -235,46 +235,41 @@ export const AccountsPanel = ({ currentUser, toast, onGoToEmployees }) => {
 
               <div className="flex items-center gap-1.5 shrink-0">
                 {u.role === 'CHECKER' && !u.employee && (
-                  <button className="pd-clickable p-2 rounded" title="Link to a checker" aria-label={`Link ${u.username} to a checker`}
-                    style={{ border: `1px solid ${T.line}` }}
+                  <button className="pd-icon-btn" title="Link to a checker" aria-label={`Link ${u.username} to a checker`}
                     onClick={() => { setError(''); setLinkEmployeeId(''); setLinkFor(u); }}>
-                    <Link2 size={14} color={T.brand} />
+                    <Link2 size={15} color={T.soft} />
                   </button>
                 )}
                 {u.role === 'CHECKER' && (
-                  <button className="pd-clickable p-2 rounded" title="Change username" aria-label={`Change username of ${u.username}`}
-                    style={{ border: `1px solid ${T.line}` }}
+                  <button className="pd-icon-btn" title="Change username" aria-label={`Change username of ${u.username}`}
                     onClick={() => { setRenameErr(''); setRenameValue(u.username); setRenameFor(u); }}>
-                    <Pencil size={14} color={T.soft} />
+                    <Pencil size={15} color={T.soft} />
                   </button>
                 )}
-                <button className="pd-clickable p-2 rounded" title="Reset password"
-                  style={{ border: `1px solid ${T.line}` }}
+                <button className="pd-icon-btn" title="Reset password"
                   onClick={() => setConfirm({
                     title: `Reset password for ${u.username}?`,
                     message: 'A new temporary password will be generated. Any session this account currently has will be signed out immediately.',
                     onConfirm: () => act(u, 'reset-password'),
                   })}>
-                  <KeyRound size={14} color={T.soft} />
+                  <KeyRound size={15} color={T.soft} />
                 </button>
                 {u.id !== currentUser.id && !blockedByEmployee && (
                   u.isActive ? (
-                    <button className="pd-clickable p-2 rounded" title="Disable account"
-                      style={{ border: `1px solid ${T.line}` }}
-                      onClick={() => setConfirm({
+                    <button className="pd-icon-btn pd-icon-danger" aria-label={`Disable ${u.username}`} title="Disable account"
+                        onClick={() => setConfirm({
                         title: `Disable ${u.username}?`,
                         message: 'They will be signed out and cannot sign in again until re-enabled. Their past delivery records stay intact, which is why accounts are disabled rather than deleted.',
                         danger: true,
                         confirmLabel: 'Disable account',
                         onConfirm: () => act(u, 'disable'),
                       })}>
-                      <UserX size={14} color={T.red} />
+                      <UserX size={15} color={T.soft} />
                     </button>
                   ) : (
-                    <button className="pd-clickable p-2 rounded" title="Re-enable account"
-                      style={{ border: `1px solid ${T.line}` }}
-                      onClick={() => act(u, 'enable')}>
-                      <UserCheck size={14} color={T.green} />
+                    <button className="pd-icon-btn" title="Re-enable account"
+                        onClick={() => act(u, 'enable')}>
+                      <UserCheck size={15} color={T.soft} />
                     </button>
                   )
                 )}
@@ -360,7 +355,7 @@ export const AccountsPanel = ({ currentUser, toast, onGoToEmployees }) => {
               <Eyebrow>Temporary password</Eyebrow>
               <div className="flex items-center gap-2">
                 <span className="text-base font-semibold" style={{ fontFamily: F_MONO, color: T.brand }}>{handover.tempPassword}</span>
-                <button onClick={() => copy(handover.tempPassword)} title="Copy"><Copy size={13} color={T.soft} /></button>
+                <button className="pd-icon-btn" onClick={() => copy(handover.tempPassword)} title="Copy"><Copy size={14} color={T.soft} /></button>
               </div>
             </div>
             <div className="flex items-start gap-2 px-3 py-2.5 rounded text-xs mb-4"

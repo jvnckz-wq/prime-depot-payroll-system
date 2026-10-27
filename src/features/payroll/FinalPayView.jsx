@@ -111,7 +111,7 @@ export const FinalPayView = ({ employee, onBack, toast, onDeactivate, editable =
   return (
     <div className="p-4 sm:p-6">
       <div className="flex items-center justify-between mb-4">
-        <button onClick={onBack} className="flex items-center gap-1.5 text-sm" style={{ fontFamily: F_BODY, color: T.soft }}>
+        <button onClick={onBack} className="pd-link text-sm" style={{ fontFamily: F_BODY }}>
           <ArrowLeft size={14} /> Back to Employees
         </button>
         <div className="flex items-center gap-2 no-print">
@@ -159,7 +159,7 @@ export const FinalPayView = ({ employee, onBack, toast, onDeactivate, editable =
           </span>
           {recorded
             ? <Btn size="sm" variant="outline" loading={busy} onClick={() => setConfirm('undo')}>Undo</Btn>
-            : <Btn size="sm" variant="amber" loading={busy} disabled={loading || busy} onClick={() => setConfirm('record')}>Record deduction</Btn>}
+            : <Btn size="sm" loading={busy} disabled={loading || busy} onClick={() => setConfirm('record')}>Record deduction</Btn>}
         </div>
       )}
 
@@ -250,7 +250,7 @@ export const FinalPayView = ({ employee, onBack, toast, onDeactivate, editable =
       <Confirm open={confirm === 'undo'} onCancel={() => setConfirm(null)} onConfirm={() => send('DELETE')} busy={busy}
         title="Undo the final pay deduction?"
         message="This removes the final pay deduction from the loans' ledger and restores the balances, so it can be recorded again with the corrected final pay."
-        confirmLabel="Undo" />
+        confirmLabel="Undo" danger />
     </div>
   );
 };

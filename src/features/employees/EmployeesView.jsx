@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Search, SearchX, Save, Clock, AlertTriangle, Users } from 'lucide-react';
-import { Badge, Btn, Confirm, EmptyState, Eyebrow, Field, H1, Modal, Money, Panel, SkeletonBlock, SkeletonRows, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
+import { Badge, Btn, Chip, Confirm, EmptyState, Eyebrow, Field, H1, Modal, Money, Panel, SkeletonBlock, SkeletonRows, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { POSITIONS, positionLabel } from '@/data/seed';
 import { hasNoContributions, hasNoEarlyShift, isDailyPosition, isNonRegularPosition } from '@/lib/positions';
 import { WEEKDAYS, describeEarlyShift } from '@/lib/attendance';
@@ -374,21 +374,12 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
             <div className="flex flex-wrap gap-1.5 mb-2.5 mt-2.5">
               {WEEKDAYS.map(w => {
                 const on = form.earlyShiftDays.includes(w.key);
-                return (
-                  <button key={w.key} onClick={() => toggleShiftDay(w.key)}
-                    className="px-2.5 py-1.5 rounded text-xs font-semibold"
-                    style={{
-                      fontFamily: F_HEAD,
-                      backgroundColor: on ? T.brand : T.surface,
-                      color: on ? '#fff' : T.soft,
-                      border: `1px solid ${on ? T.brand : T.line}`,
-                    }}>{w.label}</button>
-                );
+                return <Chip key={w.key} on={on} onClick={() => toggleShiftDay(w.key)}>{w.label}</Chip>;
               })}
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <button onClick={() => ff('earlyShiftDays', form.earlyShiftDays.length === 7 ? [] : WEEKDAYS.map(w => w.key))}
-                className="text-xs font-semibold underline" style={{ fontFamily: F_HEAD, color: T.brand }}>
+                className="pd-link text-xs" style={{ fontFamily: F_BODY }}>
                 {form.earlyShiftDays.length === 7 ? 'Clear all' : 'Every day'}
               </button>
               {form.earlyShiftDays.length > 0 && (

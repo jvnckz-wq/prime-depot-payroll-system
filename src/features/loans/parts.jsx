@@ -3,6 +3,7 @@
 import React from 'react';
 import { Search } from 'lucide-react';
 import { loanLedger } from '@/lib/payroll';
+import { Chip } from '@/components/ui.jsx';
 import { peso } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 
@@ -50,17 +51,8 @@ export const Kpi = ({ label, value, unit, sub }) => (
 );
 
 export const Seg = ({ value, onChange, options }) => (
-  <div className="flex rounded-lg border overflow-hidden" style={{ borderColor: T.line }} role="tablist">
-    {options.map(([key, label]) => {
-      const on = value === key;
-      return (
-        <button key={key} type="button" role="tab" aria-selected={on} onClick={() => onChange(key)}
-          className="px-3 py-1.5 text-sm"
-          style={{ fontFamily: F_BODY, backgroundColor: on ? T.ink : 'transparent', color: on ? '#FFFFFF' : T.soft, fontWeight: on ? 600 : 400 }}>
-          {label}
-        </button>
-      );
-    })}
+  <div className="flex items-center gap-1.5 flex-wrap" role="group">
+    {options.map(([key, label]) => <Chip key={key} on={value === key} onClick={() => onChange(key)}>{label}</Chip>)}
   </div>
 );
 

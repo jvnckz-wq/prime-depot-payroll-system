@@ -125,13 +125,13 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
                       : peso(r.share)}
                     </Td>
                     <Td right mono>{peso((editSss ? r.share : r.share) / 2)}</Td>
-                    {editSss && <Td><button onClick={() => setSssDraft(p => p.filter((_, j) => j !== i))}><Trash2 size={13} color={T.red} /></button></Td>}
+                    {editSss && <Td><button className="pd-icon-btn pd-icon-danger" title="Remove this row" onClick={() => setSssDraft(p => p.filter((_, j) => j !== i))}><Trash2 size={14} color={T.soft} /></button></Td>}
                   </tr>
                 ))}</tbody>
               </table></div>
             </div>
             {editSss && <div className="px-4 py-2.5" style={{ borderTop: `1px solid ${T.line}` }}>
-              <button onClick={() => setSssDraft(p => [...p.slice(0, -1), { ceiling: (p[p.length - 2]?.ceiling || 0) + 500, share: p[p.length - 1].share }, p[p.length - 1]])} className="text-xs font-semibold flex items-center gap-1" style={{ fontFamily: F_HEAD, color: T.blue }}><Plus size={12} /> Add bracket</button>
+              <button onClick={() => setSssDraft(p => [...p.slice(0, -1), { ceiling: (p[p.length - 2]?.ceiling || 0) + 500, share: p[p.length - 1].share }, p[p.length - 1]])} className="pd-link text-xs" style={{ fontFamily: F_BODY }}><Plus size={12} /> Add bracket</button>
             </div>}
           </Panel>
 
@@ -215,13 +215,13 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
                     </Td>
                     <Td right mono>{editBir ? <input type="number" value={r.base} onChange={e => setBirDraft(p => p.map((x, j) => j === i ? { ...x, base: Math.max(0, parseFloat(moneyInput(e.target.value)) || 0) } : x))} className="px-2 py-1 rounded border text-xs w-20 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} /> : peso(r.base)}</Td>
                     <Td right mono>{editBir ? <input type="number" value={r.rate} onChange={e => setBirDraft(p => p.map((x, j) => j === i ? { ...x, rate: Math.max(0, parseFloat(moneyInput(e.target.value)) || 0) } : x))} className="px-2 py-1 rounded border text-xs w-14 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} /> : `${r.rate}%`}</Td>
-                    {editBir && <Td><button onClick={() => setBirDraft(p => p.filter((_, j) => j !== i))}><Trash2 size={13} color={T.red} /></button></Td>}
+                    {editBir && <Td><button className="pd-icon-btn pd-icon-danger" title="Remove this bracket" onClick={() => setBirDraft(p => p.filter((_, j) => j !== i))}><Trash2 size={14} color={T.soft} /></button></Td>}
                   </tr>
                 ))}</tbody>
               </table>
             </div>
             {editBir && <div className="px-4 py-2.5" style={{ borderTop: `1px solid ${T.line}` }}>
-              <button onClick={() => setBirDraft(p => [...p.slice(0, -1), { over: p[p.length - 1].over, notOver: p[p.length - 1].over + 100000, base: p[p.length - 1].base, rate: p[p.length - 1].rate }, p[p.length - 1]])} className="text-xs font-semibold flex items-center gap-1" style={{ fontFamily: F_HEAD, color: T.blue }}><Plus size={12} /> Add bracket</button>
+              <button onClick={() => setBirDraft(p => [...p.slice(0, -1), { over: p[p.length - 1].over, notOver: p[p.length - 1].over + 100000, base: p[p.length - 1].base, rate: p[p.length - 1].rate }, p[p.length - 1]])} className="pd-link text-xs" style={{ fontFamily: F_BODY }}><Plus size={12} /> Add bracket</button>
             </div>}
           </Panel>
         </div>

@@ -72,7 +72,7 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
 
   return (
     <div className="p-4 sm:p-6">
-      <H1 action={<Btn variant="amber" icon={Plus} onClick={() => setForm({ employeeId: null })}>New Loan</Btn>}>Loans</H1>
+      <H1 action={<Btn icon={Plus} onClick={() => setForm({ employeeId: null })}>New Loan</Btn>}>Loans</H1>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3.5 mb-4">
         <Kpi label="Outstanding balance" value={peso(outstanding)} />
@@ -119,7 +119,7 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
                       ? <Btn variant="outline" icon={Play} loading={busyId === l.id} onClick={() => setPaused(l, false)}>Resume</Btn>
                       : <Btn variant="outline" onClick={() => setForm({ employeeId: l.employeeId })}>Top-up</Btn>}
                     {expanded && status !== 'Paused' && (
-                      <Btn variant="ghost" icon={Pause} loading={busyId === l.id} onClick={() => setPaused(l, true)}>Pause deductions</Btn>
+                      <Btn variant="outline" icon={Pause} loading={busyId === l.id} onClick={() => setPaused(l, true)}>Pause deductions</Btn>
                     )}
                     <span className="ml-auto text-xs flex items-center gap-1" style={{ color: T.soft }}>
                       {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}{expanded ? 'Hide ledger' : 'Ledger'}
@@ -171,7 +171,7 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
                               <Ledger loan={l} />
                               {status !== 'Paused' && (
                                 <div className="flex justify-end">
-                                  <Btn size="sm" variant="ghost" icon={Pause} loading={busyId === l.id} onClick={() => setPaused(l, true)}>Pause deductions</Btn>
+                                  <Btn size="sm" variant="outline" icon={Pause} loading={busyId === l.id} onClick={() => setPaused(l, true)}>Pause deductions</Btn>
                                 </div>
                               )}
                             </div>

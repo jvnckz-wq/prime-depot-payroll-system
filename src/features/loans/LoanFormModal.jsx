@@ -154,7 +154,7 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmp
 
         <div className="flex justify-end gap-2 pt-1">
           <Btn variant="outline" onClick={onClose} disabled={busy}>Cancel</Btn>
-          <Btn variant="amber" onClick={save} loading={busy} disabled={busy}>{topUp ? 'Add to loan' : 'Save loan'}</Btn>
+          <Btn onClick={save} loading={busy} disabled={busy}>{topUp ? 'Add to loan' : 'Save loan'}</Btn>
         </div>
       </div>
     </Modal>

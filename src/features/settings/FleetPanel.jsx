@@ -112,7 +112,7 @@ export const FleetPanel = ({ toast }) => {
                   <Td mono>{t.plate}</Td>
                   <Td center>{t.isActive ? <Badge tone="green">In service</Badge> : <Badge tone="neutral">Retired</Badge>}</Td>
                   <Td right>
-                    <button className="pd-clickable p-1.5 rounded inline-flex" title={`Edit ${t.id}`} aria-label={`Edit ${t.id}`}
+                    <button className="pd-icon-btn" title={`Edit ${t.id}`} aria-label={`Edit ${t.id}`}
                       onClick={() => openEditTruck(t)}>
                       <Pencil size={14} color={T.soft} />
                     </button>
@@ -159,22 +159,25 @@ export const FleetPanel = ({ toast }) => {
         <div className="flex items-center gap-2 mt-4 flex-wrap">
           <Btn onClick={saveTruck} loading={busy} disabled={busy}>{busy ? 'Saving...' : editingTruck ? 'Save changes' : 'Add truck'}</Btn>
           <Btn variant="outline" onClick={() => setTruckModal(false)}>Cancel</Btn>
-          {editingTruck && (editingTruck.isActive ? (
-            <button type="button" className="pd-btn ml-auto inline-flex items-center rounded font-semibold px-3 py-2 text-sm min-h-11 sm:min-h-0" style={{ fontFamily: F_HEAD, color: T.brand, border: `1.5px solid ${T.brand}`, backgroundColor: 'transparent' }} disabled={busy}
-              onClick={() => {
-                const t = editingTruck;
-                setTruckModal(false);
-                setConfirm({
-                  title: `Retire ${t.id}?`,
-                  message: 'It will no longer appear when logging a delivery. Past deliveries on this truck stay exactly as they are.',
-                  confirmLabel: 'Retire truck',
-                  onConfirm: () => setTruckActive(t, false),
-                });
-              }}>Retire truck</button>
-          ) : (
-            <button type="button" className="pd-btn ml-auto inline-flex items-center rounded font-semibold px-3 py-2 text-sm min-h-11 sm:min-h-0" style={{ fontFamily: F_HEAD, color: T.green, border: `1.5px solid ${T.green}`, backgroundColor: 'transparent' }} disabled={busy}
-              onClick={() => { const t = editingTruck; setTruckModal(false); setTruckActive(t, true); }}>Return to service</button>
-          ))}
+          {editingTruck && (
+            <div className="ml-auto">
+              {editingTruck.isActive ? (
+                <Btn variant="amber" disabled={busy} onClick={() => {
+                  const t = editingTruck;
+                  setTruckModal(false);
+                  setConfirm({
+                    title: `Retire ${t.id}?`,
+                    message: 'It will no longer appear when logging a delivery. Past deliveries on this truck stay exactly as they are.',
+                    confirmLabel: 'Retire truck',
+                    danger: true,
+                    onConfirm: () => setTruckActive(t, false),
+                  });
+                }}>Retire truck</Btn>
+              ) : (
+                <Btn variant="outline" disabled={busy} onClick={() => { const t = editingTruck; setTruckModal(false); setTruckActive(t, true); }}>Return to service</Btn>
+              )}
+            </div>
+          )}
         </div>
       </Modal>
 
@@ -183,6 +186,7 @@ export const FleetPanel = ({ toast }) => {
         title={confirm?.title}
         message={confirm?.message}
         confirmLabel={confirm?.confirmLabel}
+        danger={confirm?.danger}
         onCancel={() => setConfirm(null)}
         onConfirm={() => { confirm?.onConfirm?.(); setConfirm(null); }}
       />

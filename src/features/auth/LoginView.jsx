@@ -225,9 +225,9 @@ function ForgotPassword({ onBack }) {
       )}
 
       {action && (
-        <button onClick={action[0]} disabled={busy} data-variant="amber"
+        <button onClick={action[0]} disabled={busy} data-variant="dark"
           className="pd-btn w-full py-3 rounded-lg text-sm font-semibold inline-flex items-center justify-center gap-1.5 mt-6"
-          style={{ fontFamily: F_HEAD, backgroundColor: T.brand, color: '#fff', opacity: busy ? 0.6 : 1 }}>
+          style={{ fontFamily: F_HEAD, backgroundColor: T.ink, color: '#fff', opacity: busy ? 0.6 : 1 }}>
           {busy && <Loader2 size={14} className="pd-spin" />}
           {busy ? 'Please wait…' : action[1]}
         </button>
@@ -239,7 +239,7 @@ function ForgotPassword({ onBack }) {
             <span>Didn&apos;t receive it? You can resend in {cooldown}s.</span>
           ) : (
             <button type="button" onClick={confirmEmail} disabled={busy}
-              className="underline" style={{ color: T.brand, opacity: busy ? 0.6 : 1 }}>
+              className="pd-link" style={{ opacity: busy ? 0.6 : 1 }}>
               Didn&apos;t receive the code? Resend it
             </button>
           )}
@@ -247,7 +247,7 @@ function ForgotPassword({ onBack }) {
       )}
 
       <div className="text-center mt-3">
-        <button type="button" onClick={() => onBack()} className="text-xs underline" style={{ fontFamily: F_BODY, color: T.soft }}>
+        <button type="button" onClick={() => onBack()} className="pd-link text-xs" style={{ fontFamily: F_BODY }}>
           Back to sign in
         </button>
       </div>
@@ -380,21 +380,21 @@ export const LoginView = ({ onSignedIn, onShowLegal, notice = '' }) => {
             </div>
           )}
 
-          <button onClick={verify2FA} disabled={busy} data-variant="amber"
+          <button onClick={verify2FA} disabled={busy} data-variant="dark"
             className="pd-btn w-full py-3 rounded-lg text-sm font-semibold inline-flex items-center justify-center gap-1.5 mt-6"
-            style={{ fontFamily: F_HEAD, backgroundColor: T.brand, color: '#fff', opacity: busy ? 0.6 : 1 }}>
+            style={{ fontFamily: F_HEAD, backgroundColor: T.ink, color: '#fff', opacity: busy ? 0.6 : 1 }}>
             {busy && <Loader2 size={14} className="pd-spin" />}
             {busy ? 'Please wait…' : 'Verify'}
           </button>
 
           <div className="text-center mt-4">
             <button type="button" onClick={() => { setUseBackup(!useBackup); setTfaCode(''); setError(''); }}
-              className="text-xs underline" style={{ fontFamily: F_BODY, color: T.brand }}>
+              className="pd-link text-xs" style={{ fontFamily: F_BODY }}>
               {useBackup ? 'Use your authenticator app instead' : 'Use a backup code instead'}
             </button>
           </div>
           <div className="text-center mt-2">
-            <button type="button" onClick={backToSignIn} className="text-xs underline" style={{ fontFamily: F_BODY, color: T.soft }}>
+            <button type="button" onClick={backToSignIn} className="pd-link text-xs" style={{ fontFamily: F_BODY }}>
               Back to sign in
             </button>
           </div>
@@ -488,18 +488,18 @@ export const LoginView = ({ onSignedIn, onShowLegal, notice = '' }) => {
             />
             <label htmlFor="agree-terms" className="cursor-pointer leading-snug">
               I agree to the{' '}
-              <button type="button" onClick={() => onShowLegal('terms')} className="underline" style={{ color: T.brand }}>Terms and Conditions</button>
+              <button type="button" onClick={() => onShowLegal('terms')} className="pd-link">Terms and Conditions</button>
               {' '}and{' '}
-              <button type="button" onClick={() => onShowLegal('privacy')} className="underline" style={{ color: T.brand }}>Privacy Policy</button>.
+              <button type="button" onClick={() => onShowLegal('privacy')} className="pd-link">Privacy Policy</button>.
             </label>
           </div>
 
           <button
             onClick={submit}
             disabled={busy}
-            data-variant="amber"
+            data-variant="dark"
             className="pd-btn w-full py-3 rounded-lg text-sm font-semibold inline-flex items-center justify-center gap-1.5 mt-4"
-            style={{ fontFamily: F_HEAD, backgroundColor: T.brand, color: '#fff', opacity: busy ? 0.6 : 1, cursor: busy ? 'not-allowed' : 'pointer' }}
+            style={{ fontFamily: F_HEAD, backgroundColor: T.ink, color: '#fff', opacity: busy ? 0.6 : 1, cursor: busy ? 'not-allowed' : 'pointer' }}
           >
             {busy && <Loader2 size={14} className="pd-spin" />}
             {busy ? 'Signing in...' : 'Sign In'}
@@ -507,7 +507,7 @@ export const LoginView = ({ onSignedIn, onShowLegal, notice = '' }) => {
 
           <div className="text-center mt-4">
             <button type="button" onClick={() => { setMode('forgot'); setError(''); setResetDone(''); }}
-              className="text-xs underline" style={{ fontFamily: F_BODY, color: T.soft }}>
+              className="pd-link text-xs" style={{ fontFamily: F_BODY }}>
               Forgot your password?
             </button>
           </div>

@@ -65,26 +65,43 @@ button:disabled { cursor: not-allowed; }
     transform var(--pd-dur-fast) var(--pd-ease),
     box-shadow var(--pd-dur-base) var(--pd-ease);
 }
-.pd-btn:not(:disabled):hover {
-  transform: translateY(-1px);
-  box-shadow: 0 5px 14px rgba(27, 36, 48, 0.18);
-}
-.pd-btn[data-variant="dark"]:not(:disabled):hover,
-.pd-btn[data-variant="amber"]:not(:disabled):hover {
-  filter: brightness(0.92);
-}
-.pd-btn:not(:disabled):active {
-  transform: translateY(0.5px) scale(0.99);
-  box-shadow: none;
-  filter: brightness(0.88);
-}
+.pd-btn:not(:disabled):active { filter: brightness(0.94); }
+.pd-btn[data-variant="dark"]:not(:disabled):hover { background-color: #323D4C !important; }
+.pd-btn[data-variant="amber"]:not(:disabled):hover { background-color: var(--pd-brand-dark) !important; }
 .pd-btn[data-variant="outline"]:not(:disabled):hover,
 .pd-btn[data-variant="ghost"]:not(:disabled):hover {
-  filter: none;
-  background-color: var(--pd-brand) !important;
-  border-color: var(--pd-brand) !important;
-  color: #fff !important;
+  background-color: #F1EEEC !important;
+  border-color: #BDB6B2 !important;
+  color: var(--pd-ink) !important;
 }
+
+/* Text link: one look everywhere. */
+.pd-link {
+  color: var(--pd-brand); font-weight: 600; text-decoration: none; background: none; border: none; padding: 0;
+  display: inline-flex; align-items: center; gap: 4px; transition: color var(--pd-dur-base) var(--pd-ease);
+}
+button.pd-link:not(:disabled):hover, a.pd-link:hover { color: var(--pd-brand-dark); text-decoration: underline; text-underline-offset: 3px; }
+.pd-link:disabled { opacity: 0.45; }
+
+/* Icon button: plain gray icon, gray square on hover. */
+.pd-icon-btn {
+  display: inline-flex; align-items: center; justify-content: center; padding: 6px; border-radius: 6px;
+  background: transparent; border: none; transition: background-color var(--pd-dur-base) var(--pd-ease);
+}
+.pd-icon-btn:not(:disabled):hover { background-color: #F1EEEC; }
+.pd-icon-btn:not(:disabled):hover svg { stroke: var(--pd-ink); }
+.pd-icon-btn.pd-icon-danger:not(:disabled):hover svg { stroke: var(--pd-brand); }
+.pd-icon-btn:disabled { opacity: 0.45; }
+
+/* Choice chips: pick one or several. */
+.pd-chip {
+  font-weight: 600; font-size: 12px; line-height: 1.2; padding: 6px 12px; border-radius: 999px; white-space: nowrap;
+  border: 1px solid var(--pd-line); background: var(--pd-surface); color: var(--pd-soft);
+  transition: background-color var(--pd-dur-base) var(--pd-ease), border-color var(--pd-dur-base) var(--pd-ease), color var(--pd-dur-base) var(--pd-ease);
+}
+.pd-chip[data-on="true"] { border-color: var(--pd-ink); background: var(--pd-ink); color: #FFFFFF; }
+.pd-chip[data-on="false"]:not(:disabled):hover { background: #F1EEEC; border-color: #BDB6B2; color: var(--pd-ink); }
+.pd-chip:disabled { opacity: 0.45; }
 
 .pd-card-hover {
   transition: box-shadow var(--pd-dur-base) var(--pd-ease),
@@ -170,9 +187,6 @@ input::-ms-clear {
 .pd-clickable-row:hover { background-color: var(--pd-bg, #F4F5F7); }
 button:not(.pd-btn):not(.pd-nav-item):not(:disabled) {
   transition: color 0.12s ease, background-color 0.12s ease, transform 0.08s ease, opacity 0.12s ease;
-}
-button:not(.pd-btn):not(.pd-nav-item):not(.pd-menu-item):not(:disabled):hover {
-  color: var(--pd-brand) !important;
 }
 button:not(.pd-btn):not(.pd-nav-item):not(:disabled):active {
   transform: translateY(0.5px);

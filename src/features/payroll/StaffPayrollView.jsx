@@ -341,7 +341,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
     return (
       <div className="p-4 sm:p-6">
         <div className="flex items-center justify-between mb-4">
-          <button onClick={() => setView('list')} className="flex items-center gap-1.5 text-sm" style={{ fontFamily: F_BODY, color: T.soft }}>
+          <button onClick={() => setView('list')} className="pd-link text-sm" style={{ fontFamily: F_BODY }}>
             <ArrowLeft size={14} /> Back to Payroll
           </button>
           <Btn variant="outline" onClick={() => window.print()}>Print</Btn>
@@ -386,8 +386,8 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
           <Panel className="overflow-hidden">
             <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
               <div className="flex items-center gap-2">
-                <button type="button" aria-label="Previous cutoff" onClick={() => goCutoff(-1)} className="rounded-lg flex items-center justify-center pd-clickable" style={{ width: 28, height: 28, border: `1px solid ${T.line}`, background: T.surface, color: T.ink }}>‹</button>
-                <button type="button" aria-label="Next cutoff" disabled={!sel || sel.start >= latestStart} onClick={() => goCutoff(1)} className="rounded-lg flex items-center justify-center pd-clickable" style={{ width: 28, height: 28, border: `1px solid ${T.line}`, background: T.surface, color: T.ink, opacity: !sel || sel.start >= latestStart ? 0.4 : 1 }}>›</button>
+                <button type="button" aria-label="Previous cutoff" onClick={() => goCutoff(-1)} className="rounded-lg flex items-center justify-center pd-clickable" style={{ width: 30, height: 30, border: `1px solid ${T.line}`, background: T.surface, color: T.ink, fontSize: 16, lineHeight: 1 }}>‹</button>
+                <button type="button" aria-label="Next cutoff" disabled={!sel || sel.start >= latestStart} onClick={() => goCutoff(1)} className="rounded-lg flex items-center justify-center pd-clickable" style={{ width: 30, height: 30, border: `1px solid ${T.line}`, background: T.surface, color: T.ink, fontSize: 16, lineHeight: 1, opacity: !sel || sel.start >= latestStart ? 0.4 : 1 }}>›</button>
                 <Eyebrow>Payslips: {cutoffLabel}</Eyebrow>
                 {attFinalized && <Badge tone="green">Finalized</Badge>}
               </div>
@@ -518,7 +518,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
       <Confirm open={!!confirmUnfinalize} onCancel={() => setConfirmUnfinalize(null)} onConfirm={() => unfinalize(confirmUnfinalize)} busy={unfinalizing}
         title={confirmUnfinalize ? `Un-finalize ${confirmUnfinalize.label}?` : ''}
         message="This removes the released snapshot and reverses this cut-off's loan deductions, restoring the balances, so it can be recomputed and released again. Only do this to correct a mistake."
-        confirmLabel="Un-finalize" />
+        confirmLabel="Un-finalize" danger />
 
       <Modal open={!!viewPeriod} onClose={() => setViewPeriod(null)} title={viewPeriod ? `Released: ${viewPeriod.period.label}` : ''} width={720}>
         {viewPeriod && (

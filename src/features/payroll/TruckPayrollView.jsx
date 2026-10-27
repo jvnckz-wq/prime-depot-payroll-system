@@ -329,7 +329,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
 
     return (
       <div className="p-4 sm:p-6">
-        <button onClick={() => setSelected(null)} className="flex items-center gap-1.5 text-sm mb-4" style={{ fontFamily: F_BODY, color: T.soft }}>
+        <button onClick={() => setSelected(null)} className="pd-link text-sm mb-4" style={{ fontFamily: F_BODY }}>
           <ArrowLeft size={14} /> Back to Truck Payroll
         </button>
         <Panel className="p-5 mb-4">
@@ -385,15 +385,15 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                       <Td right>
                         <span className="inline-flex items-center gap-3">
                           {!readOnly && it.seq && !it.voided && (
-                            <button className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: it.dbl ? T.amber : T.soft }}
+                            <button className="pd-link text-xs" style={{ fontFamily: F_BODY }}
                               title={it.dbl ? 'Turn off double rate for this trip' : 'Mark this trip as double rate'}
                               onClick={() => openDouble(it)}>{it.dbl ? 'Double: on' : 'Double: off'}</button>
                           )}
                           {!readOnly && it.seq && (it.voided ? (
-                            <button className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.green, textDecoration: 'none' }}
+                            <button className="pd-link text-xs" style={{ fontFamily: F_BODY }}
                               onClick={() => restoreDelivery(it)}>Restore</button>
                           ) : (
-                            <button className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.red }}
+                            <button className="pd-link text-xs" style={{ fontFamily: F_BODY }}
                               onClick={() => { setVoidChoice(''); setVoidOther(''); setVoidErr(''); setVoidTarget(it); }}>Void</button>
                           ))}
                         </span>
@@ -722,8 +722,8 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
               )}
               {editingRates && (
                 <Td right>
-                  <button title="Retire this item" onClick={() => setConfirmRetire(r)}>
-                    <Trash2 size={13} color={T.red} />
+                  <button className="pd-icon-btn pd-icon-danger" title="Retire this item" onClick={() => setConfirmRetire(r)}>
+                    <Trash2 size={14} color={T.soft} />
                   </button>
                 </Td>
               )}
@@ -922,7 +922,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
         onConfirm={() => { retireRateItem(confirmRetire); setConfirmRetire(null); }}
         title={`Retire "${confirmRetire?.cat}"?`}
         message="It will stop appearing when logging a delivery. Deliveries already logged keep the amounts they were recorded with, so past payslips are unaffected."
-        confirmLabel="Retire item" />
+        confirmLabel="Retire item" danger />
     </div>
   );
 };

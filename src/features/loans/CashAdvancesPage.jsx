@@ -128,7 +128,7 @@ const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
 
         <div className="flex justify-end gap-2 pt-1">
           <Btn variant="outline" onClick={onClose} disabled={busy}>Cancel</Btn>
-          <Btn variant="amber" onClick={save} loading={busy} disabled={busy}>Save advance</Btn>
+          <Btn onClick={save} loading={busy} disabled={busy}>Save advance</Btn>
         </div>
       </div>
     </Modal>
@@ -163,7 +163,7 @@ export const CashAdvancesPage = ({ staff, loans, reloadLoans, statutory, period:
           <select value={period.start} onChange={(e) => setPick(e.target.value)} className={inputCls} style={{ ...inputStyle, width: 'auto' }} aria-label="Cutoff">
             {options.map((p) => <option key={p.start} value={p.start}>Cutoff: {periodLabel(p)}</option>)}
           </select>
-          <Btn variant="amber" icon={Plus} onClick={() => setAdding(true)}>New Cash Advance</Btn>
+          <Btn icon={Plus} onClick={() => setAdding(true)}>New Cash Advance</Btn>
         </div>
       }>Cash Advances</H1>
 

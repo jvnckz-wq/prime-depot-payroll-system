@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronRight, MapPin, Phone, AlertTriangle, Truck } from 'lucide-react';
-import { Badge, Btn, EmptyState, Eyebrow, Field, Modal, Panel, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
+import { Badge, Btn, Chip, EmptyState, Eyebrow, Field, Modal, Panel, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { telHref, timeLabel } from '@/lib/utils';
 import { deliveriesToLog } from '@/lib/payroll';
 import { OTHER_REASON, VOID_REASONS, buildVoidReason, voidChoiceError } from '@/lib/void-reasons';
@@ -131,15 +131,9 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
     finally { setBusy(false); }
   };
 
-  const chip = (key, label, count) => {
-    const on = filter === key;
-    return (
-      <button key={key} onClick={() => setFilter(key)} className="pd-clickable text-xs font-semibold px-3 py-1 rounded-full"
-        style={{ fontFamily: F_BODY, border: `1px solid ${on ? T.ink : T.line}`, backgroundColor: on ? T.ink : T.surface, color: on ? '#fff' : T.soft }}>
-        {label}{count != null && count > 0 ? ` (${count})` : ''}
-      </button>
-    );
-  };
+  const chip = (key, label, count) => (
+    <Chip key={key} on={filter === key} onClick={() => setFilter(key)}>{label}{count != null && count > 0 ? ` (${count})` : ''}</Chip>
+  );
 
   const emptyText = filter === 'review'
     ? ['Nothing to review', reviewDays ? `Every crew member on the last ${reviewDays} days of trips has a scan.` : 'Every crew member on these trips has a scan for the day.']
@@ -229,7 +223,7 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
                     right={<span className="flex items-center gap-3">
                       {missing && <Badge tone="amber">No scan</Badge>}
                       {missing && isAdmin && onOpenDtr && (
-                        <button className="pd-clickable text-xs font-semibold" style={{ color: T.brand }} onClick={() => { close(); onOpenDtr(c.id, open.date); }}>Open DTR</button>
+                        <button className="pd-link text-xs" style={{ fontFamily: F_BODY }} onClick={() => { close(); onOpenDtr(c.id, open.date); }}>Open DTR</button>
                       )}
                     </span>} />
                 );

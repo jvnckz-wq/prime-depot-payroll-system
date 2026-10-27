@@ -169,7 +169,7 @@ const RecoveryEmailModal = ({ open, user, toast, onClose, onUserChange }) => {
             <span>Didn&apos;t receive it? You can resend in {cooldown}s.</span>
           ) : (
             <button type="button" onClick={sendCode} disabled={busy}
-              className="underline" style={{ color: T.brand, opacity: busy ? 0.6 : 1 }}>
+              className="pd-link" style={{ opacity: busy ? 0.6 : 1 }}>
               Didn&apos;t receive the code? Resend it
             </button>
           )}
@@ -333,7 +333,7 @@ const ReenrollModal = ({ open, toast, onClose }) => {
             <Field label={useBackupCode ? 'Backup code' : 'Current authenticator code'}>
               <CodeBoxes key={useBackupCode ? 'b' : 't'} value={code} onChange={setCode} backup={useBackupCode} label={useBackupCode ? 'Backup code' : 'Authenticator code'} />
             </Field>
-            <button type="button" onClick={() => { setUseBackupCode(!useBackupCode); setCode(''); }} className="text-xs mt-2 underline" style={{ fontFamily: F_BODY, color: T.soft }}>
+            <button type="button" onClick={() => { setUseBackupCode(!useBackupCode); setCode(''); }} className="pd-link text-xs mt-2" style={{ fontFamily: F_BODY }}>
               {useBackupCode ? 'Use your authenticator app instead' : 'Use a backup code instead'}
             </button>
           </div>
@@ -563,9 +563,8 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut, on
                       <div className="flex items-center gap-2.5">
                         <span className="text-xl font-bold truncate" style={{ fontFamily: F_HEAD, color: T.ink }}>{user.displayName}</span>
                         <button onClick={() => { setName(user.displayName); setEditingName(true); }} title="Edit name"
-                          className="rounded-md flex items-center justify-center pd-clickable"
-                          style={{ width: 27, height: 27, border: `1px solid ${T.line}`, color: T.soft }}>
-                          <Pencil size={12} />
+                          className="pd-icon-btn" aria-label="Edit name">
+                          <Pencil size={15} color={T.soft} />
                         </button>
                       </div>
                       <div className="flex items-center gap-2.5 mt-1.5">
@@ -579,7 +578,7 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut, on
 
                 {user.avatar && !editingName && (
                   <button onClick={() => setConfirmRemovePic(true)} disabled={uploading}
-                    className="text-xs pd-clickable" style={{ fontFamily: F_BODY, color: T.soft }}>
+                    className="pd-link text-xs" style={{ fontFamily: F_BODY }}>
                     Remove picture
                   </button>
                 )}
@@ -624,8 +623,8 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut, on
                         {revealEmail ? user.email : maskEmail(user.email)}
                       </span>
                       <button onClick={() => setRevealEmail(v => !v)} title={revealEmail ? 'Hide' : 'Reveal'}
-                        className="pd-clickable" style={{ color: T.brand }}>
-                        {revealEmail ? <EyeOff size={15} /> : <Eye size={15} />}
+                        className="pd-icon-btn" aria-label={revealEmail ? 'Hide email' : 'Show email'}>
+                        {revealEmail ? <EyeOff size={15} color={T.soft} /> : <Eye size={15} color={T.soft} />}
                       </button>
                     </>
                   ) : (
@@ -672,7 +671,7 @@ export const AccountPage = ({ user, toast, onBack, onUserChange, onSignedOut, on
         open={confirmRemovePic}
         title="Remove profile picture?"
         message="Your initials will be shown instead. You can upload a new picture anytime."
-        confirmLabel="Remove picture"
+        confirmLabel="Remove picture" danger
         onCancel={() => setConfirmRemovePic(false)}
         onConfirm={() => { setConfirmRemovePic(false); removePicture(); }}
       />

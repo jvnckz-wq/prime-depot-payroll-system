@@ -108,11 +108,9 @@ export default function TwoFactorSetup({ user, onDone }) {
           <AlertTriangle size={14} className="mt-0.5 shrink-0" />
           <span>Each code works once. Store them somewhere safe and private. They will not be shown again.</span>
         </div>
-        <div className="flex gap-2.5">
-          <button type="button" onClick={copyCodes} className="pd-clickable flex-1 rounded border text-sm font-semibold py-2"
-            style={{ fontFamily: F_HEAD, borderColor: T.line, color: T.ink, backgroundColor: '#fff' }}>Copy</button>
-          <button type="button" onClick={downloadCodes} className="pd-clickable flex-1 rounded border text-sm font-semibold py-2"
-            style={{ fontFamily: F_HEAD, borderColor: T.line, color: T.ink, backgroundColor: '#fff' }}>Download .txt</button>
+        <div className="grid grid-cols-2 gap-2.5">
+          <Btn variant="outline" full onClick={copyCodes}>Copy</Btn>
+          <Btn variant="outline" full onClick={downloadCodes}>Download .txt</Btn>
         </div>
         <button type="button" onClick={() => setSaved(s => !s)}
           className="pd-clickable flex items-center gap-2 mt-3 text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
