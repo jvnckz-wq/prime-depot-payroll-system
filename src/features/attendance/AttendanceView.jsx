@@ -470,22 +470,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
         <div className="mb-4">
         </div>
       )}
-      {subTab === 'live' && (enrolled.length > 0 || unmapped.some((g) => !g.hasEmployee)) && (() => {
-        const ids = [...new Set([...enrolled.map((u) => u.userId), ...unmapped.filter((g) => !g.hasEmployee).map((g) => g.biometricId)])]
-          .sort((a, b) => Number(a) - Number(b));
-        const shown = ids.slice(0, 8);
-        return (
-          <button type="button" onClick={goUnmapped} className="pd-clickable w-full text-left mb-3 flex items-start gap-3 p-3 rounded-lg" style={{ backgroundColor: T.warnBg, border: `1px solid ${T.line}` }}>
-            <AlertTriangle size={16} color={T.warn} className="mt-0.5 shrink-0" aria-hidden="true" />
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>
-                {ids.length} biometric ID{ids.length > 1 ? 's are' : ' is'} not registered: {shown.join(', ')}{ids.length > shown.length ? ` and ${ids.length - shown.length} more` : ''}
-              </div>
-            </div>
-            <span className="text-xs font-semibold shrink-0 self-center" style={{ fontFamily: F_HEAD, color: T.brand }}>View Unmapped IDs →</span>
-          </button>
-        );
-      })()}
+      {subTab === 'live' && <UnregisteredBanner count={liveData.unregistered || 0} onOpen={goUnmapped} />}
       {subTab === 'live' && (
         <Panel className="overflow-hidden">
           <div className="flex items-center justify-between gap-4 flex-wrap" style={{ padding: '18px 18px 0' }}>
@@ -649,15 +634,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
               </div>
             )}
           </div>
-          {data.unmappedCount > 0 && (
-            <div className="mb-4 flex items-start gap-3 p-3 rounded" style={{ backgroundColor: T.amberBg }}>
-              <AlertTriangle size={16} color={T.amber} className="mt-0.5 shrink-0" />
-              <div>
-                <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>{data.unmappedCount} unmapped time {data.unmappedCount === 1 ? 'entry' : 'entries'}</div>
-                <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft }}>Some scans came in under a biometric User ID with no matching employee. Open the <button onClick={() => setSubTab('unmapped')} className="underline font-semibold" style={{ color: T.brand }}>Unmapped IDs</button> tab to see who they are and bring their logs in.</div>
-              </div>
-            </div>
-          )}
+          <UnregisteredBanner count={data.unregisteredInPeriod || 0} onOpen={goUnmapped} />
           <Panel className="overflow-hidden">
             {loading ? <SkeletonBlock />
               : data.summaries.length === 0 ? (staff.length === 0
@@ -842,3 +819,13 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
     </div>
   );
 };
+
+const UnregisteredBanner = ({ count, onOpen }) => (count > 0 ? (
+  <button type="button" onClick={onOpen} className="pd-clickable w-full text-left mb-3 flex items-center gap-3 p-3 rounded-lg" style={{ backgroundColor: T.warnBg, border: `1px solid ${T.line}` }}>
+    <AlertTriangle size={16} color={T.warn} className="shrink-0" aria-hidden="true" />
+    <span className="flex-1 min-w-0 text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>
+      {count} {count === 1 ? 'employee is' : 'employees are'} not registered
+    </span>
+    <span className="text-xs font-semibold shrink-0" style={{ fontFamily: F_HEAD, color: T.brand }}>View Unmapped IDs →</span>
+  </button>
+) : null);

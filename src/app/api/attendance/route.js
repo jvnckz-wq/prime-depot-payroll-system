@@ -15,6 +15,17 @@ const ymd = (d) => new Date(d).toISOString().slice(0, 10);
 const toMin = (t) => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
 const WD = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
+async function countUnregisteredBetween(fromYmd, toYmd) {
+  const rows = await prisma.unmappedLog.groupBy({
+    by: ['biometricId'],
+    where: { isResolved: false, date: { gte: new Date(`${fromYmd}T00:00:00.000Z`), lte: new Date(`${toYmd}T00:00:00.000Z`) } },
+  });
+  if (!rows.length) return 0;
+  const ids = rows.map((r) => r.biometricId);
+  const registered = await prisma.employee.count({ where: { id: { in: ids } } });
+  return ids.length - registered;
+}
+
 export async function PATCH(request) {
   const auth = await requireAdmin();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -157,7 +168,8 @@ export async function GET(request) {
       }
 
       return NextResponse.json({
-        finalized: (await finalizedCutoffsBetween(dateStr, dateStr)).length > 0, date: dateStr, today: todayStr, isToday, rows: present, notYetIn, stats, sync });
+        finalized: (await finalizedCutoffsBetween(dateStr, dateStr)).length > 0, date: dateStr, today: todayStr, isToday, rows: present, notYetIn, stats, sync,
+        unregistered: await countUnregisteredBetween(dateStr, dateStr).catch(() => 0) });
     }
 
     if (searchParams.get('trend')) {
@@ -241,6 +253,7 @@ export async function GET(request) {
 
     return NextResponse.json({
       period: rangeOut,
+      unregisteredInPeriod: rangeOut ? await countUnregisteredBetween(rangeOut.start, rangeOut.end).catch(() => 0) : 0,
       finalized,
       cutoffs,
       summaries,
