@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Pencil } from 'lucide-react';
 import { Badge, Btn, Confirm, Eyebrow, Field, Modal, Panel, SkeletonRows, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { labelTextError, plateError, flagErrors } from '@/lib/field-rules';
@@ -102,7 +102,7 @@ export const FleetPanel = ({ toast }) => {
       <Panel className="overflow-hidden mb-2">
         <div className="overflow-x-auto pd-scroll-shadow">
           <table className="w-full">
-            <thead><tr><Th>Truck</Th><Th>Vehicle</Th><Th>Plate</Th><Th>Status</Th><Th right>Actions</Th></tr></thead>
+            <thead><tr><Th>Truck</Th><Th>Vehicle</Th><Th>Plate</Th><Th>Status</Th><Th right> </Th></tr></thead>
             <tbody>
               {loading && <SkeletonRows cols={5} rows={3} />}
               {!loading && trucks.map(t => (
@@ -112,22 +112,10 @@ export const FleetPanel = ({ toast }) => {
                   <Td mono>{t.plate}</Td>
                   <Td>{t.isActive ? <Badge tone="green">In service</Badge> : <Badge tone="neutral">Retired</Badge>}</Td>
                   <Td right>
-                    <div className="flex items-center justify-end gap-3">
-                      <button className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.brand }}
-                        onClick={() => openEditTruck(t)}>Edit</button>
-                    {t.isActive ? (
-                      <button className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.soft }}
-                        onClick={() => setConfirm({
-                          title: `Retire ${t.id}?`,
-                          message: 'It will no longer appear when logging a delivery. Past deliveries on this truck stay exactly as they are — this is why trucks are retired rather than deleted.',
-                          confirmLabel: 'Retire truck',
-                          onConfirm: () => setTruckActive(t, false),
-                        })}>Retire</button>
-                    ) : (
-                      <button className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.green }}
-                        onClick={() => setTruckActive(t, true)}>Return to service</button>
-                    )}
-                    </div>
+                    <button className="pd-clickable p-1.5 rounded inline-flex" title={`Edit ${t.id}`} aria-label={`Edit ${t.id}`}
+                      onClick={() => openEditTruck(t)}>
+                      <Pencil size={14} color={T.soft} />
+                    </button>
                   </Td>
                 </tr>
               ))}
@@ -155,11 +143,11 @@ export const FleetPanel = ({ toast }) => {
               placeholder="ABC1234" className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
           </Field>
         </div>
-        <div className="text-xs mt-2.5" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
-          {editingTruck
-            ? 'The truck ID cannot be changed — past deliveries refer to it. Vehicle description and plate number can be corrected anytime.'
-            : 'Only the vehicle is recorded here. Crew is chosen on each delivery.'}
-        </div>
+        {!editingTruck && (
+          <div className="text-xs mt-2.5" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
+            Only the vehicle is recorded here. Crew is chosen on each delivery.
+          </div>
+        )}
 
         {truckError && (
           <div className="flex items-start gap-2 mt-3 px-3 py-2.5 rounded text-xs"
@@ -168,9 +156,25 @@ export const FleetPanel = ({ toast }) => {
           </div>
         )}
 
-        <div className="flex gap-2 mt-4">
+        <div className="flex items-center gap-2 mt-4 flex-wrap">
           <Btn onClick={saveTruck} loading={busy} disabled={busy}>{busy ? 'Saving...' : editingTruck ? 'Save changes' : 'Add truck'}</Btn>
           <Btn variant="outline" onClick={() => setTruckModal(false)}>Cancel</Btn>
+          {editingTruck && (editingTruck.isActive ? (
+            <button type="button" className="pd-btn ml-auto inline-flex items-center rounded font-semibold px-3 py-2 text-sm min-h-11 sm:min-h-0" style={{ fontFamily: F_HEAD, color: T.brand, border: `1.5px solid ${T.brand}`, backgroundColor: 'transparent' }} disabled={busy}
+              onClick={() => {
+                const t = editingTruck;
+                setTruckModal(false);
+                setConfirm({
+                  title: `Retire ${t.id}?`,
+                  message: 'It will no longer appear when logging a delivery. Past deliveries on this truck stay exactly as they are.',
+                  confirmLabel: 'Retire truck',
+                  onConfirm: () => setTruckActive(t, false),
+                });
+              }}>Retire truck</button>
+          ) : (
+            <button type="button" className="pd-btn ml-auto inline-flex items-center rounded font-semibold px-3 py-2 text-sm min-h-11 sm:min-h-0" style={{ fontFamily: F_HEAD, color: T.green, border: `1.5px solid ${T.green}`, backgroundColor: 'transparent' }} disabled={busy}
+              onClick={() => { const t = editingTruck; setTruckModal(false); setTruckActive(t, true); }}>Return to service</button>
+          ))}
         </div>
       </Modal>
 

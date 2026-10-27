@@ -45,6 +45,7 @@ const TodayCard = ({ onOpenLive }) => {
   }, []);
 
   const late = (data?.rows || []).filter(r => r.late > 0).sort((a, b) => b.late - a.late);
+  const maxLate = data?.sync?.status === 'offline' ? MAX_LATE - 2 : MAX_LATE;
   const missing = data?.notYetIn || [];
   const sync = SYNC_LOOK[data?.sync?.status] || SYNC_LOOK.offline;
   const stats = [
@@ -54,7 +55,7 @@ const TodayCard = ({ onOpenLive }) => {
   ];
 
   return (
-    <Panel className="p-4">
+    <Panel className="p-4 flex flex-col pd-today-card">
       <div className="flex items-center justify-between mb-3">
         <Eyebrow>Today{data?.date ? ` \u00b7 ${todayHeading(data.date)}` : ''}</Eyebrow>
         {data && (
@@ -66,10 +67,16 @@ const TodayCard = ({ onOpenLive }) => {
       </div>
 
       {!data && !failed && (
-        <div className="flex flex-col gap-2">
-          <Skeleton h={52} w="100%" />
-          <Skeleton h={12} w="60%" />
-          <Skeleton h={12} w="80%" />
+        <div className="flex flex-col gap-3 flex-1" aria-hidden="true">
+          <div className="grid grid-cols-3 gap-2">
+            <Skeleton h={60} w="100%" />
+            <Skeleton h={60} w="100%" />
+            <Skeleton h={60} w="100%" />
+          </div>
+          <Skeleton h={12} w="20%" />
+          {[0, 1, 2, 3, 4].map(i => <Skeleton key={i} h={18} w="100%" />)}
+          <Skeleton h={12} w="25%" />
+          <Skeleton h={14} w="85%" />
         </div>
       )}
       {!data && failed && (
@@ -78,6 +85,7 @@ const TodayCard = ({ onOpenLive }) => {
 
       {data && (
         <>
+          <div className="flex-1 min-h-0 overflow-hidden">
           {data.sync?.status === 'offline' && (
             <div className="text-xs mb-3 p-2 rounded flex items-start gap-2" style={{ fontFamily: F_BODY, backgroundColor: T.warnBg, color: T.ink, lineHeight: 1.5 }}>
               <AlertTriangle size={14} color={T.warn} className="mt-0.5 shrink-0" />
@@ -96,13 +104,13 @@ const TodayCard = ({ onOpenLive }) => {
           {late.length > 0 && (
             <div className="mb-3">
               <div className="text-xs mb-1" style={{ fontFamily: F_BODY, color: T.soft }}>Late</div>
-              {late.slice(0, MAX_LATE).map(r => (
+              {late.slice(0, maxLate).map(r => (
                 <div key={r.id} className="flex items-center justify-between text-sm py-1.5" style={{ fontFamily: F_BODY, borderBottom: `1px solid ${T.lineSoft}` }}>
                   <span style={{ color: T.ink }}>{r.name}</span>
                   <span className="pd-num" style={{ color: T.brand }}>{`In ${r.in || '--:--'} \u00b7 ${r.late}m late`}</span>
                 </div>
               ))}
-              {late.length > MAX_LATE && <MoreLink count={late.length - MAX_LATE} onClick={onOpenLive} />}
+              {late.length > maxLate && <MoreLink count={late.length - maxLate} onClick={onOpenLive} />}
             </div>
           )}
 
@@ -122,7 +130,9 @@ const TodayCard = ({ onOpenLive }) => {
             </div>
           )}
 
-          <div className="flex justify-end">
+          </div>
+
+          <div className="flex justify-end pt-2">
             <button onClick={onOpenLive} className="pd-clickable text-sm font-semibold flex items-center gap-1" style={{ fontFamily: F_BODY, color: T.brand }}>
               Open Live <ArrowRight size={14} />
             </button>
