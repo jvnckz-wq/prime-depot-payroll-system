@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { withRetry } from '@/lib/server/db/db-retry';
 import { logSecurityEvent, requireAdmin } from '@/lib/server/security/auth';
-import { deductionOps } from '@/lib/server/services/loans-apply';
-import { cutoffOf, planDeductions, staffRunKey, withPlan } from '@/lib/loan-rules';
+import { cutoffOf, planDeductions, staffRunKey } from '@/lib/loan-rules';
 import { computeStaffPayroll } from '@/lib/payroll';
 import { loadStaffPayrollInputs, staffAvailable, toDate } from '@/lib/server/services/payroll-inputs';
 
@@ -126,13 +125,18 @@ export async function POST(request) {
     }
 
     const plan = planDeductions(inputs.loans, { crew: false, runKey, endYmd: cut.end, available: staffAvailable(inputs) });
+    if (plan.writes.length) {
+      return NextResponse.json(
+        { error: `${plan.writes.length} loan payment${plan.writes.length === 1 ? ' is' : 's are'} not applied yet. Apply the cutoff deductions first, then finalize.` },
+        { status: 409 }
+      );
+    }
 
-    const slips = buildSlips(inputs, withPlan(inputs.loans, plan, { runKey, endYmd: cut.end }), runKey);
+    const slips = buildSlips(inputs, inputs.loans, runKey);
     const rows = slips.map(({ employeeName, ...slip }) => ({ ...slip, payrollType: 'STAFF', withholdingTax: 0, otherDeductions: 0 }));
 
     const now = new Date();
     const results = await withRetry(() => prismaBase.$transaction([
-      ...deductionOps(prismaBase, plan, { runKey, endYmd: cut.end }),
       prismaBase.payrollPeriod.upsert({
         where: { startDate_endDate: { startDate, endDate } },
         create: { label: label.trim(), startDate, endDate, isReleased: true, releasedAt: now, payslips: { createMany: { data: rows } } },
@@ -147,8 +151,7 @@ export async function POST(request) {
       actorLabel: auth.user.username,
       targetType: 'payrollPeriod',
       targetId: period.id,
-      detail: `Released ${period.label}: ${slips.length} payslip(s), net ₱${netTotal.toFixed(2)}`
-        + (plan.writes.length ? `; loans ₱${plan.total.toFixed(2)} deducted, ₱${plan.unpaidTotal.toFixed(2)} carried over.` : '.'),
+      detail: `Released ${period.label}: ${slips.length} payslip(s), net ₱${netTotal.toFixed(2)}.`,
     });
 
     return NextResponse.json({
@@ -156,7 +159,6 @@ export async function POST(request) {
       periodId: period.id,
       label: period.label,
       payslips: slips.length,
-      loans: { applied: plan.applied, skipped: plan.skipped, settled: plan.settled, total: plan.total, short: plan.short, unpaidTotal: plan.unpaidTotal },
     });
   } catch (err) {
     if (err?.code === 'P2002') {

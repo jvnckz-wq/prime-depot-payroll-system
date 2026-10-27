@@ -13,11 +13,16 @@ import { D, H, Kpi, Person, Pill, todayLocalYmd } from '@/features/loans/parts.j
 import { moneyInput, flagErrors } from '@/lib/field-rules';
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
-const labelOf = (e) => `${e.name} · ${e.position}`;
+const labelFor = (list) => {
+  const counts = new Map();
+  list.forEach((e) => counts.set(e.name, (counts.get(e.name) || 0) + 1));
+  return (e) => (counts.get(e.name) > 1 ? `${e.name} (ID ${e.id})` : e.name);
+};
 
 const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
   const people = useMemo(() => staff.filter((e) => !e.daily && e.status !== 'Inactive' && Number(e.rate) > 0), [staff]);
-  const byLabel = useMemo(() => new Map(people.map((e) => [labelOf(e), e])), [people]);
+  const labelOf = useMemo(() => labelFor(people), [people]);
+  const byLabel = useMemo(() => new Map(people.map((e) => [labelOf(e), e])), [people, labelOf]);
   const [empId, setEmpId] = useState(null);
   const [date, setDate] = useState(todayLocalYmd());
   const [amount, setAmount] = useState('');
@@ -147,7 +152,6 @@ export const CashAdvancesPage = ({ staff, loans, reloadLoans, statutory, period:
     .sort((a, b) => a.dateGranted.localeCompare(b.dateGranted) || a.person.localeCompare(b.person));
   const staffById = new Map(staff.map((e) => [e.id, e]));
   const total = inCutoff.reduce((s, l) => s + l.principal, 0);
-  const people = new Set(inCutoff.map((l) => l.employeeId)).size;
   const earlier = advances.filter((l) => l.dateGranted < period.start && isOpen(l));
   const earlierTotal = earlier.reduce((s, l) => s + balanceOf(l), 0);
   const prev = shortPeriod(prevCutoff(period.start));
@@ -164,9 +168,8 @@ export const CashAdvancesPage = ({ staff, loans, reloadLoans, statutory, period:
       }>Cash Advances</H1>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3.5 mb-4">
-        <Kpi label="Advanced this cutoff" value={peso(total)} sub={`${people} employee${people === 1 ? '' : 's'}`} />
-        <Kpi label={`Carried over from ${prev}`} value={peso(earlierTotal)}
-          sub={earlier.length ? `${earlier.length} advance${earlier.length === 1 ? '' : 's'} due on ${shortDate(period.end)}` : 'No short payslips last cutoff'} />
+        <Kpi label="Advanced this cutoff" value={peso(total)} />
+        <Kpi label={`Carried over from ${prev}`} value={peso(earlierTotal)} />
       </div>
 
       <div className="rounded-lg border overflow-hidden" style={{ backgroundColor: T.surface, borderColor: T.line }}>

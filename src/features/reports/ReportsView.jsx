@@ -113,7 +113,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
       {tab === 'register' && (
         <Panel className="overflow-hidden">
           <div className="px-4 py-2.5 flex justify-between items-center" style={{ borderBottom: `1px solid ${T.line}` }}>
-            <Eyebrow>Payroll Register — {cutoffLabel || 'Current cutoff'}</Eyebrow>
+            <Eyebrow>Payroll Register: {cutoffLabel || 'Current cutoff'}</Eyebrow>
             <Btn size="sm" variant="outline" onClick={exportRegister} disabled={!payrollReady}>Export Excel</Btn>
           </div>
           {!dataLoading && !payrollRows.length ? payrollEmpty : (
@@ -125,7 +125,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
                   <Td>{r.emp.name}</Td>
                   <Td center mono>{r.calc.days}</Td>
                   <Td right mono>{peso(r.calc.gross)}</Td>
-                  <Td right mono>{r.calc.ot ? peso(r.calc.ot) : '—'}</Td>
+                  <Td right mono>{r.calc.ot ? peso(r.calc.ot) : '--'}</Td>
                   <Td right mono>{r.calc.totalDeductions ? <span style={{ color: T.red }}>−{peso(r.calc.totalDeductions)}</span> : peso(0)}</Td>
                   <Td right mono><span style={{ fontWeight: 600 }}>{peso(r.calc.net)}</span></Td>
                 </tr>
@@ -138,7 +138,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
       {tab === 'remittance' && (
         <Panel className="overflow-hidden">
           <div className="px-4 py-2.5 flex justify-between items-center" style={{ borderBottom: `1px solid ${T.line}` }}>
-            <Eyebrow>Government Remittance (Employee Share) — {cutoffLabel || 'Current cutoff'}</Eyebrow>
+            <Eyebrow>Government Remittance (Employee Share): {cutoffLabel || 'Current cutoff'}</Eyebrow>
             <Btn size="sm" variant="outline" onClick={exportRemit} disabled={!payrollReady}>Export Excel</Btn>
           </div>
           {!dataLoading && !remitRows.length ? payrollEmpty : (
@@ -152,7 +152,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
       {tab === '13th' && (
         <Panel className="overflow-hidden">
           <div className="px-4 py-2.5 flex justify-between items-center" style={{ borderBottom: `1px solid ${T.line}` }}>
-            <Eyebrow>13th Month Pay — FY {year13} (Basic ÷ 12)</Eyebrow>
+            <Eyebrow>13th Month Pay: FY {year13} (Basic ÷ 12)</Eyebrow>
             <Btn size="sm" variant="outline" onClick={export13} disabled={t13.loading || !t13.rows.length}>Export Excel</Btn>
           </div>
           {t13.error ? (
@@ -183,7 +183,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
         <Panel className="overflow-hidden">
           <div className="px-4 py-2.5 flex justify-between items-center flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
             <div className="flex items-center gap-2 flex-wrap">
-              <Eyebrow>Crew Earnings — per person</Eyebrow>
+              <Eyebrow>Crew Earnings per person</Eyebrow>
               <input type="date" max={todayStr} value={from} onChange={e => setFrom(e.target.value)} className="px-3 py-2 rounded border text-sm" style={{ borderColor: T.line, fontFamily: F_MONO, minWidth: 168, colorScheme: 'light', color: T.ink, backgroundColor: T.surface }} />
               <span className="text-xs" style={{ color: T.soft, fontFamily: F_BODY }}>to</span>
               <input type="date" max={todayStr} value={to} onChange={e => setTo(e.target.value)} className="px-3 py-2 rounded border text-sm" style={{ borderColor: T.line, fontFamily: F_MONO, minWidth: 168, colorScheme: 'light', color: T.ink, backgroundColor: T.surface }} />
@@ -215,10 +215,10 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
                   <Td center mono>{r.trips}</Td>
                   <Td right mono>{peso(r.dailyRate)}</Td>
                   <Td right mono>{peso(r.pieceRate)}</Td>
-                  <Td right mono>{r.bonus ? <span style={{ color: T.green }}>{peso(r.bonus)}</span> : '—'}</Td>
+                  <Td right mono>{r.bonus ? <span style={{ color: T.green }}>{peso(r.bonus)}</span> : '--'}</Td>
                   <Td right mono>{peso(r.total)}</Td>
-                  <Td right mono>{r.late ? <span style={{ color: T.red }}>-{peso(r.late)}</span> : '—'}</Td>
-                  <Td right mono>{r.loans ? <span style={{ color: T.red }}>-{peso(r.loans)}</span> : '—'}</Td>
+                  <Td right mono>{r.late ? <span style={{ color: T.red }}>-{peso(r.late)}</span> : '--'}</Td>
+                  <Td right mono>{r.loans ? <span style={{ color: T.red }}>-{peso(r.loans)}</span> : '--'}</Td>
                   <Td right mono><span style={{ fontWeight: 700 }}>{peso(r.net)}</span></Td>
                 </tr>
               ))}</tbody>
@@ -230,7 +230,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
       {tab === 'bir' && (
         <Panel className="overflow-hidden">
           <div className="flex justify-between items-center px-4 py-2.5" style={{ borderBottom: `1px solid ${T.line}` }}>
-            <Eyebrow>Withholding Tax — {cutoffLabel || 'Current cutoff'}</Eyebrow>
+            <Eyebrow>Withholding Tax: {cutoffLabel || 'Current cutoff'}</Eyebrow>
             <Btn size="sm" variant="outline" onClick={exportWht} disabled={dataLoading || !whtAbove.length}>Export Excel</Btn>
           </div>
           {!dataLoading && !whtAbove.length ? (

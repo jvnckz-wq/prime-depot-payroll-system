@@ -45,7 +45,7 @@ export async function PATCH(request) {
     const money = (value, label, max) => {
       const n = Number(value);
       if (!Number.isFinite(n) || n < 0) return { error: `${label} must be zero or more.` };
-      if (n > max) return { error: `${label} looks wrong — the maximum is ₱${max.toLocaleString('en-PH')}.` };
+      if (n > max) return { error: `${label} looks wrong. The maximum is ₱${max.toLocaleString('en-PH')}.` };
       return { value: Math.round(n * 100) / 100 };
     };
 

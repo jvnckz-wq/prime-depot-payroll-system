@@ -19,7 +19,7 @@ const agoFrom = (iso) => {
 
 const asUTC = (iso) => new Date(iso + 'T00:00:00Z');
 const fmtDay = (iso) => asUTC(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-const fmtPeriod = (p) => (p ? `${fmtDay(p.start)} – ${asUTC(p.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}` : '—');
+const fmtPeriod = (p) => (p ? `${fmtDay(p.start)} – ${asUTC(p.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}` : '--');
 const shiftYmd = (iso, delta) => { const d = asUTC(iso); d.setUTCDate(d.getUTCDate() + delta); return d.toISOString().slice(0, 10); };
 const liveThBase = { fontFamily: F_HEAD, fontSize: 11.5, fontWeight: 600, color: T.soft, textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'left', padding: '13px 18px', borderTop: `1px solid ${T.line}`, borderBottom: `1px solid ${T.line}` };
 const liveTdBase = { fontFamily: F_BODY, fontSize: 14.5, color: T.ink, padding: '14px 18px', borderBottom: `1px solid ${T.lineSoft}`, verticalAlign: 'middle' };
@@ -369,7 +369,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
             <Av name={name} size={52} tone={T.brand} />
             <div className="flex-1" style={{ minWidth: 160 }}>
               <div className="text-lg font-bold" style={{ fontFamily: F_HEAD, color: T.ink }}>{name}</div>
-              <div className="text-sm" style={{ fontFamily: F_BODY, color: T.soft }}>{emp?.position ? positionLabel(emp.position) : '—'} · {selectedId}</div>
+              <div className="text-sm" style={{ fontFamily: F_BODY, color: T.soft }}>{emp?.position ? positionLabel(emp.position) : '--'} · {selectedId}</div>
             </div>
             <div className="flex gap-6 flex-wrap">
               <BigStat value={daysLate} label="Days Late" />
@@ -383,7 +383,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
 
         <Panel className="overflow-hidden">
           <div className="px-4 py-3" style={{ borderBottom: `1px solid ${T.line}` }}>
-            <div className="text-sm font-semibold" style={{ fontFamily: F_HEAD, color: T.ink }}>Daily Time Record — {fmtPeriod(dtr.period)}</div>
+            <div className="text-sm font-semibold" style={{ fontFamily: F_HEAD, color: T.ink }}>Daily Time Record: {fmtPeriod(dtr.period)}</div>
           </div>
           {dtrLoading ? <SkeletonBlock avatar={false} />
             : rows.length === 0 ? <EmptyState icon={CalendarX} title="No attendance for this employee yet" desc="Scans appear here after you pull this cutoff from the device." />
@@ -405,8 +405,8 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                         {a.assumedOut && !a.absent && <span className="ml-2"><Badge tone="blue">ASSUMED OUT</Badge></span>}
                         {a.manual && <span className="ml-2"><Badge tone="blue">EDITED</Badge></span>}
                       </Td>
-                      <Td mono>{a.assumedIn ? '—' : (a.in || '—')}</Td>
-                      <Td mono>{a.assumedOut ? '—' : (a.out || '—')}</Td>
+                      <Td mono>{a.assumedIn ? '--' : (a.in || '--')}</Td>
+                      <Td mono>{a.assumedOut ? '--' : (a.out || '--')}</Td>
                       <Td center mono><span style={{ fontWeight: isLate ? 700 : 400, color: isLate ? T.red : T.soft }}>{isLate ? a.late : '--'}</span></Td>
                       <Td center mono><span style={{ fontWeight: isOt ? 700 : 400, color: isOt ? T.green : T.soft }}>{isOt ? a.ot : '--'}</span></Td>
                       <Td right>{!data.finalized && <Pencil size={13} style={{ color: T.soft }} />}</Td>
@@ -426,7 +426,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
           )}
         </Panel>
 
-        <Modal open={!!editDay} onClose={() => setEditDay(null)} title={`Correct ${editDay ? `${name} — ${editDay.date}` : ''}`} width={440}>
+        <Modal open={!!editDay} onClose={() => setEditDay(null)} title={`Correct ${editDay ? `${name} on ${editDay.date}` : ''}`} width={440}>
           {editDay && (
             <div className="space-y-3">
               <Field label="Status">
@@ -441,7 +441,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                 </div>
               </Field>
               {editForm.status === 'leave' && (
-                <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Paid leave — counted toward pay like a present day, tracked against the employee&apos;s leave credits.</div>
+                <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Paid leave, counted toward pay like a present day, tracked against the employee&apos;s leave credits.</div>
               )}
               {editForm.status === 'present' && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -572,9 +572,9 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                         <div style={{ fontFamily: F_BODY, fontWeight: 600 }}>{r.name}</div>
                         <div style={{ fontFamily: F_BODY, fontSize: 12, color: T.soft, marginTop: 1 }}>{r.position ? `${positionLabel(r.position)} · ${r.id}` : r.id}</div>
                       </td>
-                      <td style={{ ...liveTdBase, fontVariantNumeric: 'tabular-nums' }}>{r.in || <span style={{ color: T.line }}>—</span>}{r.assumedIn && <span style={{ marginLeft: 8, fontSize: 11, color: T.soft }}>assumed</span>}</td>
-                      <td style={{ ...liveTdBase, fontVariantNumeric: 'tabular-nums' }}>{r.out || <span style={{ color: T.line }}>—</span>}</td>
-                      <td style={{ ...liveTdBase, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{r.late > 0 ? <span style={{ color: T.red, fontWeight: 700 }}>{r.late}m</span> : <span style={{ color: T.line }}>—</span>}</td>
+                      <td style={{ ...liveTdBase, fontVariantNumeric: 'tabular-nums' }}>{r.in || <span style={{ color: T.line }}>--</span>}{r.assumedIn && <span style={{ marginLeft: 8, fontSize: 11, color: T.soft }}>assumed</span>}</td>
+                      <td style={{ ...liveTdBase, fontVariantNumeric: 'tabular-nums' }}>{r.out || <span style={{ color: T.line }}>--</span>}</td>
+                      <td style={{ ...liveTdBase, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{r.late > 0 ? <span style={{ color: T.red, fontWeight: 700 }}>{r.late}m</span> : <span style={{ color: T.line }}>--</span>}</td>
                       <td style={{ ...liveTdBase, textAlign: 'center' }}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: F_HEAD, fontSize: 11.5, fontWeight: 600, borderRadius: 999, padding: '4px 10px', color: r.status === 'in' ? T.green : T.soft, background: r.status === 'in' ? T.greenBg : T.lineSoft }}>
                           <span style={{ width: 6, height: 6, borderRadius: '50%', background: r.status === 'in' ? T.green : T.soft }} />
@@ -651,11 +651,11 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                         <div className="font-semibold" style={{ fontFamily: F_BODY }}>{s.name}</div>
                       </Td>
                       <Td center mono>{s.present}</Td>
-                      <Td center mono><span style={{ color: s.daysLate > 0 ? T.red : T.soft, fontWeight: s.daysLate > 0 ? 700 : 400 }}>{s.daysLate || '—'}</span></Td>
-                      <Td center mono><span style={{ color: s.lateMins > 0 ? T.red : T.soft, fontWeight: s.lateMins > 0 ? 700 : 400 }}>{s.lateMins > 0 ? `${s.lateMins}m` : '—'}</span></Td>
-                      <Td center mono><span style={{ color: s.otMins > 0 ? T.green : T.soft, fontWeight: s.otMins > 0 ? 700 : 400 }}>{s.otMins > 0 ? `${s.otMins}m` : '—'}</span></Td>
-                      <Td center mono><span style={{ color: s.absent > 0 ? T.amber : T.soft, fontWeight: s.absent > 0 ? 700 : 400 }}>{s.absent || '—'}</span></Td>
-                      <Td center mono>{s.leave || '—'}</Td>
+                      <Td center mono><span style={{ color: s.daysLate > 0 ? T.red : T.soft, fontWeight: s.daysLate > 0 ? 700 : 400 }}>{s.daysLate || '--'}</span></Td>
+                      <Td center mono><span style={{ color: s.lateMins > 0 ? T.red : T.soft, fontWeight: s.lateMins > 0 ? 700 : 400 }}>{s.lateMins > 0 ? `${s.lateMins}m` : '--'}</span></Td>
+                      <Td center mono><span style={{ color: s.otMins > 0 ? T.green : T.soft, fontWeight: s.otMins > 0 ? 700 : 400 }}>{s.otMins > 0 ? `${s.otMins}m` : '--'}</span></Td>
+                      <Td center mono><span style={{ color: s.absent > 0 ? T.amber : T.soft, fontWeight: s.absent > 0 ? 700 : 400 }}>{s.absent || '--'}</span></Td>
+                      <Td center mono>{s.leave || '--'}</Td>
                       <Td><Btn size="sm" variant="outline" onClick={() => { setSelectedId(s.id); setView('dtr'); }}>View</Btn></Td>
                     </tr>
                   ))}
@@ -695,10 +695,10 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                     <tr key={g.biometricId}>
                       <Td mono><span className="font-bold" style={{ color: T.ink }}>{g.biometricId}</span></Td>
                       <Td>
-                        <span style={{ fontFamily: F_BODY, color: T.ink }}>{g.biometricName || '—'}</span>
+                        <span style={{ fontFamily: F_BODY, color: T.ink }}>{g.biometricName || '--'}</span>
                         {g.hasEmployee && <span className="ml-2"><Badge tone="green">registered</Badge></span>}
                       </Td>
-                      <Td center mono>{g.punchCount > 0 ? g.punchCount : <span style={{ color: T.soft }}>—</span>}</Td>
+                      <Td center mono>{g.punchCount > 0 ? g.punchCount : <span style={{ color: T.soft }}>--</span>}</Td>
                       <Td center mono>
                         <span className="text-xs" style={{ color: T.soft }}>
                           {!g.firstDate ? 'No scans yet' : g.firstDate === g.lastDate ? g.firstDate : `${g.firstDate} → ${g.lastDate}`}
@@ -732,7 +732,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                 <tr key={b.id}>
                   <Td mono>{new Date(b.importedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</Td>
                   <Td mono>{/^Device pull/i.test(b.filename || '') ? 'Device pull' : b.filename}</Td>
-                  <Td mono>{b.periodStart ? `${b.periodStart} → ${b.periodEnd}` : '—'}</Td>
+                  <Td mono>{b.periodStart ? `${b.periodStart} → ${b.periodEnd}` : '--'}</Td>
                   <Td center mono>{b.mappedRows}</Td>
                   <Td center mono><span style={{ color: b.unmappedRows > 0 ? T.amber : T.soft }}>{b.unmappedRows}</span></Td>
                   <Td><Badge tone={b.status === 'COMPLETED' ? 'green' : b.status === 'FAILED' ? 'red' : 'amber'}>{b.status}</Badge></Td>
@@ -744,13 +744,13 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
         </Panel>
       )}
 
-      <Modal open={!!viewBatch} onClose={() => setViewBatch(null)} title={viewBatch ? `Import — ${viewBatch.filename}` : ''} width={680}>
+      <Modal open={!!viewBatch} onClose={() => setViewBatch(null)} title={viewBatch ? `Import: ${viewBatch.filename}` : ''} width={680}>
         {viewBatch && (
           <div className="space-y-3">
             <div className="flex items-center gap-2 flex-wrap text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
               <Badge tone="blue">{viewBatch.periodStart} → {viewBatch.periodEnd}</Badge>
               <span>Imported {new Date(viewBatch.importedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-              <Badge tone="amber">Locked — viewing only</Badge>
+              <Badge tone="amber">Locked, viewing only</Badge>
             </div>
             {batchLoading ? <SkeletonBlock avatar={false} />
               : batchRows.length === 0 ? <EmptyState icon={ClipboardList} title="No records" desc="No attendance rows fall in this import's date range." />
@@ -766,11 +766,11 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                         <Td mono>{s.id}</Td>
                         <Td><span className="font-semibold text-sm" style={{ fontFamily: F_BODY }}>{s.name}</span></Td>
                         <Td center mono>{s.present}</Td>
-                        <Td center mono>{s.daysLate || '—'}</Td>
-                        <Td center mono>{s.lateMins > 0 ? `${s.lateMins}m` : '—'}</Td>
-                        <Td center mono>{s.otMins > 0 ? `${s.otMins}m` : '—'}</Td>
-                        <Td center mono>{s.absent || '—'}</Td>
-                        <Td center mono>{s.leave || '—'}</Td>
+                        <Td center mono>{s.daysLate || '--'}</Td>
+                        <Td center mono>{s.lateMins > 0 ? `${s.lateMins}m` : '--'}</Td>
+                        <Td center mono>{s.otMins > 0 ? `${s.otMins}m` : '--'}</Td>
+                        <Td center mono>{s.absent || '--'}</Td>
+                        <Td center mono>{s.leave || '--'}</Td>
                         <Td><Btn size="sm" variant="outline" onClick={() => openHistDtr(s)}>View</Btn></Td>
                       </tr>
                     ))}
@@ -782,12 +782,12 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
         )}
       </Modal>
 
-      <Modal open={!!histDtr} onClose={() => setHistDtr(null)} title={histDtr ? `DTR — ${histDtr.name}` : ''} width={640}>
+      <Modal open={!!histDtr} onClose={() => setHistDtr(null)} title={histDtr ? `DTR: ${histDtr.name}` : ''} width={640}>
         {histDtr && (
           <div className="space-y-3">
             <div className="flex items-center gap-2 flex-wrap text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
               <Badge tone="blue">{histDtr.period}</Badge>
-              <Badge tone="amber">Locked — viewing only</Badge>
+              <Badge tone="amber">Locked, viewing only</Badge>
             </div>
             {histDtrLoading ? <SkeletonBlock avatar={false} />
               : histDtr.rows.length === 0 ? <EmptyState icon={ClipboardList} title="No records" desc="No daily records for this employee in this period." />
@@ -802,10 +802,10 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                       <tr key={i}>
                         <Td mono>{r.date}</Td>
                         <Td>{r.weekday}</Td>
-                        <Td mono>{r.absent || r.leave ? '—' : (r.in || '—')}</Td>
-                        <Td mono>{r.absent || r.leave ? '—' : (r.out || '—')}</Td>
-                        <Td center mono>{r.late > 0 ? `${r.late}m` : '—'}</Td>
-                        <Td center mono>{r.ot > 0 ? `${r.ot}m` : '—'}</Td>
+                        <Td mono>{r.absent || r.leave ? '--' : (r.in || '--')}</Td>
+                        <Td mono>{r.absent || r.leave ? '--' : (r.out || '--')}</Td>
+                        <Td center mono>{r.late > 0 ? `${r.late}m` : '--'}</Td>
+                        <Td center mono>{r.ot > 0 ? `${r.ot}m` : '--'}</Td>
                         <Td>{r.leave ? <Badge tone="blue">On Leave</Badge> : r.absent ? <Badge tone="red">Absent</Badge> : <Badge tone="green">Present</Badge>}</Td>
                       </tr>
                     ))}

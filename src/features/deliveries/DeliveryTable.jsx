@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronRight, MapPin, Phone, Star, AlertTriangle, Truck } from 'lucide-react';
+import { ChevronRight, MapPin, Phone, AlertTriangle, Truck } from 'lucide-react';
 import { Badge, Btn, EmptyState, Eyebrow, Field, Modal, Panel, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { telHref, timeLabel } from '@/lib/utils';
 import { deliveriesToLog } from '@/lib/payroll';
@@ -166,15 +166,14 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
       {shown.length === 0 ? <EmptyState icon={Truck} title={emptyText[0]} desc={emptyText[1]} /> : (
         <div className="overflow-x-auto pd-scroll-shadow">
           <table className="w-full">
-            <thead><tr><Th>Date</Th><Th>Trip</Th><Th>Truck</Th><Th>Driver</Th><Th>Helpers</Th><Th>Customer</Th><Th>Address</Th><Th>Logged by</Th><Th action> </Th></tr></thead>
+            <thead><tr><Th>Date</Th><Th>Truck</Th><Th>Driver</Th><Th>Helpers</Th><Th>Customer</Th><Th>Address</Th><Th>Logged by</Th><Th action> </Th></tr></thead>
             <tbody>{shown.map((t) => {
               const strike = t.voided ? { textDecoration: 'line-through' } : undefined;
               return (
                 <tr key={t.id} onClick={() => setOpenId(t.id)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenId(t.id); } }}
-                  tabIndex={0} role="button" aria-label={`Open trip ${t.seq} on ${t.truckId}, ${t.date}`}
+                  tabIndex={0} role="button" aria-label={`Open delivery on ${t.truckId}, ${t.date}, ${t.customer || ''}`}
                   className="pd-clickable" style={{ cursor: 'pointer', opacity: t.voided ? 0.55 : 1 }}>
                   <Td mono><span style={strike}>{t.date}</span></Td>
-                  <Td><span className="flex items-center gap-1" style={strike}>#{t.seq}{t.seq >= bonusTrips && !t.voided && <Star size={11} color={T.amber} fill={T.amber} />}</span></Td>
                   <Td mono><span style={strike}>{t.truckId}</span></Td>
                   <Td>
                     <span style={strike}>{t.driver || '--'}</span>
@@ -196,7 +195,7 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
         </div>
       )}
 
-      <Modal open={!!open} onClose={close} title={open ? `${open.truckId} · Trip #${open.seq}` : ''} width={560}>
+      <Modal open={!!open} onClose={close} title={open ? `Delivery on ${open.truckId}` : ''} width={560}>
         {open && (
           <div style={{ fontFamily: F_BODY }}>
             <div className="text-xs mb-3" style={{ color: T.soft }}>
@@ -207,7 +206,6 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
               <div className="p-3 rounded mb-3 text-sm" style={{ backgroundColor: T.redBg, color: T.ink, lineHeight: 1.6 }}>
                 <div className="font-semibold" style={{ color: T.red }}>Voided{open.voidedBy ? ` by ${open.voidedBy}` : ''}{open.voidedAt ? ` on ${stamp(open.voidedAt)}` : ''}</div>
                 {open.voidReason && <div>Reason: {open.voidReason}</div>}
-                <div className="text-xs mt-1" style={{ color: T.soft }}>This trip does not count toward pay.</div>
               </div>
             )}
 
@@ -227,7 +225,7 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
               {open.crew.map((c) => {
                 const missing = !open.voided && open.noScanIds.includes(c.id);
                 return (
-                  <Line key={c.role} left={<>{c.name}<span style={{ color: T.soft }}> · {c.role}</span></>}
+                  <Line key={c.role} left={c.name}
                     right={<span className="flex items-center gap-3">
                       {missing && <Badge tone="amber">No scan</Badge>}
                       {missing && isAdmin && onOpenDtr && (
@@ -240,7 +238,7 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
 
             <Section label="Items">
               {open.items.map((it, i) => (
-                <Line key={i} left={it.unit ? `${it.item} · per ${it.unit}` : it.item} right={<span className="pd-num">{it.qty}</span>} />
+                <Line key={i} left={it.unit ? `${it.item} per ${it.unit}` : it.item} right={<span className="pd-num">{it.qty}</span>} />
               ))}
               <div className="text-xs mt-1.5" style={{ color: open.dbl ? T.brand : T.soft }}>{open.dbl ? 'Double rate' : 'Normal rate'}</div>
             </Section>

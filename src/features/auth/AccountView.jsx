@@ -418,7 +418,7 @@ export const AccountView = ({ user, toast, onUserChange, onSignedOut }) => {
             <input value={name} onChange={e => setName(e.target.value)} className={inputCls} style={inputStyle} />
           </Field>
           <div className="text-xs mt-2" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
-            Your username cannot be changed — it is your sign-in identity and is attached to every
+            Your username cannot be changed. It is your sign-in identity and is attached to every
             record this account has created.
           </div>
           {nameChanged && (
@@ -438,7 +438,7 @@ export const AccountView = ({ user, toast, onUserChange, onSignedOut }) => {
           <span className="text-base font-bold" style={{ fontFamily: F_HEAD, color: T.ink }}>Change password</span>
         </div>
         <div className="text-xs mb-4" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
-          Your password is stored as a one-way hash — nobody can read it back, not even the
+          Your password is stored as a one-way hash. Nobody can read it back, not even the
           administrator. If you forget it, it has to be reset rather than looked up.
         </div>
         <ChangePasswordPanel toast={toast} />

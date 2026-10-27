@@ -2,7 +2,7 @@
 
 import React, { useMemo, useRef, useState } from 'react';
 import { Btn, Field, Modal, SearchSelect, inputCls, inputStyle } from '@/components/ui.jsx';
-import { LOAN_MAX_BALANCE, LOAN_PURPOSES, balanceOf, isOpen, loanRoomLeft, payoffPlan, shortDate, todayYmdManila } from '@/lib/loan-rules';
+import { LOAN_MAX_BALANCE, LOAN_PURPOSES, balanceOf, isOpen, loanRoomLeft, todayYmdManila } from '@/lib/loan-rules';
 import { peso } from '@/lib/utils';
 import { F_BODY, T } from '@/components/theme';
 import { todayLocalYmd } from '@/features/loans/parts.jsx';
@@ -20,7 +20,11 @@ const Line = ({ label, value, total }) => (
   </div>
 );
 
-const labelOf = (e) => `${e.name} · ${e.position}`;
+const labelFor = (list) => {
+  const counts = new Map();
+  list.forEach((e) => counts.set(e.name, (counts.get(e.name) || 0) + 1));
+  return (e) => (counts.get(e.name) > 1 ? `${e.name} (ID ${e.id})` : e.name);
+};
 
 export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmployeeId = null, onSaved, toast }) => {
   const people = useMemo(() => {
@@ -29,7 +33,8 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmp
     const withLoan = new Set(loans.filter((l) => l.kind === 'LOAN' && isOpen(l)).map((l) => l.employeeId));
     return active.filter((e) => !withLoan.has(e.id));
   }, [staff, loans, presetEmployeeId]);
-  const byLabel = useMemo(() => new Map(people.map((e) => [labelOf(e), e])), [people]);
+  const labelOf = useMemo(() => labelFor(people), [people]);
+  const byLabel = useMemo(() => new Map(people.map((e) => [labelOf(e), e])), [people, labelOf]);
   const savingRef = useRef(false);
 
   const [empId, setEmpId] = useState(presetEmployeeId);
@@ -51,7 +56,6 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmp
   const room = topUp ? loanRoomLeft(balance) : LOAN_MAX_BALANCE;
   const overLimit = amt > room + 0.004;
   const newBalance = topUp ? balance + (amt > 0 ? amt : 0) : (amt > 0 ? amt : 0);
-  const plan = amt > 0 && perNum > 0 && !overLimit ? payoffPlan(newBalance, perNum, date) : null;
 
   const [showErrors, setShowErrors] = useState(false);
   let problem = '';
@@ -94,15 +98,6 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmp
     } finally { savingRef.current = false; setBusy(false); }
   };
 
-  const planText = !plan ? null
-    : emp?.crew
-      ? <>Paid off in about <b>{plan.count} working day{plan.count === 1 ? '' : 's'}</b> at {peso(perNum)} a day.</>
-      : topUp
-        ? <>Paid off in <b>{plan.count} cutoff{plan.count === 1 ? '' : 's'}</b> at {peso(perNum)}, last deduction {shortDate(plan.last, true)}.</>
-        : plan.count === 1
-          ? <>Paid off in <b>1 cutoff</b>: deducted on {shortDate(plan.first, true)}.</>
-          : <>Paid off in <b>{plan.count} cutoffs</b>: first deduction {shortDate(plan.first)}, last deduction {shortDate(plan.last, true)}.</>;
-
   return (
     <Modal open={open} onClose={onClose} title={topUp ? 'Top-up Loan' : 'New Loan'} width={540}>
       <div className="space-y-3.5">
@@ -130,8 +125,8 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmp
           <Field label={topUp ? 'Additional amount (₱)' : 'Amount (₱)'} error={fe.amount}>
             <div className="relative">
               <input inputMode="decimal" value={amount} onChange={(e) => setAmount(moneyInput(e.target.value))}
-                className={inputCls} style={{ ...inputStyle, borderColor: overLimit ? T.brand : T.line, paddingRight: 132 }} aria-invalid={overLimit || undefined} />
-              <span className="absolute right-9 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style={{ color: T.soft }}>max {peso(room)}</span>
+                className={inputCls} style={{ ...inputStyle, borderColor: overLimit ? T.brand : T.line, paddingRight: 112 }} aria-invalid={overLimit || undefined} />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style={{ color: T.soft }}>max {peso(room)}</span>
             </div>
           </Field>
           <Field label={`Deduction per ${unit} (₱)`} error={fe.per}>
@@ -156,8 +151,6 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmp
             <b>Over the limit.</b> {problem}
           </div>
         )}
-
-        {planText && <Box tone="ok">{planText}</Box>}
 
         <div className="flex justify-end gap-2 pt-1">
           <Btn variant="outline" onClick={onClose} disabled={busy}>Cancel</Btn>

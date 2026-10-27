@@ -27,7 +27,7 @@ export async function sendPasswordResetCode(to, code) {
       `Your Prime Depot password reset code is: ${code}\n\n`
       + `Enter it on the reset screen to choose a new password. `
       + `The code expires in 10 minutes.\n\n`
-      + `If you did not request this, you can ignore this email — your password stays unchanged.`,
+      + `If you did not request this, you can ignore this email. Your password stays unchanged.`,
     html:
       `<div style="font-family:Arial,Helvetica,sans-serif;max-width:440px;margin:0 auto;color:#1B2430">`
       + `<div style="background:#C8161D;color:#fff;padding:16px 20px;border-radius:8px 8px 0 0;font-weight:700">`
@@ -37,7 +37,7 @@ export async function sendPasswordResetCode(to, code) {
       + `<div style="font-size:30px;font-weight:800;letter-spacing:6px;text-align:center;`
       + `background:#F4F5F7;border-radius:8px;padding:14px 0;margin:0 0 14px">${code}</div>`
       + `<p style="margin:0 0 8px;color:#6B7280;font-size:13px">The code expires in 10 minutes.</p>`
-      + `<p style="margin:0;color:#6B7280;font-size:13px">If you did not request this, ignore this email — `
+      + `<p style="margin:0;color:#6B7280;font-size:13px">If you did not request this, ignore this email. `
       + `your password stays unchanged.</p>`
       + `</div></div>`,
   });

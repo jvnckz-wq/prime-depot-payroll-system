@@ -103,7 +103,7 @@ export const AuditLogPanel = ({ toast }) => {
               {loading ? <SkeletonRows cols={4} rows={6} /> : data.rows.map((r) => (
                 <tr key={r.id}>
                   <Td><span style={{ whiteSpace: 'nowrap' }}>{fmtWhen(r.at)}</span></Td>
-                  <Td><span style={{ fontFamily: F_MONO }}>{r.user || '—'}</span></Td>
+                  <Td><span style={{ fontFamily: F_MONO }}>{r.user || '--'}</span></Td>
                   <Td>
                     <span className="text-xs font-bold uppercase" style={{ padding: '2px 8px', borderRadius: 6, letterSpacing: '0.02em', whiteSpace: 'nowrap',
                       backgroundColor: WATCH.has(r.action) ? T.brandBg : T.lineSoft, color: WATCH.has(r.action) ? T.brandDark : T.ink }}>{labelOf(r.action)}</span>

@@ -67,7 +67,7 @@ export async function POST(request) {
       }
       await prisma.pullRequest.update({
         where: { id: active.id },
-        data: { status: 'FAILED', finishedAt: new Date(), error: active.status === 'PENDING' ? 'Superseded by a newer request.' : 'Timed out — the agent did not finish. Is it running on the warehouse PC?' },
+        data: { status: 'FAILED', finishedAt: new Date(), error: active.status === 'PENDING' ? 'Superseded by a newer request.' : 'Timed out. The agent did not finish. Is it running on the warehouse PC?' },
       }).catch(() => {});
     }
 

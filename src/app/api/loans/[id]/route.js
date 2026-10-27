@@ -23,7 +23,7 @@ export async function PATCH(request, { params }) {
       const data = { isSettled: true, settledAt: new Date() };
       if (balance > 0) {
         data.entries = {
-          create: [{ date: new Date(), type: 'DEDUCTION', amount: balance, note: 'Marked fully paid — remaining balance cleared' }],
+          create: [{ date: new Date(), type: 'DEDUCTION', amount: balance, note: 'Marked fully paid, remaining balance cleared' }],
         };
       }
       const loan = await prisma.loan.update({ where: { id }, data, include: { employee: true, entries: true } });

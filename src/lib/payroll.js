@@ -149,8 +149,6 @@ export function loanLedger(loan) {
 }
 
 export function crewEarnings(deliveries, { driverDaily, helperDaily, bonusHead, bonusTrips }) {
-  const trips = flattenDeliveries(deliveries);
-
   const people = new Map();
   const get = (name, role) => {
     if (!people.has(name)) {
@@ -160,19 +158,12 @@ export function crewEarnings(deliveries, { driverDaily, helperDaily, bonusHead, 
         trucks: new Set(),
         days: new Set(),
         tripKeys: new Set(),
+        tripsByKey: new Map(),
         tripCount: 0,
       });
     }
     return people.get(name);
   };
-
-  const truckDayTrips = new Map();
-  trips.forEach((t) => {
-    if (!t.seq) return;
-    const key = `${t.crewId}|${t.date}`;
-    if (!truckDayTrips.has(key)) truckDayTrips.set(key, new Set());
-    truckDayTrips.get(key).add(t.seq);
-  });
 
   let currentDriver = null, currentHelpers = [], currentKey = null;
   Object.entries(deliveries).forEach(([crewId, log]) => {
@@ -182,14 +173,12 @@ export function crewEarnings(deliveries, { driverDaily, helperDaily, bonusHead, 
         currentDriver = it.driver || null;
         currentHelpers = it.helpers || [];
         currentKey = `${crewId}|${log.date}`;
-        if (currentDriver) {
-          const p = get(currentDriver, 'Driver');
+        const mark = (p) => {
           p.tripKeys.add(currentKey); p.trucks.add(crewId); p.days.add(log.date); p.tripCount += 1;
-        }
-        currentHelpers.forEach((h) => {
-          const p = get(h, 'Pahinante');
-          p.tripKeys.add(currentKey); p.trucks.add(crewId); p.days.add(log.date); p.tripCount += 1;
-        });
+          p.tripsByKey.set(currentKey, (p.tripsByKey.get(currentKey) || 0) + 1);
+        };
+        if (currentDriver) mark(get(currentDriver, 'Driver'));
+        currentHelpers.forEach((h) => mark(get(h, 'Pahinante')));
       }
       if (currentDriver) get(currentDriver, 'Driver').pieceRate += it.d || 0;
       const n = currentHelpers.length;
@@ -200,9 +189,7 @@ export function crewEarnings(deliveries, { driverDaily, helperDaily, bonusHead, 
   return [...people.values()]
     .map((p) => {
       const daily = (p.role === 'Driver' ? driverDaily : helperDaily) * p.days.size;
-      const bonus = [...p.tripKeys]
-        .filter((k) => (truckDayTrips.get(k)?.size || 0) >= bonusTrips)
-        .length * bonusHead;
+      const bonus = [...p.tripsByKey.values()].filter((n) => n >= bonusTrips).length * bonusHead;
       return {
         name: p.name,
         role: p.role,

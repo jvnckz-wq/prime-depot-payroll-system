@@ -40,7 +40,7 @@ export function callTimeFor(employee, date) {
 }
 
 export function minutesLate(employee, date, timeIn) {
-  if (!timeIn || timeIn === '—') return 30;
+  if (!timeIn || timeIn === '--' || timeIn === '\u2014') return 30;
 
   const toMinutes = (t) => {
     const [h, m] = String(t).split(':').map(Number);

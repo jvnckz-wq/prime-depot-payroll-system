@@ -196,7 +196,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
       const next = ratesDraft.filter(x => x.id !== r.id);
       setRatesDraft(next);
       setRates(next.map(stripCustom));
-      toast(`"${r.cat}" retired — past deliveries keep their recorded amounts.`);
+      toast(`"${r.cat}" retired. Past deliveries keep their recorded amounts.`);
     } catch {
       toast('Could not reach the server.', 'error');
     }
@@ -293,8 +293,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
     const drivers = people.filter(p => p.role === 'Driver');
     const helpers = people.filter(p => p.role === 'Pahinante');
 
-    const tripCount = log ? new Set(log.items.filter(i => !i.voided).map(i => i.seq).filter(Boolean)).size : 0;
-    const bonusEligible = tripCount >= crewRates.bonusTrips;
+    const bonusNames = people.filter(p => p.bonus > 0).map(p => p.name);
     const grandNet = people.reduce((sum, p) => sum + p.net, 0);
 
     const trips = [];
@@ -339,11 +338,11 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
               <Eyebrow>Delivery Manifest</Eyebrow>
               <div className="text-xl font-bold" style={{ fontFamily: F_HEAD, color: T.ink }}>
                 {crew.id}
-                {driversWorked.length > 0 && <span style={{ color: T.soft, fontWeight: 400 }}> — {driversWorked.join(' / ')}</span>}
+                {driversWorked.length > 0 && <span style={{ color: T.soft, fontWeight: 400 }}> · {driversWorked.join(' / ')}</span>}
               </div>
               <div className="text-sm" style={{ fontFamily: F_BODY, color: T.soft }}>
                 {crew.vehicle} · <span style={{ fontFamily: F_MONO }}>{crew.plate}</span> · {log ? log.date : 'No deliveries logged'}
-                {bonusEligible && <span style={{ color: T.green, fontWeight: 600 }}> · {tripCount} trips — trip bonus applies</span>}
+                {bonusNames.length > 0 && <span style={{ color: T.green, fontWeight: 600 }}> · trip bonus: {bonusNames.join(', ')}</span>}
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -373,7 +372,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                       <Td>{it.customer}</Td>
                       <Td>{it.seq ? (
                         <span className="flex items-center gap-1.5">
-                          {it.helpers?.length ? it.helpers.join(' & ') : '—'}
+                          {it.helpers?.length ? it.helpers.join(' & ') : '--'}
                           {it.noScan?.length > 0 && <span className="ml-2"><Badge tone="amber">NO SCAN: {it.noScan.join(', ')}</Badge></span>}
                         </span>
                       ) : ''}</Td>
@@ -405,7 +404,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
               </table>
             </div>
             <div className="px-4 py-3" style={{ borderTop: `1px dashed ${T.line}`, backgroundColor: T.bg }}>
-              <Eyebrow>Payable — per person</Eyebrow>
+              <Eyebrow>Payable per person</Eyebrow>
               <div className="mt-2 overflow-x-auto">
                 <table className="w-full" style={{ fontFamily: F_MONO, fontSize: 13 }}>
                   <thead>
@@ -422,8 +421,8 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                         <Td center mono>{p.trips}</Td>
                         <Td right mono>{peso(p.dailyRate)}</Td>
                         <Td right mono>{peso(p.pieceRate)}</Td>
-                        <Td right mono>{p.bonus ? <span style={{ color: T.green }}>+{peso(p.bonus)}</span> : '—'}</Td>
-                        <Td right mono>{p.kaltas ? <span style={{ color: T.red }}>-{peso(p.kaltas)}</span> : '—'}</Td>
+                        <Td right mono>{p.bonus ? <span style={{ color: T.green }}>+{peso(p.bonus)}</span> : '--'}</Td>
+                        <Td right mono>{p.kaltas ? <span style={{ color: T.red }}>-{peso(p.kaltas)}</span> : '--'}</Td>
                         <Td right mono><b style={{ color: T.green }}>{peso(p.net)}</b></Td>
                       </tr>
                     ))}
@@ -435,7 +434,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
               </div>
               {people.length > 0 && (
                 <div className="flex justify-between items-baseline mt-3 pt-3" style={{ borderTop: `1px solid ${T.line}` }}>
-                  <span className="font-bold text-sm" style={{ fontFamily: F_HEAD, color: T.ink }}>TOTAL PAYABLE — {crew.id}</span>
+                  <span className="font-bold text-sm" style={{ fontFamily: F_HEAD, color: T.ink }}>TOTAL PAYABLE: {crew.id}</span>
                   <span className="font-bold" style={{ fontFamily: F_MONO, fontSize: 18, color: T.brand }}>{peso(grandNet)}</span>
                 </div>
               )}
@@ -453,7 +452,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
               }
             `}</style>
             <div className="flex items-center justify-between mb-2 mt-4 no-print">
-              <Eyebrow>Payslips — {crew.id}</Eyebrow>
+              <Eyebrow>Payslips: {crew.id}</Eyebrow>
               <Btn variant="outline" size="sm" onClick={() => window.print()}>Print truck payslip</Btn>
             </div>
 
@@ -470,7 +469,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                 <div className="grid grid-cols-3" style={{ borderBottom: `1px solid ${T.line}` }}>
                   <div className="px-5 py-3" style={{ borderRight: `1px solid ${T.line}` }}><Eyebrow>Date</Eyebrow><div className="text-sm font-semibold" style={{ fontFamily: F_BODY }}>{log.date}</div></div>
                   <div className="px-5 py-3" style={{ borderRight: `1px solid ${T.line}` }}><Eyebrow>Truck / Plate</Eyebrow><div className="text-sm font-semibold" style={{ fontFamily: F_BODY }}>{crew.id} · {crew.plate}</div></div>
-                  <div className="px-5 py-3"><Eyebrow>Crew</Eyebrow><div className="text-sm font-semibold" style={{ fontFamily: F_BODY }}>{people.map(p => p.name).join(', ') || '—'}</div></div>
+                  <div className="px-5 py-3"><Eyebrow>Crew</Eyebrow><div className="text-sm font-semibold" style={{ fontFamily: F_BODY }}>{people.map(p => p.name).join(', ') || '--'}</div></div>
                 </div>
                 <div className="overflow-x-auto pd-scroll-shadow">
                   <table className="w-full" style={{ fontSize: 12 }}>
@@ -526,7 +525,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                     </tbody>
                   </table></div>
                   <div className="text-xs mt-2" style={{ fontFamily: F_BODY, color: T.soft }}>
-                    The Helper column is the combined total for all helpers — each helper&apos;s own share is on their individual payslip.
+                    The Helper column is the combined total for all helpers. Each helper&apos;s own share is on their individual payslip.
                   </div>
                 </div>
               </Panel>
@@ -534,7 +533,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
           </>
         )}
 
-        <Modal open={logOpen} onClose={() => setLogOpen(false)} title={`Log Delivery — ${crew.id}`} width={560}>
+        <Modal open={logOpen} onClose={() => setLogOpen(false)} title={`Log Delivery: ${crew.id}`} width={560}>
           <DeliveryForm crews={trucks} fixedCrewId={selected} rates={rates} onSubmit={logDelivery} />
         </Modal>
 
@@ -543,7 +542,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
             <div>
               <div className="p-3 rounded mb-3" style={{ backgroundColor: T.bg }}>
                 <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>
-                  Trip #{voidTarget.seq} — {voidTarget.address}
+                  {voidTarget.address}
                 </div>
                 <div className="text-xs mt-1" style={{ fontFamily: F_MONO, color: T.soft }}>
                   {voidTarget.item} · {voidTarget.qty} {voidTarget.unit} · {peso(voidTarget.d)} / {peso(voidTarget.h)}
@@ -651,6 +650,8 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
         }
       });
     });
+    const order = new Map();
+    lines.forEach(l => { const k = `${l.truckId}|${l.seq}`; if (!order.has(k)) order.set(k, order.size + 1); l.trip = order.get(k); });
     return lines;
   };
 
@@ -687,7 +688,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
           ) : <Btn size="sm" variant="outline" onClick={() => { setRatesDraft(rates.map(r => ({ ...r, _custom: isCustomDouble(r) }))); setEditingRates(true); }}>Edit</Btn>}
         </div>
         <div className="overflow-auto pd-scroll-shadow" style={{ maxHeight: 440 }}><table className="w-full">
-          <thead className="sticky top-0 z-10" style={{ backgroundColor: T.surface }}><tr><Th>Category</Th><Th>Unit</Th><Th right>Single — Drv</Th><Th right>Single — Hlp</Th><Th right>Double — Drv</Th><Th right>Double — Hlp</Th>{editingRates && <Th center>Double</Th>}{editingRates && <Th right>Retire</Th>}</tr></thead>
+          <thead className="sticky top-0 z-10" style={{ backgroundColor: T.surface }}><tr><Th>Category</Th><Th>Unit</Th><Th right>Single Drv</Th><Th right>Single Hlp</Th><Th right>Double Drv</Th><Th right>Double Hlp</Th>{editingRates && <Th center>Double</Th>}{editingRates && <Th right>Retire</Th>}</tr></thead>
           <tbody>{(editingRates ? ratesDraft : rates).map((r, i) => (
             <tr key={i}>
               <Td>{editingRates ? <input value={r.cat} onChange={e => setRatesDraft(p => p.map((x, j) => j === i ? { ...x, cat: e.target.value } : x))} className="px-2 py-1 rounded border text-xs w-full" style={{ borderColor: T.line, fontFamily: F_BODY }} /> : r.cat}</Td>
@@ -697,7 +698,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                 editingRates
                   ? (r._custom
                       ? <input type="number" value={r.d[k]} onChange={e => setRatesDraft(p => p.map((x, j) => j === i ? { ...x, d: x.d.map((v, vi) => vi === k ? parseFloat(e.target.value) || 0 : v) } : x))} className="px-2 py-1 rounded border text-xs w-16 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} />
-                      : <span style={{ color: T.soft }} title="Auto — single × 2">{peso(round2((r.s[k] || 0) * 2))}</span>)
+                      : <span style={{ color: T.soft }} title="Auto: single × 2">{peso(round2((r.s[k] || 0) * 2))}</span>)
                   : peso(r.d[k])
               }</Td>)}
               {editingRates && (
@@ -710,7 +711,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                       : x))}
                     className="text-xs font-semibold px-2 py-1 rounded border"
                     style={{ fontFamily: F_HEAD, borderColor: T.line, color: r._custom ? T.brand : T.soft, backgroundColor: r._custom ? T.brandBg : 'transparent' }}
-                    title={r._custom ? 'Custom double rate — click to reset to single × 2' : 'Auto: double = single × 2. Click to set a custom double rate.'}>
+                    title={r._custom ? 'Custom double rate. Click to reset to single × 2' : 'Auto: double = single × 2. Click to set a custom double rate.'}>
                     {r._custom ? 'Custom' : 'Auto ×2'}
                   </button>
                 </Td>
@@ -732,9 +733,33 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
         <div className="mb-5">
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <Eyebrow>Per-Person Payslips</Eyebrow>
-            <span className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>· {dayDate} · one full slip per person, totalled across all trucks</span>
           </div>
-          <Panel className="overflow-hidden">
+          <Panel className="overflow-hidden hidden md:block">
+            <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
+              <thead><tr><Th>Employee</Th><Th center>Trips</Th><Th right>Gross Pay</Th><Th right>Deductions</Th><Th right>Net Pay</Th><Th right>Payslip</Th></tr></thead>
+              <tbody>
+                {dayPeople.map(p => {
+                  const deductions = round2((p.late || 0) + (p.contribution || 0) + (p.kaltas || 0));
+                  return (
+                    <tr key={p.name}>
+                      <Td>
+                        <div className="flex items-center gap-2.5">
+                          <Av name={p.name} size={28} tone={p.role === 'Driver' ? T.amber : T.brand} />
+                          <span className="font-semibold" style={{ fontFamily: F_BODY }}>{p.name}</span>
+                        </div>
+                      </Td>
+                      <Td center mono>{p.attendanceDaily ? '--' : p.trips}</Td>
+                      <Td right mono>{peso(p.total)}</Td>
+                      <Td right mono><span style={{ color: T.red, fontWeight: 600 }}>-{peso(deductions)}</span></Td>
+                      <Td right mono><b>{peso(p.net)}</b></Td>
+                      <Td right><Btn size="sm" variant="outline" onClick={() => setSlipPerson(p)}>View</Btn></Td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table></div>
+          </Panel>
+          <Panel className="overflow-hidden md:hidden">
             {dayPeople.map((p, pi) => (
               <button key={p.name} onClick={() => setSlipPerson(p)}
                 className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left"
@@ -773,7 +798,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
       </Modal>
       </>)}
 
-      <Modal open={!!slipPerson} onClose={() => setSlipPerson(null)} title={`Payslip — ${slipPerson?.name || ''}`} width={600}>
+      <Modal open={!!slipPerson} onClose={() => setSlipPerson(null)} title={`Payslip: ${slipPerson?.name || ''}`} width={600}>
         {slipPerson && (() => {
           const p = slipPerson;
           const lines = personLinesAll(p);
@@ -808,11 +833,11 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                   </div>
                   {!p.attendanceDaily && <div className="overflow-x-auto pd-scroll-shadow">
                     <table className="w-full" style={{ fontSize: 12 }}>
-                      <thead><tr><Th>Seq</Th><Th>Item</Th><Th center>Qty</Th><Th>Unit</Th><Th>Double</Th><Th right>Amount</Th></tr></thead>
+                      <thead><tr><Th>Trip</Th><Th>Item</Th><Th center>Qty</Th><Th>Unit</Th><Th>Double</Th><Th right>Amount</Th></tr></thead>
                       <tbody>
                         {lines.map((l, li) => (
                           <tr key={li}>
-                            <Td mono>{l.seq}</Td>
+                            <Td mono>{l.trip}</Td>
                             <Td>{l.item}</Td>
                             <Td center mono>{l.qty}</Td>
                             <Td>{l.unit}</Td>
@@ -828,9 +853,9 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                     <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full" style={{ fontFamily: F_MONO, fontSize: 13 }}>
                       <tbody>
                         <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Daily rate</Td><Td right mono>{peso(p.dailyRate)}</Td></tr>
-                        {!p.attendanceDaily && <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Piece rate ({p.trips} trip{p.trips === 1 ? '' : 's'})</Td><Td right mono>{peso(p.pieceRate)}</Td></tr>}
+                        {!p.attendanceDaily && <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Piece rate</Td><Td right mono>{peso(p.pieceRate)}</Td></tr>}
                         {!p.attendanceDaily && <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Trip bonus</Td><Td right mono style={{ color: p.bonus ? T.green : undefined }}>{p.bonus ? `+${peso(p.bonus)}` : peso(0)}</Td></tr>}
-                        <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Late ({p.lateMins || 0} min × ₱3)</Td><Td right mono style={{ color: p.late ? T.red : undefined }}>{p.late ? `-${peso(p.late)}` : peso(0)}</Td></tr>
+                        <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Late</Td><Td right mono style={{ color: p.late ? T.red : undefined }}>{p.late ? `-${peso(p.late)}` : peso(0)}</Td></tr>
                         <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Deductions</Td><Td right mono style={{ color: p.kaltas ? T.red : undefined }}>{p.kaltas ? `-${peso(p.kaltas)}` : peso(0)}</Td></tr>
                         <tr style={{ borderTop: `1px solid ${T.line}` }}><Td style={{ fontFamily: F_HEAD, color: T.ink }}><b>NET SALARY</b></Td><Td right mono><b style={{ color: T.brand }}>{peso(p.net)}</b></Td></tr>
                       </tbody>
@@ -838,7 +863,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                   </div>
                   <div className="px-6 py-6">
                     <div className="h-px mb-1.5" style={{ backgroundColor: T.line, maxWidth: 260 }} />
-                    <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>{p.name} — Signature / Date</div>
+                    <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>{p.name}, Signature / Date</div>
                   </div>
                 </Panel>
               </div>

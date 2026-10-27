@@ -41,7 +41,7 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
 
   const rateKey = (r) => (r ? (r.id || `${r.cat}|${r.unit}`) : '');
   const rateByKey = (k) => rates.find(r => rateKey(r) === k) || rates[0];
-  const rateLabel = (r) => (r.unit ? `${r.cat} — per ${r.unit}` : r.cat);
+  const rateLabel = (r) => (r.unit ? `${r.cat} per ${r.unit}` : r.cat);
 
   const addRow = () => setLineRows(r => {
     const used = new Set(r.map(x => x.item));
@@ -131,7 +131,7 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
             </div>
           ) : (
             <select value={crewId} onChange={e => setCrewId(e.target.value)} className={inputCls} style={inputStyle}>
-              {crews.map(c => <option key={c.id} value={c.id}>{c.id} — {c.vehicle}</option>)}
+              {crews.map(c => <option key={c.id} value={c.id}>{c.id} · {c.vehicle}</option>)}
             </select>
           )}
         </Field>
@@ -169,13 +169,13 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
       <div className="mt-3 mb-1">
         <Field label={<>Province <span style={{ color: T.brand }}>*</span></>} error={errs.province}>
           <SearchSelect value={province} onChange={(v) => { setProvince(v); setMunicipality(''); setBarangay(''); }}
-            options={PH_PROVINCES} placeholder="Search a province..." allowCustom />
+            options={PH_PROVINCES} placeholder="Search a province..." />
         </Field>
       </div>
       <div className="mt-3 mb-1">
         <Field label={<>Municipality <span style={{ color: T.brand }}>*</span></>} error={errs.municipality}>
           <SearchSelect value={municipality} onChange={(v) => { setMunicipality(v); setBarangay(''); }}
-            options={Object.keys(PH_AREAS[province] || {})} placeholder="Search a town or city..." allowCustom />
+            options={Object.keys(PH_AREAS[province] || {})} placeholder="Search a town or city..." />
         </Field>
       </div>
       <div className="mt-3 mb-1">
@@ -183,7 +183,7 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
           <SearchSelect value={barangay} onChange={setBarangay}
             options={(province && municipality) ? (PH_AREAS[province]?.[municipality] || []) : []}
             placeholder={municipality ? 'Search a barangay...' : 'Pick a municipality first'}
-            disabled={!municipality} allowCustom />
+            disabled={!municipality} />
         </Field>
       </div>
       <div className="mt-3 mb-1">
@@ -231,19 +231,16 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
                   <div className="text-xs mb-1" style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.04em' }}>
                     RATE PER {rate?.unit ? rate.unit.toUpperCase() : 'UNIT'}
                   </div>
-                  <div className="text-sm py-2" style={{ fontFamily: F_MONO }}>
-                    <span style={{ color: T.brand }}>{peso(dR)}</span>
-                    <span style={{ color: T.soft }}> driver · </span>
-                    <span style={{ color: T.warn }}>{peso(hR)}</span>
-                    <span style={{ color: T.soft }}> delivery helper</span>
+                  <div className="text-sm py-1 flex flex-col" style={{ fontFamily: F_MONO, lineHeight: 1.6 }}>
+                    <span><span style={{ color: T.brand }}>{peso(dR)}</span><span style={{ color: T.soft }}> driver</span></span>
+                    <span><span style={{ color: T.warn }}>{peso(hR)}</span><span style={{ color: T.soft }}> delivery helper</span></span>
                   </div>
                 </div>
 
                 <div className="text-right">
                   <div className="text-xs mb-1" style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.04em' }}>THIS ITEM</div>
-                  <div className="text-sm py-2" style={{ fontFamily: F_MONO }}>
+                  <div className="text-sm py-1 flex flex-col" style={{ fontFamily: F_MONO, lineHeight: 1.6 }}>
                     <span style={{ color: T.green, fontWeight: 600 }}>{peso(dR * q)}</span>
-                    <span style={{ color: T.soft }}> / </span>
                     <span style={{ color: T.green }}>{peso(hR * q)}</span>
                   </div>
                 </div>

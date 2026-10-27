@@ -17,7 +17,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Two-factor login is already on for this account.' }, { status: 409 });
     }
     if (!record?.totpSecret) {
-      return NextResponse.json({ error: 'Start setup again — there is no pending secret.' }, { status: 400 });
+      return NextResponse.json({ error: 'Start setup again. There is no pending secret.' }, { status: 400 });
     }
 
     const step = totpStep(code, record.totpSecret);

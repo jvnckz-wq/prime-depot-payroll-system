@@ -180,7 +180,7 @@ export const FinalPayView = ({ employee, onBack, toast, onDeactivate, editable =
         </div>
 
         <div className="px-6 py-4" style={{ borderBottom: `1px solid ${T.line}` }}>
-          {[["Employee's Name:", employee.name], ['Position:', employee.position], ['Frequency of Salary Releasing:', 'Bi-Monthly'], ['Type of Exit:', exitType], ['Date of Exit Effectivity:', exitDate || '—'], ['Last Date of Service Rendered:', lastService || '—']].map(([l, v], i) => (
+          {[["Employee's Name:", employee.name], ['Position:', employee.position], ['Frequency of Salary Releasing:', 'Bi-Monthly'], ['Type of Exit:', exitType], ['Date of Exit Effectivity:', exitDate || '--'], ['Last Date of Service Rendered:', lastService || '--']].map(([l, v], i) => (
             <div key={i} className="flex gap-2 text-sm py-0.5" style={{ fontFamily: F_BODY }}>
               <span style={{ color: T.soft }}>{l}</span>
               <span className="font-bold" style={{ color: T.ink }}>{v}</span>

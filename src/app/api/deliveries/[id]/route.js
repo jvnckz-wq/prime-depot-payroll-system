@@ -70,7 +70,7 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({
         ok: true,
         warning: released
-          ? `${period.label} was already released — the payslip issued for this cutoff no longer matches the record. Make the adjustment on the next cutoff.`
+          ? `${period.label} was already released. The payslip issued for this cutoff no longer matches the record. Make the adjustment on the next cutoff.`
           : null,
       });
     }

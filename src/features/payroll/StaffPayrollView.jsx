@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Users, Wallet, ArrowLeft, CalendarX, ReceiptText } from 'lucide-react';
+import { Users, Wallet, ArrowLeft, CalendarX, ReceiptText, AlertCircle, AlertTriangle } from 'lucide-react';
 import { Av, Badge, Btn, Confirm, EmptyState, Eyebrow, H1, Modal, Money, Panel, SkeletonBlock, SkeletonRows, StatCard, Td, Th } from '@/components/ui.jsx';
 import { computeStaffPayroll } from '@/lib/payroll';
 import { cutoffOf, nextCutoff, planDeductions, shortDate, staffRunKey } from '@/lib/loan-rules';
@@ -209,7 +209,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
       });
       const data = await res.json();
       if (!res.ok) { toast(data.error || 'Could not un-finalize.', 'error'); return; }
-      toast(`Un-finalized ${p.label}` + (data.loanEntriesReversed ? ` — ${data.loanEntriesReversed} loan deduction(s) reversed.` : '.'));
+      toast(`Un-finalized ${p.label}` + (data.loanEntriesReversed ? `: ${data.loanEntriesReversed} loan deduction(s) reversed.` : '.'));
       await loadHistory();
       await reloadLoans();
     } catch {
@@ -265,6 +265,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
     : null;
   const pending = plan ? plan.writes : [];
   const olderOpen = attPeriod ? openCutoffs.filter(c => c.end < attPeriod.start) : [];
+  const newerReleased = attPeriod ? history.filter(p => p.start > attPeriod.end) : [];
   const applyDeductions = async () => {
     setConfirmApply(false);
     if (!attPeriod) { toast("Import this cutoff's attendance first.", 'error'); return; }
@@ -319,9 +320,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
       });
       const data = await res.json();
       if (!res.ok) { toast(data.error || 'Could not finalize the cutoff.', 'error'); return; }
-      toast(`Released ${cutoffLabel}: ${data.payslips} payslip(s) snapshotted`
-        + (data.loans?.total ? `, ${peso(data.loans.total)} in loans deducted` : '')
-        + (data.loans?.unpaidTotal > 0 ? `, ${peso(data.loans.unpaidTotal)} carried over.` : '.'));
+      toast(`Finalized ${cutoffLabel}: ${data.payslips} payslip${data.payslips === 1 ? '' : 's'} locked.`);
       await reloadLoans();
       await loadHistory();
     } catch {
@@ -388,7 +387,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
               <div className="flex items-center gap-2">
                 <button type="button" aria-label="Previous cutoff" onClick={() => goCutoff(-1)} className="rounded-lg flex items-center justify-center pd-clickable" style={{ width: 28, height: 28, border: `1px solid ${T.line}`, background: T.surface, color: T.ink }}>‹</button>
                 <button type="button" aria-label="Next cutoff" disabled={!sel || sel.start >= latestStart} onClick={() => goCutoff(1)} className="rounded-lg flex items-center justify-center pd-clickable" style={{ width: 28, height: 28, border: `1px solid ${T.line}`, background: T.surface, color: T.ink, opacity: !sel || sel.start >= latestStart ? 0.4 : 1 }}>›</button>
-                <Eyebrow>Payslips — {cutoffLabel}</Eyebrow>
+                <Eyebrow>Payslips: {cutoffLabel}</Eyebrow>
                 {attFinalized && <Badge tone="green">Finalized</Badge>}
               </div>
               {attFinalized ? (
@@ -397,7 +396,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
               <div className="grid grid-cols-1 gap-2 w-full sm:flex sm:items-center sm:w-auto">
                 <Btn size="sm" fullMobile variant="outline" disabled={rows.length === 0 || printAll} onClick={() => setPrintAll(true)}>{printAll ? 'Preparing…' : 'Print All Payslips'}</Btn>
                 <Btn size="sm" fullMobile variant="outline" disabled={pending.length === 0} onClick={() => setConfirmApply(true)}>Apply Cutoff Deductions</Btn>
-                <Btn size="sm" fullMobile loading={finalizing} disabled={!attPeriod || rows.length === 0 || finalizing} onClick={() => setConfirmFinalize(true)}>{finalizing ? 'Finalizing…' : 'Finalize / Release'}</Btn>
+                <Btn size="sm" fullMobile loading={finalizing} disabled={!attPeriod || rows.length === 0 || finalizing} onClick={() => setConfirmFinalize(true)}>{finalizing ? 'Finalizing…' : 'Finalize'}</Btn>
               </div>
               )}
             </div>
@@ -430,7 +429,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
               )}
             </div>
             <div className="hidden md:block overflow-x-auto pd-scroll-shadow"><table className="w-full">
-              <thead><tr><Th>Employee</Th><Th center>Days</Th><Th right>Gross</Th><Th right>OT</Th><Th right>Deductions</Th><Th right>Net Pay</Th><Th>Payslip</Th></tr></thead>
+              <thead><tr><Th>Employee</Th><Th center>Days</Th><Th right>Gross</Th><Th right>Overtime</Th><Th right>Deductions</Th><Th right>Net Pay</Th><Th right>Payslip</Th></tr></thead>
               <tbody>
                 {loading ? <SkeletonRows cols={7} rows={5} /> : rows.map(({ emp, calc }) => (
                   <tr key={emp.id}>
@@ -446,7 +445,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
                     <Td right mono><span style={{ color: T.green, fontWeight: 600 }}>+{peso(calc.ot)}</span></Td>
                     <Td right mono><span style={{ color: T.red, fontWeight: 600 }}>-{peso(calc.totalDeductions)}</span></Td>
                     <Td right mono><b>{peso(calc.net)}</b></Td>
-                    <Td><Btn size="sm" variant="outline" onClick={() => { setSelectedId(emp.id); setView('slip'); }}>View</Btn></Td>
+                    <Td right><Btn size="sm" variant="outline" onClick={() => { setSelectedId(emp.id); setView('slip'); }}>View</Btn></Td>
                   </tr>
                 ))}
               </tbody>
@@ -497,26 +496,36 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
         confirmLabel="Apply Deductions" />
 
       <Confirm open={confirmFinalize} onCancel={() => setConfirmFinalize(false)} onConfirm={finalize}
-        title={`Finalize and release ${cutoffLabel}?`}
-        message={`This snapshots all ${rows.length} staff payslip(s) for this cutoff and applies their loan deductions.`
-          + (plan && plan.total > 0 ? ` It also takes ${peso(plan.total)} in deductions not applied yet, so the total net released will be ${peso(totalNet - plan.total)}.` : ` Total net ${peso(totalNet)}.`)
-          + (plan && plan.short.length ? ` ${plan.short.length} will carry over to the ${shortDate(nextEnd)} payroll: ${shortNames(plan.short)}.` : '')
-          + " The figures are frozen once released, even if rates or records change later. You can un-finalize this cutoff from History if a correction is needed."
-          + (olderOpen.length ? ` Note: ${olderOpen.map(c => staffRunKey(c.start).replace(/^staff-/, '')).join(', ')} still ${olderOpen.length > 1 ? 'have' : 'has'} attendance that is not finalized.` : '')}
-        confirmLabel="Finalize / Release" />
+        title={`Finalize payroll for ${cutoffLabel}?`}
+        message="Are you sure? The payslips will be locked. You can undo this from History."
+        confirmLabel="Finalize" confirmDisabled={pending.length > 0}>
+        {pending.length > 0 && (
+          <FinalizeNote tone="stop">
+            {pending.length} loan payment{pending.length === 1 ? ' is' : 's are'} not applied yet. Apply the cutoff deductions first, then finalize.
+          </FinalizeNote>
+        )}
+        {olderOpen.length > 0 && (
+          <FinalizeNote>{olderOpen.map(c => staffRunKey(c.start).replace(/^staff-/, '')).join(', ')} {olderOpen.length > 1 ? 'are' : 'is'} not finalized yet.</FinalizeNote>
+        )}
+        {newerReleased.length > 0 && (
+          <FinalizeNote>
+            {newerReleased.map(q => q.label).join(', ')} {newerReleased.length > 1 ? 'are' : 'is'} already finalized. To undo {cutoffLabel} later, undo {newerReleased.length > 1 ? 'those' : 'it'} first.
+          </FinalizeNote>
+        )}
+      </Confirm>
 
       <Confirm open={!!confirmUnfinalize} onCancel={() => setConfirmUnfinalize(null)} onConfirm={() => unfinalize(confirmUnfinalize)} busy={unfinalizing}
         title={confirmUnfinalize ? `Un-finalize ${confirmUnfinalize.label}?` : ''}
         message="This removes the released snapshot and reverses this cut-off's loan deductions, restoring the balances, so it can be recomputed and released again. Only do this to correct a mistake."
         confirmLabel="Un-finalize" />
 
-      <Modal open={!!viewPeriod} onClose={() => setViewPeriod(null)} title={viewPeriod ? `Released — ${viewPeriod.period.label}` : ''} width={720}>
+      <Modal open={!!viewPeriod} onClose={() => setViewPeriod(null)} title={viewPeriod ? `Released: ${viewPeriod.period.label}` : ''} width={720}>
         {viewPeriod && (
           <div className="space-y-3">
             <div className="flex items-center gap-2 flex-wrap text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
               <Badge tone="green">Released</Badge>
-              <Badge tone="amber">Locked — viewing only</Badge>
-              <span>Snapshot figures — frozen at release.</span>
+              <Badge tone="amber">Locked, viewing only</Badge>
+              <span>Snapshot figures, frozen at release.</span>
             </div>
             {viewPeriodLoading ? <SkeletonBlock avatar={false} />
               : viewPeriod.payslips.length === 0 ? <div className="p-6 text-center text-sm" style={{ color: T.soft, fontFamily: F_BODY }}>No payslips in this cut-off.</div>
@@ -567,6 +576,16 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
           </div>
         </>
       )}
+    </div>
+  );
+};
+const FinalizeNote = ({ tone = 'warn', children }) => {
+  const stop = tone === 'stop';
+  const Icon = stop ? AlertCircle : AlertTriangle;
+  return (
+    <div className="flex items-start gap-2 rounded px-3 py-2 text-xs" style={{ fontFamily: F_BODY, lineHeight: 1.5, backgroundColor: stop ? T.redBg : T.warnBg, color: stop ? T.red : T.ink }}>
+      <Icon size={14} color={stop ? T.red : T.warn} className="mt-0.5 shrink-0" aria-hidden="true" />
+      <span>{children}</span>
     </div>
   );
 };

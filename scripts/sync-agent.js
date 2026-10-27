@@ -147,7 +147,7 @@ let handledPull = null;
 async function handlePull(req, stamp) {
   if (!req || !req.id || req.id === handledPull) return;
   handledPull = req.id;
-  console.log(`[${stamp}] Pull requested for ${req.from} to ${req.to} — reading device...`);
+  console.log(`[${stamp}] Pull requested for ${req.from} to ${req.to}: reading device...`);
   try {
     const { roster, punches } = await readPeriod(req.from, req.to);
     const res = await fetch(PULL_URL, {

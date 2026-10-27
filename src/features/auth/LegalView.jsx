@@ -53,8 +53,8 @@ export const LegalView = ({ initialTab = 'terms', onBack, embedded = false }) =>
           <Section n="1" title="Who may use this system">
             <p>Access is limited to two roles:</p>
             <Bullets items={[
-              'Operations Head (Administrator) — full access to employee records, attendance, payroll, loans, reports, and settings.',
-              'Checker — may log deliveries only. No access to employee records, personal information, payroll figures, loans, or settings.',
+              'Operations Head (Administrator): full access to employee records, attendance, payroll, loans, reports, and settings.',
+              'Checker: may log deliveries only. No access to employee records, personal information, payroll figures, loans, or settings.',
             ]} />
             <p>There is no public registration. Attempting to access functions outside your role is a misuse of the system.</p>
           </Section>
@@ -114,11 +114,11 @@ export const LegalView = ({ initialTab = 'terms', onBack, embedded = false }) =>
           <Section n="1" title="What information is collected">
             <p>For every employee on the payroll:</p>
             <Bullets items={[
-              'Identification — employee ID number, full name, position, employment status.',
-              'Contact and personal details — address, contact number, birthdate.',
-              'Attendance — daily time-in and time-out records imported from the biometric scanner, tardiness, overtime, and absences.',
-              'Compensation — daily rate, declared salary, allowances, overtime pay, and for truck crews, delivery records and piece-rate earnings.',
-              'Deductions — SSS, PhilHealth, Pag-IBIG, withholding tax, and loan or cash advance balances.',
+              'Identification: employee ID number, full name, position, employment status.',
+              'Contact and personal details: address, contact number, birthdate.',
+              'Attendance: daily time-in and time-out records imported from the biometric scanner, tardiness, overtime, and absences.',
+              'Compensation: daily rate, declared salary, allowances, overtime pay, and for truck crews, delivery records and piece-rate earnings.',
+              'Deductions: SSS, PhilHealth, Pag-IBIG, withholding tax, and loan or cash advance balances.',
             ]} />
           </Section>
 
@@ -140,7 +140,7 @@ export const LegalView = ({ initialTab = 'terms', onBack, embedded = false }) =>
           <Section n="3" title="Who can see it">
             <Bullets items={[
               'The Operations Head, who administers payroll.',
-              'Checkers can see only delivery records they log — never employee records, personal details, salaries, or loan balances.',
+              'Checkers can see only delivery records they log, never employee records, personal details, salaries, or loan balances.',
               'Government agencies (SSS, PhilHealth, Pag-IBIG, BIR) receive only what the law requires for remittances and filings.',
             ]} />
             <p>

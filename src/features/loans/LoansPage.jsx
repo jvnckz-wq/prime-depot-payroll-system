@@ -40,7 +40,6 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
   const outstanding = rows.reduce((s, r) => s + r.balance, 0);
   const staffRows = rows.filter((r) => !r.l.isCrew);
   const toDeduct = staffRows.filter((r) => r.status === 'Deducting' && r.nextEnd === period.end);
-  const pausedCount = staffRows.filter((r) => r.status === 'Paused').length;
   const crewRows = rows.filter((r) => r.l.isCrew && r.status === 'Deducting');
 
   const setPaused = async (l, paused) => {
@@ -76,11 +75,9 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
       <H1 action={<Btn variant="amber" icon={Plus} onClick={() => setForm({ employeeId: null })}>New Loan</Btn>}>Loans</H1>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3.5 mb-4">
-        <Kpi label="Outstanding balance" value={peso(outstanding)} sub={`${rows.length} active loan${rows.length === 1 ? '' : 's'}`} />
-        <Kpi label={`To deduct on ${shortDate(period.end)} payroll`} value={peso(toDeduct.reduce((s, r) => s + r.due, 0))}
-          sub={`${toDeduct.length} staff loan${toDeduct.length === 1 ? '' : 's'}${pausedCount ? ` · ${pausedCount} paused` : ''}`} />
-        <Kpi label="Crew, deducted daily" value={peso(crewRows.reduce((s, r) => s + r.due, 0))} unit="/ day"
-          sub={`${crewRows.length} crew loan${crewRows.length === 1 ? '' : 's'}`} />
+        <Kpi label="Outstanding balance" value={peso(outstanding)} />
+        <Kpi label={`To deduct on ${shortDate(period.end)} payroll`} value={peso(toDeduct.reduce((s, r) => s + r.due, 0))} />
+        <Kpi label="Crew, deducted daily" value={peso(crewRows.reduce((s, r) => s + r.due, 0))} unit="/ day" />
       </div>
 
       <div className="rounded-lg border overflow-hidden" style={{ backgroundColor: T.surface, borderColor: T.line }}>

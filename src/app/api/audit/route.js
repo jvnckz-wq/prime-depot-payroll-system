@@ -23,12 +23,12 @@ export async function GET(request) {
 
     const [rows, users] = await Promise.all([
       prisma.auditLog.findMany({ where, orderBy: { createdAt: 'desc' }, take: MAX_ROWS, select: { id: true, createdAt: true, actorLabel: true, action: true, detail: true } }),
-      prisma.auditLog.findMany({ distinct: ['actorLabel'], select: { actorLabel: true }, where: { actorLabel: { not: null } } }),
+      prisma.user.findMany({ select: { username: true } }),
     ]);
     return NextResponse.json({
       from, to, capped: rows.length === MAX_ROWS,
       rows: rows.map((r) => ({ id: r.id, at: r.createdAt.toISOString(), user: r.actorLabel || '', action: r.action, detail: r.detail || '' })),
-      users: users.map((u) => u.actorLabel).filter(Boolean).sort(),
+      users: users.map((u) => u.username).filter(Boolean).sort(),
     });
   } catch (err) {
     console.error('GET /api/audit failed:', err);

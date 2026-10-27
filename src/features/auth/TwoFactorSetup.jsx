@@ -64,7 +64,7 @@ export default function TwoFactorSetup({ user, onDone }) {
   const downloadCodes = () => {
     try {
       const blob = new Blob(
-        [`Prime Depot Payroll — backup codes for ${user.username}\n\n${codes.join('\n')}\n\nEach code works once. Keep them somewhere safe and private.\n`],
+        [`Prime Depot Payroll backup codes for ${user.username}\n\n${codes.join('\n')}\n\nEach code works once. Keep them somewhere safe and private.\n`],
         { type: 'text/plain' },
       );
       const url = URL.createObjectURL(blob);
