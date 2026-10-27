@@ -259,7 +259,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
         <div className="overflow-x-auto overflow-y-auto pd-scroll-shadow" style={{ maxHeight: 520 }}>
           <table className="w-full">
             <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}>
-              <tr><Th>ID</Th><Th>Employee</Th><Th>Position</Th><Th right>Daily Rate</Th><Th>Status</Th><Th>Actions</Th></tr>
+              <tr><Th>ID</Th><Th>Employee</Th><Th>Position</Th><Th right>Daily Rate</Th><Th center style={{ paddingLeft: 40 }}>Status</Th><Th center style={{ width: '1%', whiteSpace: 'nowrap' }}>Actions</Th></tr>
             </thead>
             <tbody>
               {loading ? <SkeletonRows cols={6} rows={5} /> : rows.map(r => (
@@ -278,9 +278,9 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
                     )}
                   </Td>
                   <Td right mono><Money value={r.rate} /></Td>
-                  <Td><Badge tone={r.status === 'Active' ? 'green' : 'neutral'}>{r.status}</Badge></Td>
-                  <Td>
-                    <div className="flex gap-2 flex-wrap">
+                  <Td center style={{ paddingLeft: 40 }}><Badge tone={r.status === 'Active' ? 'green' : 'neutral'}>{r.status}</Badge></Td>
+                  <Td right style={{ width: '1%', whiteSpace: 'nowrap' }}>
+                    <div className="flex gap-2 flex-nowrap justify-end">
                       {renderActions(r)}
                     </div>
                   </Td>
@@ -327,7 +327,6 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
           <Field label="ID number*" error={errs.id}>
               <input data-field="id" value={form.id} onChange={e => ff('id', digitsOnly(e.target.value, 9))} readOnly={idLocked} inputMode="numeric" placeholder="e.g. 7 (biometric ID)" className={inputCls}
                 style={{ ...inputStyle, fontFamily: F_MONO, ...(idLocked ? { backgroundColor: T.bg, color: T.soft } : {}) }} />
-              {idLocked && <div className="text-xs mt-1" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.5 }}>Locked because this employee already has records.</div>}
             </Field>
           <Field label="Full name*" error={errs.name}><input value={form.name} maxLength={80} onChange={e => ff('name', e.target.value)} placeholder="Juan Dela Cruz" className={inputCls} style={inputStyle} /></Field>
           <Field label="Position" error={errs.position}>
@@ -357,7 +356,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
           {(!hasNoContributions(form.position) || !isDailyPosition(form.position)) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
               {!hasNoContributions(form.position) && (
-                <Field label="Declared monthly salary (₱)" error={errs.declaredSalary}>
+                <Field label="Declared salary (₱)" error={errs.declaredSalary}>
                   <input inputMode="decimal" value={form.declaredSalary} onChange={e => ff('declaredSalary', moneyInput(e.target.value))} placeholder="e.g. daily rate × 26" className={inputCls} style={inputStyle} />
                 </Field>
               )}
@@ -402,12 +401,6 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
                 </div>
               )}
             </div>
-            {form.earlyShiftDays.length > 0 && (
-              <div className="text-xs mt-2.5 flex items-start gap-1.5" style={{ fontFamily: F_BODY, color: T.warn }}>
-                <Clock size={12} className="mt-0.5 shrink-0" />
-                <span>On those days, arriving after {form.earlyShiftTime || '06:00'} counts as late.</span>
-              </div>
-            )}
             {shiftChanged && (
               <div className="flex items-center gap-2 mt-3">
                 <span className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.ink }}>Starts on</span>

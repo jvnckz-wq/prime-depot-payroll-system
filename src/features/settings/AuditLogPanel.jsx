@@ -32,8 +32,7 @@ export const ACTION_LABELS = {
   DELIVERY_UNVOIDED: 'Delivery restored',
   CREW_RATES_UPDATED: 'Rates changed',
 };
-const WATCH = new Set(['LOGIN_FAILURE', 'LOGIN_THROTTLED', 'LOGIN_2FA_FAILURE', 'DELIVERY_VOIDED', 'PAYROLL_UNFINALIZED', 'ACCOUNT_DISABLED']);
-const labelOf = (a) => ACTION_LABELS[a] || a.replace(/_/g, ' ').toLowerCase();
+const labelOf = (a) => ACTION_LABELS[a] || (a.charAt(0) + a.slice(1).replace(/_/g, ' ').toLowerCase());
 const fmtWhen = (iso) => new Date(iso).toLocaleString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 const ymd = (d) => d.toISOString().slice(0, 10);
 
@@ -104,10 +103,7 @@ export const AuditLogPanel = ({ toast }) => {
                 <tr key={r.id}>
                   <Td><span style={{ whiteSpace: 'nowrap' }}>{fmtWhen(r.at)}</span></Td>
                   <Td><span style={{ fontFamily: F_MONO }}>{r.user || '--'}</span></Td>
-                  <Td>
-                    <span className="text-xs font-bold uppercase" style={{ padding: '2px 8px', borderRadius: 6, letterSpacing: '0.02em', whiteSpace: 'nowrap',
-                      backgroundColor: WATCH.has(r.action) ? T.brandBg : T.lineSoft, color: WATCH.has(r.action) ? T.brandDark : T.ink }}>{labelOf(r.action)}</span>
-                  </Td>
+                  <Td><span style={{ fontFamily: F_BODY, whiteSpace: 'nowrap' }}>{labelOf(r.action)}</span></Td>
                   <Td><span style={{ fontFamily: F_BODY }}>{r.detail}</span></Td>
                 </tr>
               ))}

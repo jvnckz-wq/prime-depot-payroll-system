@@ -151,7 +151,7 @@ export async function POST(request) {
       actorLabel: auth.user.username,
       targetType: 'payrollPeriod',
       targetId: period.id,
-      detail: `Released ${period.label}: ${slips.length} payslip(s), net ₱${netTotal.toFixed(2)}.`,
+      detail: `Released ${period.label}: ${slips.length} payslip(s), net ₱${netTotal.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
     });
 
     return NextResponse.json({

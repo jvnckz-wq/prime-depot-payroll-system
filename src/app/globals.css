@@ -203,4 +203,4 @@ button:not(.pd-btn):not(.pd-nav-item):not(:disabled):active {
 .pd-actions, .pd-actions .flex { flex-wrap: nowrap !important; }
 
 /* Dashboard Today card: one fixed height on wide screens, so loading and loaded look the same. */
-@media (min-width: 1024px) { .pd-today-card { height: 495px; overflow: hidden; } }
+@media (min-width: 1024px) { .pd-today-card { height: 395px; overflow: hidden; } }

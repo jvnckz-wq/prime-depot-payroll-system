@@ -102,7 +102,7 @@ export const FleetPanel = ({ toast }) => {
       <Panel className="overflow-hidden mb-2">
         <div className="overflow-x-auto pd-scroll-shadow">
           <table className="w-full">
-            <thead><tr><Th>Truck</Th><Th>Vehicle</Th><Th>Plate</Th><Th>Status</Th><Th right> </Th></tr></thead>
+            <thead><tr><Th>Truck</Th><Th>Vehicle</Th><Th>Plate</Th><Th center>Status</Th><Th right> </Th></tr></thead>
             <tbody>
               {loading && <SkeletonRows cols={5} rows={3} />}
               {!loading && trucks.map(t => (
@@ -110,7 +110,7 @@ export const FleetPanel = ({ toast }) => {
                   <Td mono>{t.id}</Td>
                   <Td>{t.vehicle}</Td>
                   <Td mono>{t.plate}</Td>
-                  <Td>{t.isActive ? <Badge tone="green">In service</Badge> : <Badge tone="neutral">Retired</Badge>}</Td>
+                  <Td center>{t.isActive ? <Badge tone="green">In service</Badge> : <Badge tone="neutral">Retired</Badge>}</Td>
                   <Td right>
                     <button className="pd-clickable p-1.5 rounded inline-flex" title={`Edit ${t.id}`} aria-label={`Edit ${t.id}`}
                       onClick={() => openEditTruck(t)}>

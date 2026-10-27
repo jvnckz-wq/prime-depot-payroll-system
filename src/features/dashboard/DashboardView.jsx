@@ -11,7 +11,6 @@ import { F_BODY, T } from '@/components/theme';
 const useIsoLayoutEffect = typeof document !== 'undefined' ? useLayoutEffect : useEffect;
 
 const MAX_LATE = 5;
-const MAX_MISSING = 8;
 const todayHeading = (ymd) => (ymd
   ? new Date(`${ymd}T00:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
   : '');
@@ -114,15 +113,6 @@ const TodayCard = ({ onOpenLive }) => {
             </div>
           )}
 
-          {missing.length > 0 && (
-            <div className="mb-3">
-              <div className="text-xs mb-1" style={{ fontFamily: F_BODY, color: T.soft }}>Not yet in</div>
-              <div className="text-sm" style={{ fontFamily: F_BODY, color: T.ink, lineHeight: 1.7 }}>
-                {missing.slice(0, MAX_MISSING).map(e => e.name).join(', ')}
-              </div>
-              {missing.length > MAX_MISSING && <MoreLink count={missing.length - MAX_MISSING} onClick={onOpenLive} />}
-            </div>
-          )}
 
           {late.length === 0 && missing.length === 0 && (data.stats?.present ?? 0) > 0 && (
             <div className="text-sm mb-3 flex items-center gap-2" style={{ fontFamily: F_BODY, color: T.green }}>
@@ -363,7 +353,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
           </ResponsiveContainer>
           )}
         </Panel>
-        <Panel className="p-4">
+        <Panel className="p-4 flex flex-col">
           <Eyebrow>Attendance</Eyebrow>
           {attTrendLoading || dataLoading ? (
             <div className="flex flex-col justify-end gap-2" style={{ height: 170 }}>
@@ -376,7 +366,8 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
               <EmptyState compact icon={BarChart3} title="No attendance recorded yet" desc="Present, late and absent counts appear once attendance is pulled." />
             </div>
           ) : (
-          <ResponsiveContainer width="100%" height={170}>
+          <div className="flex-1" style={{ minHeight: 170 }}>
+          <ResponsiveContainer width="100%" height="100%">
             <BarChart data={attendanceData} margin={{ left: -20, right: 5, top: 5, bottom: 0 }} barGap={2} barCategoryGap="22%">
               <CartesianGrid strokeDasharray="3 3" stroke={T.lineSoft} vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 10, fill: T.soft }} axisLine={false} tickLine={false} />
@@ -388,6 +379,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
               <Bar dataKey="Absent" fill={T.warn} radius={[2, 2, 0, 0]} animationDuration={800} />
             </BarChart>
           </ResponsiveContainer>
+          </div>
           )}
         </Panel>
       </div>

@@ -102,7 +102,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
   const export13 = () => exportXLSX('13th-Month-Pay.xlsx', [{ name: '13th Month', rows: t13.rows.map(r => ({ Employee: r.name, 'Months Worked': r.months, 'Total Basic': r.basic, '13th Month Pay': r.pay })) }]);
   const exportDriver = () => exportXLSX('Crew-Earnings.xlsx', [{ name: 'Crew', rows: crewRows.map(r => ({
     Name: r.name, Role: positionLabel(r.role), Trucks: r.trucks.join(', '), Days: r.days, Trips: r.trips,
-    'Daily Rate': r.dailyRate, 'Piece Rate': r.pieceRate, 'Palima Bonus': r.bonus, Gross: r.total,
+    'Daily Rate': r.dailyRate, 'Piece Rate': r.pieceRate, Bonus: r.bonus, Gross: r.total,
     Late: r.late, Loans: r.loans, Net: r.net,
   })) }]);
 
@@ -205,7 +205,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
           ) : !rangeError && (
           <div className="overflow-x-auto pd-scroll-shadow">
             <table className="w-full">
-              <thead><tr><Th>Name</Th><Th>Role</Th><Th>Trucks</Th><Th center>Days</Th><Th center>Trips</Th><Th right>Daily</Th><Th right>Piece Rate</Th><Th right>Palima</Th><Th right>Gross</Th><Th right>Late</Th><Th right>Loans</Th><Th right>Net</Th></tr></thead>
+              <thead><tr><Th>Name</Th><Th>Role</Th><Th>Trucks</Th><Th center>Days</Th><Th center>Trips</Th><Th right>Daily</Th><Th right>Piece Rate</Th><Th right>Bonus</Th><Th right>Gross</Th><Th right>Late</Th><Th right>Loans</Th><Th right>Net</Th></tr></thead>
               <tbody>{loadingRange && !crewRows.length ? <SkeletonRows cols={12} rows={4} /> : crewRows.map((r, i) => (
                 <tr key={i}>
                   <Td>{r.name}</Td>

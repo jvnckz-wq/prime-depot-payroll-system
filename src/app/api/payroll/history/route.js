@@ -20,6 +20,7 @@ export async function GET(request) {
       if (!period) return NextResponse.json({ error: 'That cut-off was not found.' }, { status: 404 });
       const payslips = period.payslips
         .map((p) => ({
+          id: p.employeeId,
           name: p.employee?.name || p.employeeId,
           daysPresent: p.daysPresent,
           basicPay: Number(p.basicPay),
@@ -27,7 +28,7 @@ export async function GET(request) {
           totalDeductions: Number(p.totalDeductions),
           netPay: Number(p.netPay),
         }))
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => Number(a.id) - Number(b.id) || String(a.id).localeCompare(String(b.id)));
       return NextResponse.json({
         period: { id: period.id, label: period.label, start: ymd(period.startDate), end: ymd(period.endDate) },
         payslips,

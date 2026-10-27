@@ -47,11 +47,11 @@ export const H1 = ({ children, action }) => (
   </div>
 );
 
-export const Th = ({ children, right = false, center = false, num = false, money = false, action = false, colSpan }) => {
+export const Th = ({ children, right = false, center = false, num = false, money = false, action = false, colSpan, style = {} }) => {
   const align = money || right ? 'text-right' : num || action || center ? 'text-center' : 'text-left';
   return (
     <th colSpan={colSpan} className={`text-xs font-semibold uppercase px-4 py-2.5 ${align}${action ? ' whitespace-nowrap' : ''}`}
-      style={{ fontFamily: F_HEAD, color: T.soft, borderBottom: `1px solid ${T.line}`, letterSpacing: '0.04em', backgroundColor: '#FAF8F7' }}>
+      style={{ fontFamily: F_HEAD, color: T.soft, borderBottom: `1px solid ${T.line}`, letterSpacing: '0.04em', backgroundColor: '#FAF8F7', ...style }}>
       {children}
     </th>
   );

@@ -241,7 +241,8 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
     }
   };
 
-  const rows = staff.filter(e => Number(e.rate) > 0).map(e => ({ emp: e, calc: computeStaffPayroll(e, loans, statutory, attById[e.id], cutoffKey), att: attById[e.id] || null })).filter(r => r.calc.hasAttendance);
+  const rows = staff.filter(e => Number(e.rate) > 0).map(e => ({ emp: e, calc: computeStaffPayroll(e, loans, statutory, attById[e.id], cutoffKey), att: attById[e.id] || null })).filter(r => r.calc.hasAttendance)
+    .sort((a, b) => Number(a.emp.id) - Number(b.emp.id) || String(a.emp.id).localeCompare(String(b.emp.id)));
   const totalGross = rows.reduce((s, r) => s + r.calc.gross, 0);
   const go = (key, child) => onNavigate && onNavigate(key, child);
   const payrollEmpty = staff.filter(e => Number(e.rate) > 0).length === 0 ? (
@@ -429,13 +430,13 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
               )}
             </div>
             <div className="hidden md:block overflow-x-auto pd-scroll-shadow"><table className="w-full">
-              <thead><tr><Th>Employee</Th><Th center>Days</Th><Th right>Gross</Th><Th right>Overtime</Th><Th right>Deductions</Th><Th right>Net Pay</Th><Th right>Payslip</Th></tr></thead>
+              <thead><tr><Th>ID</Th><Th>Employee</Th><Th center>Days</Th><Th right>Gross</Th><Th right>Overtime</Th><Th right>Deductions</Th><Th right>Net Pay</Th><Th right>Payslip</Th></tr></thead>
               <tbody>
-                {loading ? <SkeletonRows cols={7} rows={5} /> : rows.map(({ emp, calc }) => (
+                {loading ? <SkeletonRows cols={8} rows={5} /> : rows.map(({ emp, calc }) => (
                   <tr key={emp.id}>
+                    <Td mono>{emp.id}</Td>
                     <Td>
                       <div className="flex items-center gap-2.5">
-                        <Av name={emp.name} size={28} />
                         <span className="font-semibold" style={{ fontFamily: F_BODY }}>{emp.name}</span>
                         {!calc.hasAttendance && <Badge tone="amber">no attendance</Badge>}
                       </div>
@@ -468,7 +469,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
               action={<Btn variant="outline" onClick={() => go('payroll', 'staff')}>Go to Staff Payroll</Btn>} />
           ) : (
             <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
-              <thead><tr><Th>Cut-off Period</Th><Th center>Employees</Th><Th right>Total Gross</Th><Th right>Total Net</Th><Th>Status</Th><Th></Th></tr></thead>
+              <thead><tr><Th>Cut-off Period</Th><Th center>Employees</Th><Th right>Total Gross</Th><Th right>Total Net</Th><Th center style={{ paddingLeft: 40 }}>Status</Th><Th center style={{ width: '1%', whiteSpace: 'nowrap' }}>Actions</Th></tr></thead>
               <tbody>
                 {history.map((p) => (
                   <tr key={p.id}>
@@ -476,8 +477,8 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
                     <Td center mono>{p.employees}</Td>
                     <Td right mono>{peso(p.totalGross)}</Td>
                     <Td right mono>{peso(p.totalNet)}</Td>
-                    <Td><Badge tone="green">Released</Badge></Td>
-                    <Td><div className="flex gap-1.5 justify-end"><Btn size="sm" variant="outline" onClick={() => openPeriod(p)}>View</Btn><Btn size="sm" variant="outline" onClick={() => setConfirmUnfinalize(p)}>Un-finalize</Btn></div></Td>
+                    <Td center style={{ paddingLeft: 40 }}><Badge tone="green">Released</Badge></Td>
+                    <Td right style={{ width: '1%', whiteSpace: 'nowrap' }}><div className="flex gap-1.5 justify-end flex-nowrap"><Btn size="sm" variant="outline" onClick={() => openPeriod(p)}>View</Btn><Btn size="sm" variant="outline" onClick={() => setConfirmUnfinalize(p)}>Un-finalize</Btn></div></Td>
                   </tr>
                 ))}
               </tbody>
@@ -523,9 +524,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
         {viewPeriod && (
           <div className="space-y-3">
             <div className="flex items-center gap-2 flex-wrap text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
-              <Badge tone="green">Released</Badge>
               <Badge tone="amber">Locked, viewing only</Badge>
-              <span>Snapshot figures, frozen at release.</span>
             </div>
             {viewPeriodLoading ? <SkeletonBlock avatar={false} />
               : viewPeriod.payslips.length === 0 ? <div className="p-6 text-center text-sm" style={{ color: T.soft, fontFamily: F_BODY }}>No payslips in this cut-off.</div>
@@ -533,21 +532,22 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
               <div className="overflow-x-auto pd-scroll-shadow" style={{ maxHeight: 420 }}>
                 <table className="w-full">
                   <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}>
-                    <tr><Th>Employee</Th><Th center>Days</Th><Th right>Gross</Th><Th right>Deductions</Th><Th right>Net Pay</Th></tr>
+                    <tr><Th>ID</Th><Th>Employee</Th><Th center>Days</Th><Th right>Gross</Th><Th right>Deductions</Th><Th right>Net Pay</Th></tr>
                   </thead>
                   <tbody>
                     {viewPeriod.payslips.map((p, i) => (
                       <tr key={i}>
-                        <Td><div className="flex items-center gap-2.5"><Av name={p.name} size={26} /><span className="font-semibold text-sm" style={{ fontFamily: F_BODY }}>{p.name}</span></div></Td>
+                        <Td mono>{p.id ?? '--'}</Td>
+                        <Td><span className="font-semibold text-sm" style={{ fontFamily: F_BODY }}>{p.name}</span></Td>
                         <Td center mono>{p.daysPresent}</Td>
                         <Td right mono>{peso(p.basicPay)}</Td>
-                        <Td right mono>{p.totalDeductions > 0 ? `−${peso(p.totalDeductions)}` : peso(0)}</Td>
+                        <Td right mono>{p.totalDeductions > 0 ? `-${peso(p.totalDeductions)}` : peso(0)}</Td>
                         <Td right mono style={{ fontWeight: 700 }}>{peso(p.netPay)}</Td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot style={{ position: 'sticky', bottom: 0, backgroundColor: T.surface }}>
-                    <tr><Td><b>Total</b></Td><Td /><Td right mono><b>{peso(viewPeriod.payslips.reduce((s, p) => s + p.basicPay, 0))}</b></Td><Td /><Td right mono><b>{peso(viewPeriod.payslips.reduce((s, p) => s + p.netPay, 0))}</b></Td></tr>
+                    <tr><Td><b>Total</b></Td><Td /><Td /><Td right mono><b>{peso(viewPeriod.payslips.reduce((s, p) => s + p.basicPay, 0))}</b></Td><Td /><Td right mono><b>{peso(viewPeriod.payslips.reduce((s, p) => s + p.netPay, 0))}</b></Td></tr>
                   </tfoot>
                 </table>
               </div>

@@ -622,6 +622,10 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
     return { ...p, kaltas, contribution, month, net: round2(p.payable - contribution - kaltas) };
   });
 
+  const idByName = new Map();
+  dailyStaff.forEach(d => { if (d.id) idByName.set(d.name, d.id); });
+  Object.values(D).forEach(l => (l.items || []).forEach(it => (it.crew || []).forEach(c => { if (c.id && c.name) idByName.set(c.name, c.id); })));
+  const byId = (a, b) => (Number(idByName.get(a.name)) || Infinity) - (Number(idByName.get(b.name)) || Infinity) || a.name.localeCompare(b.name);
   const earnedToday = new Map(dayPeople.map(p => [p.name, round2(p.payable - p.contribution)]));
   const crewLoans = loans.filter(l => l.isCrew);
   const crewPlan = viewDate ? null : planDeductions(crewLoans, {
@@ -736,18 +740,14 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
           </div>
           <Panel className="overflow-hidden hidden md:block">
             <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
-              <thead><tr><Th>Employee</Th><Th center>Trips</Th><Th right>Gross Pay</Th><Th right>Deductions</Th><Th right>Net Pay</Th><Th right>Payslip</Th></tr></thead>
+              <thead><tr><Th>ID</Th><Th>Employee</Th><Th center>Trips</Th><Th right>Gross Pay</Th><Th right>Deductions</Th><Th right>Net Pay</Th><Th right>Payslip</Th></tr></thead>
               <tbody>
-                {dayPeople.map(p => {
+                {[...dayPeople].sort(byId).map(p => {
                   const deductions = round2((p.late || 0) + (p.contribution || 0) + (p.kaltas || 0));
                   return (
                     <tr key={p.name}>
-                      <Td>
-                        <div className="flex items-center gap-2.5">
-                          <Av name={p.name} size={28} tone={p.role === 'Driver' ? T.amber : T.brand} />
-                          <span className="font-semibold" style={{ fontFamily: F_BODY }}>{p.name}</span>
-                        </div>
-                      </Td>
+                      <Td mono>{idByName.get(p.name) || '--'}</Td>
+                      <Td><span className="font-semibold" style={{ fontFamily: F_BODY }}>{p.name}</span></Td>
                       <Td center mono>{p.attendanceDaily ? '--' : p.trips}</Td>
                       <Td right mono>{peso(p.total)}</Td>
                       <Td right mono><span style={{ color: T.red, fontWeight: 600 }}>-{peso(deductions)}</span></Td>

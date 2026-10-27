@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Check, Save, Trash2, Download } from 'lucide-react';
+import { Plus, Save, Trash2, Download } from 'lucide-react';
 import { Badge, Btn, Eyebrow, Field, H1, Money, Panel, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { computePagIBIG, computePhilHealth, computeSSS } from '@/lib/payroll';
 import { exportXLSX, peso } from '@/lib/utils';
@@ -155,72 +155,75 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
             </div>
           </Panel>
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <Panel className="overflow-hidden">
-              <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
-                <Eyebrow>Pag-IBIG (HDMF)</Eyebrow>
-                {editPi ? (
-                  <div className="flex gap-2">
-                    <Btn size="sm" onClick={async () => { if (await saveTable('pagibig', piDraft, 'Pag-IBIG rates')) { setPagibigRates(piDraft); setEditPi(false); } }}>Save</Btn>
-                    <Btn size="sm" variant="outline" onClick={() => { setPiDraft(pagibigRates); setEditPi(false); }}>Cancel</Btn>
-                  </div>
-                ) : <Btn size="sm" variant="outline" onClick={() => { setPiDraft(pagibigRates); setEditPi(true); }}>Edit</Btn>}
-              </div>
-              <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
-                <thead><tr><Th>Salary up to (₱)</Th><Th right>Employee %</Th></tr></thead>
-                <tbody>{(editPi ? piDraft.brackets : pagibigRates.brackets).map((b, i) => (
+          <Panel className="overflow-hidden">
+            <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
+              <Eyebrow>Pag-IBIG (HDMF)</Eyebrow>
+              {editPi ? (
+                <div className="flex gap-2">
+                  <Btn size="sm" onClick={async () => { if (await saveTable('pagibig', piDraft, 'Pag-IBIG rates')) { setPagibigRates(piDraft); setEditPi(false); } }}>Save</Btn>
+                  <Btn size="sm" variant="outline" onClick={() => { setPiDraft(pagibigRates); setEditPi(false); }}>Cancel</Btn>
+                </div>
+              ) : <Btn size="sm" variant="outline" onClick={() => { setPiDraft(pagibigRates); setEditPi(true); }}>Edit</Btn>}
+            </div>
+            {(() => {
+              const src = editPi ? piDraft : pagibigRates;
+              const setBracket = (i, key, v) => setPiDraft(p => ({ ...p, brackets: p.brackets.map((x, j) => j === i ? { ...x, [key]: v } : x) }));
+              const num = (e) => Math.max(0, parseFloat(moneyInput(e.target.value)) || 0);
+              const fields = [];
+              src.brackets.forEach((b, i) => {
+                if (b.ceiling !== null) {
+                  fields.push({ key: `c${i}`, label: 'Salary up to (₱)', view: peso(b.ceiling),
+                    edit: <input type="number" value={b.ceiling} onChange={e => setBracket(i, 'ceiling', num(e))} className={inputCls} style={inputStyle} /> });
+                }
+                const prev = i > 0 ? src.brackets[i - 1].ceiling : null;
+                fields.push({ key: `p${i}`, label: b.ceiling !== null ? `Employee % up to ${peso(b.ceiling)}` : `Employee % above ${peso(prev ?? 0)}`, view: `${b.eePct}%`,
+                  edit: <input type="number" value={b.eePct} onChange={e => setBracket(i, 'eePct', num(e))} className={inputCls} style={inputStyle} /> });
+              });
+              fields.push({ key: 'cap', label: 'Monthly cap (₱)', view: peso(src.cap),
+                edit: <input type="number" value={piDraft.cap} onChange={e => setPiDraft(p => ({ ...p, cap: num(e) }))} className={inputCls} style={inputStyle} /> });
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4">
+                  {fields.map(f => (
+                    <Field key={f.key} label={f.label}>
+                      {editPi ? f.edit : <div className="text-sm font-semibold" style={{ fontFamily: F_MONO, color: T.ink }}>{f.view}</div>}
+                    </Field>
+                  ))}
+                </div>
+              );
+            })()}
+          </Panel>
+
+          <Panel className="overflow-hidden">
+            <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
+              <Eyebrow>BIR Withholding Tax Brackets</Eyebrow>
+              {editBir ? (
+                <div className="flex gap-2">
+                  <Btn size="sm" onClick={async () => { if (await saveTable('bir', birDraft, 'BIR table')) { setBirTable(birDraft); setEditBir(false); } }}>Save</Btn>
+                  <Btn size="sm" variant="outline" onClick={() => { setBirDraft(birTable); setEditBir(false); }}>Cancel</Btn>
+                </div>
+              ) : <Btn size="sm" variant="outline" onClick={() => { setBirDraft(birTable); setEditBir(true); }}>Edit</Btn>}
+            </div>
+            <div className="overflow-x-auto pd-scroll-shadow">
+              <table className="w-full">
+                <thead><tr><Th>Over</Th><Th>Not over</Th><Th right>Base</Th><Th right>Rate %</Th>{editBir && <Th></Th>}</tr></thead>
+                <tbody>{(editBir ? birDraft : birTable).map((r, i) => (
                   <tr key={i}>
-                    <Td>{editPi
-                      ? (b.ceiling === null ? <span className="text-xs" style={{ color: T.soft, fontFamily: F_BODY }}>and up</span>
-                        : <input type="number" value={b.ceiling} onChange={e => setPiDraft(p => ({ ...p, brackets: p.brackets.map((x, j) => j === i ? { ...x, ceiling: Math.max(0, parseFloat(moneyInput(e.target.value)) || 0) } : x) }))} className="px-2 py-1 rounded border text-xs w-24" style={{ borderColor: T.line, fontFamily: F_MONO }} />)
-                      : (b.ceiling === null ? 'and up' : peso(b.ceiling))}
+                    <Td mono>{editBir ? <input type="number" value={r.over} onChange={e => setBirDraft(p => p.map((x, j) => j === i ? { ...x, over: Math.max(0, parseFloat(moneyInput(e.target.value)) || 0) } : x))} className="px-2 py-1 rounded border text-xs w-20" style={{ borderColor: T.line, fontFamily: F_MONO }} /> : peso(r.over)}</Td>
+                    <Td mono>{editBir
+                      ? (r.notOver === null ? <span className="text-xs" style={{ color: T.soft, fontFamily: F_BODY }}>above</span> : <input type="number" value={r.notOver} onChange={e => setBirDraft(p => p.map((x, j) => j === i ? { ...x, notOver: Math.max(0, parseFloat(moneyInput(e.target.value)) || 0) } : x))} className="px-2 py-1 rounded border text-xs w-20" style={{ borderColor: T.line, fontFamily: F_MONO }} />)
+                      : (r.notOver === null ? 'Above' : peso(r.notOver))}
                     </Td>
-                    <Td right mono>{editPi
-                      ? <input type="number" value={b.eePct} onChange={e => setPiDraft(p => ({ ...p, brackets: p.brackets.map((x, j) => j === i ? { ...x, eePct: Math.max(0, parseFloat(moneyInput(e.target.value)) || 0) } : x) }))} className="px-2 py-1 rounded border text-xs w-16 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} />
-                      : `${b.eePct}%`}
-                    </Td>
+                    <Td right mono>{editBir ? <input type="number" value={r.base} onChange={e => setBirDraft(p => p.map((x, j) => j === i ? { ...x, base: Math.max(0, parseFloat(moneyInput(e.target.value)) || 0) } : x))} className="px-2 py-1 rounded border text-xs w-20 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} /> : peso(r.base)}</Td>
+                    <Td right mono>{editBir ? <input type="number" value={r.rate} onChange={e => setBirDraft(p => p.map((x, j) => j === i ? { ...x, rate: Math.max(0, parseFloat(moneyInput(e.target.value)) || 0) } : x))} className="px-2 py-1 rounded border text-xs w-14 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} /> : `${r.rate}%`}</Td>
+                    {editBir && <Td><button onClick={() => setBirDraft(p => p.filter((_, j) => j !== i))}><Trash2 size={13} color={T.red} /></button></Td>}
                   </tr>
                 ))}</tbody>
-              </table></div>
-              <div className="px-4 py-3 flex items-center justify-between" style={{ borderTop: `1px solid ${T.line}` }}>
-                <span className="text-xs font-semibold" style={{ fontFamily: F_HEAD, color: T.soft }}>Monthly cap (₱)</span>
-                {editPi ? <input type="number" value={piDraft.cap} onChange={e => setPiDraft(p => ({ ...p, cap: Math.max(0, parseFloat(moneyInput(e.target.value)) || 0) }))} className="px-2 py-1 rounded border text-xs w-24 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} />
-                  : <span className="text-sm font-semibold" style={{ fontFamily: F_MONO }}>{peso(pagibigRates.cap)}</span>}
-              </div>
-            </Panel>
-            <Panel className="overflow-hidden">
-              <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
-                <Eyebrow>BIR Withholding Tax Brackets</Eyebrow>
-                {editBir ? (
-                  <div className="flex gap-2">
-                    <Btn size="sm" onClick={async () => { if (await saveTable('bir', birDraft, 'BIR table')) { setBirTable(birDraft); setEditBir(false); } }}>Save</Btn>
-                    <Btn size="sm" variant="outline" onClick={() => { setBirDraft(birTable); setEditBir(false); }}>Cancel</Btn>
-                  </div>
-                ) : <Btn size="sm" variant="outline" onClick={() => { setBirDraft(birTable); setEditBir(true); }}>Edit</Btn>}
-              </div>
-              <div className="overflow-x-auto pd-scroll-shadow">
-                <table className="w-full">
-                  <thead><tr><Th>Over</Th><Th>Not over</Th><Th right>Base</Th><Th right>Rate %</Th>{editBir && <Th></Th>}</tr></thead>
-                  <tbody>{(editBir ? birDraft : birTable).map((r, i) => (
-                    <tr key={i}>
-                      <Td mono>{editBir ? <input type="number" value={r.over} onChange={e => setBirDraft(p => p.map((x, j) => j === i ? { ...x, over: Math.max(0, parseFloat(moneyInput(e.target.value)) || 0) } : x))} className="px-2 py-1 rounded border text-xs w-20" style={{ borderColor: T.line, fontFamily: F_MONO }} /> : peso(r.over)}</Td>
-                      <Td mono>{editBir
-                        ? (r.notOver === null ? <span className="text-xs" style={{ color: T.soft, fontFamily: F_BODY }}>above</span> : <input type="number" value={r.notOver} onChange={e => setBirDraft(p => p.map((x, j) => j === i ? { ...x, notOver: Math.max(0, parseFloat(moneyInput(e.target.value)) || 0) } : x))} className="px-2 py-1 rounded border text-xs w-20" style={{ borderColor: T.line, fontFamily: F_MONO }} />)
-                        : (r.notOver === null ? 'Above' : peso(r.notOver))}
-                      </Td>
-                      <Td right mono>{editBir ? <input type="number" value={r.base} onChange={e => setBirDraft(p => p.map((x, j) => j === i ? { ...x, base: Math.max(0, parseFloat(moneyInput(e.target.value)) || 0) } : x))} className="px-2 py-1 rounded border text-xs w-20 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} /> : peso(r.base)}</Td>
-                      <Td right mono>{editBir ? <input type="number" value={r.rate} onChange={e => setBirDraft(p => p.map((x, j) => j === i ? { ...x, rate: Math.max(0, parseFloat(moneyInput(e.target.value)) || 0) } : x))} className="px-2 py-1 rounded border text-xs w-14 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} /> : `${r.rate}%`}</Td>
-                      {editBir && <Td><button onClick={() => setBirDraft(p => p.filter((_, j) => j !== i))}><Trash2 size={13} color={T.red} /></button></Td>}
-                    </tr>
-                  ))}</tbody>
-                </table>
-              </div>
-              {editBir && <div className="px-4 py-2.5" style={{ borderTop: `1px solid ${T.line}` }}>
-                <button onClick={() => setBirDraft(p => [...p.slice(0, -1), { over: p[p.length - 1].over, notOver: p[p.length - 1].over + 100000, base: p[p.length - 1].base, rate: p[p.length - 1].rate }, p[p.length - 1]])} className="text-xs font-semibold flex items-center gap-1" style={{ fontFamily: F_HEAD, color: T.blue }}><Plus size={12} /> Add bracket</button>
-              </div>}
-              <div className="px-4 py-2.5 text-xs flex items-center gap-2" style={{ fontFamily: F_BODY, color: T.green, borderTop: `1px solid ${T.line}`, backgroundColor: T.greenBg }}><Check size={12} /> Reference only, not yet wired into an actual withholding deduction. All current employees fall below the exempt threshold anyway.</div>
-            </Panel>
-          </div>
+              </table>
+            </div>
+            {editBir && <div className="px-4 py-2.5" style={{ borderTop: `1px solid ${T.line}` }}>
+              <button onClick={() => setBirDraft(p => [...p.slice(0, -1), { over: p[p.length - 1].over, notOver: p[p.length - 1].over + 100000, base: p[p.length - 1].base, rate: p[p.length - 1].rate }, p[p.length - 1]])} className="text-xs font-semibold flex items-center gap-1" style={{ fontFamily: F_HEAD, color: T.blue }}><Plus size={12} /> Add bracket</button>
+            </div>}
+          </Panel>
         </div>
       )}
 
