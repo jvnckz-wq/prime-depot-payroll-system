@@ -73,7 +73,7 @@ const PayslipCard = ({ e, calc, cutoffLabel, attPeriod, att, statutory, classNam
     <div className="px-6 py-4" style={{ borderBottom: `1px solid ${T.line}` }}>
       <div className="text-sm italic mb-1.5" style={{ fontFamily: F_BODY, color: T.soft }}>Deductions</div>
       {[
-        ['Withholding Tax:', 0, false],
+        ['Withholding Tax:', calc.withholdingTax ?? 0, false],
         ['HDMF MP1 Contribution:', calc.mp1 ?? 0, false],
         ['HDMF MP2 Contribution:', calc.mp2 ?? 0, false, e.piOn && (Number(e.mp2) || 0) > (calc.mp2 ?? 0) + 0.004 ? `Not enough pay this cutoff for the full ${peso(Number(e.mp2) || 0)}` : null],
         ['PHIC Contribution:', calc.phic, false],
@@ -308,6 +308,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
         mp2Deduction: calc.mp2,
         companyCover: calc.companyCover,
         tardinessDeduction: calc.tardiness,
+        withholdingTax: calc.withholdingTax,
         loanDeduction: calc.loanDeduction,
         advanceDeduction: calc.advanceDeduction,
         totalDeductions: calc.totalDeductions,

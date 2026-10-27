@@ -273,7 +273,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
     let cancelled = false;
     fetch(`/api/payroll/daily?date=${dailyDate}`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
-      .then(data => { if (!cancelled) setDailyStaff((data.staff || []).map(d => ({ ...d, key: d.name }))); })
+      .then(data => { if (!cancelled) setDailyStaff((data.staff || []).map(d => ({ ...d, key: d.id }))); })
       .catch(err => { if (!cancelled) setDailyStaff([]); console.error('Could not load daily attendance:', err); });
     return () => { cancelled = true; };
   }, [payslipsMode, dailyDate]);
@@ -602,10 +602,10 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
   const todayStr = todayYmdManila();
   const dayDate = viewDate || todayStr;
 
-  const loanKaltasFor = (name) => {
+  const loanKaltasFor = (p) => {
     const runKey = 'crew-' + dayDate;
     return (loans || [])
-      .filter(l => l.isCrew && l.person === name)
+      .filter(l => l.isCrew && (p.id ? l.employeeId === p.id : l.person === p.name))
       .reduce((s, l) => s + (l.entries || [])
         .filter(en => en.type === 'deduction' && en.payslipId === runKey)
         .reduce((a, en) => a + (en.amount || 0), 0), 0);
@@ -615,22 +615,19 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
     const manualKaltas = Object.values(D).flatMap(l => l.kaltas || [])
       .filter(k => (k.name || k.who) === p.name)
       .reduce((s, k) => s + (k.h ?? k.amount ?? 0), 0);
-    const kaltas = round2(manualKaltas + loanKaltasFor(p.name));
-    const c = contributionByName.get(p.name);
+    const kaltas = round2(manualKaltas + loanKaltasFor(p));
+    const c = contributionByName.get(p.key);
     const contribution = c ? dailyContributionFor(c, p.payable) : 0;
     const month = c ? { collected: round2(c.collectedBefore + contribution), share: c.shareTotal } : null;
     return { ...p, kaltas, contribution, month, net: round2(p.payable - contribution - kaltas) };
   });
 
-  const idByName = new Map();
-  dailyStaff.forEach(d => { if (d.id) idByName.set(d.name, d.id); });
-  Object.values(D).forEach(l => (l.items || []).forEach(it => (it.crew || []).forEach(c => { if (c.id && c.name) idByName.set(c.name, c.id); })));
-  const byId = (a, b) => (Number(idByName.get(a.name)) || Infinity) - (Number(idByName.get(b.name)) || Infinity) || a.name.localeCompare(b.name);
-  const earnedToday = new Map(dayPeople.map(p => [p.name, round2(p.payable - p.contribution)]));
+  const byId = (a, b) => (Number(a.id) || Infinity) - (Number(b.id) || Infinity) || a.name.localeCompare(b.name);
+  const earnedToday = new Map(dayPeople.map(p => [p.key, round2(p.payable - p.contribution)]));
   const crewLoans = loans.filter(l => l.isCrew);
   const crewPlan = viewDate ? null : planDeductions(crewLoans, {
     crew: true, runKey: 'crew-' + todayYmd, endYmd: todayYmd,
-    available: new Map(crewLoans.filter(l => earnedToday.has(l.person)).map(l => [l.employeeId, earnedToday.get(l.person)])),
+    available: new Map(crewLoans.filter(l => earnedToday.has(l.employeeId)).map(l => [l.employeeId, earnedToday.get(l.employeeId)])),
   });
   const crewShortText = crewPlan && crewPlan.short.length
     ? ` Not enough pay today, so nothing extra is taken and the loan runs a day longer: ${crewPlan.short
@@ -642,13 +639,16 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
     Object.entries(D).forEach(([truckId, log]) => {
       let cur = null; const trips = [];
       (log.items || []).forEach(it => {
-        if (it.seq) { cur = { seq: it.seq, driver: it.driver || null, helpers: it.helpers || [], items: [] }; trips.push(cur); }
+        if (it.seq) { cur = { seq: it.seq, driver: it.driver || null, helpers: it.helpers || [], crew: it.crew || [], items: [] }; trips.push(cur); }
         if (cur && !it.voided) cur.items.push(it);
       });
       trips.forEach(t => {
+        const ids = t.crew.filter(c => c && c.id);
+        const isDriver = ids.length ? ids.some(c => c.role === 'Driver' && c.id === p.id) : t.driver === p.name;
+        const isHelper = ids.length ? ids.some(c => c.role !== 'Driver' && c.id === p.id) : t.helpers.includes(p.name);
         if (p.role === 'Driver') {
-          if (t.driver === p.name) t.items.forEach(it => lines.push({ truckId, seq: t.seq, item: it.item, qty: it.qty, unit: it.unit, dbl: it.dbl, amt: it.d }));
-        } else if (t.helpers.includes(p.name)) {
+          if (isDriver) t.items.forEach(it => lines.push({ truckId, seq: t.seq, item: it.item, qty: it.qty, unit: it.unit, dbl: it.dbl, amt: it.d }));
+        } else if (isHelper) {
           const n = t.helpers.length || 1;
           t.items.forEach(it => lines.push({ truckId, seq: t.seq, item: it.item, qty: it.qty, unit: it.unit, dbl: it.dbl, amt: it.h / n }));
         }
@@ -745,8 +745,8 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                 {[...dayPeople].sort(byId).map(p => {
                   const deductions = round2((p.late || 0) + (p.contribution || 0) + (p.kaltas || 0));
                   return (
-                    <tr key={p.name}>
-                      <Td mono>{idByName.get(p.name) || '--'}</Td>
+                    <tr key={p.key}>
+                      <Td mono>{p.id || '--'}</Td>
                       <Td><span className="font-semibold" style={{ fontFamily: F_BODY }}>{p.name}</span></Td>
                       <Td center mono>{p.attendanceDaily ? '--' : p.trips}</Td>
                       <Td right mono>{peso(p.total)}</Td>
@@ -761,7 +761,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
           </Panel>
           <Panel className="overflow-hidden md:hidden">
             {dayPeople.map((p, pi) => (
-              <button key={p.name} onClick={() => setSlipPerson(p)}
+              <button key={p.key} onClick={() => setSlipPerson(p)}
                 className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left"
                 style={{ borderTop: pi ? `1px solid ${T.line}` : undefined }}>
                 <div className="flex items-center gap-3">

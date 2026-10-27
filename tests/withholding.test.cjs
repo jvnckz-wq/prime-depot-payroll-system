@@ -52,27 +52,34 @@ const STAT = { sss: SSS, philhealth: { rate: 0, floor: 0, ceiling: 0 }, pagibig:
 const emp = (over) => ({ id: 'E1', rate: 1600, allowance: 0, sssOn: false, phOn: false, piOn: false, declaredSalary: 0, mp2: 0, ...over });
 const att = (present, extra = {}) => ({ present, leave: 0, lateMins: 0, otWeekdayMins: 0, otWeekendMins: 0, ...extra });
 
-ok('payslip follows the client Excel: Girlie Ernesto May 16-31 nets P12,685.89, no tax deducted', () => {
+ok('Girlie Ernesto May 16-31 (client Excel): earnings P12,685.89, P340.38 withholding tax now deducted', () => {
   const girlie = emp({ id: '3', rate: 700, allowance: 4400 });
   const c = computeStaffPayroll(girlie, [], STAT, att(11, { otWeekdayMins: 259, otWeekendMins: 60 }));
   assert.equal(c.gross, 7700);
   assert.equal(c.totalEarnings, 12685.89);
-  assert.equal(c.totalDeductions, 0);
-  assert.equal(c.net, 12685.89);
-  assert.equal(c.withholdingTax, undefined);
+  assert.equal(c.taxable, 12685.89);
+  assert.equal(c.withholdingTax, 340.38);
+  assert.equal(c.totalDeductions, 340.38);
+  assert.equal(c.net, 12345.51);
 });
 
-ok('report estimate for the same payslip flags P340.38 (not deducted)', () => {
+ok('the payslip deducts exactly what the withholding report shows', () => {
   const c = computeStaffPayroll(emp({ id: '3', rate: 700, allowance: 4400 }), [], STAT, att(11, { otWeekdayMins: 259, otWeekendMins: 60 }));
-  assert.equal(taxableForCutoff(c), 12685.89);
-  assert.equal(cutoffWithholding(taxableForCutoff(c), BIR), 340.38);
+  assert.equal(cutoffWithholding(taxableForCutoff(c), BIR), c.withholdingTax);
 });
 
-ok('the BIR table never changes net pay', () => {
-  const a = computeStaffPayroll(emp(), [], STAT, att(7));
-  const b = computeStaffPayroll(emp(), [], { ...STAT, bir: undefined }, att(7));
-  assert.equal(a.net, 11200);
+ok('below the threshold, no tax and net pay is unchanged', () => {
+  const a = computeStaffPayroll(emp(), [], STAT, att(6));
+  const b = computeStaffPayroll(emp(), [], { ...STAT, bir: undefined }, att(6));
+  assert.equal(a.withholdingTax, 0);
+  assert.equal(a.net, 9600);
   assert.equal(a.net, b.net);
+});
+
+ok('tax never pushes net pay below zero', () => {
+  const c = computeStaffPayroll(emp({ rate: 5000 }), [], STAT, att(11, { lateMins: 2600 }));
+  assert.ok(c.net >= 0);
+  assert.ok(c.withholdingTax >= 0);
 });
 
 let failed = 0;

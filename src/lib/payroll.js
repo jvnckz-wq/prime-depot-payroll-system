@@ -1,4 +1,5 @@
 import { dueFor, workingDaysIn } from './loan-rules';
+import { cutoffWithholding } from './withholding';
 
 export function flattenDeliveries(deliveries, filterCrewId, { includeVoided = false } = {}) {
   const out = [];
@@ -79,6 +80,9 @@ export function computeStaffPayroll(e, loans = [], statutory, attendance = null,
   room = Math.max(0, room);
   const tardiness = round2(Math.min(tardinessDue, room));
   room = round2(room - tardiness);
+  const taxable = round2(Math.max(0, totalEarnings - tardiness - sss - phic - mp1));
+  const withholdingTax = round2(Math.min(cutoffWithholding(taxable, (statutory && statutory.bir) || []), room));
+  room = round2(room - withholdingTax);
   const mp2 = round2(Math.min(mp2Set, room));
   const hdmf = round2(mp1 + mp2);
 
@@ -106,9 +110,9 @@ export function computeStaffPayroll(e, loans = [], statutory, attendance = null,
   advanceDeduction = round2(advanceDeduction);
   const advance = round2(loanDeduction + advanceDeduction);
 
-  const totalDeductions = round2(sss + phic + hdmf + advance + tardiness);
+  const totalDeductions = round2(sss + phic + hdmf + advance + tardiness + withholdingTax);
   const net = round2(totalEarnings + companyCover - totalDeductions);
-  return { hasAttendance, days, present: hasAttendance ? attendance.present : days, leaveDays, lateMins, gross, otWeekday, otWeekend, ot, allowance, sss, phic, mp1, mp2, hdmf, companyCover, advance, loanDeduction, advanceDeduction, deductionLines, tardiness, tardinessDue, totalEarnings, totalDeductions, net };
+  return { hasAttendance, days, present: hasAttendance ? attendance.present : days, leaveDays, lateMins, gross, otWeekday, otWeekend, ot, allowance, sss, phic, mp1, mp2, hdmf, companyCover, advance, loanDeduction, advanceDeduction, deductionLines, tardiness, tardinessDue, taxable, withholdingTax, totalEarnings, totalDeductions, net };
 }
 
 export function computeSSS(monthlySalary, table) {
@@ -150,10 +154,11 @@ export function loanLedger(loan) {
 
 export function crewEarnings(deliveries, { driverDaily, helperDaily, bonusHead, bonusTrips }) {
   const people = new Map();
-  const get = (name, role) => {
-    if (!people.has(name)) {
-      people.set(name, {
-        name, role,
+  const get = (who, role) => {
+    const key = who.key;
+    if (!people.has(key)) {
+      people.set(key, {
+        key, id: who.id, name: who.name, role,
         pieceRate: 0,
         trucks: new Set(),
         days: new Set(),
@@ -162,7 +167,21 @@ export function crewEarnings(deliveries, { driverDaily, helperDaily, bonusHead, 
         tripCount: 0,
       });
     }
-    return people.get(name);
+    return people.get(key);
+  };
+  const crewOf = (it) => {
+    const list = Array.isArray(it.crew) ? it.crew.filter((c) => c && c.id) : [];
+    if (list.length) {
+      const d = list.find((c) => c.role === 'Driver');
+      return {
+        driver: d ? { key: d.id, id: d.id, name: d.name || d.id } : null,
+        helpers: list.filter((c) => c.role !== 'Driver').map((c) => ({ key: c.id, id: c.id, name: c.name || c.id })),
+      };
+    }
+    return {
+      driver: it.driver ? { key: it.driver, id: undefined, name: it.driver } : null,
+      helpers: (it.helpers || []).map((h) => ({ key: h, id: undefined, name: h })),
+    };
   };
 
   let currentDriver = null, currentHelpers = [], currentKey = null;
@@ -170,8 +189,9 @@ export function crewEarnings(deliveries, { driverDaily, helperDaily, bonusHead, 
     (log.items || []).forEach((it) => {
       if (it.voided) return;
       if (it.seq) {
-        currentDriver = it.driver || null;
-        currentHelpers = it.helpers || [];
+        const c = crewOf(it);
+        currentDriver = c.driver;
+        currentHelpers = c.helpers;
         currentKey = `${crewId}|${log.date}`;
         const mark = (p) => {
           p.tripKeys.add(currentKey); p.trucks.add(crewId); p.days.add(log.date); p.tripCount += 1;
@@ -191,6 +211,8 @@ export function crewEarnings(deliveries, { driverDaily, helperDaily, bonusHead, 
       const daily = (p.role === 'Driver' ? driverDaily : helperDaily) * p.days.size;
       const bonus = [...p.tripsByKey.values()].filter((n) => n >= bonusTrips).length * bonusHead;
       return {
+        key: p.key,
+        id: p.id,
         name: p.name,
         role: p.role,
         trips: p.tripCount,
@@ -218,7 +240,7 @@ export function dailyLateDeduction(lateMins, cap) {
 export function crewDayPay(crewPeople, dailyStaff) {
   const byKey = new Map((dailyStaff || []).map((d) => [d.key, d]));
   const piece = (crewPeople || []).map((p) => {
-    const a = byKey.get(p.name);
+    const a = byKey.get(p.key ?? p.name);
     const lateMins = a && a.present ? a.lateMins : 0;
     const late = dailyLateDeduction(lateMins, p.total);
     return { ...p, lateMins, late, payable: round2(p.total - late) };
@@ -229,7 +251,7 @@ export function crewDayPay(crewPeople, dailyStaff) {
       const gross = round2(d.dailyRate);
       const late = dailyLateDeduction(d.lateMins, gross);
       return {
-        name: d.key, role: d.position, trucks: [], trips: 0, days: 1,
+        key: d.key, id: d.id, name: d.name ?? d.key, role: d.position, trucks: [], trips: 0, days: 1,
         pieceRate: 0, dailyRate: gross, bonus: 0, total: gross,
         lateMins: d.lateMins, late, payable: round2(gross - late), attendanceDaily: true,
       };

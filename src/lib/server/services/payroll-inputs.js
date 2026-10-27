@@ -162,7 +162,7 @@ export async function contributionContext(prisma, ymd, { employees, rates } = {}
     const perDay = contributionPerDay(setting, share.total, ymd);
     const days = [];
     for (const [day, people] of pays) {
-      const p = people.find((x) => x.name === e.id);
+      const p = people.find((x) => x.key === e.id);
       if (p) days.push({ ymd: day, payable: p.payable });
     }
     const { collected } = collectDailyContributions(days, share.total, perDay);
@@ -205,7 +205,7 @@ export async function loadDailyContributionsForMonth(prisma, ymd) {
     const perDay = contributionPerDay(setting, share.total, ymd);
     const days = [];
     for (const [day, people] of pays) {
-      const p = people.find((x) => x.name === e.id);
+      const p = people.find((x) => x.key === e.id);
       if (p) days.push({ ymd: day, payable: p.payable });
     }
     const { collected, remaining } = collectDailyContributions(days, share.total, perDay);
@@ -231,9 +231,9 @@ export async function crewAvailableOn(prisma, ymd) {
 
   const out = new Map();
   for (const p of people) {
-    const c = contributionOf.get(p.name);
+    const c = contributionOf.get(p.key);
     const contribution = c ? dailyContributionFor(c, p.payable) : 0;
-    out.set(p.name, round2(Math.max(0, p.payable - contribution)));
+    out.set(p.key, round2(Math.max(0, p.payable - contribution)));
   }
   return out;
 }
@@ -261,7 +261,7 @@ export async function loadCrewReport(prisma, from, to) {
       const share = monthlyEmployeeShare(shapeEmployee(e), statutory);
       const byMonth = new Map();
       for (const [day, people] of pays) {
-        const p = people.find((x) => x.name === e.id);
+        const p = people.find((x) => x.key === e.id);
         if (!p) continue;
         const month = day.slice(0, 7);
         if (!byMonth.has(month)) byMonth.set(month, []);
@@ -286,13 +286,13 @@ export async function loadCrewReport(prisma, from, to) {
   for (const [day, people] of pays) {
     if (day < from || day > to) continue;
     for (const p of people) {
-      if (!merged.has(p.name)) {
-        merged.set(p.name, {
-          id: p.name, name: nameOf.get(p.name) || p.name, role: p.role, trucks: new Set(),
+      if (!merged.has(p.key)) {
+        merged.set(p.key, {
+          id: p.key, name: nameOf.get(p.key) || p.name, role: p.role, trucks: new Set(),
           days: 0, trips: 0, dailyRate: 0, pieceRate: 0, bonus: 0, total: 0, late: 0, contributions: 0,
         });
       }
-      const m = merged.get(p.name);
+      const m = merged.get(p.key);
       m.days += p.days;
       m.trips += p.trips;
       m.dailyRate = round2(m.dailyRate + p.dailyRate);
@@ -300,7 +300,7 @@ export async function loadCrewReport(prisma, from, to) {
       m.bonus = round2(m.bonus + p.bonus);
       m.total = round2(m.total + p.total);
       m.late = round2(m.late + (p.late || 0));
-      m.contributions = round2(m.contributions + (contributionOn.get(`${p.name}|${day}`) || 0));
+      m.contributions = round2(m.contributions + (contributionOn.get(`${p.key}|${day}`) || 0));
       (p.trucks || []).forEach((t) => m.trucks.add(t));
     }
   }

@@ -117,6 +117,23 @@ ok('crew day pay: drivers keep piece rate minus late, checkers earn their daily 
   assert.equal(by.Ben, undefined);
 });
 
+ok('crew pay keeps two employees with the same name apart, by employee ID', () => {
+  const { crewEarnings, deliveriesToLog } = require('../src/lib/payroll.js');
+  const rates = { driverDaily: 280, helperDaily: 240, bonusHead: 100, bonusTrips: 5 };
+  const crew = (d, h) => [{ role: 'Driver', id: d[0], name: d[1] }, { role: 'Helper 1', id: h[0], name: h[1] }];
+  const mk = (id, truck, seq, c) => ({ id, date: '2026-10-27', truckId: truck, seq, driver: c[0].name, helpers: [c[1].name], crew: c,
+    items: [{ item: 'Sand', unit: 'bag', qty: 1, d: 40, h: 60 }], voided: false });
+  const A = crew(['63', 'Mark Magsino'], ['64', 'Helper']);
+  const B = crew(['70', 'Mark Magsino'], ['71', 'Helper Two']);
+  const people = crewEarnings(deliveriesToLog([mk('a', 'TRK-01', 1, A), mk('b', 'TRK-01', 2, A), mk('c', 'TRK-02', 1, B)]), rates);
+  const marks = people.filter((p) => p.name === 'Mark Magsino').sort((x, y) => x.id.localeCompare(y.id));
+  assert.equal(marks.length, 2);
+  assert.deepEqual(marks.map((p) => [p.id, p.trips, p.pieceRate, p.dailyRate]), [['63', 2, 80, 280], ['70', 1, 40, 280]]);
+  const out = crewDayPay(people, [{ key: '63', id: '63', name: 'Mark Magsino', present: true, lateMins: 10 }]);
+  const late = Object.fromEntries(out.map((p) => [p.id, p.late]));
+  assert.deepEqual([late['63'], late['70']], [30, 0]);
+});
+
 ok('server: loans see the same daily pay (checker present and late, by employee ID)', async () => {
   const tables = {
     employees: [{ id: 'C1', name: 'Ana', position: 'CHECKER', dailyRate: 450, status: 'ACTIVE' }],

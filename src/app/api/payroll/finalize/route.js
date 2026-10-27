@@ -35,6 +35,7 @@ function buildSlips({ staff, attendanceById, statutory }, loans, runKey) {
       mp2Deduction: money(calc.mp2),
       companyCover: money(calc.companyCover),
       tardinessDeduction: money(calc.tardiness),
+      withholdingTax: money(calc.withholdingTax),
       loanDeduction: money(calc.loanDeduction),
       advanceDeduction: money(calc.advanceDeduction),
       totalDeductions: money(calc.totalDeductions),
@@ -133,7 +134,7 @@ export async function POST(request) {
     }
 
     const slips = buildSlips(inputs, inputs.loans, runKey);
-    const rows = slips.map(({ employeeName, ...slip }) => ({ ...slip, payrollType: 'STAFF', withholdingTax: 0, otherDeductions: 0 }));
+    const rows = slips.map(({ employeeName, ...slip }) => ({ ...slip, payrollType: 'STAFF', otherDeductions: 0 }));
 
     const now = new Date();
     const results = await withRetry(() => prismaBase.$transaction([
