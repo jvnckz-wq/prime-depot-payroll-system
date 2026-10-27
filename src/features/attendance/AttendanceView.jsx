@@ -5,6 +5,7 @@ import { AlertTriangle, ClipboardList, ArrowLeft, Pencil, Upload, Loader2, Calen
 import { Av, Badge, BigStat, Btn, EmptyState, Eyebrow, Field, H1, Modal, Panel, SkeletonBlock, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { timeOrderError } from '@/lib/field-rules';
+import { positionLabel } from '@/data/seed';
 import { MAX_IMPORT_BYTES, MAX_IMPORT_MB, tooBigMessage } from '@/lib/import-limits';
 
 const agoFrom = (iso) => {
@@ -20,7 +21,6 @@ const asUTC = (iso) => new Date(iso + 'T00:00:00Z');
 const fmtDay = (iso) => asUTC(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 const fmtPeriod = (p) => (p ? `${fmtDay(p.start)} – ${asUTC(p.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}` : '—');
 const shiftYmd = (iso, delta) => { const d = asUTC(iso); d.setUTCDate(d.getUTCDate() + delta); return d.toISOString().slice(0, 10); };
-const prettyPosition = (p) => (p ? String(p).toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : null);
 const liveThBase = { fontFamily: F_HEAD, fontSize: 11.5, fontWeight: 600, color: T.soft, textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'left', padding: '13px 18px', borderTop: `1px solid ${T.line}`, borderBottom: `1px solid ${T.line}` };
 const liveTdBase = { fontFamily: F_BODY, fontSize: 14.5, color: T.ink, padding: '14px 18px', borderBottom: `1px solid ${T.lineSoft}`, verticalAlign: 'middle' };
 const manilaTodayStr = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -369,7 +369,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
             <Av name={name} size={52} tone={T.brand} />
             <div className="flex-1" style={{ minWidth: 160 }}>
               <div className="text-lg font-bold" style={{ fontFamily: F_HEAD, color: T.ink }}>{name}</div>
-              <div className="text-sm" style={{ fontFamily: F_BODY, color: T.soft }}>{emp?.position || '—'} · {selectedId}</div>
+              <div className="text-sm" style={{ fontFamily: F_BODY, color: T.soft }}>{emp?.position ? positionLabel(emp.position) : '—'} · {selectedId}</div>
             </div>
             <div className="flex gap-6 flex-wrap">
               <BigStat value={daysLate} label="Days Late" />
@@ -585,7 +585,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                     <tr key={r.id}>
                       <td style={liveTdBase}>
                         <div style={{ fontFamily: F_BODY, fontWeight: 600 }}>{r.name}</div>
-                        <div style={{ fontFamily: F_BODY, fontSize: 12, color: T.soft, marginTop: 1 }}>{r.position ? `${prettyPosition(r.position)} · ${r.id}` : r.id}</div>
+                        <div style={{ fontFamily: F_BODY, fontSize: 12, color: T.soft, marginTop: 1 }}>{r.position ? `${positionLabel(r.position)} · ${r.id}` : r.id}</div>
                       </td>
                       <td style={{ ...liveTdBase, fontVariantNumeric: 'tabular-nums' }}>{r.in || <span style={{ color: T.line }}>—</span>}{r.assumedIn && <span style={{ marginLeft: 8, fontSize: 11, color: T.soft }}>assumed</span>}</td>
                       <td style={{ ...liveTdBase, fontVariantNumeric: 'tabular-nums' }}>{r.out || <span style={{ color: T.line }}>—</span>}</td>

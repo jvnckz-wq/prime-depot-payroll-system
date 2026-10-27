@@ -8,6 +8,7 @@ import { cutoffsWithAttendance, finalizedCutoffsBetween, lockedMessage } from '@
 import { countNoScanDeliveries } from '@/lib/server/services/crew-scans';
 import { cutoffOf } from '@/lib/loan-rules';
 import { isPieceRatePosition } from '@/lib/positions';
+import { POSITION_LABEL } from '@/lib/server/services/employees';
 
 const hhmm = (d) => (d ? new Date(d).toISOString().slice(11, 16) : null);
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
@@ -129,13 +130,14 @@ export async function GET(request) {
         .map((a) => ({
           id: a.employeeId,
           name: (a.employee && a.employee.name) || a.employeeId,
-          position: (a.employee && a.employee.position) || null,
+          position: a.employee?.position ? (POSITION_LABEL[a.employee.position] ?? a.employee.position) : null,
           in: hhmm(a.timeIn),
           out: a.isAssumedOut ? null : hhmm(a.timeOut),
           late: a.tardinessMins,
           status: a.isAssumedOut ? 'in' : 'out',
           assumedIn: a.isAssumedIn,
-        }));
+        }))
+        .sort((x, y) => Number(x.id) - Number(y.id) || String(x.id).localeCompare(String(y.id)));
       const stats = {
         present: present.length,
         late: present.filter((r) => r.late > 0).length,
