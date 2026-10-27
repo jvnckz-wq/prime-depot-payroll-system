@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, ClipboardList, ArrowLeft, Pencil, Upload, Loader2, CalendarX, CircleCheck, Users } from 'lucide-react';
 import { Av, Badge, BigStat, Btn, EmptyState, Eyebrow, Field, H1, Modal, Panel, SkeletonBlock, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
-import { isDailyPosition } from '@/lib/positions';
 import { timeOrderError } from '@/lib/field-rules';
 
 const agoFrom = (iso) => {
@@ -16,11 +15,6 @@ const agoFrom = (iso) => {
   return `${Math.floor(m / 60)}h ago`;
 };
 
-const callTimeLabel = (emp) => {
-  if (!emp) return '6:40 AM';
-  if ((emp.earlyShiftDays || []).length) return `${emp.earlyShiftTime || '06:00'} (early shift)`;
-  return isDailyPosition(emp.position) ? '6:30 AM' : '6:40 AM';
-};
 const asUTC = (iso) => new Date(iso + 'T00:00:00Z');
 const fmtDay = (iso) => asUTC(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 const fmtPeriod = (p) => (p ? `${fmtDay(p.start)} – ${asUTC(p.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}` : '—');
@@ -247,7 +241,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
 
   const openEdit = (a) => {
     if (data.finalized) return;
-    setEditForm({ status: a.leave ? 'leave' : (a.absent ? 'absent' : 'present'), timeIn: a.in || '', timeOut: a.out || '', note: '' });
+    setEditForm({ status: a.leave ? 'leave' : (a.absent ? 'absent' : 'present'), timeIn: a.assumedIn ? '' : (a.in || ''), timeOut: a.assumedOut ? '' : (a.out || ''), note: '' });
     setEditDay(a);
   };
   const saveEdit = async () => {
@@ -360,6 +354,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
 
   if (view === 'dtr' && selectedId) {
     const emp = staff.find(s => s.id === selectedId);
+    const isCrew = !!emp?.crew;
     const summary = data.summaries.find(s => s.id === selectedId);
     const name = emp?.name || summary?.name || selectedId;
     const rows = dtr.rows || [];
@@ -379,22 +374,21 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
             <Av name={name} size={52} tone={T.brand} />
             <div className="flex-1" style={{ minWidth: 160 }}>
               <div className="text-lg font-bold" style={{ fontFamily: F_HEAD, color: T.ink }}>{name}</div>
-              <div className="text-sm" style={{ fontFamily: F_BODY, color: T.soft }}>{emp?.position || '—'} · {selectedId} · Call time {callTimeLabel(emp)}</div>
+              <div className="text-sm" style={{ fontFamily: F_BODY, color: T.soft }}>{emp?.position || '—'} · {selectedId}</div>
             </div>
             <div className="flex gap-6 flex-wrap">
               <BigStat value={daysLate} label="Days Late" />
               <BigStat value={`${lateMins}m`} label="Total Late" tone={T.red} />
               <BigStat value={`${otMins}m`} label="Overtime" tone={T.green} />
               <BigStat value={absent} label="Absences" tone={T.amber} />
-              <BigStat value={leave} label="On Leave" tone={T.brand} />
+              {!isCrew && <BigStat value={leave} label="On Leave" tone={T.brand} />}
             </div>
           </div>
         </Panel>
 
         <Panel className="overflow-hidden">
-          <div className="px-4 py-3 flex items-center justify-between flex-wrap gap-1" style={{ borderBottom: `1px solid ${T.line}` }}>
+          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${T.line}` }}>
             <div className="text-sm font-semibold" style={{ fontFamily: F_HEAD, color: T.ink }}>Daily Time Record — {fmtPeriod(dtr.period)}</div>
-            <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Tap a day to correct it.</div>
           </div>
           {dtrLoading ? <SkeletonBlock avatar={false} />
             : rows.length === 0 ? <EmptyState icon={CalendarX} title="No attendance for this employee yet" desc="Scans appear here after you pull this cutoff from the device." />
@@ -404,20 +398,20 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
               <tbody>
                 {rows.map((a) => {
                   const isLate = a.late > 0, isOt = a.ot > 0;
-                  const rowBg = isLate ? T.redBg : a.absent ? T.amberBg : 'transparent';
+                  const rowBg = a.absent ? T.amberBg : 'transparent';
                   return (
                     <tr key={a.date} onClick={() => openEdit(a)} style={{ backgroundColor: rowBg, cursor: data.finalized ? 'default' : 'pointer' }}>
                       <Td>
                         <span className="font-bold mr-2" style={{ fontFamily: F_MONO, color: T.ink }}>{a.date.slice(8)}</span>
-                        <span className="text-xs" style={{ fontFamily: F_BODY, color: isLate ? T.red : a.absent ? T.amber : T.soft }}>{a.weekday}</span>
+                        <span className="text-xs" style={{ fontFamily: F_BODY, color: a.absent ? T.amber : T.soft }}>{a.weekday}</span>
                         {a.absent && <span className="ml-2"><Badge tone="amber">ABSENT</Badge></span>}
                         {a.leave && <span className="ml-2"><Badge tone="blue">ON LEAVE</Badge></span>}
-                        {a.assumedIn && !a.absent && <span className="ml-2"><Badge tone="red">NO IN-SCAN</Badge></span>}
+                        {a.assumedIn && !a.absent && <span className="ml-2"><Badge tone="blue">ASSUMED IN</Badge></span>}
                         {a.assumedOut && !a.absent && <span className="ml-2"><Badge tone="blue">ASSUMED OUT</Badge></span>}
                         {a.manual && <span className="ml-2"><Badge tone="blue">EDITED</Badge></span>}
                       </Td>
-                      <Td mono>{a.in || '—'}</Td>
-                      <Td mono>{a.out || '—'}</Td>
+                      <Td mono>{a.assumedIn ? '—' : (a.in || '—')}</Td>
+                      <Td mono>{a.assumedOut ? '—' : (a.out || '—')}</Td>
                       <Td center mono><span style={{ fontWeight: isLate ? 700 : 400, color: isLate ? T.red : T.soft }}>{isLate ? a.late : '--'}</span></Td>
                       <Td center mono><span style={{ fontWeight: isOt ? 700 : 400, color: isOt ? T.green : T.soft }}>{isOt ? a.ot : '--'}</span></Td>
                       <Td right>{!data.finalized && <Pencil size={13} style={{ color: T.soft }} />}</Td>
@@ -442,7 +436,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
             <div className="space-y-3">
               <Field label="Status">
                 <div className="flex gap-2">
-                  {[['present', 'Present'], ['leave', 'On Leave'], ['absent', 'Absent']].map(([val, lbl]) => (
+                  {(isCrew ? [['present', 'Present'], ['absent', 'Absent']] : [['present', 'Present'], ['leave', 'On Leave'], ['absent', 'Absent']]).map(([val, lbl]) => (
                     <button key={val} type="button" onClick={() => setEditForm((f) => ({ ...f, status: val }))}
                       className="flex-1 px-2 py-2 rounded border text-sm font-semibold transition-colors"
                       style={{ borderColor: editForm.status === val ? T.brand : T.line, backgroundColor: editForm.status === val ? T.brandBg : T.surface, color: editForm.status === val ? T.brand : T.soft, fontFamily: F_HEAD }}>
@@ -461,9 +455,6 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                 </div>
               )}
               <Field label="Reason / note (optional)"><input value={editForm.note} maxLength={200} onChange={(e) => setEditForm((f) => ({ ...f, note: e.target.value }))} placeholder="e.g. brownout, scanner down" className={inputCls} style={inputStyle} /></Field>
-              <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
-                Tardiness is recomputed automatically from the times. Blank time-in = missing scan (30-min penalty); blank time-out = assumed end of shift (5:00 PM, or 12:00 noon on Sunday). This day will be marked EDITED and won&apos;t be overwritten by future imports.
-              </div>
               <div className="flex justify-end gap-2 pt-1">
                 <Btn variant="outline" onClick={() => setEditDay(null)} disabled={savingEdit}>Cancel</Btn>
                 <Btn onClick={saveEdit} loading={savingEdit} disabled={savingEdit}>{savingEdit ? 'Saving…' : 'Save correction'}</Btn>

@@ -7,6 +7,7 @@ import { enrolledNotRegistered } from '@/lib/server/services/device-roster';
 import { cutoffsWithAttendance, finalizedCutoffsBetween, lockedMessage } from '@/lib/server/services/cutoff-lock';
 import { countNoScanDeliveries } from '@/lib/server/services/crew-scans';
 import { cutoffOf } from '@/lib/loan-rules';
+import { isPieceRatePosition } from '@/lib/positions';
 
 const hhmm = (d) => (d ? new Date(d).toISOString().slice(11, 16) : null);
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
@@ -34,6 +35,9 @@ export async function PATCH(request) {
 
     const emp = await prisma.employee.findUnique({ where: { id: employeeId }, include: { shiftSchedules: true } });
     if (!emp) return NextResponse.json({ error: 'Employee not found.' }, { status: 404 });
+    if (body.isLeave && isPieceRatePosition(emp.position)) {
+      return NextResponse.json({ error: 'Drivers and helpers have no leave. Mark the day as present or absent.' }, { status: 400 });
+    }
 
     const date = new Date(`${dateStr}T00:00:00.000Z`);
     const editNote = (body.editNote || '').toString().replace(/\s+/g, ' ').trim().slice(0, 200) || null;
