@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
-import { requireAdmin } from '@/lib/server/security/auth';
+import { logSecurityEvent, requireAdmin } from '@/lib/server/security/auth';
 import { shapeLoan } from '@/lib/server/services/loans';
-import { LOAN_MAX_BALANCE, isYmd, todayYmdManila } from '@/lib/loan-rules';
 
 const balanceOf = (entries) =>
   entries.reduce((b, e) => (e.type === 'GRANT' ? b + Number(e.amount) : b - Number(e.amount)), 0);
@@ -30,31 +29,6 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ loan: shapeLoan(loan) });
     }
 
-    if (body.topUp) {
-      if (existing.type !== 'LOAN') return NextResponse.json({ error: 'Only a loan can be topped up. Record a new cash advance instead.' }, { status: 400 });
-      const balance = balanceOf(existing.entries);
-      if (existing.isSettled || balance <= 0) return NextResponse.json({ error: 'This loan is already fully paid. Record a new loan instead.' }, { status: 400 });
-      const amount = money(body.topUp.amount);
-      if (!Number.isFinite(amount) || amount <= 0) return NextResponse.json({ error: 'Enter a top-up amount greater than zero.' }, { status: 400 });
-      if (balance + amount > LOAN_MAX_BALANCE + 0.004) {
-        const room = Math.max(0, Math.round((LOAN_MAX_BALANCE - balance) * 100) / 100);
-        return NextResponse.json({ error: `A loan balance can be at most ₱${LOAN_MAX_BALANCE.toLocaleString('en-PH')}. At most ₱${room.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} can be added.` }, { status: 400 });
-      }
-      const date = body.topUp.date == null || body.topUp.date === '' ? todayYmdManila() : String(body.topUp.date);
-      if (!isYmd(date)) return NextResponse.json({ error: 'The date given is not a valid date.' }, { status: 400 });
-      const data = { principal: { increment: amount } };
-      if (body.topUp.perCutoff != null && body.topUp.perCutoff !== '') {
-        const perRun = money(body.topUp.perCutoff);
-        if (!Number.isFinite(perRun) || perRun <= 0) return NextResponse.json({ error: 'Enter a deduction greater than zero.' }, { status: 400 });
-        if (perRun > balance + amount) return NextResponse.json({ error: 'The deduction cannot be more than the new balance.' }, { status: 400 });
-        data.deductionPerRun = perRun;
-      }
-      const when = new Date(date + 'T00:00:00Z');
-      data.entries = { create: [{ date: when, type: 'GRANT', amount, note: 'Top-up, added to existing loan' }] };
-      const loan = await prisma.loan.update({ where: { id }, data, include: { employee: true, entries: true } });
-      return NextResponse.json({ loan: shapeLoan(loan) });
-    }
-
     const data = {};
     if (typeof body.isPaused === 'boolean') {
       if (existing.type === 'CASH_ADVANCE' && body.isPaused) {
@@ -65,7 +39,18 @@ export async function PATCH(request, { params }) {
     if (!Object.keys(data).length) return NextResponse.json({ error: 'Nothing to update.' }, { status: 400 });
 
     const loan = await prisma.loan.update({ where: { id }, data, include: { employee: true, entries: true } });
-    return NextResponse.json({ loan: shapeLoan(loan) });
+    const shaped = shapeLoan(loan);
+    if (data.isPaused !== existing.isPaused) {
+      const balance = Math.max(0, money(balanceOf(existing.entries)));
+      await logSecurityEvent(data.isPaused ? 'LOAN_PAUSED' : 'LOAN_RESUMED', {
+        actorId: auth.user.id,
+        actorLabel: auth.user.username,
+        targetType: 'loan',
+        targetId: id,
+        detail: `${loan.employee?.name || 'Employee ' + existing.employeeId}, ${shaped.purpose || 'Loan'}, balance ₱${balance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      });
+    }
+    return NextResponse.json({ loan: shaped });
   } catch (err) {
     console.error('PATCH /api/loans/[id] failed:', err);
     return NextResponse.json({ error: 'Could not update the loan.' }, { status: 500 });

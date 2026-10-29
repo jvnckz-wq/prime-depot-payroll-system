@@ -72,7 +72,7 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
 
   return (
     <div className="p-4 sm:p-6">
-      <H1 action={<Btn icon={Plus} onClick={() => setForm({ employeeId: null })}>New Loan</Btn>}>Loans</H1>
+      <H1 action={<Btn icon={Plus} onClick={() => setForm(true)}>New Loan</Btn>}>Loans</H1>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3.5 mb-4">
         <Kpi label="Outstanding balance" value={peso(outstanding)} />
@@ -89,7 +89,7 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
         {shown.length === 0 ? (
           <EmptyState icon={rows.length ? SearchX : Wallet} title={rows.length ? 'No loans match this filter' : 'No active loans'}
             desc={rows.length ? 'Try another name or filter.' : 'Loans you grant appear here until fully paid. Paid-off loans move to History.'}
-            action={rows.length ? null : <Btn variant="outline" icon={Plus} onClick={() => setForm({ employeeId: null })}>New Loan</Btn>} />
+            action={rows.length ? null : <Btn variant="outline" icon={Plus} onClick={() => setForm(true)}>New Loan</Btn>} />
         ) : (
           <>
           <div className="md:hidden">
@@ -117,10 +117,7 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
                   <div className="px-3.5 pb-3 flex items-center gap-2 flex-wrap">
                     {status === 'Paused'
                       ? <Btn variant="outline" icon={Play} loading={busyId === l.id} onClick={() => setPaused(l, false)}>Resume</Btn>
-                      : <Btn variant="outline" onClick={() => setForm({ employeeId: l.employeeId })}>Top-up</Btn>}
-                    {expanded && status !== 'Paused' && (
-                      <Btn variant="outline" icon={Pause} loading={busyId === l.id} onClick={() => setPaused(l, true)}>Pause deductions</Btn>
-                    )}
+                      : <Btn variant="outline" icon={Pause} loading={busyId === l.id} onClick={() => setPaused(l, true)}>Pause</Btn>}
                     <span className="ml-auto text-xs flex items-center gap-1" style={{ color: T.soft }}>
                       {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}{expanded ? 'Hide ledger' : 'Ledger'}
                     </span>
@@ -133,7 +130,7 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
           <div className="hidden md:block overflow-x-auto pd-scroll-shadow">
             <table className="w-full">
               <thead><tr>
-                <H>Employee</H><H>Purpose</H><H right>Installment</H><H right>Balance / Principal</H><H>Next deduction</H><H>Status</H><H />
+                <H>Employee</H><H>Purpose</H><H right>Installment</H><H right>Balance / Principal</H><H>Next deduction</H><H center>Status</H><H right>Actions</H>
               </tr></thead>
               <tbody>
                 {shown.map(({ l, balance, due, carry, status, nextEnd, left }) => {
@@ -155,25 +152,20 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
                         <D style={{ whiteSpace: 'nowrap' }}>
                           {nextCell({ l, due, carry, status, nextEnd, left })}
                         </D>
-                        <D><Pill tone={status === 'Paused' ? 'amber' : status === 'Scheduled' ? 'slate' : 'green'}>{status}</Pill></D>
+                        <D center><Pill tone={status === 'Paused' ? 'amber' : status === 'Scheduled' ? 'slate' : 'green'}>{status}</Pill></D>
                         <D right>
                           <span onClick={(e) => e.stopPropagation()}>
                             {status === 'Paused'
                               ? <Btn size="sm" variant="outline" icon={Play} loading={busyId === l.id} onClick={() => setPaused(l, false)}>Resume</Btn>
-                              : <Btn size="sm" variant="outline" onClick={() => setForm({ employeeId: l.employeeId })}>Top-up</Btn>}
+                              : <Btn size="sm" variant="outline" icon={Pause} loading={busyId === l.id} onClick={() => setPaused(l, true)}>Pause</Btn>}
                           </span>
                         </D>
                       </tr>
                       {expanded && (
                         <tr style={{ backgroundColor: '#FCFBFA' }}>
                           <td colSpan={7} className="px-3.5 pb-3 pt-1" style={{ borderBottom: `1px solid ${T.lineSoft}` }}>
-                            <div className="ml-6 space-y-2">
+                            <div className="ml-6">
                               <Ledger loan={l} />
-                              {status !== 'Paused' && (
-                                <div className="flex justify-end">
-                                  <Btn size="sm" variant="outline" icon={Pause} loading={busyId === l.id} onClick={() => setPaused(l, true)}>Pause deductions</Btn>
-                                </div>
-                              )}
                             </div>
                           </td>
                         </tr>
@@ -189,8 +181,7 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
       </div>
 
       {form && (
-        <LoanFormModal key={form.employeeId || 'new'} open onClose={() => setForm(null)} staff={staff} loans={loans}
-          presetEmployeeId={form.employeeId} toast={toast}
+        <LoanFormModal open onClose={() => setForm(null)} staff={staff} loans={loans} toast={toast}
           onSaved={async () => { setForm(null); await reloadLoans(); }} />
       )}
     </div>

@@ -138,7 +138,7 @@ export const FinalPayView = ({ employee, onBack, toast, onDeactivate, editable =
           <Field label="Last date of service"><input type="date" value={lastService} onChange={e => setLastService(e.target.value)} className="px-2 py-1.5 rounded border text-sm w-full" style={{ borderColor: T.line, fontFamily: F_BODY, color: T.ink, backgroundColor: T.surface, colorScheme: 'light' }} /></Field>
           <Field label="Daily rate (₱)">{numInput(rate, setRate)}</Field>
           <Field label="Days worked (last cutoff)">{numInput(days, setDays, true)}</Field>
-          <Field label="OT + other allowances (₱)">{numInput(otAllow, setOtAllow)}</Field>
+          <Field label="Overtime + other allowances (₱)">{numInput(otAllow, setOtAllow)}</Field>
           <Field label="Total basic salary this year (₱)">{numInput(yearBasic, setYearBasic)}</Field>
           <Field label="Unused leave days">{numInput(leaveDays, setLeaveDays, true)}</Field>
         </div>

@@ -2,23 +2,11 @@
 
 import React, { useMemo, useRef, useState } from 'react';
 import { Btn, Field, Modal, SearchSelect, inputCls, inputStyle } from '@/components/ui.jsx';
-import { LOAN_MAX_BALANCE, LOAN_PURPOSES, balanceOf, isOpen, loanRoomLeft, todayYmdManila } from '@/lib/loan-rules';
+import { LOAN_MAX_BALANCE, LOAN_PURPOSES, isOpen, todayYmdManila } from '@/lib/loan-rules';
 import { peso } from '@/lib/utils';
 import { F_BODY, T } from '@/components/theme';
 import { todayLocalYmd } from '@/features/loans/parts.jsx';
 import { moneyInput, flagErrors } from '@/lib/field-rules';
-
-const Box = ({ tone, children }) => {
-  const s = tone === 'warn'
-    ? { backgroundColor: T.warnBg, border: '1px solid #EFD3A8', color: '#7A4B12' }
-    : tone === 'ok' ? { backgroundColor: T.greenBg, color: T.green } : { backgroundColor: T.bg, color: T.ink };
-  return <div className="rounded-lg px-3.5 py-3 text-sm" style={{ fontFamily: F_BODY, lineHeight: 1.45, ...s }}>{children}</div>;
-};
-const Line = ({ label, value, total }) => (
-  <div className={`flex justify-between text-sm py-0.5 ${total ? 'font-bold mt-1 pt-1.5' : ''}`} style={{ fontFamily: F_BODY, borderTop: total ? `1px solid ${T.line}` : undefined }}>
-    <span>{label}</span><span className="tabular-nums">{value}</span>
-  </div>
-);
 
 const labelFor = (list) => {
   const counts = new Map();
@@ -26,18 +14,17 @@ const labelFor = (list) => {
   return (e) => (counts.get(e.name) > 1 ? `${e.name} (ID ${e.id})` : e.name);
 };
 
-export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmployeeId = null, onSaved, toast }) => {
+export const LoanFormModal = ({ open, onClose, staff = [], loans = [], onSaved, toast }) => {
   const people = useMemo(() => {
     const active = staff.filter((e) => e.status !== 'Inactive');
-    if (presetEmployeeId) return active.filter((e) => e.id === presetEmployeeId);
     const withLoan = new Set(loans.filter((l) => l.kind === 'LOAN' && isOpen(l)).map((l) => l.employeeId));
     return active.filter((e) => !withLoan.has(e.id));
-  }, [staff, loans, presetEmployeeId]);
+  }, [staff, loans]);
   const labelOf = useMemo(() => labelFor(people), [people]);
   const byLabel = useMemo(() => new Map(people.map((e) => [labelOf(e), e])), [people, labelOf]);
   const savingRef = useRef(false);
 
-  const [empId, setEmpId] = useState(presetEmployeeId);
+  const [empId, setEmpId] = useState(null);
   const [purpose, setPurpose] = useState(LOAN_PURPOSES[0]);
   const [amount, setAmount] = useState('');
   const [per, setPer] = useState('');
@@ -45,33 +32,26 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmp
   const [busy, setBusy] = useState(false);
 
   const emp = people.find((e) => e.id === empId) || null;
-  const active = emp ? loans.find((l) => l.kind === 'LOAN' && l.employeeId === emp.id && isOpen(l)) : null;
-  const topUp = !!active;
   const unit = emp?.crew ? 'day' : 'cutoff';
-  const balance = active ? balanceOf(active) : 0;
-  const perValue = per === '' && active ? String(active.perCutoff) : per;
 
   const amt = Number(amount);
-  const perNum = Number(perValue);
-  const room = topUp ? loanRoomLeft(balance) : LOAN_MAX_BALANCE;
-  const overLimit = amt > room + 0.004;
-  const newBalance = topUp ? balance + (amt > 0 ? amt : 0) : (amt > 0 ? amt : 0);
+  const perNum = Number(per);
+  const overLimit = amt > LOAN_MAX_BALANCE + 0.004;
+  const limitMsg = `A loan can be at most ${peso(LOAN_MAX_BALANCE)}.`;
+  const perMsg = `The deduction per ${unit} cannot be more than the loan.`;
 
   const [showErrors, setShowErrors] = useState(false);
   let problem = '';
   if (!emp) problem = 'Choose the employee.';
   else if (!(amt > 0)) problem = 'Enter an amount.';
-  else if (overLimit) problem = topUp
-    ? `A loan balance can be at most ${peso(LOAN_MAX_BALANCE)}. At most ${peso(room)} can be added.`
-    : `A loan can be at most ${peso(LOAN_MAX_BALANCE)}.`;
+  else if (overLimit) problem = limitMsg;
   else if (!(perNum > 0)) problem = `Enter the deduction per ${unit}.`;
-  else if (perNum > newBalance) problem = `The deduction per ${unit} cannot be more than the ${topUp ? 'new balance' : 'loan'}.`;
+  else if (perNum > amt) problem = perMsg;
 
-  const limitMsg = topUp ? `A loan balance can be at most ${peso(LOAN_MAX_BALANCE)}. At most ${peso(room)} can be added.` : `A loan can be at most ${peso(LOAN_MAX_BALANCE)}.`;
   const fe = showErrors ? {
     employee: emp ? '' : 'Choose the employee.',
     amount: !(amt > 0) ? 'Enter an amount.' : (overLimit ? limitMsg : ''),
-    per: !(perNum > 0) ? `Enter the deduction per ${unit}.` : (perNum > newBalance ? `The deduction per ${unit} cannot be more than the ${topUp ? 'new balance' : 'loan'}.` : ''),
+    per: !(perNum > 0) ? `Enter the deduction per ${unit}.` : (perNum > amt ? perMsg : ''),
   } : {};
 
   const save = async () => {
@@ -80,18 +60,13 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmp
     savingRef.current = true;
     setBusy(true);
     try {
-      const res = topUp
-        ? await fetch(`/api/loans/${active.id}`, {
-          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topUp: { amount: amt, date, perCutoff: perNum } }),
-        })
-        : await fetch('/api/loans', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ employeeId: emp.id, kind: 'LOAN', purpose, principal: amt, perCutoff: perNum, date }),
-        });
+      const res = await fetch('/api/loans', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employeeId: emp.id, kind: 'LOAN', purpose, principal: amt, perCutoff: perNum, date }),
+      });
       const data = await res.json();
       if (!res.ok) { toast(data.error || 'Could not save the loan.', 'error'); return; }
-      toast(topUp ? `Added ${peso(amt)} to ${emp.name}'s loan.` : `Loan saved for ${emp.name}.`);
+      toast(`Loan saved for ${emp.name}.`);
       onSaved?.();
     } catch {
       toast('Could not reach the server.', 'error');
@@ -99,52 +74,36 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmp
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={topUp ? 'Top-up Loan' : 'New Loan'} width={540}>
+    <Modal open={open} onClose={onClose} title="New Loan" width={540}>
       <div className="space-y-3.5">
         <Field label="Employee" error={fe.employee}>
           <SearchSelect value={emp ? labelOf(emp) : ''} placeholder="Start typing a name…"
-            options={people.map(labelOf)} disabled={!!presetEmployeeId}
+            options={people.map(labelOf)}
             onChange={(label) => { const e = byLabel.get(label); setEmpId(e ? e.id : null); setPer(''); }} />
         </Field>
 
-        {topUp && (
-          <Box tone="warn">
-            {emp.name} already has an active loan (<b>{active.purpose}</b>, balance <b>{peso(balance)}</b>). This amount will be added to it. One loan per employee.
-          </Box>
-        )}
-
-        {!topUp && (
-          <Field label="Purpose">
-            <select value={purpose} onChange={(e) => setPurpose(e.target.value)} className={inputCls} style={inputStyle}>
-              {LOAN_PURPOSES.map((p) => <option key={p}>{p}</option>)}
-            </select>
-          </Field>
-        )}
+        <Field label="Purpose">
+          <select value={purpose} onChange={(e) => setPurpose(e.target.value)} className={inputCls} style={inputStyle}>
+            {LOAN_PURPOSES.map((p) => <option key={p}>{p}</option>)}
+          </select>
+        </Field>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field label={topUp ? 'Additional amount (₱)' : 'Amount (₱)'} error={fe.amount}>
+          <Field label="Amount (₱)" error={fe.amount}>
             <div className="relative">
               <input inputMode="decimal" value={amount} onChange={(e) => setAmount(moneyInput(e.target.value))}
                 className={inputCls} style={{ ...inputStyle, borderColor: overLimit ? T.brand : T.line, paddingRight: 112 }} aria-invalid={overLimit || undefined} />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style={{ color: T.soft }}>max {peso(room)}</span>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style={{ color: T.soft }}>max {peso(LOAN_MAX_BALANCE)}</span>
             </div>
           </Field>
           <Field label={`Deduction per ${unit} (₱)`} error={fe.per}>
-            <input inputMode="decimal" value={perValue} onChange={(e) => setPer(moneyInput(e.target.value))} className={inputCls} style={inputStyle} />
+            <input inputMode="decimal" value={per} onChange={(e) => setPer(moneyInput(e.target.value))} className={inputCls} style={inputStyle} />
           </Field>
         </div>
 
         <Field label="Date given">
           <input type="date" value={date} max={todayYmdManila()} onChange={(e) => setDate(e.target.value)} className={inputCls} style={inputStyle} />
         </Field>
-
-        {topUp && !overLimit && (
-          <Box>
-            <Line label="Current balance" value={peso(balance)} />
-            <Line label="Top-up" value={`+${peso(amt > 0 ? amt : 0)}`} />
-            <Line label="New balance" value={peso(newBalance)} total />
-          </Box>
-        )}
 
         {overLimit && (
           <div role="alert" className="rounded-lg px-3.5 py-3 text-sm" style={{ backgroundColor: T.brandBg, color: T.brand, fontFamily: F_BODY, lineHeight: 1.45 }}>
@@ -154,7 +113,7 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], presetEmp
 
         <div className="flex justify-end gap-2 pt-1">
           <Btn variant="outline" onClick={onClose} disabled={busy}>Cancel</Btn>
-          <Btn onClick={save} loading={busy} disabled={busy}>{topUp ? 'Add to loan' : 'Save loan'}</Btn>
+          <Btn onClick={save} loading={busy} disabled={busy}>Save loan</Btn>
         </div>
       </div>
     </Modal>

@@ -414,7 +414,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
                     <span className="block text-xs pd-num" style={{ color: T.soft }}>
                       <span className="whitespace-nowrap">{calc.days} days</span>{' · '}
                       <span className="whitespace-nowrap">gross {peso(calc.gross)}</span>
-                      {calc.ot > 0 && <>{' · '}<span className="whitespace-nowrap">OT +{peso(calc.ot)}</span></>}
+                      {calc.ot > 0 && <>{' · '}<span className="whitespace-nowrap">Overtime +{peso(calc.ot)}</span></>}
                     </span>
                     <span className="block text-xs pd-num" style={{ color: T.red }}>Deductions -{peso(calc.totalDeductions)}</span>
                   </span>

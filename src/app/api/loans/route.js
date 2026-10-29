@@ -69,7 +69,7 @@ export async function POST(request) {
       });
       const open = current.map(shapeLoan).find((l) => balanceOf(l) > 0);
       if (open) {
-        return bad(`${employee.name} already has an active loan (balance ${peso(balanceOf(open))}). Add to it with a top-up instead.`, 409, { activeLoanId: open.id });
+        return bad(`${employee.name} already has an active loan (balance ${peso(balanceOf(open))}). A new loan can be given once it is fully paid.`, 409, { activeLoanId: open.id });
       }
       data = { employeeId, type: 'LOAN', purpose: PURPOSE_ENUM[purpose], principal, deductionPerRun: perRun, dateGranted: granted };
     } else {

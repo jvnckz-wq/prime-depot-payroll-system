@@ -31,6 +31,8 @@ export const ACTION_LABELS = {
   DELIVERY_VOIDED: 'Delivery voided',
   DELIVERY_UNVOIDED: 'Delivery restored',
   CREW_RATES_UPDATED: 'Rates changed',
+  LOAN_PAUSED: 'Loan paused',
+  LOAN_RESUMED: 'Loan resumed',
 };
 const labelOf = (a) => ACTION_LABELS[a] || (a.charAt(0) + a.slice(1).replace(/_/g, ' ').toLowerCase());
 const fmtWhen = (iso) => new Date(iso).toLocaleString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' });

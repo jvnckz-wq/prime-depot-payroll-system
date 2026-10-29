@@ -31,7 +31,6 @@ export const ADMIN_NAV = [
     { key: 'statutory', label: 'Statutory Deductions' },
     { key: 'fleet', label: 'Fleet' },
     { key: 'rates', label: 'Piece Rates' },
-    { key: 'backup', label: 'Backup' },
     { key: 'audit', label: 'Audit Log' },
   ] },
 ];

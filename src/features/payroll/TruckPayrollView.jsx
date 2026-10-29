@@ -358,7 +358,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
             <div className="overflow-x-auto pd-scroll-shadow">
               <table className="w-full">
                 <thead>
-                  <tr><Th>Seq.</Th><Th>Address</Th><Th>Customer</Th><Th>Crew</Th><Th>Item Category</Th><Th center>Qty</Th><Th>Unit</Th><Th right>Driver</Th><Th right>Helper</Th><Th>Double</Th><Th right>Correct</Th></tr>
+                  <tr><Th>Trip</Th><Th>Address</Th><Th>Customer</Th><Th>Crew</Th><Th>Item Category</Th><Th center>Quantity</Th><Th>Unit</Th><Th right>Driver</Th><Th right>Helper</Th><Th>Double</Th><Th right>Correct</Th></tr>
                 </thead>
                 <tbody>
                   {log.items.map((it, idx) => (
@@ -475,8 +475,8 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                   <table className="w-full" style={{ fontSize: 12 }}>
                     <thead>
                       <tr>
-                        <Th>Seq</Th><Th>Address</Th><Th>Customer</Th><Th>Item Category</Th>
-                        <Th center>Qty</Th><Th>Unit</Th><Th right>Driver</Th><Th right>Helper</Th><Th>Double</Th>
+                        <Th>Trip</Th><Th>Address</Th><Th>Customer</Th><Th>Item Category</Th>
+                        <Th center>Quantity</Th><Th>Unit</Th><Th right>Driver</Th><Th right>Helper</Th><Th>Double</Th>
                       </tr>
                     </thead>
                     <tbody>
@@ -692,7 +692,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
           ) : <Btn size="sm" variant="outline" onClick={() => { setRatesDraft(rates.map(r => ({ ...r, _custom: isCustomDouble(r) }))); setEditingRates(true); }}>Edit</Btn>}
         </div>
         <div className="overflow-auto pd-scroll-shadow" style={{ maxHeight: 440 }}><table className="w-full">
-          <thead className="sticky top-0 z-10" style={{ backgroundColor: T.surface }}><tr><Th>Category</Th><Th>Unit</Th><Th right>Single Drv</Th><Th right>Single Hlp</Th><Th right>Double Drv</Th><Th right>Double Hlp</Th>{editingRates && <Th center>Double</Th>}{editingRates && <Th right>Retire</Th>}</tr></thead>
+          <thead className="sticky top-0 z-10" style={{ backgroundColor: T.surface }}><tr><Th>Category</Th><Th>Unit</Th><Th right>Driver (Single)</Th><Th right>Helper (Single)</Th><Th right>Driver (Double)</Th><Th right>Helper (Double)</Th>{editingRates && <Th center>Double</Th>}{editingRates && <Th right>Retire</Th>}</tr></thead>
           <tbody>{(editingRates ? ratesDraft : rates).map((r, i) => (
             <tr key={i}>
               <Td>{editingRates ? <input value={r.cat} onChange={e => setRatesDraft(p => p.map((x, j) => j === i ? { ...x, cat: e.target.value } : x))} className="px-2 py-1 rounded border text-xs w-full" style={{ borderColor: T.line, fontFamily: F_BODY }} /> : r.cat}</Td>
@@ -770,7 +770,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                     <div className="text-sm font-semibold" style={{ fontFamily: F_HEAD, color: T.ink }}>{p.name}</div>
                     <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
                       {roleLabel(p.role)} · {p.attendanceDaily ? 'present' : `${p.trips} trip${p.trips === 1 ? '' : 's'}`}
-                      {p.lateMins > 0 && <span style={{ color: T.brand }}> · {p.lateMins} min late</span>}
+                      {p.lateMins > 0 && <span style={{ color: T.brand }}> · {p.lateMins} minute{p.lateMins === 1 ? '' : 's'} late</span>}
                     </div>
                   </div>
                 </div>
@@ -833,7 +833,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                   </div>
                   {!p.attendanceDaily && <div className="overflow-x-auto pd-scroll-shadow">
                     <table className="w-full" style={{ fontSize: 12 }}>
-                      <thead><tr><Th>Trip</Th><Th>Item</Th><Th center>Qty</Th><Th>Unit</Th><Th>Double</Th><Th right>Amount</Th></tr></thead>
+                      <thead><tr><Th>Trip</Th><Th>Item</Th><Th center>Quantity</Th><Th>Unit</Th><Th>Double</Th><Th right>Amount</Th></tr></thead>
                       <tbody>
                         {lines.map((l, li) => (
                           <tr key={li}>

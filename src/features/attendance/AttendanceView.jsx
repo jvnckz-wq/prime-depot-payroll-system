@@ -389,7 +389,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
             : rows.length === 0 ? <EmptyState icon={CalendarX} title="No attendance for this employee yet" desc="Scans appear here after you pull this cutoff from the device." />
             : (
             <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
-              <thead><tr><Th>Date</Th><Th>Time In</Th><Th>Time Out</Th><Th center>Late (mins)</Th><Th center>OT (mins)</Th><Th></Th></tr></thead>
+              <thead><tr><Th>Date</Th><Th>Time In</Th><Th>Time Out</Th><Th center>Late (minutes)</Th><Th center>Overtime (minutes)</Th><Th></Th></tr></thead>
               <tbody>
                 {rows.map((a) => {
                   const isLate = a.late > 0, isOt = a.ot > 0;
@@ -558,7 +558,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                   <th style={{ ...liveThBase, width: '40%' }}>Employee</th>
                   <th style={{ ...liveThBase, width: '16%' }}>Time In</th>
                   <th style={{ ...liveThBase, width: '16%' }}>Time Out</th>
-                  <th style={{ ...liveThBase, width: '14%', textAlign: 'center' }}>Late (mins)</th>
+                  <th style={{ ...liveThBase, width: '14%', textAlign: 'center' }}>Late (minutes)</th>
                   <th style={{ ...liveThBase, width: '14%', textAlign: 'center' }}>Status</th>
                 </tr></thead>
                 <tbody>
@@ -638,7 +638,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
                 : <EmptyState icon={CalendarX} title="No attendance for this cutoff yet" desc="Press Pull from device above to read this cutoff's scans from the scanner." />)
               : (
               <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
-                <thead><tr><Th>ID</Th><Th>Employee</Th><Th center>Present</Th><Th center>Days Late</Th><Th center>Late (mins)</Th><Th center>OT (mins)</Th><Th center>Absences</Th><Th center>Leave</Th><Th>Action</Th></tr></thead>
+                <thead><tr><Th>ID</Th><Th>Employee</Th><Th center>Present</Th><Th center>Days Late</Th><Th center>Late (minutes)</Th><Th center>Overtime (minutes)</Th><Th center>Absences</Th><Th center>Leave</Th><Th>Action</Th></tr></thead>
                 <tbody>
                   {data.summaries.map(s => (
                     <tr key={s.id}>
@@ -754,7 +754,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
               <div className="overflow-x-auto pd-scroll-shadow" style={{ maxHeight: 380 }}>
                 <table className="w-full">
                   <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}>
-                    <tr><Th>ID</Th><Th>Employee</Th><Th center>Present</Th><Th center>Days Late</Th><Th center>Late (mins)</Th><Th center>OT (mins)</Th><Th center>Absences</Th><Th center>Leave</Th><Th></Th></tr>
+                    <tr><Th>ID</Th><Th>Employee</Th><Th center>Present</Th><Th center>Days Late</Th><Th center>Late (minutes)</Th><Th center>Overtime (minutes)</Th><Th center>Absences</Th><Th center>Leave</Th><Th></Th></tr>
                   </thead>
                   <tbody>
                     {batchRows.map((s) => (
@@ -791,7 +791,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
               <div className="overflow-x-auto pd-scroll-shadow" style={{ maxHeight: 400 }}>
                 <table className="w-full">
                   <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}>
-                    <tr><Th>Date</Th><Th>Day</Th><Th>Time In</Th><Th>Time Out</Th><Th center>Late</Th><Th center>OT</Th><Th>Status</Th></tr>
+                    <tr><Th>Date</Th><Th>Day</Th><Th>Time In</Th><Th>Time Out</Th><Th center>Late</Th><Th center>Overtime</Th><Th>Status</Th></tr>
                   </thead>
                   <tbody>
                     {histDtr.rows.map((r, i) => (

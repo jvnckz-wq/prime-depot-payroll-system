@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Save, Trash2, Download } from 'lucide-react';
+import { Plus, Save, Trash2 } from 'lucide-react';
 import { Badge, Btn, Eyebrow, Field, H1, Money, Panel, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { computePagIBIG, computePhilHealth, computeSSS } from '@/lib/payroll';
-import { exportXLSX, peso } from '@/lib/utils';
+import { peso } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
 import { FleetPanel } from '@/features/settings/FleetPanel.jsx';
 import { moneyInput } from '@/lib/field-rules';
@@ -21,51 +21,6 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
   const [piDraft, setPiDraft] = useState(pagibigRates);
   const [editBir, setEditBir] = useState(false);
   const [birDraft, setBirDraft] = useState(birTable);
-
-  const [exporting, setExporting] = useState(false);
-  const [lastExport, setLastExport] = useState('');
-  const fetchAll = async () => {
-    const res = await fetch('/api/export');
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    return res.json();
-  };
-  const downloadBlob = (blob, filename) => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename;
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(url);
-  };
-  const stamp = () => new Date().toISOString().slice(0, 10);
-  const exportJSON = async () => {
-    setExporting(true);
-    try {
-      const data = await fetchAll();
-      downloadBlob(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }), `prime-depot-backup-${stamp()}.json`);
-      setLastExport(new Date().toLocaleString());
-      toast('Full backup downloaded.');
-    } catch (err) { console.error('Backup failed:', err); toast('Could not build the backup.', 'error'); }
-    finally { setExporting(false); }
-  };
-  const exportExcel = async () => {
-    setExporting(true);
-    try {
-      const d = await fetchAll();
-      exportXLSX(`prime-depot-data-${stamp()}.xlsx`, [
-        { name: 'Employees', rows: d.employees || [] },
-        { name: 'Payroll Periods', rows: d.payrollPeriods || [] },
-        { name: 'Payslips', rows: d.payslips || [] },
-        { name: 'Loans', rows: d.loans || [] },
-        { name: 'Loan Entries', rows: d.loanEntries || [] },
-        { name: 'Deliveries', rows: d.deliveries || [] },
-        { name: 'Delivery Items', rows: d.deliveryItems || [] },
-        { name: 'Attendance', rows: d.attendance || [] },
-      ]);
-      setLastExport(new Date().toLocaleString());
-      toast('Excel workbook downloaded.');
-    } catch (err) { console.error('Excel export failed:', err); toast('Could not build the workbook.', 'error'); }
-    finally { setExporting(false); }
-  };
 
   const saveTable = async (table, data, label) => {
     try {
@@ -86,7 +41,7 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
 
   return (
     <div className="p-4 sm:p-6">
-      <H1>{{ statutory: 'Statutory Deductions', fleet: 'Fleet', backup: 'Backup' }[tab] || 'Settings'}</H1>
+      <H1>{{ statutory: 'Statutory Deductions', fleet: 'Fleet' }[tab] || 'Settings'}</H1>
 
       {tab === 'statutory' && (
         <div className="space-y-4">
@@ -229,17 +184,6 @@ export const SettingsView = ({ currentUser, onUserChange, onSignedOut, checkers,
 
       {tab === 'fleet' && currentUser?.role === 'ADMIN' && (
         <FleetPanel toast={toast} />
-      )}
-
-      {tab === 'backup' && currentUser?.role === 'ADMIN' && (
-        <Panel className="p-4">
-          <Eyebrow>Data &amp; Backup</Eyebrow>
-          <div className="flex gap-2 flex-wrap">
-            <Btn disabled={exporting} onClick={exportJSON}>{exporting ? 'Preparing…' : 'Download full backup (.json)'}</Btn>
-            <Btn variant="outline" disabled={exporting} onClick={exportExcel}>{exporting ? 'Preparing…' : 'Download Excel workbook (.xlsx)'}</Btn>
-          </div>
-          {lastExport && <div className="text-xs mt-3" style={{ fontFamily: F_BODY, color: T.soft }}>Last export: {lastExport}</div>}
-        </Panel>
       )}
 
     </div>

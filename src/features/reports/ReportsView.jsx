@@ -94,8 +94,8 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
   const crewRowsAll = rangeApi;
   const crewRows = rangeError ? [] : crewRowsAll;
 
-  const exportRegister = () => exportXLSX('Payroll-Register.xlsx', [{ name: 'Register', rows: payrollRows.map(r => ({ Employee: r.emp.name, Days: r.calc.days, Gross: r.calc.gross, OT: r.calc.ot, Deductions: r.calc.totalDeductions, 'Net Pay': r.calc.net })) }]);
-  const exportRemit = () => exportXLSX('Gov-Remittance.xlsx', [
+  const exportRegister = () => exportXLSX('Payroll-Register.xlsx', [{ name: 'Register', rows: payrollRows.map(r => ({ Employee: r.emp.name, Days: r.calc.days, Gross: r.calc.gross, Overtime: r.calc.ot, Deductions: r.calc.totalDeductions, 'Net Pay': r.calc.net })) }]);
+  const exportRemit = () => exportXLSX('Government-Remittance.xlsx', [
     { name: 'Remittance', rows: remitRows.map(r => ({ Employee: r.emp.name, SSS: r.calc.sss, PhilHealth: r.calc.phic, 'Pag-IBIG': r.calc.hdmf, Total: r.calc.sss + r.calc.phic + r.calc.hdmf })) },
   ]);
   const exportWht = () => exportXLSX('Withholding-Tax.xlsx', [{ name: 'Withholding Tax', rows: whtAbove.map(r => ({ Employee: r.name, 'Taxable Pay': r.taxable, 'Withholding Tax': r.tax })) }]);
@@ -119,7 +119,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
           {!dataLoading && !payrollRows.length ? payrollEmpty : (
           <div className="overflow-x-auto pd-scroll-shadow">
             <table className="w-full">
-              <thead><tr><Th>Employee</Th><Th center>Days</Th><Th right>Gross</Th><Th right>OT</Th><Th right>Deductions</Th><Th right>Net Pay</Th></tr></thead>
+              <thead><tr><Th>Employee</Th><Th center>Days</Th><Th right>Gross</Th><Th right>Overtime</Th><Th right>Deductions</Th><Th right>Net Pay</Th></tr></thead>
               <tbody>{dataLoading ? <SkeletonRows cols={6} rows={5} /> : payrollRows.map((r, i) => (
                 <tr key={i}>
                   <Td>{r.emp.name}</Td>
