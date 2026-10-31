@@ -5,7 +5,7 @@ import { LogOut } from 'lucide-react';
 import { DeliveryForm } from '@/features/deliveries/DeliveryForm.jsx';
 import { DeliveryTable, tripsFromLog } from '@/features/deliveries/DeliveryTable.jsx';
 import { Av, BigStat, Confirm, Eyebrow, Panel } from '@/components/ui.jsx';
-import { CREW_RATE_FALLBACK } from '@/data/seed';
+import { CREW_RATE_FALLBACK } from '@/lib/constants';
 import { FONTS, F_HEAD, T } from '@/styles/theme';
 /* eslint-disable @next/next/no-img-element -- user avatars are base64 data URIs; next/image adds no value and cannot optimize data URIs */
 

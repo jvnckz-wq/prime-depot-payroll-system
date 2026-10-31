@@ -6,7 +6,7 @@ import { DeliveryForm } from '@/features/deliveries/DeliveryForm.jsx';
 import { DeliveryTable, VoidReasonField } from '@/features/deliveries/DeliveryTable.jsx';
 import { buildVoidReason, voidChoiceError } from '@/lib/void-reasons';
 import { Av, Badge, Btn, Confirm, EmptyState, Eyebrow, Field, H1, Modal, Panel, Skeleton, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
-import { CREW_RATE_FALLBACK } from '@/data/seed';
+import { CREW_RATE_FALLBACK } from '@/lib/constants';
 import { crewDayPay, crewEarnings, dailyContributionFor, deliveriesToLog, loanBalance } from '@/lib/payroll';
 import { grantedBy, planDeductions, todayYmdManila } from '@/lib/loan-rules';
 import { peso, telHref } from '@/lib/utils';

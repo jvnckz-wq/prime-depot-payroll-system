@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const { validateSss, validatePhilhealth, validatePagibig, validateBir } = require('../src/lib/server/services/statutory.js');
-const { SSS_TABLE_INIT, PHILHEALTH_INIT, PAGIBIG_INIT, BIR_TABLE_INIT } = require('../src/data/seed.js');
+const { SSS_TABLE_INIT, PHILHEALTH_INIT, PAGIBIG_INIT, BIR_TABLE_INIT } = require('../src/lib/constants.js');
 const { isClockTime, isCalendarDate } = require('../src/lib/attendance.js');
 
 const tests = [];

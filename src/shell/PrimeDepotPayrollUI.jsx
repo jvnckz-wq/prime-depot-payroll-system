@@ -5,7 +5,7 @@ import { RefreshCw, WifiOff } from 'lucide-react';
 import { Sidebar, TopBar } from '@/shell/Nav.jsx';
 import { Btn, Confirm, Panel, Toasts } from '@/components/ui.jsx';
 import { IdleTimeout } from '@/shell/IdleTimeout.jsx';
-import { BIR_TABLE_INIT, CREW_RATE_FALLBACK, PAGIBIG_INIT, PHILHEALTH_INIT, SSS_TABLE_INIT } from '@/data/seed';
+import { BIR_TABLE_INIT, CREW_RATE_FALLBACK, PAGIBIG_INIT, PHILHEALTH_INIT, SSS_TABLE_INIT } from '@/lib/constants';
 import { deliveriesToLog } from '@/lib/payroll';
 import { uid, cutoffLabel, currentCutoffPeriod } from '@/lib/utils';
 import { staffRunKey, todayYmdManila } from '@/lib/loan-rules';

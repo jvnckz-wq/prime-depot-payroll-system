@@ -1,4 +1,4 @@
-import { FINAL_POSITIONS } from '../lib/positions.js';
+import { FINAL_POSITIONS } from './positions.js';
 
 export const POSITIONS = FINAL_POSITIONS;
 

@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Search, SearchX, Save, Clock, AlertTriangle, Users } from 'lucide-react';
 import { Badge, Btn, Chip, Confirm, EmptyState, Eyebrow, Field, H1, Modal, Money, Panel, SkeletonBlock, SkeletonRows, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
-import { POSITIONS, positionLabel } from '@/data/seed';
+import { POSITIONS, positionLabel } from '@/lib/constants';
 import { hasNoContributions, hasNoEarlyShift, isDailyPosition, isNonRegularPosition } from '@/lib/positions';
 import { WEEKDAYS, describeEarlyShift } from '@/lib/attendance';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
