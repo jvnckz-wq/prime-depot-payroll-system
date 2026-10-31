@@ -1,3 +1,4 @@
+// GET /api/payroll/thirteenth: 13th month pay rows built from released payslips.
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';

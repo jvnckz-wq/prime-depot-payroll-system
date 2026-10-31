@@ -1,4 +1,5 @@
 'use client';
+// Final Pay screen: the last pay slip for an employee who is leaving.
 
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';

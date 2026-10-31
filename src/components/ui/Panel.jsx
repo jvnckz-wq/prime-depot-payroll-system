@@ -1,4 +1,5 @@
 'use client';
+// White bordered card that holds one section of a page.
 
 import { T } from '@/styles/theme';
 

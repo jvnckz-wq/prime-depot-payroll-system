@@ -1,4 +1,5 @@
 'use client';
+// Checker accounts panel: create, link, rename and deactivate checker sign-in accounts.
 
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle, Copy, KeyRound, Link2, Pencil, Plus, UserCheck, UserX } from 'lucide-react';

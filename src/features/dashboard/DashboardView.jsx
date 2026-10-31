@@ -1,4 +1,5 @@
 'use client';
+// Dashboard: headcount, this cutoff's payroll, deliveries, and items that need attention.
 
 import React, { useMemo, useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Users, Truck, Wallet, FileText, AlertTriangle, TrendingUp, Check, CalendarX, BarChart3, UserPlus, ArrowRight } from 'lucide-react';

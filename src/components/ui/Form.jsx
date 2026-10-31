@@ -1,4 +1,5 @@
 'use client';
+// Form pieces: a labelled Field with its error, shared input styles, and a searchable dropdown.
 
 import React from 'react';
 import { F_BODY, T } from '@/styles/theme';

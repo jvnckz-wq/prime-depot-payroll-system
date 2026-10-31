@@ -1,3 +1,4 @@
+// Reads attendance exported from the biometric device as an Excel file.
 import * as XLSX from 'xlsx';
 import { pairPunches } from '../../attendance';
 

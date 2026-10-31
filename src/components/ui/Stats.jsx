@@ -1,4 +1,5 @@
 'use client';
+// Number tiles for the dashboard and summaries.
 
 import { F_HEAD, F_MONO, T } from '@/styles/theme';
 import { Panel } from './Panel';

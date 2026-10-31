@@ -1,4 +1,5 @@
 'use client';
+// Sign-in screen, with the two-factor step and forgot password.
 
 import React, { useState, useEffect, useSyncExternalStore } from 'react';
 import { AlertTriangle, Loader2, Eye, EyeOff, CheckCircle2, Circle } from 'lucide-react';

@@ -1,3 +1,4 @@
+// POST /api/auth/verify-email/start: send a confirmation code to a new recovery email.
 import { NextResponse } from 'next/server';
 import { createHash, randomInt } from 'crypto';
 import { prisma } from '@/lib/server/db/prisma';

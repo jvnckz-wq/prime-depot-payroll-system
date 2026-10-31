@@ -1,4 +1,5 @@
 'use client';
+// Crew Payroll screen: logged trips, per-person day pay, crew payslips and the rate table.
 
 import React, { useState, useEffect } from 'react';
 import { Package, ArrowLeft, Trash2, AlertTriangle, MapPin, Phone, Printer } from 'lucide-react';

@@ -1,4 +1,5 @@
 'use client';
+// Delivery list grouped into trips, plus the void reason picker.
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronRight, MapPin, Phone, AlertTriangle, Truck } from 'lucide-react';

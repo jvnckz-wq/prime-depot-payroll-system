@@ -1,3 +1,4 @@
+// /api/auth/me: the signed-in user (GET), profile changes (PATCH), and signing out of every device (DELETE).
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { destroyAllSessions, getCurrentUser, logSecurityEvent, requireUser } from '@/lib/server/security/auth';

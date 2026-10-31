@@ -1,3 +1,4 @@
+// Attendance rules: call times, minutes late, punch pairing, overtime and per-employee summaries.
 import { hasNoEarlyShift, isDailyPosition } from './positions.js';
 
 export const WEEKDAYS = [
@@ -6,6 +7,8 @@ export const WEEKDAYS = [
   { key: 'SUN', label: 'Sun' },
 ];
 
+// Call times (client's rule): lateness counts from 06:30 for daily-paid staff and 06:40 for office
+// staff, unless the employee has an early shift that day.
 const DEFAULT_CALL = { crew: '06:30', staff: '06:40' };
 const DEFAULT_EARLY = '06:00';
 
@@ -40,6 +43,7 @@ export function callTimeFor(employee, date) {
 }
 
 export function minutesLate(employee, date, timeIn) {
+  // A day with no time-in scan counts as 30 minutes late.
   if (!timeIn || timeIn === '--' || timeIn === '\u2014') return 30;
 
   const toMinutes = (t) => {
@@ -80,6 +84,7 @@ export function pairPunches(times) {
   };
 }
 
+// The shift ends at 17:00, or 12:00 on Sundays. Overtime counts after that.
 export function shiftEndFor(dateStr) {
   return new Date(`${dateStr}T00:00:00.000Z`).getUTCDay() === 0 ? '12:00' : '17:00';
 }
@@ -125,6 +130,7 @@ export function summarizeAttendance(rows) {
     s.otMins += a.overtimeMins;
 
     const dow = new Date(a.date).getUTCDay();
+    // Saturday and Sunday overtime is weekend overtime (paid x1.30 in payroll.js).
     if (dow === 0 || dow === 6) s.otWeekendMins += a.overtimeMins;
     else s.otWeekdayMins += a.overtimeMins;
   }

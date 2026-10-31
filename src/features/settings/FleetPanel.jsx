@@ -1,4 +1,5 @@
 'use client';
+// Fleet panel: add, edit and retire trucks.
 
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle, Pencil } from 'lucide-react';

@@ -1,4 +1,5 @@
 'use client';
+// Loans section: picks the Loans, Cash Advances or Loan History page.
 
 import React from 'react';
 import { currentCutoffPeriod } from '@/lib/utils';

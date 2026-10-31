@@ -1,3 +1,4 @@
+// Shapes employee records for the app and builds database updates from the employee form.
 import { hasNoContributions, hasNoEarlyShift, isDailyPosition, isNonRegularPosition, isPieceRatePosition } from '../../positions';
 import { addressError, birthdateError, isUnpaidPosition, LIMITS, moneyError, mp2Error, personNameError, phMobileError, wholeNumberError } from '../../field-rules';
 

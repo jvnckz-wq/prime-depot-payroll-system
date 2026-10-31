@@ -1,3 +1,4 @@
+// /api/attendance: attendance rows for a date range (GET) and hand edits to one employee's day (PATCH).
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';

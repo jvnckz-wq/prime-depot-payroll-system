@@ -1,4 +1,5 @@
 'use client';
+// Buttons: the main Btn and the on/off Chip.
 
 import { Loader2 } from 'lucide-react';
 import { F_BODY, F_HEAD, T } from '@/styles/theme';

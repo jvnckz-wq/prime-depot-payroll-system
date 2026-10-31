@@ -1,4 +1,5 @@
 'use client';
+// Form for logging one delivery trip: truck, crew, address, items and double rate.
 
 import React, { useState, useEffect } from 'react';
 import { Plus, Check, Trash2 } from 'lucide-react';

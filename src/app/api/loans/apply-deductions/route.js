@@ -1,3 +1,4 @@
+// POST /api/loans/apply-deductions: take a run's loan and cash advance deductions (staff cutoff or crew day).
 import { NextResponse } from 'next/server';
 import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';

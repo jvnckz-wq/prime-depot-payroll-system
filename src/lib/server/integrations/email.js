@@ -1,4 +1,5 @@
 import 'server-only';
+// Sends password reset and email confirmation codes through Gmail.
 import nodemailer from 'nodemailer';
 
 let cached = null;

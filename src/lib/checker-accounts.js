@@ -1,3 +1,4 @@
+// Rules that link checker sign-in accounts to Checker employees.
 export const isActiveChecker = (employee) =>
   !!employee && employee.status === 'ACTIVE' && employee.position === 'CHECKER';
 

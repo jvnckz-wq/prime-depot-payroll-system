@@ -1,3 +1,4 @@
+// Reads the attlog.dat file exported from the biometric device.
 import { pairPunches } from './attendance.js';
 import { cutoffOf } from './loan-rules.js';
 

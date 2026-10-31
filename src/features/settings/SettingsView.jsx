@@ -1,4 +1,5 @@
 'use client';
+// Settings screen: the government contribution tables and the fleet.
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Save, Trash2 } from 'lucide-react';

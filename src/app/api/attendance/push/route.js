@@ -1,3 +1,4 @@
+// POST /api/attendance/push: the sync agent sends today's biometric scans and the device roster (device token).
 import { NextResponse } from 'next/server';
 import { timingSafeEqual } from 'node:crypto';
 import { prisma, prismaBase } from '@/lib/server/db/prisma';

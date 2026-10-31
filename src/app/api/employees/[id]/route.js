@@ -1,3 +1,4 @@
+// PATCH /api/employees/[id]: edit one employee's record.
 import { NextResponse } from 'next/server';
 import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { withRetry } from '@/lib/server/db/db-retry';

@@ -1,3 +1,4 @@
+// Fixed lists and starting values: positions, crew rate fallbacks and the default government tables.
 import { FINAL_POSITIONS } from './positions.js';
 
 export const POSITIONS = FINAL_POSITIONS;

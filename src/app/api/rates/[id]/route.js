@@ -1,3 +1,4 @@
+// PATCH /api/rates/[id]: edit, retire or reactivate one piece-rate item.
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin, logSecurityEvent } from '@/lib/server/security/auth';

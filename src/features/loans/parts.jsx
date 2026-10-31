@@ -1,4 +1,5 @@
 'use client';
+// Small pieces shared by the loan pages: pills, person cell, KPI tile, search box and ledger.
 
 import React from 'react';
 import { Search } from 'lucide-react';

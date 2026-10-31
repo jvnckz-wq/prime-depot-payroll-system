@@ -1,3 +1,4 @@
+// /api/payroll/final-pay: a leaving employee's final pay: look it up (GET), record it (POST), or undo it (DELETE).
 import { NextResponse } from 'next/server';
 import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { withRetry } from '@/lib/server/db/db-retry';

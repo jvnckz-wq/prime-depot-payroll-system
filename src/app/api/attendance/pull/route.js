@@ -1,3 +1,4 @@
+// POST /api/attendance/pull: the sync agent sends the scans for a requested date range, which become attendance (device token).
 import { NextResponse } from 'next/server';
 import { timingSafeEqual } from 'node:crypto';
 import { prisma, prismaBase } from '@/lib/server/db/prisma';

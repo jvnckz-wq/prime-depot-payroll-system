@@ -1,3 +1,4 @@
+// GET /api/rates/audit: the history of crew rate changes, from the audit log.
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';

@@ -1,3 +1,4 @@
+// /api/employees: list employees (GET) and add a new one (POST).
 import { NextResponse } from 'next/server';
 import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';

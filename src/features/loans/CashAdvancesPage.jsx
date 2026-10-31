@@ -1,4 +1,5 @@
 'use client';
+// Cash Advances page: grant and track advances for the current cutoff.
 
 import React, { useMemo, useState } from 'react';
 import { Plus, Wallet } from 'lucide-react';

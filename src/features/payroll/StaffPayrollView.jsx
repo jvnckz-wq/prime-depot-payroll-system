@@ -1,4 +1,5 @@
 'use client';
+// Staff Payroll screen: cutoff payslips for office staff, releasing a cutoff, and past cutoffs.
 
 import React, { useState, useEffect } from 'react';
 import { Users, Wallet, ArrowLeft, CalendarX, ReceiptText, AlertCircle, AlertTriangle } from 'lucide-react';

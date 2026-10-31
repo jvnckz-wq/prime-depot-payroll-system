@@ -1,3 +1,4 @@
+// GET /api/payroll/daily: one day's daily-paid staff with attendance, or the crew report for a date range.
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';

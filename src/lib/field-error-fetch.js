@@ -1,3 +1,4 @@
+// Wraps fetch so an API error that names a form field highlights that field.
 import { flagField } from './field-rules';
 
 let installed = false;

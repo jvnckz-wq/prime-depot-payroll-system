@@ -1,3 +1,4 @@
+// POST /api/auth/2fa/reenroll/start: begin moving two-factor to a new authenticator app.
 import { NextResponse } from 'next/server';
 import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { withRetry } from '@/lib/server/db/db-retry';

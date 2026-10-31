@@ -1,4 +1,5 @@
 'use client';
+// Table header and cell with shared alignment and number styling.
 
 import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
 

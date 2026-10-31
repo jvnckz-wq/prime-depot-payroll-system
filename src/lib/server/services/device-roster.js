@@ -1,3 +1,4 @@
+// The users enrolled on the biometric device, and which of them are not registered yet.
 import { prisma } from '../db/prisma';
 
 const MAX_USERS = 3000;

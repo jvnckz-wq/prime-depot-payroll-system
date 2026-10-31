@@ -1,3 +1,4 @@
+// Upload limits and checks for attendance files and avatar images.
 const BASE64_OVERHEAD = 4 / 3;
 
 export { MAX_IMPORT_BYTES } from '@/lib/import-limits';

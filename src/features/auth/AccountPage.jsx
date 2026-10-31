@@ -1,4 +1,5 @@
 'use client';
+// My Account page: profile, password, recovery email, two-factor, sessions, and checker accounts for the admin.
 
 import React, { useEffect, useRef, useState } from 'react';
 import {

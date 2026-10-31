@@ -1,3 +1,4 @@
+// /api/statutory: the SSS, PhilHealth, Pag-IBIG and BIR tables (GET) and saving them (PUT).
 import { NextResponse } from 'next/server';
 import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { withRetry } from '@/lib/server/db/db-retry';

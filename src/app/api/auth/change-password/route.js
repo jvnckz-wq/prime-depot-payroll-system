@@ -1,3 +1,4 @@
+// POST /api/auth/change-password: change the signed-in user's password.
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import {

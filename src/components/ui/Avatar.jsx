@@ -1,4 +1,5 @@
 'use client';
+// Round avatar showing a person's initials.
 
 import { F_HEAD, T } from '@/styles/theme';
 

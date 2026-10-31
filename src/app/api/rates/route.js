@@ -1,3 +1,4 @@
+// /api/rates: the piece-rate table and crew daily rates (GET), crew rate changes (PATCH), and new rate items (POST).
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { logSecurityEvent, requireAdmin, requireUser } from '@/lib/server/security/auth';

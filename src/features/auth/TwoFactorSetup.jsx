@@ -1,4 +1,5 @@
 'use client';
+// Two-factor setup: scan the QR code, confirm a code, and save the backup codes.
 
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Loader2, Check } from 'lucide-react';

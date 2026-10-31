@@ -1,4 +1,5 @@
 import 'server-only';
+// Passwords, sessions, roles, login throttling and the audit log.
 import { cookies, headers } from 'next/headers';
 import { createHash, randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';

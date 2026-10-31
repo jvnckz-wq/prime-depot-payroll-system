@@ -1,3 +1,4 @@
+// Loan and cutoff rules: cutoff dates, balances, amounts due and deduction plans.
 import { round2 } from './money.js';
 
 export const LOAN_PURPOSES = ['Hospitalization', 'Emergency', 'Other'];
@@ -18,6 +19,7 @@ export function todayYmdManila(now = new Date()) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
 }
 
+// Payroll cutoffs run from the 1st to the 15th, and from the 16th to the end of the month.
 export function cutoffOf(ymd) {
   const { y, m, d } = parts(ymd);
   if (d <= 15) return { start: `${y}-${pad2(m)}-01`, end: `${y}-${pad2(m)}-15` };
@@ -101,6 +103,8 @@ export function carryOf(loan, endYmd = null) {
   return { amount, fromYmd: amount > 0 ? last.ymd || null : null };
 }
 
+// Amount due this run: a cash advance is taken in full; a loan takes its per-cutoff amount plus any
+// shortfall carried from the last staff run (crew loans never carry), never more than the balance.
 export function dueFor(loan, { endYmd = null, crew = null } = {}) {
   const bal = balanceOf(loan);
   if (bal <= 0) return 0;
@@ -114,6 +118,8 @@ export function dueAmount(loan) {
   return dueFor(loan);
 }
 
+// The most one loan can be (P50,000). The loans API allows only one unpaid loan per person,
+// so nobody owes more than this on loans. Cash advances have their own limit.
 export const LOAN_MAX_BALANCE = 50000;
 
 export const loanRoomLeft = (balance = 0) => round2(Math.max(0, LOAN_MAX_BALANCE - (Number(balance) || 0)));
@@ -193,6 +199,7 @@ export function planDeductions(loans, { crew = false, runKey, endYmd = null, ava
     if ((l.entries || []).some((e) => e.payslipId === key)) { skipped++; continue; }
     due.push(l);
   }
+  // When pay is short, cash advances are taken before loans.
   const rank = (l) => (isCashAdvance(l) ? 0 : 1);
   due.sort((a, b) => byText(a.employeeId, b.employeeId) || rank(a) - rank(b)
     || byText(a.dateGranted, b.dateGranted) || byText(a.createdAt, b.createdAt));

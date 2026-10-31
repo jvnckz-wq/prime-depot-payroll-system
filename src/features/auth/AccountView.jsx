@@ -1,4 +1,5 @@
 'use client';
+// Account building blocks: password fields, the change-password panel, and the first sign-in gate.
 
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, CheckCircle2, Circle, Eye, EyeOff, KeyRound, Lock, ShieldCheck } from 'lucide-react';

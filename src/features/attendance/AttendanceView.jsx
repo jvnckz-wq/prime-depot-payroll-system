@@ -1,4 +1,5 @@
 'use client';
+// Attendance screen: daily records, each employee's DTR, device import and pull, and unmapped biometric IDs.
 
 import React, { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, ClipboardList, ArrowLeft, Pencil, Upload, Loader2, CalendarX, CircleCheck, Users } from 'lucide-react';

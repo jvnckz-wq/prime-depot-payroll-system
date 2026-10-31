@@ -1,3 +1,4 @@
+// Browser helpers: peso formatting, Excel export, phone links and cutoff labels.
 import * as XLSX from 'xlsx';
 
 export const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

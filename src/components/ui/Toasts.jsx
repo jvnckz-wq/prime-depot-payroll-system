@@ -1,4 +1,5 @@
 'use client';
+// Short pop-up messages in the corner of the screen.
 
 import { X, Check } from 'lucide-react';
 import { F_BODY, T } from '@/styles/theme';

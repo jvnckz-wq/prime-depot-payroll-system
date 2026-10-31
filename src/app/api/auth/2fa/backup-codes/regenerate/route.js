@@ -1,3 +1,4 @@
+// POST /api/auth/2fa/backup-codes/regenerate: replace the admin's two-factor backup codes.
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import {

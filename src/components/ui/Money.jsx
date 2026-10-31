@@ -1,4 +1,5 @@
 'use client';
+// A peso amount in even-width digits.
 
 import { peso } from '@/lib/utils';
 import { F_MONO, T } from '@/styles/theme';

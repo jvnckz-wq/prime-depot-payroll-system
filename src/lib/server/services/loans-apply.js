@@ -1,3 +1,4 @@
+// Writes a run's loan deductions to the database.
 import { isYmd, planDeductions } from '../../loan-rules';
 import { shapeLoan } from './loans';
 import { withRetry } from '../db/db-retry';

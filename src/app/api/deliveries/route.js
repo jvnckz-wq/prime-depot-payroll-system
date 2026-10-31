@@ -1,3 +1,4 @@
+// /api/deliveries: logged deliveries for a date range (GET) and logging a new trip for today (POST).
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireUser } from '@/lib/server/security/auth';

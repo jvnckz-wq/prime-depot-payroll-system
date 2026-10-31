@@ -1,3 +1,4 @@
+// Email helpers: clean up, check and mask an address.
 const LOCAL_RE = /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*$/;
 const LABEL_RE = /^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/;
 const TLD_RE = /^[A-Za-z]{2,24}$/;

@@ -1,3 +1,4 @@
+// Turns the /api/auth/me reply into signed-in, signed-out or unreachable.
 export function authStateFrom(status, body) {
   const ok = status >= 200 && status < 300;
   if (ok && body?.user) return 'signed-in';

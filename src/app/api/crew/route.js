@@ -1,3 +1,4 @@
+// GET /api/crew: active drivers and helpers, for choosing a truck crew.
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireUser } from '@/lib/server/security/auth';

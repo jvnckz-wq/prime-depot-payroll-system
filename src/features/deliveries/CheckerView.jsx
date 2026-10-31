@@ -1,4 +1,5 @@
 'use client';
+// Checker's screen: log today's deliveries.
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { LogOut } from 'lucide-react';

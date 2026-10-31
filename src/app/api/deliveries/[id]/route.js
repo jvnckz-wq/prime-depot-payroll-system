@@ -1,3 +1,4 @@
+// PATCH /api/deliveries/[id]: void, restore, or change the double rate of one logged trip.
 import { NextResponse } from 'next/server';
 import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { withRetry } from '@/lib/server/db/db-retry';

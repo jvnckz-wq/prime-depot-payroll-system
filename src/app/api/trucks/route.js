@@ -1,3 +1,4 @@
+// /api/trucks: list trucks (GET) and add one (POST).
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin, requireUser } from '@/lib/server/security/auth';

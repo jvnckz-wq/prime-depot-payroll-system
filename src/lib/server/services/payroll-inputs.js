@@ -1,3 +1,4 @@
+// Loads what payroll needs from the database: employees, attendance, loans, rates and deliveries.
 import { summarizeAttendance } from '../../attendance';
 import { POSITION_LABEL, shapeEmployee } from './employees';
 import { isDailyAttendancePosition } from '../../positions';

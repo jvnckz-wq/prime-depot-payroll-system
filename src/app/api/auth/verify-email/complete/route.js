@@ -1,3 +1,4 @@
+// POST /api/auth/verify-email/complete: confirm a recovery email with the code sent to it.
 import { NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { prisma } from '@/lib/server/db/prisma';

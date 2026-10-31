@@ -1,3 +1,4 @@
+// Shapes loan records for the app.
 import { POSITION_LABEL } from './employees';
 import { isDailyPosition } from '../../positions';
 import { LOAN_PURPOSES, PURPOSE_LABEL } from '../../loan-rules';
