@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useMemo, useRef, useState } from 'react';
-import { Btn, Field, Modal, SearchSelect, inputCls, inputStyle } from '@/components/ui.jsx';
+import { Btn, Field, Modal, SearchSelect, inputCls, inputStyle } from '@/components/ui';
 import { LOAN_MAX_BALANCE, LOAN_PURPOSES, isOpen, todayYmdManila } from '@/lib/loan-rules';
 import { peso } from '@/lib/utils';
-import { F_BODY, T } from '@/components/theme';
+import { F_BODY, T } from '@/styles/theme';
 import { todayLocalYmd } from '@/features/loans/parts.jsx';
 import { moneyInput, flagErrors } from '@/lib/field-rules';
 

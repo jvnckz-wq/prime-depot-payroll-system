@@ -3,10 +3,10 @@
 import React, { useMemo, useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Users, Truck, Wallet, FileText, AlertTriangle, TrendingUp, Check, CalendarX, BarChart3, UserPlus, ArrowRight } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Av, EmptyState, Eyebrow, H1, Panel, Skeleton, SkeletonRows, StatCard, Td, Th } from '@/components/ui.jsx';
+import { Av, EmptyState, Eyebrow, H1, Panel, Skeleton, SkeletonRows, StatCard, Td, Th } from '@/components/ui';
 import { computeStaffPayroll, flattenDeliveries, loanBalance } from '@/lib/payroll';
 import { peso } from '@/lib/utils';
-import { F_BODY, T } from '@/components/theme';
+import { F_BODY, T } from '@/styles/theme';
 
 const useIsoLayoutEffect = typeof document !== 'undefined' ? useLayoutEffect : useEffect;
 

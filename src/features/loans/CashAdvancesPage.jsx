@@ -2,13 +2,13 @@
 
 import React, { useMemo, useState } from 'react';
 import { Plus, Wallet } from 'lucide-react';
-import { Btn, EmptyState, Field, H1, Modal, SearchSelect, inputCls, inputStyle } from '@/components/ui.jsx';
+import { Btn, EmptyState, Field, H1, Modal, SearchSelect, inputCls, inputStyle } from '@/components/ui';
 import {
   advancedInCutoff, balanceOf, cutoffOf, dueFor, grantedBy, isOpen, nextCutoff, periodLabel, prevCutoff, projectedGross,
   shortDate, shortPeriod, workingDaysIn, todayYmdManila } from '@/lib/loan-rules';
 import { computeStaffPayroll } from '@/lib/payroll';
 import { peso } from '@/lib/utils';
-import { F_BODY, F_MONO, T } from '@/components/theme';
+import { F_BODY, F_MONO, T } from '@/styles/theme';
 import { D, H, Kpi, Person, Pill, todayLocalYmd } from '@/features/loans/parts.jsx';
 import { moneyInput, flagErrors } from '@/lib/field-rules';
 

@@ -2,15 +2,15 @@
 
 import React, { useEffect, useState } from 'react';
 import { RefreshCw, WifiOff } from 'lucide-react';
-import { Sidebar, TopBar } from '@/shell/Nav.jsx';
-import { Btn, Confirm, Panel, Toasts } from '@/components/ui.jsx';
-import { IdleTimeout } from '@/shell/IdleTimeout.jsx';
-import { BIR_TABLE_INIT, CREW_RATE_FALLBACK, PAGIBIG_INIT, PHILHEALTH_INIT, SSS_TABLE_INIT } from '@/data/seed';
+import { Sidebar, TopBar } from '@/components/layout/Nav.jsx';
+import { Btn, Confirm, Panel, Toasts } from '@/components/ui';
+import { IdleTimeout } from '@/components/layout/IdleTimeout.jsx';
+import { BIR_TABLE_INIT, CREW_RATE_FALLBACK, PAGIBIG_INIT, PHILHEALTH_INIT, SSS_TABLE_INIT } from '@/lib/constants';
 import { deliveriesToLog } from '@/lib/payroll';
 import { uid, cutoffLabel, currentCutoffPeriod } from '@/lib/utils';
 import { staffRunKey, todayYmdManila } from '@/lib/loan-rules';
 import { authStateFrom } from '@/lib/auth-state';
-import { FONTS, F_BODY, F_HEAD, T } from '@/components/theme';
+import { FONTS, F_BODY, F_HEAD, T } from '@/styles/theme';
 import { AttendanceView } from '@/features/attendance/AttendanceView.jsx';
 import { CheckerView } from '@/features/deliveries/CheckerView.jsx';
 import { DashboardView } from '@/features/dashboard/DashboardView.jsx';

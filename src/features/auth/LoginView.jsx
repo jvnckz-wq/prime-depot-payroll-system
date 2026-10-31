@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useSyncExternalStore } from 'react';
 import { AlertTriangle, Loader2, Eye, EyeOff, CheckCircle2, Circle } from 'lucide-react';
-import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
+import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
 import { isEmail } from '@/lib/email-format';
 import CodeBoxes, { formatBackup } from '@/components/CodeBoxes';
 import { flagErrors, flagEmptyRequired, flagField } from '@/lib/field-rules';

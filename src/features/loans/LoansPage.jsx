@@ -2,10 +2,10 @@
 
 import React, { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Pause, Play, Plus, SearchX, Wallet } from 'lucide-react';
-import { Btn, EmptyState, H1 } from '@/components/ui.jsx';
+import { Btn, EmptyState, H1 } from '@/components/ui';
 import { balanceOf, carryOf, dueFor, grantedBy, isOpen, nextCutoff, shortDate } from '@/lib/loan-rules';
 import { peso } from '@/lib/utils';
-import { F_BODY, F_MONO, T } from '@/components/theme';
+import { F_BODY, F_MONO, T } from '@/styles/theme';
 import { BalanceBar, D, H, Kpi, Ledger, Person, Pill, SearchBox, Seg } from '@/features/loans/parts.jsx';
 import { LoanFormModal } from '@/features/loans/LoanFormModal.jsx';
 

@@ -2,12 +2,12 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronRight, MapPin, Phone, AlertTriangle, Truck } from 'lucide-react';
-import { Badge, Btn, Chip, EmptyState, Eyebrow, Field, Modal, Panel, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
+import { Badge, Btn, Chip, EmptyState, Eyebrow, Field, Modal, Panel, Td, Th, inputCls, inputStyle } from '@/components/ui';
 import { telHref, timeLabel } from '@/lib/utils';
 import { deliveriesToLog } from '@/lib/payroll';
 import { OTHER_REASON, VOID_REASONS, buildVoidReason, voidChoiceError } from '@/lib/void-reasons';
 import { cutoffOf, todayYmdManila } from '@/lib/loan-rules';
-import { F_BODY, F_HEAD, T } from '@/components/theme';
+import { F_BODY, F_HEAD, T } from '@/styles/theme';
 
 const longDate = (ymd) => new Date(`${ymd}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 const daysBefore = (ymd, n) => { const d = new Date(`${ymd}T00:00:00Z`); d.setUTCDate(d.getUTCDate() - n); return d.toISOString().slice(0, 10); };

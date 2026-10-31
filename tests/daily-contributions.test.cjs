@@ -19,7 +19,7 @@ ok('monthly employee share for a driver declared at ₱7,280 (280 × 26)', () =>
 });
 
 ok('the 2025-2026 SSS schedule (client\u2019s Taxes.pdf): 5% of MSC from ₱5,000 to ₱35,000', () => {
-  const { SSS_TABLE_INIT } = require('../src/data/seed.js');
+  const { SSS_TABLE_INIT } = require('../src/lib/constants.js');
   const real = { ...statutory, sss: SSS_TABLE_INIT };
   assert.equal(SSS_TABLE_INIT.length, 61);
   assert.deepEqual(monthlyEmployeeShare(driver, real), { sss: 375, phic: 250, hdmf: 145.6, total: 770.6 });

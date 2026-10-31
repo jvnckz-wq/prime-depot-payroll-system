@@ -2,10 +2,10 @@
 
 import React, { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Download, History, SearchX } from 'lucide-react';
-import { Btn, EmptyState, H1, inputCls, inputStyle } from '@/components/ui.jsx';
+import { Btn, EmptyState, H1, inputCls, inputStyle } from '@/components/ui';
 import { isOpen, shortDate } from '@/lib/loan-rules';
 import { exportXLSX, peso } from '@/lib/utils';
-import { F_MONO, T } from '@/components/theme';
+import { F_MONO, T } from '@/styles/theme';
 import { D, H, Ledger, Person, Pill, SearchBox, Seg } from '@/features/loans/parts.jsx';
 
 const paidOn = (l) => l.settledAt || [...l.entries].reverse().find((e) => e.ymd)?.ymd || l.dateGranted || null;

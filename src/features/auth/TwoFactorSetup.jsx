@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Loader2, Check } from 'lucide-react';
-import { Btn, Field, inputCls, inputStyle } from '@/components/ui.jsx';
-import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
+import { Btn, Field, inputCls, inputStyle } from '@/components/ui';
+import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
 import { GateShell } from '@/features/auth/AccountView.jsx';
 import CodeBoxes from '@/components/CodeBoxes';
 

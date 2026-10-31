@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, CheckCircle2, Circle, Eye, EyeOff, KeyRound, Lock, ShieldCheck } from 'lucide-react';
-import { Btn, Confirm, Eyebrow, Field, Panel, inputCls, inputStyle } from '@/components/ui.jsx';
-import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
+import { Btn, Confirm, Eyebrow, Field, Panel, inputCls, inputStyle } from '@/components/ui';
+import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
 import { isEmail } from '@/lib/email-format';
 import { flagEmptyRequired, flagField } from '@/lib/field-rules';
 import CodeBoxes from '@/components/CodeBoxes';

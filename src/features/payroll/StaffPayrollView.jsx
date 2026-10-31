@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { Users, Wallet, ArrowLeft, CalendarX, ReceiptText, AlertCircle, AlertTriangle } from 'lucide-react';
-import { Av, Badge, Btn, Confirm, EmptyState, Eyebrow, H1, Modal, Money, Panel, SkeletonBlock, SkeletonRows, StatCard, Td, Th } from '@/components/ui.jsx';
+import { Av, Badge, Btn, Confirm, EmptyState, Eyebrow, H1, Modal, Money, Panel, SkeletonBlock, SkeletonRows, StatCard, Td, Th } from '@/components/ui';
 import { computeStaffPayroll } from '@/lib/payroll';
 import { cutoffOf, nextCutoff, planDeductions, shortDate, staffRunKey } from '@/lib/loan-rules';
 import { currentCutoffPeriod, peso } from '@/lib/utils';
-import { F_BODY, F_HEAD, F_MONO, F_SERIF, T } from '@/components/theme';
+import { F_BODY, F_HEAD, F_MONO, F_SERIF, T } from '@/styles/theme';
 
 const loanNote = (calc, kind, nextEnd) => {
   const lines = (calc.deductionLines || []).filter((d) => d.kind === kind);
