@@ -9,5 +9,5 @@ export { Panel } from './Panel';
 export { H1, Eyebrow } from './Heading';
 export { Badge } from './Badge';
 export { Money } from './Money';
-export { Av } from './Avatar';
+export { Avatar } from './Avatar';
 export { EmptyState } from './EmptyState';

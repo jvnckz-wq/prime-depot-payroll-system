@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Users, Wallet, ArrowLeft, CalendarX, ReceiptText, AlertCircle, AlertTriangle } from 'lucide-react';
-import { Av, Badge, Btn, Confirm, EmptyState, Eyebrow, H1, Modal, Money, Panel, SkeletonBlock, SkeletonRows, StatCard, Td, Th } from '@/components/ui';
+import { Avatar, Badge, Btn, Confirm, EmptyState, Eyebrow, H1, Modal, Money, Panel, SkeletonBlock, SkeletonRows, StatCard, Td, Th } from '@/components/ui';
 import { computeStaffPayroll } from '@/lib/payroll';
 import { cutoffOf, nextCutoff, planDeductions, shortDate, staffRunKey } from '@/lib/loan-rules';
 import { currentCutoffPeriod, peso } from '@/lib/utils';
@@ -408,7 +408,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
                 <button key={emp.id} type="button" onClick={() => { setSelectedId(emp.id); setView('slip'); }}
                   className="pd-clickable w-full text-left px-4 py-3 flex items-center gap-3"
                   style={{ borderBottom: `1px solid ${T.lineSoft}`, fontFamily: F_BODY }}>
-                  <Av name={emp.name} size={32} />
+                  <Avatar name={emp.name} size={32} />
                   <span className="flex-1 min-w-0">
                     <span className="block font-semibold truncate" style={{ color: T.ink }}>{emp.name}</span>
                     <span className="block text-xs pd-num" style={{ color: T.soft }}>

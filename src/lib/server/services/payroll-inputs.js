@@ -97,9 +97,9 @@ const toLog = (rows, ymd) => deliveriesToLog(rows.map((d) => ({
   seq: d.sequenceNo,
   driver: d.driverId,
   helpers: [d.helper1Id, d.helper2Id].filter(Boolean),
-  dbl: d.isDouble,
+  isDouble: d.isDouble,
   voided: false,
-  items: (d.items || []).map((i) => ({ item: i.itemName, unit: i.unit, qty: Number(i.quantity), d: Number(i.driverAmount), h: Number(i.helperAmount) })),
+  items: (d.items || []).map((i) => ({ item: i.itemName, unit: i.unit, qty: Number(i.quantity), driverAmount: Number(i.driverAmount), helperAmount: Number(i.helperAmount) })),
 })));
 
 const dailyEmployees = (prisma) => prisma.employee.findMany({

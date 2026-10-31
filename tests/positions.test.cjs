@@ -122,7 +122,7 @@ ok('crew pay keeps two employees with the same name apart, by employee ID', () =
   const rates = { driverDaily: 280, helperDaily: 240, bonusHead: 100, bonusTrips: 5 };
   const crew = (d, h) => [{ role: 'Driver', id: d[0], name: d[1] }, { role: 'Helper 1', id: h[0], name: h[1] }];
   const mk = (id, truck, seq, c) => ({ id, date: '2026-10-27', truckId: truck, seq, driver: c[0].name, helpers: [c[1].name], crew: c,
-    items: [{ item: 'Sand', unit: 'bag', qty: 1, d: 40, h: 60 }], voided: false });
+    items: [{ item: 'Sand', unit: 'bag', qty: 1, driverAmount: 40, helperAmount: 60 }], voided: false });
   const A = crew(['63', 'Hotel Ramos'], ['64', 'Helper']);
   const B = crew(['70', 'Hotel Ramos'], ['71', 'Helper Two']);
   const people = crewEarnings(deliveriesToLog([mk('a', 'TRK-01', 1, A), mk('b', 'TRK-01', 2, A), mk('c', 'TRK-02', 1, B)]), rates);

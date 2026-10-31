@@ -16,7 +16,7 @@ export function flattenDeliveries(deliveries, filterCrewId, { includeVoided = fa
 export function deliveriesToLog(apiDeliveries) {
   const out = {};
   for (const d of apiDeliveries || []) {
-    if (!out[d.truckId]) out[d.truckId] = { date: d.date, items: [], kaltas: [] };
+    if (!out[d.truckId]) out[d.truckId] = { date: d.date, items: [], deductions: [] };
     if (d.date > out[d.truckId].date) out[d.truckId].date = d.date;
 
     (d.items || []).forEach((it, i) => {
@@ -28,8 +28,8 @@ export function deliveriesToLog(apiDeliveries) {
         landmark: first ? (d.landmark || '') : '',
         contactNo: first ? (d.contactNo || '') : '',
         customer: first ? d.customer : '',
-        item: it.item, qty: it.qty, unit: it.unit, d: it.d, h: it.h,
-        dbl: d.dbl,
+        item: it.item, qty: it.qty, unit: it.unit, driverAmount: it.driverAmount, helperAmount: it.helperAmount,
+        isDouble: d.isDouble,
         helpers: first ? d.helpers : undefined,
         driver: first ? d.driver : undefined,
         noScan: first ? (d.noScan || []) : undefined,
@@ -199,9 +199,9 @@ export function crewEarnings(deliveries, { driverDaily, helperDaily, bonusHead, 
         if (currentDriver) mark(get(currentDriver, 'Driver'));
         currentHelpers.forEach((h) => mark(get(h, 'Helper')));
       }
-      if (currentDriver) get(currentDriver, 'Driver').pieceRate += it.d || 0;
+      if (currentDriver) get(currentDriver, 'Driver').pieceRate += it.driverAmount || 0;
       const n = currentHelpers.length;
-      if (n) currentHelpers.forEach((h) => { get(h, 'Helper').pieceRate += (it.h || 0) / n; });
+      if (n) currentHelpers.forEach((h) => { get(h, 'Helper').pieceRate += (it.helperAmount || 0) / n; });
     });
   });
 

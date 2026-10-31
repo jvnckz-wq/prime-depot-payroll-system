@@ -112,9 +112,9 @@ const crewList = (driver, helpers) => [
 const trip = (id, truckId, seq, driver, helpers, items, extra = {}) => ({
   id, date: DAY, truckId, seq, customer: `Customer ${id}`, address: 'Poblacion, Mabini, Batangas',
   driver: driver.name, helpers: helpers.map((h) => h.name), crew: crewList(driver, helpers),
-  items, dbl: false, voided: false, voidedAt: null, ...extra,
+  items, isDouble: false, voided: false, voidedAt: null, ...extra,
 });
-const line = (item, unit, qty, driverRate, helperRate) => ({ item, unit, qty, d: +(driverRate * qty).toFixed(2), h: +(helperRate * qty).toFixed(2) });
+const line = (item, unit, qty, driverRate, helperRate) => ({ item, unit, qty, driverAmount: +(driverRate * qty).toFixed(2), helperAmount: +(helperRate * qty).toFixed(2) });
 
 const crewDeliveries = [
   trip('t1', 'TRK-01', 1, delta, [echo, foxtrot], [line('Cement', 'bag', 40, 3, 2.5), line('Sand', 'cu.m', 2, 60, 45)]),
@@ -124,7 +124,7 @@ const crewDeliveries = [
   trip('t5', 'TRK-01', 5, delta, [echo], [line('Gravel', 'cu.m', 3, 55, 40)]),
   trip('t6', 'TRK-01', 6, delta, [], [line('Plywood', 'sheet', 20, 2, 1.5)]),
   trip('t7', 'TRK-02', 1, golf, [foxtrot], [line('Cement', 'bag', 30, 3, 2.5), line('Tiles', 'box', 10, 4, 3)]),
-  trip('t8', 'TRK-02', 2, golf, [foxtrot], [line('Sand', 'cu.m', 2, 120, 90)], { dbl: true }),
+  trip('t8', 'TRK-02', 2, golf, [foxtrot], [line('Sand', 'cu.m', 2, 120, 90)], { isDouble: true }),
   trip('t9', 'TRK-02', 3, golf, [foxtrot], [line('Hollow Blocks', 'pc', 200, 0.25, 0.2)]),
 ];
 

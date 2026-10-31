@@ -33,15 +33,15 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
   const [customer, setCustomer] = useState('');
   const [landmark, setLandmark] = useState('');
   const [contactNo, setContactNo] = useState('');
-  const [dbl, setDbl] = useState(false);
-  const [lineRows, setLineRows] = useState([{ item: rates[0] ? (rates[0].id || `${rates[0].cat}|${rates[0].unit}`) : '', qty: '' }]);
+  const [isDouble, setIsDouble] = useState(false);
+  const [lineRows, setLineRows] = useState([{ item: rates[0] ? (rates[0].id || `${rates[0].itemName}|${rates[0].unit}`) : '', qty: '' }]);
   const [driverId, setDriverId] = useState('');
   const [helper1Id, setHelper1Id] = useState('');
   const [helper2Id, setHelper2Id] = useState('');
 
-  const rateKey = (r) => (r ? (r.id || `${r.cat}|${r.unit}`) : '');
+  const rateKey = (r) => (r ? (r.id || `${r.itemName}|${r.unit}`) : '');
   const rateByKey = (k) => rates.find(r => rateKey(r) === k) || rates[0];
-  const rateLabel = (r) => (r.unit ? `${r.cat} per ${r.unit}` : r.cat);
+  const rateLabel = (r) => (r.unit ? `${r.itemName} per ${r.unit}` : r.itemName);
 
   const addRow = () => setLineRows(r => {
     const used = new Set(r.map(x => x.item));
@@ -64,13 +64,13 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
 
   const computed = lineRows.map(row => {
     const rate = rateByKey(row.item);
-    const pair = rate ? (dbl ? rate.d : rate.s) : null;
+    const pair = rate ? (isDouble ? rate.double : rate.regular) : null;
     const dR = pair ? pair[0] : 0;
     const hR = pair ? pair[1] : 0;
     const q = parseFloat(row.qty) || 0;
-    return { item: rate ? rate.cat : '', qty: q, unit: rate ? rate.unit : '', d: +(dR * q).toFixed(2), h: +(hR * q).toFixed(2) };
+    return { item: rate ? rate.itemName : '', qty: q, unit: rate ? rate.unit : '', driverAmount: +(dR * q).toFixed(2), helperAmount: +(hR * q).toFixed(2) };
   });
-  const totalD = computed.reduce((s, r) => s + r.d, 0), totalH = computed.reduce((s, r) => s + r.h, 0);
+  const totalD = computed.reduce((s, r) => s + r.driverAmount, 0), totalH = computed.reduce((s, r) => s + r.helperAmount, 0);
 
   const [busy, setBusy] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
@@ -93,14 +93,14 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
         helper1Id: helper1Id || null,
         helper2Id: helper2Id || null,
         address, province, municipality, barangay,
-        customer, dbl,
+        customer, isDouble,
         landmark, contactNo,
         matchedArea: null,
-        items: computed.map(r => ({ ...r, dbl })),
+        items: computed.map(r => ({ ...r, isDouble })),
       });
       if (ok !== false) {
         setShowErrors(false); setProvince('Batangas'); setMunicipality(''); setBarangay(''); setCustomer(''); setLandmark(''); setContactNo(''); setLineRows([{ item: rateKey(rates[0]), qty: '' }]);
-        setCrewId(fixedCrewId || (crews[0] && crews[0].id) || ''); setDriverId(''); setHelper1Id(''); setHelper2Id(''); setDbl(false);
+        setCrewId(fixedCrewId || (crews[0] && crews[0].id) || ''); setDriverId(''); setHelper1Id(''); setHelper2Id(''); setIsDouble(false);
       }
     } finally {
       setBusy(false);
@@ -199,7 +199,7 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
       <div className="flex flex-col gap-2 mb-3">
         {lineRows.map((row, i) => {
           const rate = rateByKey(row.item);
-          const pair = rate ? (dbl ? rate.d : rate.s) : null;
+          const pair = rate ? (isDouble ? rate.double : rate.regular) : null;
           const dR = pair ? pair[0] : 0;
           const hR = pair ? pair[1] : 0;
           const q = parseFloat(row.qty) || 0;
@@ -252,11 +252,11 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
 
       {errs.items && <div role="alert" data-field-error className="text-xs mb-3" style={{ fontFamily: F_BODY, color: T.brandDark, lineHeight: 1.5 }}>{errs.items}</div>}
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <button type="button" onClick={() => setDbl(v => !v)}
+        <button type="button" onClick={() => setIsDouble(v => !v)}
           className="flex items-center gap-2 px-3 py-1.5 rounded text-xs font-semibold border"
-          style={{ fontFamily: F_HEAD, borderColor: dbl ? T.brand : T.line, backgroundColor: T.surface, color: T.ink }}>
-          <span className="flex items-center justify-center rounded-sm" style={{ width: 16, height: 16, border: `1.5px solid ${dbl ? T.brand : T.line}`, backgroundColor: dbl ? T.brand : 'transparent' }}>
-            {dbl && <Check size={12} color="#fff" strokeWidth={3} />}
+          style={{ fontFamily: F_HEAD, borderColor: isDouble ? T.brand : T.line, backgroundColor: T.surface, color: T.ink }}>
+          <span className="flex items-center justify-center rounded-sm" style={{ width: 16, height: 16, border: `1.5px solid ${isDouble ? T.brand : T.line}`, backgroundColor: isDouble ? T.brand : 'transparent' }}>
+            {isDouble && <Check size={12} color="#fff" strokeWidth={3} />}
           </span>
           Mark as double rate
         </button>

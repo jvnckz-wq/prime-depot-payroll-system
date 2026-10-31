@@ -5,9 +5,9 @@ import { labelTextError, unitError } from '@/lib/field-rules';
 
 const num = (d) => (d == null ? 0 : Number(d));
 const shape = (r) => ({
-  id: r.id, cat: r.itemName, unit: r.unit,
-  s: [num(r.driverRate), num(r.helperRate)],
-  d: [num(r.driverRateDouble), num(r.helperRateDouble)],
+  id: r.id, itemName: r.itemName, unit: r.unit,
+  regular: [num(r.driverRate), num(r.helperRate)],
+  double: [num(r.driverRateDouble), num(r.helperRateDouble)],
   isActive: r.isActive,
 });
 
@@ -109,7 +109,7 @@ export async function POST(request) {
 
   try {
     const body = await request.json();
-    const itemName = typeof body.cat === 'string' ? body.cat.trim() : '';
+    const itemName = typeof body.itemName === 'string' ? body.itemName.trim() : '';
     const unit = typeof body.unit === 'string' ? body.unit.trim() : '';
 
     const nameErr = labelTextError(itemName, { label: 'Item name' });
