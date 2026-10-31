@@ -5,6 +5,7 @@ import { requireUser } from '@/lib/server/security/auth';
 import { isYmd, todayYmdManila } from '@/lib/loan-rules';
 import { deliveryRange } from '@/lib/delivery-range';
 import { deliveryErrors, firstError } from '@/lib/field-rules';
+import { buildDeliveryItems, rateItemIds } from '@/lib/delivery-items';
 import { withNoScan } from '@/lib/server/services/crew-scans';
 
 const num = (d) => (d == null ? 0 : Number(d));
@@ -117,19 +118,11 @@ export async function POST(request) {
       dayYmd = asked;
     }
 
-    const items = Array.isArray(body.items) ? body.items : [];
-    const clean = items
-      .map((i) => ({
-        itemName: String(i.item ?? '').trim(),
-        unit: String(i.unit ?? '').trim(),
-        quantity: parseFloat(i.qty),
-        driverAmount: parseFloat(i.driverAmount),
-        helperAmount: parseFloat(i.helperAmount),
-      }))
-      .filter((i) => i.itemName && !isNaN(i.quantity) && i.quantity > 0);
-
-    if (!clean.length) {
-      return NextResponse.json({ error: 'Add at least one item with a quantity above zero.' }, { status: 400 });
+    const ids = rateItemIds(body.items);
+    const rateRows = ids.length ? await prisma.rateItem.findMany({ where: { id: { in: ids } } }) : [];
+    const built = buildDeliveryItems(body.items, rateRows, !!body.isDouble);
+    if (built.error) {
+      return NextResponse.json({ error: built.error }, { status: 400 });
     }
     const fieldErr = firstError(deliveryErrors({
       customer: body.customer, contactNo: body.contactNo, landmark: body.landmark,
@@ -137,9 +130,6 @@ export async function POST(request) {
     }));
     if (fieldErr) {
       return NextResponse.json({ error: fieldErr }, { status: 400 });
-    }
-    if (clean.some((i) => isNaN(i.driverAmount) || isNaN(i.helperAmount) || i.driverAmount < 0 || i.helperAmount < 0)) {
-      return NextResponse.json({ error: 'Item amounts must be zero or more.' }, { status: 400 });
     }
 
     const day = new Date(`${dayYmd}T00:00:00.000Z`);
@@ -170,7 +160,7 @@ export async function POST(request) {
           isDouble: !!body.isDouble,
           matchedArea: body.matchedArea || null,
           loggedById: auth.user.id,
-          items: { create: clean },
+          items: { create: built.items },
         },
         include: INCLUDE,
       });
