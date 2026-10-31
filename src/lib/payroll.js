@@ -17,7 +17,7 @@ export function flattenDeliveries(deliveries, filterCrewId, { includeVoided = fa
 export function deliveriesToLog(apiDeliveries) {
   const out = {};
   for (const d of apiDeliveries || []) {
-    if (!out[d.truckId]) out[d.truckId] = { date: d.date, items: [], deductions: [] };
+    if (!out[d.truckId]) out[d.truckId] = { date: d.date, items: [] };
     if (d.date > out[d.truckId].date) out[d.truckId].date = d.date;
 
     (d.items || []).forEach((it, i) => {

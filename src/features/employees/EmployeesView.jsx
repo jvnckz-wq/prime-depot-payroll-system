@@ -4,7 +4,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Search, SearchX, Save, Clock, AlertTriangle, Users } from 'lucide-react';
 import { Badge, Btn, Chip, Confirm, EmptyState, Eyebrow, Field, H1, Modal, Money, Panel, SkeletonBlock, SkeletonRows, Td, Th, inputCls, inputStyle } from '@/components/ui';
-import { POSITIONS, positionLabel } from '@/lib/constants';
+import { POSITIONS } from '@/lib/constants';
 import { hasNoContributions, hasNoEarlyShift, isDailyPosition, isNonRegularPosition } from '@/lib/positions';
 import { WEEKDAYS, describeEarlyShift } from '@/lib/attendance';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
@@ -270,7 +270,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
                     <div className="font-semibold" style={{ fontFamily: F_BODY }}>{r.name}</div>
                   </Td>
                   <Td>
-                    {positionLabel(r.position)}
+                    {r.position}
                     {describeEarlyShift(r) && (
                       <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs"
                         style={{ fontFamily: F_BODY, backgroundColor: T.warnBg, color: T.warn }}>
@@ -300,7 +300,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
               <div className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="font-semibold truncate" style={{ fontFamily: F_BODY }}>{r.name}</div>
-                  <div className="text-xs truncate" style={{ color: T.soft }}><span style={{ fontFamily: F_MONO }}>ID {r.id}</span> · {positionLabel(r.position)}</div>
+                  <div className="text-xs truncate" style={{ color: T.soft }}><span style={{ fontFamily: F_MONO }}>ID {r.id}</span> · {r.position}</div>
                 </div>
                 <Badge tone={r.status === 'Active' ? 'green' : 'neutral'}>{r.status}</Badge>
               </div>
@@ -333,7 +333,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
           <Field label="Position" error={errs.position}>
             <select value={form.position} onChange={e => ff('position', e.target.value)} className={inputCls} style={inputStyle}>
               {!form.position && <option value="">Choose a position</option>}
-              {POSITIONS.map(p => <option key={p} value={p}>{positionLabel(p)}</option>)}
+              {POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
           </Field>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

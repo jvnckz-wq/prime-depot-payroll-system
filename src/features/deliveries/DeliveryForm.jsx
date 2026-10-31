@@ -9,8 +9,8 @@ import { PH_AREAS, PH_PROVINCES } from '@/lib/batangas-areas';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
 import { deliveryErrors, digitsOnly, firstError, flagErrors } from '@/lib/field-rules';
 
-export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
-  const [crewId, setCrewId] = useState(fixedCrewId || (crews[0] && crews[0].id) || '');
+export const DeliveryForm = ({ crews, rates, onSubmit }) => {
+  const [crewId, setCrewId] = useState((crews[0] && crews[0].id) || '');
   const crew = crews.find(c => c.id === crewId) || crews[0];
 
   const [pool, setPool] = useState({ drivers: [], helpers: [], scanned: new Set(), online: true });
@@ -25,8 +25,8 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
-    if (!fixedCrewId && !crewId && crews.length) setCrewId(crews[0].id);
-  }, [crews, fixedCrewId, crewId]);
+    if (!crewId && crews.length) setCrewId(crews[0].id);
+  }, [crews, crewId]);
 
   const [province, setProvince] = useState('Batangas');
   const [municipality, setMunicipality] = useState('');
@@ -35,12 +35,12 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
   const [landmark, setLandmark] = useState('');
   const [contactNo, setContactNo] = useState('');
   const [isDouble, setIsDouble] = useState(false);
-  const [lineRows, setLineRows] = useState([{ item: rates[0] ? (rates[0].id || `${rates[0].itemName}|${rates[0].unit}`) : '', qty: '' }]);
+  const [lineRows, setLineRows] = useState([{ item: rates[0] ? rates[0].id : '', qty: '' }]);
   const [driverId, setDriverId] = useState('');
   const [helper1Id, setHelper1Id] = useState('');
   const [helper2Id, setHelper2Id] = useState('');
 
-  const rateKey = (r) => (r ? (r.id || `${r.itemName}|${r.unit}`) : '');
+  const rateKey = (r) => (r ? r.id : '');
   const rateByKey = (k) => rates.find(r => rateKey(r) === k) || rates[0];
   const rateLabel = (r) => (r.unit ? `${r.itemName} per ${r.unit}` : r.itemName);
 
@@ -101,7 +101,7 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
       });
       if (ok !== false) {
         setShowErrors(false); setProvince('Batangas'); setMunicipality(''); setBarangay(''); setCustomer(''); setLandmark(''); setContactNo(''); setLineRows([{ item: rateKey(rates[0]), qty: '' }]);
-        setCrewId(fixedCrewId || (crews[0] && crews[0].id) || ''); setDriverId(''); setHelper1Id(''); setHelper2Id(''); setIsDouble(false);
+        setCrewId((crews[0] && crews[0].id) || ''); setDriverId(''); setHelper1Id(''); setHelper2Id(''); setIsDouble(false);
       }
     } finally {
       setBusy(false);
@@ -125,16 +125,9 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
         <Field label={<>Truck <span style={{ color: T.brand }}>*</span></>} error={errs.truck}>
-          {fixedCrewId ? (
-            <div className="flex items-center gap-2.5 px-3 py-2 rounded border" style={{ borderColor: T.line, backgroundColor: T.bg }}>
-              <span className="text-sm font-semibold" style={{ fontFamily: F_MONO, color: T.ink }}>{crew?.id}</span>
-              <span className="text-sm" style={{ fontFamily: F_BODY, color: T.soft }}>{crew?.vehicle}</span>
-            </div>
-          ) : (
-            <select value={crewId} onChange={e => setCrewId(e.target.value)} className={inputCls} style={inputStyle}>
-              {crews.map(c => <option key={c.id} value={c.id}>{c.id} · {c.vehicle}</option>)}
-            </select>
-          )}
+          <select value={crewId} onChange={e => setCrewId(e.target.value)} className={inputCls} style={inputStyle}>
+            {crews.map(c => <option key={c.id} value={c.id}>{c.id} · {c.vehicle}</option>)}
+          </select>
         </Field>
         <Field label="Plate number">
           <input readOnly value={crew?.plate || ''} placeholder="e.g. ABC-1234" className={inputCls} style={{ ...inputStyle, backgroundColor: T.bg, color: T.soft, fontFamily: F_MONO }} />

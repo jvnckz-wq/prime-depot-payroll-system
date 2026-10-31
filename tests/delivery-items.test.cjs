@@ -10,7 +10,7 @@ const blocks = { id: 'r-blocks', itemName: 'Hollow Blocks', unit: 'pc', driverRa
 const retired = { id: 'r-old', itemName: 'Old Item', unit: 'bag', driverRate: 5, helperRate: 4, driverRateDouble: 10, helperRateDouble: 8, isActive: false };
 const rows = [cement, sand, blocks, retired];
 
-// The formula setDouble in PATCH /api/deliveries/[id] used inline before lineAmounts existed.
+// The formula the old double-rate toggle in PATCH /api/deliveries/[id] used inline before lineAmounts existed.
 const oldSetDouble = (q, r, want) => ({
   driverAmount: +(q * Number(want ? r.driverRateDouble : r.driverRate)).toFixed(2),
   helperAmount: +(q * Number(want ? r.helperRateDouble : r.helperRate)).toFixed(2),
@@ -29,7 +29,7 @@ ok('a decimal quantity is priced and rounded to centavos', () => {
   assert.deepEqual(lineAmounts(sand, 1.333, false), { driverAmount: 79.98, helperAmount: 59.98 });
 });
 
-ok('lineAmounts matches the old inline setDouble formula', () => {
+ok('lineAmounts matches the old inline double-rate toggle formula', () => {
   const samples = [
     [cement, 40], [sand, 3], [blocks, 333], [blocks, 7], [sand, 1.333],
     [{ driverRate: '12.75', helperRate: '9.10', driverRateDouble: '25.50', helperRateDouble: '18.20' }, 17],
