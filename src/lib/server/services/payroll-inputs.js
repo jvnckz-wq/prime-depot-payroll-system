@@ -65,6 +65,9 @@ export function staffAvailable({ staff, attendanceById, statutory }) {
   return out;
 }
 
+// Daily contributions are switched off: every daily position has no contributions (hasNoContributions in
+// src/lib/positions.js), so this finds no one and contributionContext, loadDailyContributionsForMonth and the crew
+// contribution stay at zero. Kept on purpose so the client can switch them back on.
 const isContributing = (e) => {
   const s = shapeEmployee(e);
   return s.sssOn || s.phOn || s.piOn;

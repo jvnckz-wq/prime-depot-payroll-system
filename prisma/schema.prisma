@@ -511,8 +511,8 @@ model Delivery {
   helper1Id    String?
   helper2Id    String?
 
-  /// Trip number within that truck's day. Drives the trip bonus, which is
-  /// awarded per head once a truck reaches the trip threshold.
+  /// Trip number within that truck's day. The trip bonus counts each person's
+  /// own non-voided trips on one truck and day (see crewEarnings in src/lib/payroll.js).
   sequenceNo   Int
   customerName String?
   address      String
@@ -607,7 +607,7 @@ model RateItem {
 /// These were four hardcoded numbers in src/lib/constants.js. That put them in the
 /// browser bundle — so the figures a payslip was built from were whatever the
 /// client had loaded — and it meant changing a rate needed a redeploy. Per-item
-/// rates already lived in RateItem; the daily minimums and the bonus belong in
+/// rates already lived in RateItem; the daily rates and the bonus belong in
 /// the database for exactly the same reasons.
 ///
 /// One row, with the fixed id "current": there is exactly one live rate card,
@@ -616,13 +616,14 @@ model RateItem {
 /// already frozen in its Payslip snapshot, so history lives there.
 model CrewRate {
   id          String   @id @default("current")
-  /// Guaranteed daily minimum for a driver, paid when piece-rate falls short.
+  /// Daily rate for a driver, paid for each day worked on top of the piece-rate pay.
   driverDaily Decimal  @default(280) @db.Decimal(12, 2)
   /// The same, for a helper.
   helperDaily Decimal  @default(240) @db.Decimal(12, 2)
-  /// Trip bonus, paid per head once a truck clears the trip threshold.
+  /// Trip bonus, paid to a person once for each truck and day where they reach
+  /// bonusTrips of their own non-voided trips.
   bonusHead   Decimal  @default(100) @db.Decimal(12, 2)
-  /// Trips one truck must finish in a day before the bonus applies.
+  /// How many of a person's own non-voided trips on one truck in a day earn the bonus.
   bonusTrips  Int      @default(5)
   dailyContribution Decimal? @db.Decimal(12, 2)
   minimumDailyWage  Decimal? @db.Decimal(12, 2)
