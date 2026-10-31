@@ -6,6 +6,7 @@ import { isYmd, todayYmdManila } from '@/lib/loan-rules';
 import { deliveryRange } from '@/lib/delivery-range';
 import { deliveryErrors, firstError } from '@/lib/field-rules';
 import { buildDeliveryItems, rateItemIds } from '@/lib/delivery-items';
+import { crewError, crewHelperIds } from '@/lib/delivery-crew';
 import { withNoScan } from '@/lib/server/services/crew-scans';
 
 const num = (d) => (d == null ? 0 : Number(d));
@@ -105,6 +106,17 @@ export async function POST(request) {
     if (!truckId) return NextResponse.json({ error: 'Select a truck.' }, { status: 400 });
     if (!driverId) return NextResponse.json({ error: 'Select a driver.' }, { status: 400 });
     if (!address) return NextResponse.json({ error: 'Delivery address is required.' }, { status: 400 });
+
+    // The truck and crew must be what the form offers: an active truck, an active driver, active helpers.
+    const [truck, crewRows] = await Promise.all([
+      prisma.truck.findUnique({ where: { id: truckId }, select: { id: true, isActive: true } }),
+      prisma.employee.findMany({
+        where: { id: { in: [driverId, ...crewHelperIds(body.helper1Id, body.helper2Id)] } },
+        select: { id: true, position: true, status: true },
+      }),
+    ]);
+    const crewErr = crewError({ truck, employees: crewRows, driverId, helper1Id: body.helper1Id, helper2Id: body.helper2Id });
+    if (crewErr) return NextResponse.json({ error: crewErr }, { status: 400 });
 
     const today = todayYmdManila();
     let dayYmd = today;

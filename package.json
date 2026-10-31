@@ -29,6 +29,7 @@
     "test:attlog": "node tests/attlog.test.mjs",
     "test:golden": "tsx tests/golden-payroll.test.cjs",
     "test:deliveryitems": "tsx tests/delivery-items.test.cjs",
+    "test:deliverycrew": "tsx tests/delivery-crew.test.cjs",
     "sync": "node scripts/sync-agent.js",
     "sync:live": "node scripts/sync-agent.js --live",
     "pull-cutoff": "node scripts/pull-cutoff.js",
