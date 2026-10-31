@@ -3,7 +3,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown, LogOut, Menu, User, X } from 'lucide-react';
-import { ADMIN_NAV, ADMIN_NAV_GROUPS } from '@/shell/nav-items';
+import { ADMIN_NAV, ADMIN_NAV_GROUPS } from '@/components/layout/nav-items';
 import { F_BODY, F_HEAD, T } from '@/styles/theme';
 /* eslint-disable @next/next/no-img-element -- user avatars are base64 data URIs; next/image adds no value and cannot optimize data URIs */
 
