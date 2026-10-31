@@ -6,7 +6,7 @@ import { Badge, Btn, Chip, Confirm, EmptyState, Eyebrow, Field, H1, Modal, Money
 import { POSITIONS, positionLabel } from '@/data/seed';
 import { hasNoContributions, hasNoEarlyShift, isDailyPosition, isNonRegularPosition } from '@/lib/positions';
 import { WEEKDAYS, describeEarlyShift } from '@/lib/attendance';
-import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
+import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
 import { FinalPayView } from '@/features/payroll/FinalPayView.jsx';
 import { cutoffLabel } from '@/lib/utils';
 import { addressError, birthdateError, digitsOnly, employeeErrors, firstError, LIMITS, moneyInput, flagErrors } from '@/lib/field-rules';

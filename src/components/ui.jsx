@@ -3,7 +3,7 @@
 import React from 'react';
 import { X, Check, Package, Loader2 } from 'lucide-react';
 import { peso } from '@/lib/utils';
-import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
+import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
 
 export const Badge = ({ children, tone = 'neutral' }) => {
   const map = {

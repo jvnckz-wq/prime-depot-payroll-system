@@ -10,7 +10,7 @@ import { deliveriesToLog } from '@/lib/payroll';
 import { uid, cutoffLabel, currentCutoffPeriod } from '@/lib/utils';
 import { staffRunKey, todayYmdManila } from '@/lib/loan-rules';
 import { authStateFrom } from '@/lib/auth-state';
-import { FONTS, F_BODY, F_HEAD, T } from '@/components/theme';
+import { FONTS, F_BODY, F_HEAD, T } from '@/styles/theme';
 import { AttendanceView } from '@/features/attendance/AttendanceView.jsx';
 import { CheckerView } from '@/features/deliveries/CheckerView.jsx';
 import { DashboardView } from '@/features/dashboard/DashboardView.jsx';

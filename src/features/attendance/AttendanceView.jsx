@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, ClipboardList, ArrowLeft, Pencil, Upload, Loader2, CalendarX, CircleCheck, Users } from 'lucide-react';
 import { Av, Badge, BigStat, Btn, Chip, EmptyState, Eyebrow, Field, H1, Modal, Panel, SkeletonBlock, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
-import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
+import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
 import { timeOrderError } from '@/lib/field-rules';
 import { positionLabel } from '@/data/seed';
 import { MAX_IMPORT_BYTES, MAX_IMPORT_MB, tooBigMessage } from '@/lib/import-limits';

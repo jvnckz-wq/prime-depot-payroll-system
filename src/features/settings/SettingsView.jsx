@@ -5,7 +5,7 @@ import { Plus, Save, Trash2 } from 'lucide-react';
 import { Badge, Btn, Eyebrow, Field, H1, Money, Panel, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
 import { computePagIBIG, computePhilHealth, computeSSS } from '@/lib/payroll';
 import { peso } from '@/lib/utils';
-import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
+import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
 import { FleetPanel } from '@/features/settings/FleetPanel.jsx';
 import { moneyInput } from '@/lib/field-rules';
 

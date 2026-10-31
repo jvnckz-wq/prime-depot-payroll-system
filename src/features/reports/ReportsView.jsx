@@ -9,7 +9,7 @@ import { shortDate, todayYmdManila } from '@/lib/loan-rules';
 import { cutoffWithholding, taxableForCutoff } from '@/lib/withholding';
 import { deliveryRange } from '@/lib/delivery-range';
 import { exportXLSX, peso } from '@/lib/utils';
-import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
+import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
 
 export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel = '', runKey = '', attendanceSummaries = [], navTab, onNavigate, dataLoading = false }) => {
   const [tab, setTab] = useState(navTab || 'register');

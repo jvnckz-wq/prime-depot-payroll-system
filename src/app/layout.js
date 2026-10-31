@@ -1,5 +1,5 @@
 import { Inter, Source_Serif_4 } from "next/font/google";
-import "@/app/globals.css";
+import "@/styles/globals.css";
 
 const inter = Inter({
   variable: "--font-inter",

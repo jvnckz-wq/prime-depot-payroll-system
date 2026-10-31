@@ -8,7 +8,7 @@ import {
   shortDate, shortPeriod, workingDaysIn, todayYmdManila } from '@/lib/loan-rules';
 import { computeStaffPayroll } from '@/lib/payroll';
 import { peso } from '@/lib/utils';
-import { F_BODY, F_MONO, T } from '@/components/theme';
+import { F_BODY, F_MONO, T } from '@/styles/theme';
 import { D, H, Kpi, Person, Pill, todayLocalYmd } from '@/features/loans/parts.jsx';
 import { moneyInput, flagErrors } from '@/lib/field-rules';
 

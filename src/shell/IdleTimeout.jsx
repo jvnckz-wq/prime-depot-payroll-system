@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Btn, Modal } from '@/components/ui.jsx';
-import { F_BODY, T } from '@/components/theme';
+import { F_BODY, T } from '@/styles/theme';
 
 const IDLE_MS = 15 * 60 * 1000;
 const ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'];

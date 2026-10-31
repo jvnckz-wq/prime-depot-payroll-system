@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
-import { F_MONO, T } from '@/components/theme';
+import { F_MONO, T } from '@/styles/theme';
 
 const BACKUP_CHARS = /[ABCDEFGHJKMNPQRSTUVWXYZ23456789]/;
 

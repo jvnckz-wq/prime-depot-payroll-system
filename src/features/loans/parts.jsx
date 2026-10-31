@@ -5,7 +5,7 @@ import { Search } from 'lucide-react';
 import { loanLedger } from '@/lib/payroll';
 import { Chip } from '@/components/ui.jsx';
 import { peso } from '@/lib/utils';
-import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
+import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
 
 const PILL = {
   green: [T.greenBg, T.green],

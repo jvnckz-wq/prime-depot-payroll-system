@@ -10,7 +10,7 @@ import { CREW_RATE_FALLBACK } from '@/data/seed';
 import { crewDayPay, crewEarnings, dailyContributionFor, deliveriesToLog, loanBalance } from '@/lib/payroll';
 import { grantedBy, planDeductions, todayYmdManila } from '@/lib/loan-rules';
 import { peso, telHref } from '@/lib/utils';
-import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
+import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
 import { labelTextError, moneyError, moneyInput, unitError, flagErrors } from '@/lib/field-rules';
 
 export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, rates, setRates, crewRates = CREW_RATE_FALLBACK, loans, reloadLoans, crewNames = [], toast, mode = 'logging', onOpenDtr, deliveriesFilter = 'all' }) => {

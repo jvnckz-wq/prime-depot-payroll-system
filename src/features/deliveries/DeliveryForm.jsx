@@ -5,7 +5,7 @@ import { Plus, Check, Trash2 } from 'lucide-react';
 import { Btn, Eyebrow, Field, SearchSelect, inputCls, inputStyle } from '@/components/ui.jsx';
 import { peso } from '@/lib/utils';
 import { PH_AREAS, PH_PROVINCES } from '@/data/batangas-areas';
-import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
+import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
 import { deliveryErrors, digitsOnly, firstError, flagErrors } from '@/lib/field-rules';
 
 export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {

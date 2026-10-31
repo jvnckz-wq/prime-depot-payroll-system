@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle, Copy, KeyRound, Link2, Pencil, Plus, UserCheck, UserX } from 'lucide-react';
 import { Av, Badge, Btn, Confirm, Eyebrow, Field, Modal, Skeleton, inputCls, inputStyle } from '@/components/ui.jsx';
-import { F_BODY, F_HEAD, F_MONO, T } from '@/components/theme';
+import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
 import { suggestUsername } from '@/lib/checker-accounts';
 import { usernameInput, flagErrors, flagField, usernameError } from '@/lib/field-rules';
 

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollText } from 'lucide-react';
 import { Btn, EmptyState, H1, Panel, SkeletonRows, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
-import { F_BODY, F_MONO, T } from '@/components/theme';
+import { F_BODY, F_MONO, T } from '@/styles/theme';
 import { exportXLSX } from '@/lib/utils';
 
 export const ACTION_LABELS = {
