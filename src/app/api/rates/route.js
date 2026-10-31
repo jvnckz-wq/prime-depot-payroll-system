@@ -54,8 +54,8 @@ export async function PATCH(request) {
 
     if (body.driverDaily !== undefined) {
       const driverDaily = money(body.driverDaily, 'Driver daily rate', 10000);
-      const helperDaily = money(body.helperDaily, 'Pahinante daily rate', 10000);
-      const bonusHead = money(body.bonusHead, 'Palima bonus', 10000);
+      const helperDaily = money(body.helperDaily, 'Helper daily rate', 10000);
+      const bonusHead = money(body.bonusHead, 'Bonus', 10000);
       const firstError = [driverDaily, helperDaily, bonusHead].find((f) => f.error);
       if (firstError) return NextResponse.json({ error: firstError.error }, { status: 400 });
 
@@ -65,7 +65,7 @@ export async function PATCH(request) {
       }
 
       Object.assign(data, { driverDaily: driverDaily.value, helperDaily: helperDaily.value, bonusHead: bonusHead.value, bonusTrips });
-      parts.push(`Driver ₱${data.driverDaily}/day, pahinante ₱${data.helperDaily}/day, bonus ₱${data.bonusHead} at ${data.bonusTrips} trips.`);
+      parts.push(`Driver ₱${data.driverDaily}/day, helper ₱${data.helperDaily}/day, bonus ₱${data.bonusHead} at ${data.bonusTrips} trips.`);
     }
 
     if (body.dailyContribution !== undefined) {

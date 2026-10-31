@@ -33,7 +33,7 @@ enum Role {
 }
 
 /// Job positions. Position ALONE decides which payroll module an employee
-/// belongs to — DRIVER and PAHINANTE are paid piece-rate (pakyawan) through
+/// belongs to: DRIVER and HELPER are paid piece-rate through
 /// Truck Payroll, everyone else runs through Staff Payroll. There is
 /// deliberately no separate "employee type" column: two fields meaning the
 /// same thing can disagree, and then nobody knows which one to trust.
@@ -72,7 +72,7 @@ enum EmployeeStatus {
 
 enum LoanType {
   LOAN
-  CASH_ADVANCE // "bale"
+  CASH_ADVANCE // advance on pay, deducted in full on the next payroll
 }
 
 /// Why a loan was given (loans only; a cash advance has none).
@@ -97,7 +97,7 @@ enum ImportStatus {
 
 enum PayrollType {
   STAFF // semi-monthly, attendance-based
-  TRUCK // pakyawan, delivery-based
+  TRUCK // piece-rate, delivery-based
 }
 
 /// What an AuditLog row records. Kept as an enum rather than free text so a
@@ -479,7 +479,7 @@ model UnmappedLog {
 }
 
 // ============================================================================
-// FLEET & DELIVERIES (PAKYAWAN)
+// FLEET & DELIVERIES (PIECE-RATE)
 // ============================================================================
 
 /// The fleet — vehicles only.
@@ -511,7 +511,7 @@ model Delivery {
   helper1Id    String?
   helper2Id    String?
 
-  /// Trip number within that truck's day. Drives the palima bonus, which is
+  /// Trip number within that truck's day. Drives the trip bonus, which is
   /// awarded per head once a truck reaches the trip threshold.
   sequenceNo   Int
   customerName String?
@@ -531,9 +531,9 @@ model Delivery {
   /// Receiver's contact number, so the driver can call when near or lost.
   contactNo    String?
 
-  /// True when the destination falls in a double-rate ("doble") area. Set
+  /// True when the destination falls in a double-rate area. Set
   /// automatically from the known area list, but overridable — the checker
-  /// can mark a trip doble even if the address text doesn't match.
+  /// can mark a trip double-rate even if the address text doesn't match.
   isDouble     Boolean  @default(false)
   matchedArea  String?
 
@@ -602,9 +602,9 @@ model RateItem {
   @@map("rate_items")
 }
 
-/// Pakyawan pay constants for delivery crew.
+/// Piece-rate pay constants for delivery crew.
 ///
-/// These were four hardcoded numbers in src/data/seed.js. That put them in the
+/// These were four hardcoded numbers in src/lib/constants.js. That put them in the
 /// browser bundle — so the figures a payslip was built from were whatever the
 /// client had loaded — and it meant changing a rate needed a redeploy. Per-item
 /// rates already lived in RateItem; the daily minimums and the bonus belong in
@@ -618,9 +618,9 @@ model CrewRate {
   id          String   @id @default("current")
   /// Guaranteed daily minimum for a driver, paid when piece-rate falls short.
   driverDaily Decimal  @default(280) @db.Decimal(12, 2)
-  /// The same, for a pahinante.
+  /// The same, for a helper.
   helperDaily Decimal  @default(240) @db.Decimal(12, 2)
-  /// "Palima" bonus, paid per head once a truck clears the trip threshold.
+  /// Trip bonus, paid per head once a truck clears the trip threshold.
   bonusHead   Decimal  @default(100) @db.Decimal(12, 2)
   /// Trips one truck must finish in a day before the bonus applies.
   bonusTrips  Int      @default(5)
@@ -636,7 +636,7 @@ model CrewRate {
 // LOANS & ADVANCES
 // ============================================================================
 
-/// A loan or cash advance (bale).
+/// A loan or cash advance.
 ///
 /// There is no `balance` column by design. The outstanding amount is derived
 /// by summing this loan's ledger entries, so the number on screen can always
@@ -807,7 +807,7 @@ model Payslip {
   overtimeWeekend Decimal     @default(0) @db.Decimal(12, 2)
   allowances      Decimal     @default(0) @db.Decimal(12, 2)
 
-  // Pakyawan components — zero for office staff.
+  // Piece-rate components, zero for office staff.
   pieceRateTotal  Decimal     @default(0) @db.Decimal(12, 2)
   tripBonus       Decimal     @default(0) @db.Decimal(12, 2) @map("palimaBonus")
   tripCount       Int         @default(0)

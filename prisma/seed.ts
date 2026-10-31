@@ -74,10 +74,10 @@ const FLEET = [
 ];
 
 const DRIVER_DAILY = 280;
-// Per person. The workbook's ₱480 is the figure for two pahinante.
+// Per person. The workbook's ₱480 is the figure for two helpers.
 const HELPER_DAILY = 240;
 
-// VALUES sheet — [item, unit, driver, helper, driverDoble, helperDoble]
+// VALUES sheet: [item, unit, driver, helper, driverDouble, helperDouble]
 const RATES = [
   ['Aggregates',                                 'elf',       15,   70,   30,   140],
   ['Aggregates',                                 'mini dump', 20,   60,   40,   120],
@@ -194,7 +194,7 @@ async function seedEmployees() {
       create: { id, name, position: 'HELPER', dailyRate: HELPER_DAILY, declaredSalary: 0 },
     });
   }
-  console.log(`  employees: ${STAFF.length} staff, ${drivers.length} drivers, ${helpers.length} pahinante`);
+  console.log(`  employees: ${STAFF.length} staff, ${drivers.length} drivers, ${helpers.length} helpers`);
   return { drivers, helpers };
 }
 

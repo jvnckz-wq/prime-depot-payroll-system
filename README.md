@@ -1,6 +1,6 @@
 # Prime Depot Payroll System
 
-A web-based payroll and attendance system for Prime Depot Hardware and Construction Supply in Mabini, Batangas. It handles two kinds of pay in one place: office staff on a monthly salary with government deductions, and truck crew who are paid per delivery (pakyawan). Attendance comes from a biometric device, so the payroll is based on real time records.
+A web-based payroll and attendance system for Prime Depot Hardware and Construction Supply in Mabini, Batangas. It handles two kinds of pay in one place: office staff on a monthly salary with government deductions, and truck crew who are paid per delivery (piece-rate). Attendance comes from a biometric device, so the payroll is based on real time records.
 
 Live site: https://prime-depot-payroll-system.vercel.app
 
