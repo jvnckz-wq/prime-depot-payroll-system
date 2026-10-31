@@ -5,7 +5,6 @@ import React from 'react';
 import { ClipboardList } from 'lucide-react';
 import { Badge, EmptyState, Panel, SkeletonBlock } from '@/components/ui';
 import { F_BODY, F_HEAD, T } from '@/styles/theme';
-import { positionLabel } from '@/lib/constants';
 import { agoFrom, asUTC, fmtDay, liveTdBase, liveThBase, shiftYmd } from '@/features/attendance/attendance-helpers';
 
 export const LiveTab = ({ liveData, setLiveDate, liveLoading }) => (
@@ -107,7 +106,7 @@ export const LiveTab = ({ liveData, setLiveDate, liveLoading }) => (
               <tr key={r.id}>
                 <td style={liveTdBase}>
                   <div style={{ fontFamily: F_BODY, fontWeight: 600 }}>{r.name}</div>
-                  <div style={{ fontFamily: F_BODY, fontSize: 12, color: T.soft, marginTop: 1 }}>{r.position ? `${positionLabel(r.position)} · ${r.id}` : r.id}</div>
+                  <div style={{ fontFamily: F_BODY, fontSize: 12, color: T.soft, marginTop: 1 }}>{r.position ? `${r.position} · ${r.id}` : r.id}</div>
                 </td>
                 <td style={{ ...liveTdBase, fontVariantNumeric: 'tabular-nums' }}>{r.in || <span style={{ color: T.line }}>--</span>}{r.assumedIn && <span style={{ marginLeft: 8, fontSize: 11, color: T.soft }}>assumed</span>}</td>
                 <td style={{ ...liveTdBase, fontVariantNumeric: 'tabular-nums' }}>{r.out || <span style={{ color: T.line }}>--</span>}</td>

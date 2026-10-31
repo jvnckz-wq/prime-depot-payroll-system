@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, CheckCircle2, Circle, Eye, EyeOff, KeyRound, Lock, ShieldCheck } from 'lucide-react';
-import { Btn, Confirm, Eyebrow, Field, Panel, inputCls, inputStyle } from '@/components/ui';
+import { Btn, Field, Panel, inputCls, inputStyle } from '@/components/ui';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
 import { isEmail } from '@/lib/email-format';
 import { flagEmptyRequired, flagField } from '@/lib/field-rules';
@@ -349,127 +349,5 @@ export const ForcedPasswordChange = ({ user, onDone }) => {
       subtitle="You are using a temporary password, so please set your own before continuing.">
       <ChangePasswordPanel onDone={onDone} compact />
     </GateShell>
-  );
-};
-
-export const AccountView = ({ user, toast, onUserChange, onSignedOut }) => {
-  const [name, setName] = useState(user.displayName);
-  const [savingName, setSavingName] = useState(false);
-  const [confirmSignOut, setConfirmSignOut] = useState(false);
-
-  const initials = (user.displayName || user.username)
-    .split(/[\s,]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
-
-  const nameChanged = name.trim() && name.trim() !== user.displayName;
-
-  const saveName = async () => {
-    setSavingName(true);
-    try {
-      const res = await fetch('/api/auth/me', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName: name }),
-      });
-      const data = await res.json();
-      if (!res.ok) { toast(data.error || 'Could not update your name.', 'error'); return; }
-      if (onUserChange) onUserChange(data.user);
-      toast('Profile updated.');
-    } catch {
-      toast('Could not reach the server.', 'error');
-    } finally { setSavingName(false); }
-  };
-
-  const signOutEverywhere = async () => {
-    try {
-      const res = await fetch('/api/auth/me', { method: 'DELETE' });
-      if (!res.ok) { toast('Could not sign out.', 'error'); return; }
-      if (onSignedOut) onSignedOut();
-    } catch { toast('Could not reach the server.', 'error'); }
-  };
-
-  const fmt = (iso) => {
-    if (!iso) return 'Never';
-    return new Date(iso).toLocaleString('en-PH', {
-      month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
-    });
-  };
-
-  return (
-    <div className="max-w-lg">
-      <Panel className="p-5 mb-4">
-        <div className="flex items-center gap-4 mb-5">
-          <div className="flex items-center justify-center rounded-full shrink-0"
-            style={{ width: 56, height: 56, backgroundColor: T.brand, color: '#fff', fontFamily: F_HEAD, fontSize: 20, fontWeight: 700 }}>
-            {initials}
-          </div>
-          <div className="min-w-0">
-            <div className="text-lg font-bold truncate" style={{ fontFamily: F_HEAD, color: T.ink }}>{user.displayName}</div>
-            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-              <span className="text-sm" style={{ fontFamily: F_MONO, color: T.soft }}>{user.username}</span>
-              <span className="px-2 py-0.5 rounded text-xs font-semibold"
-                style={{ fontFamily: F_HEAD, backgroundColor: T.brandBg, color: T.brandDark }}>
-                {user.role === 'ADMIN' ? 'Operations Head' : 'Checker'}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ borderTop: `1px solid ${T.lineSoft}` }} className="pt-4">
-          <Field label="Display name">
-            <input value={name} onChange={e => setName(e.target.value)} className={inputCls} style={inputStyle} />
-          </Field>
-          <div className="text-xs mt-2" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
-            Your username cannot be changed. It is your sign-in identity and is attached to every
-            record this account has created.
-          </div>
-          {nameChanged && (
-            <div className="mt-3 flex gap-2">
-              <Btn size="sm" onClick={saveName} loading={savingName} disabled={savingName}>
-                {savingName ? 'Saving...' : 'Save name'}
-              </Btn>
-              <Btn size="sm" variant="outline" onClick={() => setName(user.displayName)}>Cancel</Btn>
-            </div>
-          )}
-        </div>
-      </Panel>
-
-      <Panel className="p-5 mb-4">
-        <div className="flex items-center gap-2 mb-1">
-          <ShieldCheck size={15} color={T.brand} />
-          <span className="text-base font-bold" style={{ fontFamily: F_HEAD, color: T.ink }}>Change password</span>
-        </div>
-        <div className="text-xs mb-4" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
-          Your password is stored as a one-way hash. Nobody can read it back, not even the
-          administrator. If you forget it, it has to be reset rather than looked up.
-        </div>
-        <ChangePasswordPanel toast={toast} />
-      </Panel>
-
-      <Panel className="p-5">
-        <Eyebrow>Sessions</Eyebrow>
-        <div className="flex items-center justify-between gap-4 mt-2 flex-wrap">
-          <div className="text-sm" style={{ fontFamily: F_BODY, color: T.ink }}>
-            Last sign-in
-            <div className="text-xs mt-0.5" style={{ fontFamily: F_MONO, color: T.soft }}>{fmt(user.lastLoginAt)}</div>
-          </div>
-          <Btn size="sm" variant="outline" onClick={() => setConfirmSignOut(true)}>
-            Sign out everywhere
-          </Btn>
-        </div>
-        <div className="text-xs mt-3" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
-          Use this if you signed in on a shared computer and are not sure you signed out. It ends
-          every session for this account, including this one.
-        </div>
-      </Panel>
-
-      <Confirm
-        open={confirmSignOut}
-        title="Sign out everywhere?"
-        message="Every device signed in as this account will be signed out, including this one. You will need to sign in again."
-        confirmLabel="Sign out everywhere"
-        onCancel={() => setConfirmSignOut(false)}
-        onConfirm={() => { setConfirmSignOut(false); signOutEverywhere(); }}
-      />
-    </div>
   );
 };

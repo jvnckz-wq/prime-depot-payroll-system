@@ -17,7 +17,7 @@ export function flattenDeliveries(deliveries, filterCrewId, { includeVoided = fa
 export function deliveriesToLog(apiDeliveries) {
   const out = {};
   for (const d of apiDeliveries || []) {
-    if (!out[d.truckId]) out[d.truckId] = { date: d.date, items: [], deductions: [] };
+    if (!out[d.truckId]) out[d.truckId] = { date: d.date, items: [] };
     if (d.date > out[d.truckId].date) out[d.truckId].date = d.date;
 
     (d.items || []).forEach((it, i) => {
@@ -49,19 +49,24 @@ export function deliveriesToLog(apiDeliveries) {
   return out;
 }
 
-// With no attendance records for the cutoff, staff are paid for 11 days.
-const DEFAULT_CUTOFF_DAYS = 11;
-
 export function computeStaffPayroll(e, loans = [], statutory, attendance = null, runKey = null) {
-  const hasAttendance = !!attendance;
-  const leaveDays = hasAttendance ? (attendance.leave || 0) : 0;
-  const days = hasAttendance ? (attendance.present + leaveDays) : DEFAULT_CUTOFF_DAYS;
+  // No attendance for the cutoff means the employee is not on this cutoff's payroll: no pay and no contributions.
+  if (!attendance) {
+    return {
+      hasAttendance: false, days: 0, present: 0, leaveDays: 0, lateMins: 0, gross: 0, otWeekday: 0, otWeekend: 0, ot: 0,
+      allowance: 0, sss: 0, phic: 0, mp1: 0, mp2: 0, hdmf: 0, companyCover: 0, advance: 0, loanDeduction: 0,
+      advanceDeduction: 0, deductionLines: [], tardiness: 0, tardinessDue: 0, taxable: 0, withholdingTax: 0,
+      totalEarnings: 0, totalDeductions: 0, net: 0,
+    };
+  }
+  const leaveDays = attendance.leave || 0;
+  const days = attendance.present + leaveDays;
   const gross = round2(e.rate * days);
 
   // Overtime (client's rule): hourly rate = daily rate / 8, paid x1.25 on weekdays and x1.30 on weekends.
   const hourly = e.rate / 8;
-  const otWeekdayMins = hasAttendance ? (attendance.otWeekdayMins || 0) : 0;
-  const otWeekendMins = hasAttendance ? (attendance.otWeekendMins || 0) : 0;
+  const otWeekdayMins = attendance.otWeekdayMins || 0;
+  const otWeekendMins = attendance.otWeekendMins || 0;
   const otWeekday = round2(hourly * (otWeekdayMins / 60) * 1.25);
   const otWeekend = round2(hourly * (otWeekendMins / 60) * 1.3);
   const ot = round2(otWeekday + otWeekend);
@@ -73,7 +78,7 @@ export function computeStaffPayroll(e, loans = [], statutory, attendance = null,
   const mp1 = round2(e.piOn ? computePagIBIG(e.declaredSalary, statutory.pagibig) : 0);
   const mp2Set = round2(e.piOn ? (Number(e.mp2) || 0) : 0);
 
-  const lateMins = hasAttendance ? (attendance.lateMins || 0) : 0;
+  const lateMins = attendance.lateMins || 0;
   // Office late deduction (client's rule): daily rate x minutes late / 240. Minutes are counted
   // from the call time in attendance.js.
   const tardinessDue = round2(e.rate * lateMins / 240);
@@ -118,7 +123,7 @@ export function computeStaffPayroll(e, loans = [], statutory, attendance = null,
 
   const totalDeductions = round2(sss + phic + hdmf + advance + tardiness + withholdingTax);
   const net = round2(totalEarnings + companyCover - totalDeductions);
-  return { hasAttendance, days, present: hasAttendance ? attendance.present : days, leaveDays, lateMins, gross, otWeekday, otWeekend, ot, allowance, sss, phic, mp1, mp2, hdmf, companyCover, advance, loanDeduction, advanceDeduction, deductionLines, tardiness, tardinessDue, taxable, withholdingTax, totalEarnings, totalDeductions, net };
+  return { hasAttendance: true, days, present: attendance.present, leaveDays, lateMins, gross, otWeekday, otWeekend, ot, allowance, sss, phic, mp1, mp2, hdmf, companyCover, advance, loanDeduction, advanceDeduction, deductionLines, tardiness, tardinessDue, taxable, withholdingTax, totalEarnings, totalDeductions, net };
 }
 
 // SSS for one cutoff: half the monthly employee share of the salary's bracket.

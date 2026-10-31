@@ -14,7 +14,6 @@ import { peso } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
 
 export const CrewPayrollView = ({ deliveries, crewRates = CREW_RATE_FALLBACK, loans, reloadLoans, toast }) => {
-  const roleLabel = (r) => (r === 'Helper' ? 'Helper' : r);
   const [confirmApply, setConfirmApply] = useState(false);
   const [slipPerson, setSlipPerson] = useState(null);
 
@@ -70,10 +69,7 @@ export const CrewPayrollView = ({ deliveries, crewRates = CREW_RATE_FALLBACK, lo
   };
   const contributionByName = new Map(dailyStaff.filter(d => d.contribution).map(d => [d.key, d.contribution]));
   const dayPeople = crewDayPay(crewEarnings(D, crewRates), dailyStaff).map(p => {
-    const manualDeductions = Object.values(D).flatMap(l => l.deductions || [])
-      .filter(k => (k.name || k.who) === p.name)
-      .reduce((s, k) => s + (k.h ?? k.amount ?? 0), 0);
-    const deductions = round2(manualDeductions + loanDeductionsFor(p));
+    const deductions = round2(loanDeductionsFor(p));
     const c = contributionByName.get(p.key);
     const contribution = c ? dailyContributionFor(c, p.payable) : 0;
     const month = c ? { collected: round2(c.collectedBefore + contribution), share: c.shareTotal } : null;
@@ -162,7 +158,7 @@ export const CrewPayrollView = ({ deliveries, crewRates = CREW_RATE_FALLBACK, lo
                   <div>
                     <div className="text-sm font-semibold" style={{ fontFamily: F_HEAD, color: T.ink }}>{p.name}</div>
                     <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
-                      {roleLabel(p.role)} · {p.attendanceDaily ? 'present' : `${p.trips} trip${p.trips === 1 ? '' : 's'}`}
+                      {p.role} · {p.attendanceDaily ? 'present' : `${p.trips} trip${p.trips === 1 ? '' : 's'}`}
                       {p.lateMins > 0 && <span style={{ color: T.brand }}> · {p.lateMins} minute{p.lateMins === 1 ? '' : 's'} late</span>}
                     </div>
                   </div>
@@ -206,7 +202,7 @@ export const CrewPayrollView = ({ deliveries, crewRates = CREW_RATE_FALLBACK, lo
                       <img src="/logo.png" alt="Prime Depot" className="w-9 h-9 rounded bg-white p-1 object-contain shrink-0" />
                       <div>
                         <div className="text-white font-bold text-sm" style={{ fontFamily: F_HEAD }}>{p.name}</div>
-                        <div className="text-xs" style={{ color: T.soft, fontFamily: F_BODY }}>{roleLabel(p.role)} · {dayDate}</div>
+                        <div className="text-xs" style={{ color: T.soft, fontFamily: F_BODY }}>{p.role} · {dayDate}</div>
                       </div>
                     </div>
                     <div className="text-right">

@@ -5,7 +5,6 @@ import React from 'react';
 import { ArrowLeft, Pencil, CalendarX } from 'lucide-react';
 import { Avatar, Badge, BigStat, Btn, Chip, EmptyState, Field, Modal, Panel, SkeletonBlock, Td, Th, inputCls, inputStyle } from '@/components/ui';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
-import { positionLabel } from '@/lib/constants';
 import { fmtPeriod } from '@/features/attendance/attendance-helpers';
 
 export const EmployeeDtr = ({
@@ -33,7 +32,7 @@ export const EmployeeDtr = ({
           <Avatar name={name} size={52} tone={T.brand} />
           <div className="flex-1" style={{ minWidth: 160 }}>
             <div className="text-lg font-bold" style={{ fontFamily: F_HEAD, color: T.ink }}>{name}</div>
-            <div className="text-sm" style={{ fontFamily: F_BODY, color: T.soft }}>{emp?.position ? positionLabel(emp.position) : '--'} · {selectedId}</div>
+            <div className="text-sm" style={{ fontFamily: F_BODY, color: T.soft }}>{emp?.position ? emp.position : '--'} · {selectedId}</div>
           </div>
           <div className="flex gap-6 flex-wrap">
             <BigStat value={daysLate} label="Days Late" />

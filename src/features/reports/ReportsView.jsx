@@ -4,7 +4,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { AlertTriangle, CalendarX, CircleCheck, ReceiptText, Truck, Users } from 'lucide-react';
 import { Badge, Btn, EmptyState, Eyebrow, H1, Panel, Skeleton, SkeletonRows, Td, Th } from '@/components/ui';
-import { positionLabel } from '@/lib/constants';
 import { computeStaffPayroll } from '@/lib/payroll';
 import { shortDate, todayYmdManila } from '@/lib/loan-rules';
 import { cutoffWithholding, taxableForCutoff } from '@/lib/withholding';
@@ -102,7 +101,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
   const exportWht = () => exportXLSX('Withholding-Tax.xlsx', [{ name: 'Withholding Tax', rows: whtAbove.map(r => ({ Employee: r.name, 'Taxable Pay': r.taxable, 'Withholding Tax': r.tax })) }]);
   const export13 = () => exportXLSX('13th-Month-Pay.xlsx', [{ name: '13th Month', rows: t13.rows.map(r => ({ Employee: r.name, 'Months Worked': r.months, 'Total Basic': r.basic, '13th Month Pay': r.pay })) }]);
   const exportDriver = () => exportXLSX('Crew-Earnings.xlsx', [{ name: 'Crew', rows: crewRows.map(r => ({
-    Name: r.name, Role: positionLabel(r.role), Trucks: r.trucks.join(', '), Days: r.days, Trips: r.trips,
+    Name: r.name, Role: r.role, Trucks: r.trucks.join(', '), Days: r.days, Trips: r.trips,
     'Daily Rate': r.dailyRate, 'Piece Rate': r.pieceRate, Bonus: r.bonus, Gross: r.total,
     Late: r.late, Loans: r.loans, Net: r.net,
   })) }]);
@@ -205,7 +204,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
               <tbody>{loadingRange && !crewRows.length ? <SkeletonRows cols={12} rows={4} /> : crewRows.map((r, i) => (
                 <tr key={i}>
                   <Td>{r.name}</Td>
-                  <Td><Badge tone={r.role === 'Driver' ? 'amber' : 'neutral'}>{positionLabel(r.role)}</Badge></Td>
+                  <Td><Badge tone={r.role === 'Driver' ? 'amber' : 'neutral'}>{r.role}</Badge></Td>
                   <Td mono><span style={{ color: T.soft }}>{r.trucks.join(', ')}</span></Td>
                   <Td center mono>{r.days}</Td>
                   <Td center mono>{r.trips}</Td>

@@ -3,9 +3,6 @@ import { FINAL_POSITIONS } from './positions.js';
 
 export const POSITIONS = FINAL_POSITIONS;
 
-const POSITION_LABELS = {};
-export const positionLabel = (p) => POSITION_LABELS[p] || p;
-
 export const CREW_RATE_FALLBACK = {
   driverDaily: 280,
   helperDaily: 240,

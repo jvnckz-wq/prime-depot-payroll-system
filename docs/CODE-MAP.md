@@ -32,7 +32,7 @@ One folder per area of the app. Each holds the screens for that area.
 - `settings`: the government contribution tables, the fleet, the piece rates (`PieceRatesPanel.jsx`), checker accounts and the audit log.
 
 ### `src/lib`
-Rules and helpers with no screen of their own. The payroll rules live here: `payroll.js` (staff pay, contributions, crew pay), `loan-rules.js` (cutoffs and loan deductions), `withholding.js`, `thirteenth-month.js`, `attendance.js` (call times, lateness, overtime) and `positions.js`. These files run in the browser for previews and on the server for the real result. They use relative imports, so the tests can load them with plain Node.
+Rules and helpers with no screen of their own. The payroll rules live here: `payroll.js` (staff pay, contributions, crew pay), `loan-rules.js` (cutoffs and loan deductions), `withholding.js`, `thirteenth-month.js`, `attendance.js` (call times, lateness, overtime), `positions.js`, `delivery-items.js` (prices each delivery line from the rate table on the server) and `delivery-crew.js` (checks the truck and crew of a new delivery). These files run in the browser for previews and on the server for the real result. They use relative imports, so the tests can load them with plain Node.
 
 ### `src/lib/server/db`
 The Prisma database client (`prisma.js`) and a helper that retries a database call when the connection drops (`db-retry.js`). Server only.
@@ -41,7 +41,7 @@ The Prisma database client (`prisma.js`) and a helper that retries a database ca
 Outside services. `email.js` sends password reset and email confirmation codes through Gmail.
 
 ### `src/lib/server/security`
-Sign-in and safety: passwords, sessions, roles and the audit log (`auth.js`), two-factor codes (`twofactor.js`), and upload limits (`uploads.js`).
+Sign-in and safety: passwords, sessions, roles, the audit log and the limit on wrong current-password tries (`checkCurrentPassword()`), all in `auth.js`; two-factor codes (`twofactor.js`), and upload limits (`uploads.js`).
 
 ### `src/lib/server/services`
 Business logic that needs the database: loading payroll inputs (`payroll-inputs.js`), writing loan deductions (`loans-apply.js`), shaping employee and loan records, reading device exports, and locking released cutoffs.
@@ -64,13 +64,13 @@ Automated checks, one file per area, each run by a `test:*` script in `package.j
 1. **Device to app.** `scripts/sync-agent.js` runs `cycle()` on a timer. `readToday()` reads today's scans from the ZKTeco device, and `push()` sends them to `POST /api/attendance/push`.
 2. **Scans become attendance.** `src/app/api/attendance/push/route.js` matches each biometric ID to an employee, pairs the scans into a time-in and time-out with `pairPunches()`, and builds the day's row with `buildAttendanceRow()` (both in `src/lib/attendance.js`). That function works out the minutes late from the call time (`minutesLate()`) and the overtime after the shift end. The rows are saved in the `attendance` table. IDs that match no employee go to `unmapped_logs`.
 3. **The cutoff summary.** `GET /api/attendance` (`src/app/api/attendance/route.js`) adds up each employee's days present, leave, minutes late and weekday or weekend overtime with `summarizeAttendance()`.
-4. **The payslip preview.** `src/features/payroll/StaffPayrollView.jsx` loads that summary and calls `computeStaffPayroll()` in `src/lib/payroll.js` for each employee. It works out the basic pay, overtime, SSS, PhilHealth, Pag-IBIG, the late deduction, withholding tax (`cutoffWithholding()` in `src/lib/withholding.js`) and loan deductions.
+4. **The payslip preview.** `src/features/payroll/StaffPayrollView.jsx` loads that summary and calls `computeStaffPayroll()` in `src/lib/payroll.js` for each employee. An employee with no attendance this cutoff is left out and gets no pay. For the others it works out the basic pay, overtime, SSS, PhilHealth, Pag-IBIG, the late deduction, withholding tax (`cutoffWithholding()` in `src/lib/withholding.js`) and loan deductions.
 5. **Loan deductions.** The admin applies the cutoff's loan deductions first (see walkthrough (c)).
 6. **Release.** `POST /api/payroll/finalize` (`src/app/api/payroll/finalize/route.js`) reloads everything from the database with `loadStaffPayrollInputs()` (`src/lib/server/services/payroll-inputs.js`), runs `computeStaffPayroll()` again for each employee in `buildSlips()`, and saves a `payroll_periods` row with one `payslips` row per employee. The saved payslips do not change afterwards. `GET /api/payroll/history` reads them back.
 
 ### (b) A logged delivery becomes a crew payslip
-1. **Logging the trip.** `src/features/deliveries/DeliveryForm.jsx` collects the truck, driver, helpers, address and items. For each item it multiplies the quantity by the rate from the rates table (`regular` or `double`), giving `driverAmount` and `helperAmount`. `CheckerView.jsx` or `DeliveriesView.jsx` sends it to `POST /api/deliveries`.
-2. **Saving it.** `src/app/api/deliveries/route.js` checks the form, gives the trip the next trip number for that truck and day, and saves a `deliveries` row with its `delivery_items`.
+1. **Logging the trip.** `src/features/deliveries/DeliveryForm.jsx` collects the truck, driver, helpers, address and items, and shows a preview of each item's amounts. `CheckerView.jsx` or `DeliveriesView.jsx` sends it to `POST /api/deliveries`; for each item only the rate item's id (`rateItemId`) and the quantity are used.
+2. **Saving it.** `src/app/api/deliveries/route.js` checks the form, checks that the truck and crew are active (`crewError()` in `src/lib/delivery-crew.js`), prices every line itself from the rate table (`buildDeliveryItems()` in `src/lib/delivery-items.js`, using the `regular` or `double` rate), gives the trip the next trip number for that truck and day, and saves a `deliveries` row with its `delivery_items`.
 3. **Loading the day.** `src/components/layout/AppShell.jsx` loads today's deliveries from `GET /api/deliveries` and groups them by truck with `deliveriesToLog()` (`src/lib/payroll.js`).
 4. **Crew pay.** `src/features/payroll/CrewPayrollView.jsx` calls `crewEarnings()`, which gives each person their share of the piece rates (a driver gets the driver amount, helpers split the helper amount), plus the daily rate for each day worked, plus the trip bonus. Voided trips are skipped.
 5. **Lates and deductions.** The screen loads the daily-paid staff and their attendance from `GET /api/payroll/daily` (`loadDailyStaff()` in `payroll-inputs.js`), and `crewDayPay()` takes ₱3 per minute late, capped at the day's pay. Loan deductions taken for that day are added per person (`loanDeductionsFor()`).
