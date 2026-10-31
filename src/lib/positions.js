@@ -14,7 +14,7 @@ export const FINAL_POSITIONS = [
 
 const both = (pairs) => new Set(pairs.flat());
 
-const PIECE_RATE = both([['DRIVER', 'Driver'], ['PAHINANTE', 'Pahinante']]);
+const PIECE_RATE = both([['DRIVER', 'Driver'], ['HELPER', 'Pahinante']]);
 const DAILY_ATTENDANCE = both([['CHECKER', 'Checker'], ['WAREHOUSE_OFFICER', 'Warehouse Officer']]);
 const NON_REGULAR = both([['JOB_ORDER', 'Job Order']]);
 

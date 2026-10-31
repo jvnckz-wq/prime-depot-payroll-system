@@ -69,7 +69,7 @@ const isContributing = (e) => {
   return s.sssOn || s.phOn || s.piOn;
 };
 
-const DAILY_POSITIONS = ['DRIVER', 'PAHINANTE', 'CHECKER', 'WAREHOUSE_OFFICER'];
+const DAILY_POSITIONS = ['DRIVER', 'HELPER', 'CHECKER', 'WAREHOUSE_OFFICER'];
 const ymdOf = (d) => (d ? new Date(d).toISOString().slice(0, 10) : null);
 const dayBefore = (ymd) => ymdOf(new Date(toDate(ymd).getTime() - 86400000));
 

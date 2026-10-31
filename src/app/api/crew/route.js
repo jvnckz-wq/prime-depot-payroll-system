@@ -10,7 +10,7 @@ export async function GET() {
 
   const crew = await prisma.employee.findMany({
     where: {
-      position: { in: ['DRIVER', 'PAHINANTE'] },
+      position: { in: ['DRIVER', 'HELPER'] },
       status: 'ACTIVE',
     },
     select: { id: true, name: true, position: true },
@@ -24,6 +24,6 @@ export async function GET() {
     scannedIds: crew.map((c) => c.id).filter((id) => seen.has(`${id}|${today}`)),
     deviceOnline: online,
     drivers: crew.filter((c) => c.position === 'DRIVER').map(({ id, name }) => ({ id, name })),
-    helpers: crew.filter((c) => c.position === 'PAHINANTE').map(({ id, name }) => ({ id, name })),
+    helpers: crew.filter((c) => c.position === 'HELPER').map(({ id, name }) => ({ id, name })),
   });
 }

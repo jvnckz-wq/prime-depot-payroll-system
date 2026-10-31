@@ -30,7 +30,7 @@ ok('No schedules: falls back to the employee fields', () => {
   assert.equal(callTimeFor({ position: 'ASSISTANT', earlyShiftDays: ['MON'], earlyShiftTime: '06:00' }, '2026-10-12'), '06:00');
 });
 ok('Operations Head and crew never have an early shift', () => {
-  for (const position of ['OPERATIONS_HEAD', 'DRIVER', 'PAHINANTE', 'CHECKER', 'WAREHOUSE_OFFICER']) {
+  for (const position of ['OPERATIONS_HEAD', 'DRIVER', 'HELPER', 'CHECKER', 'WAREHOUSE_OFFICER']) {
     const e = { position, earlyShiftDays: ['MON'], earlyShiftTime: '06:00', shiftSchedules: [{ effectiveFrom: '2000-01-01', days: ['MON'], time: '06:00' }] };
     assert.notEqual(callTimeFor(e, '2026-10-12'), '06:00', position);
   }

@@ -190,8 +190,8 @@ async function seedEmployees() {
     const id = 'PAH-' + String(i + 1).padStart(3, '0');
     await prisma.employee.upsert({
       where: { id },
-      update: { name, position: 'PAHINANTE', dailyRate: HELPER_DAILY },
-      create: { id, name, position: 'PAHINANTE', dailyRate: HELPER_DAILY, declaredSalary: 0 },
+      update: { name, position: 'HELPER', dailyRate: HELPER_DAILY },
+      create: { id, name, position: 'HELPER', dailyRate: HELPER_DAILY, declaredSalary: 0 },
     });
   }
   console.log(`  employees: ${STAFF.length} staff, ${drivers.length} drivers, ${helpers.length} pahinante`);

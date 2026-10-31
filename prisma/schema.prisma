@@ -41,7 +41,7 @@ enum Position {
   OPERATIONS_HEAD
   CHECKER
   DRIVER
-  PAHINANTE
+  HELPER @map("PAHINANTE")
   /// Added Jul 2026 — office-staff positions taken from the client's actual
   /// payroll sheet. All run through Staff Payroll (none are crew), so no
   /// crew-detection or call-time logic changes. Appended at the end to match
@@ -809,7 +809,7 @@ model Payslip {
 
   // Pakyawan components — zero for office staff.
   pieceRateTotal  Decimal     @default(0) @db.Decimal(12, 2)
-  palimaBonus     Decimal     @default(0) @db.Decimal(12, 2)
+  tripBonus       Decimal     @default(0) @db.Decimal(12, 2) @map("palimaBonus")
   tripCount       Int         @default(0)
 
   grossPay        Decimal     @default(0) @db.Decimal(12, 2)

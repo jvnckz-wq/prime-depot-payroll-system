@@ -32,7 +32,7 @@ ok('each final position maps to the right employee type and pay', () => {
 });
 
 ok('enum values and labels agree', () => {
-  for (const [e, l] of [['DRIVER', 'Driver'], ['PAHINANTE', 'Pahinante'], ['CHECKER', 'Checker'], ['WAREHOUSE_OFFICER', 'Warehouse Officer'], ['JOB_ORDER', 'Job Order']]) {
+  for (const [e, l] of [['DRIVER', 'Driver'], ['HELPER', 'Pahinante'], ['CHECKER', 'Checker'], ['WAREHOUSE_OFFICER', 'Warehouse Officer'], ['JOB_ORDER', 'Job Order']]) {
     assert.equal(P.isDailyPosition(e), P.isDailyPosition(l), e);
     assert.equal(P.isNonRegularPosition(e), P.isNonRegularPosition(l), e);
   }
@@ -149,7 +149,7 @@ ok('server: loans see the same daily pay (checker present and late, by employee 
 });
 
 ok('daily-paid and Job Order never carry declared salary or contributions', () => {
-  for (const pos of ['DRIVER', 'PAHINANTE', 'CHECKER', 'WAREHOUSE_OFFICER', 'JOB_ORDER']) {
+  for (const pos of ['DRIVER', 'HELPER', 'CHECKER', 'WAREHOUSE_OFFICER', 'JOB_ORDER']) {
     const e = shapeEmployee(raw(pos));
     assert.deepEqual([e.declaredSalary, e.sssOn, e.phOn, e.piOn, e.mp2], [0, false, false, false, 0], pos);
   }
