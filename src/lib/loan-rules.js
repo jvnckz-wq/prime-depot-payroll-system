@@ -1,3 +1,5 @@
+import { round2 } from './money.js';
+
 export const LOAN_PURPOSES = ['Hospitalization', 'Emergency', 'Other'];
 export const PURPOSE_ENUM = { Hospitalization: 'HOSPITALIZATION', Emergency: 'EMERGENCY', Other: 'OTHER' };
 export const PURPOSE_LABEL = { HOSPITALIZATION: 'Hospitalization', EMERGENCY: 'Emergency', OTHER: 'Other' };
@@ -6,7 +8,6 @@ const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'S
 const MONTHS_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 const pad2 = (n) => String(n).padStart(2, '0');
-const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 
 export const isYmd = (s) => typeof s === 'string' && YMD_RE.test(s);
 

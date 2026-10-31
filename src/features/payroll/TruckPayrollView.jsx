@@ -9,6 +9,7 @@ import { Av, Badge, Btn, Confirm, EmptyState, Eyebrow, Field, H1, Modal, Panel, 
 import { CREW_RATE_FALLBACK } from '@/lib/constants';
 import { crewDayPay, crewEarnings, dailyContributionFor, deliveriesToLog, loanBalance } from '@/lib/payroll';
 import { grantedBy, planDeductions, todayYmdManila } from '@/lib/loan-rules';
+import { round2 } from '@/lib/money';
 import { peso, telHref } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
 import { labelTextError, moneyError, moneyInput, unitError, flagErrors } from '@/lib/field-rules';
@@ -17,7 +18,6 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
   const payslipsMode = mode === 'payslips';
   const ratesMode = mode === 'rates';
   const roleLabel = (r) => (r === 'Pahinante' ? 'Helper' : r);
-  const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
   const isCustomDouble = (r) => (r.s || []).some((v, k) => round2(r.d?.[k] ?? 0) !== round2((v || 0) * 2));
   const stripCustom = ({ _custom, ...rest }) => rest;
   const [selected, setSelected] = useState(null);

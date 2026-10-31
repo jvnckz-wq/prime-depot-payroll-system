@@ -4,11 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Btn, Confirm, Field, Panel } from '@/components/ui';
 import { balanceOf, planDeductions, shortDate, todayYmdManila } from '@/lib/loan-rules';
+import { round2 } from '@/lib/money';
 import { peso } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, F_SERIF, T } from '@/styles/theme';
 import { digitsOnly, moneyInput } from '@/lib/field-rules';
 
-const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 const nf = (v) => (Number.isFinite(parseFloat(v)) ? parseFloat(v) : 0);
 
 const EXIT_TYPES = ['Resignation', 'Termination', 'End of Contract', 'Retirement', 'AWOL'];

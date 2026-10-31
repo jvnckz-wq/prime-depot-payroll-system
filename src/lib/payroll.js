@@ -1,5 +1,6 @@
 import { dueFor, workingDaysIn } from './loan-rules';
 import { cutoffWithholding } from './withholding';
+import { round2 } from './money';
 
 export function flattenDeliveries(deliveries, filterCrewId, { includeVoided = false } = {}) {
   const out = [];
@@ -48,8 +49,6 @@ export function deliveriesToLog(apiDeliveries) {
 }
 
 const DEFAULT_CUTOFF_DAYS = 11;
-
-const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 
 export function computeStaffPayroll(e, loans = [], statutory, attendance = null, runKey = null) {
   const hasAttendance = !!attendance;

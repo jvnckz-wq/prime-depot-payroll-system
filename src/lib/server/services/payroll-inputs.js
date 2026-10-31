@@ -8,8 +8,8 @@ import {
 } from '../../payroll';
 import { shapeBir, shapePagibig, shapePhilhealth, shapeSss } from './statutory';
 import { CREW_RATE_FALLBACK } from '../../constants';
+import { round2 } from '../../money';
 
-const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 export const toDate = (ymd) => new Date(`${ymd}T00:00:00.000Z`);
 
 export async function loadStatutory(prisma) {

@@ -7,9 +7,9 @@ import { shapeLoan } from '@/lib/server/services/loans';
 import { deductionOps } from '@/lib/server/services/loans-apply';
 import { isDailyPosition } from '@/lib/positions';
 import { planDeductions, todayYmdManila } from '@/lib/loan-rules';
+import { round2 } from '@/lib/money';
 
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
-const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 
 const finalKey = (employeeId) => `final-${employeeId}`;
 

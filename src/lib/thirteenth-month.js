@@ -1,4 +1,4 @@
-const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+import { round2 } from './money.js';
 
 export function thirteenthMonthRows(slips) {
   const byEmployee = new Map();
