@@ -5,7 +5,7 @@ This page is a short tour of the code for someone new to it. It says what each f
 ## Folders
 
 ### `src/app`
-The Next.js App Router folder. `page.js` is the only page: it shows the whole app (see `src/shell`). `layout.js` wraps every page with the fonts and the global styles.
+The Next.js App Router folder. `page.js` is the only page: it shows the whole app (see `src/components/layout/AppShell.jsx`). `layout.js` wraps every page with the fonts and the global styles.
 
 ### `src/app/api`
 The backend. Each folder is a URL, and each `route.js` exports one function per HTTP method (`GET`, `POST`, `PATCH`, `PUT`, `DELETE`). For example, `src/app/api/deliveries/route.js` answers `GET /api/deliveries` and `POST /api/deliveries`. Every route first checks who is calling: most need a signed-in user or the admin. The two device routes (`attendance/push` and `attendance/pull`) check the sync token instead, and the sign-in and password reset steps work before anyone is signed in.
@@ -17,19 +17,19 @@ Pieces of screen that more than one feature uses. `CodeBoxes.jsx` is the box-per
 Small building blocks such as buttons (`Btn`), tables (`Th`, `Td`), dialogs (`Modal`, `Confirm`), form fields (`Field`) and cards (`Panel`). Each one has its own file, and `index.js` re-exports them all, so screens write `import { Btn, Panel } from '@/components/ui'`.
 
 ### `src/components/layout`
-The frame around the screens: `Nav.jsx` (sidebar and top bar) and `IdleTimeout.jsx` (signs the user out after a period with no activity).
+The frame around the screens. `AppShell.jsx` is the app shell: it signs the user in, loads the shared data (employees, loans, deliveries, rates), and shows the screen picked in the sidebar through `TabContent.jsx` (one line per tab). `Nav.jsx` is the sidebar and top bar, `nav-items.js` lists the sidebar menu, and `IdleTimeout.jsx` signs the user out after a period with no activity.
 
 ### `src/features`
 One folder per area of the app. Each holds the screens for that area.
-- `attendance`: the Attendance screen (daily records, each employee's DTR, device import and pull, unmapped biometric IDs).
-- `auth`: sign-in, My Account, two-factor setup, the first sign-in password change, and the legal pages.
+- `attendance`: the Attendance screen. `AttendanceView.jsx` holds the shared state and shows one file per tab (`LiveTab.jsx`, `CutoffsTab.jsx` for Employee DTR, `UnmappedTab.jsx`, `HistoryTab.jsx`), plus `EmployeeDtr.jsx` for one employee's DTR. Date and cutoff helpers are in `attendance-helpers.js`.
+- `auth`: sign-in, My Account (`AccountPage.jsx`, with its dialogs in `account/`), two-factor setup, the first sign-in password change, and the legal pages.
 - `dashboard`: the Dashboard with headcount, this cutoff's payroll and deliveries.
-- `deliveries`: the delivery form, the delivery list, and the Checker's screen.
+- `deliveries`: the Deliveries screen (`DeliveriesView.jsx`), the delivery form, the delivery list, the Checker's screen, and the day picker shared with Crew Payroll (`DayBar.jsx`, `useDeliveryDay.js`).
 - `employees`: the Employees screen (add, edit, deactivate).
 - `loans`: the Loans, Cash Advances and Loan History pages, and the new loan dialog.
-- `payroll`: Staff Payroll, Crew Payroll (`TruckPayrollView.jsx`) and Final Pay.
+- `payroll`: Staff Payroll, Crew Payroll (`CrewPayrollView.jsx`) and Final Pay.
 - `reports`: payroll register, government remittance, 13th month, crew earnings and withholding tax reports.
-- `settings`: the government contribution tables, the fleet, checker accounts and the audit log.
+- `settings`: the government contribution tables, the fleet, the piece rates (`PieceRatesPanel.jsx`), checker accounts and the audit log.
 
 ### `src/lib`
 Rules and helpers with no screen of their own. The payroll rules live here: `payroll.js` (staff pay, contributions, crew pay), `loan-rules.js` (cutoffs and loan deductions), `withholding.js`, `thirteenth-month.js`, `attendance.js` (call times, lateness, overtime) and `positions.js`. These files run in the browser for previews and on the server for the real result. They use relative imports, so the tests can load them with plain Node.
@@ -48,9 +48,6 @@ Business logic that needs the database: loading payroll inputs (`payroll-inputs.
 
 ### `src/styles`
 `globals.css` (Tailwind and shared CSS classes) and `theme.js` (the colors and fonts every screen uses).
-
-### `src/shell`
-`PrimeDepotPayrollUI.jsx` is the app shell. It signs the user in, loads the shared data (employees, loans, deliveries, rates), and shows the screen picked in the sidebar. `nav-items.js` lists the sidebar menu.
 
 ### `prisma`
 `schema.prisma` describes every database table. `migrations/` holds the SQL that built the database, one folder per change, and must never be edited. `seed.ts` fills a new database with starting data.
@@ -72,12 +69,12 @@ Automated checks, one file per area, each run by a `test:*` script in `package.j
 6. **Release.** `POST /api/payroll/finalize` (`src/app/api/payroll/finalize/route.js`) reloads everything from the database with `loadStaffPayrollInputs()` (`src/lib/server/services/payroll-inputs.js`), runs `computeStaffPayroll()` again for each employee in `buildSlips()`, and saves a `payroll_periods` row with one `payslips` row per employee. The saved payslips do not change afterwards. `GET /api/payroll/history` reads them back.
 
 ### (b) A logged delivery becomes a crew payslip
-1. **Logging the trip.** `src/features/deliveries/DeliveryForm.jsx` collects the truck, driver, helpers, address and items. For each item it multiplies the quantity by the rate from the rates table (`regular` or `double`), giving `driverAmount` and `helperAmount`. `CheckerView.jsx` or `TruckPayrollView.jsx` sends it to `POST /api/deliveries`.
+1. **Logging the trip.** `src/features/deliveries/DeliveryForm.jsx` collects the truck, driver, helpers, address and items. For each item it multiplies the quantity by the rate from the rates table (`regular` or `double`), giving `driverAmount` and `helperAmount`. `CheckerView.jsx` or `DeliveriesView.jsx` sends it to `POST /api/deliveries`.
 2. **Saving it.** `src/app/api/deliveries/route.js` checks the form, gives the trip the next trip number for that truck and day, and saves a `deliveries` row with its `delivery_items`.
-3. **Loading the day.** `src/shell/PrimeDepotPayrollUI.jsx` loads today's deliveries from `GET /api/deliveries` and groups them by truck with `deliveriesToLog()` (`src/lib/payroll.js`).
-4. **Crew pay.** `src/features/payroll/TruckPayrollView.jsx` calls `crewEarnings()`, which gives each person their share of the piece rates (a driver gets the driver amount, helpers split the helper amount), plus the daily rate for each day worked, plus the trip bonus. Voided trips are skipped.
+3. **Loading the day.** `src/components/layout/AppShell.jsx` loads today's deliveries from `GET /api/deliveries` and groups them by truck with `deliveriesToLog()` (`src/lib/payroll.js`).
+4. **Crew pay.** `src/features/payroll/CrewPayrollView.jsx` calls `crewEarnings()`, which gives each person their share of the piece rates (a driver gets the driver amount, helpers split the helper amount), plus the daily rate for each day worked, plus the trip bonus. Voided trips are skipped.
 5. **Lates and deductions.** The screen loads the daily-paid staff and their attendance from `GET /api/payroll/daily` (`loadDailyStaff()` in `payroll-inputs.js`), and `crewDayPay()` takes ₱3 per minute late, capped at the day's pay. Loan deductions taken for that day are added per person (`loanDeductionsFor()`).
-6. **The payslip.** The Per-Person Payslips table and the payslip dialog in `TruckPayrollView.jsx` show the result. Crew payslips are worked out on screen and printed; they are not stored in the `payslips` table.
+6. **The payslip.** The Per-Person Payslips table and the payslip dialog in `CrewPayrollView.jsx` show the result. Crew payslips are worked out on screen and printed; they are not stored in the `payslips` table.
 
 ### (c) A loan from creation to its payroll deduction
 1. **Granting it.** `src/features/loans/LoanFormModal.jsx` (opened from `LoansPage.jsx`) sends `POST /api/loans` with `kind: 'LOAN'`. Cash advances come from `CashAdvancesPage.jsx` with `kind: 'CASH_ADVANCE'`.

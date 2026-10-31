@@ -30,7 +30,7 @@ You are a security reviewer for **Prime Depot Payroll**, a Next.js 16 (App Route
 - **Uploads:** avatar as a base64 data URL on `/api/auth/me`; biometric `.xls` on `/api/attendance/import`. Helpers in `src/lib/server/security/uploads.js`: `base64TooLarge`, `MAX_AVATAR_BYTES`, `hasImageMagic`.
 - **DB client:** `src/lib/server/db/prisma.js` exports `prisma` (retry-wrapped) and `prismaBase`. **There is no global `omit`**, so any query on `User` without a `select` returns `passwordHash`, `totpSecret`, `backupCodes`, and `email`.
 - **Headers/CSP:** `next.config.mjs`.
-- **Client bundle:** `src/shell/PrimeDepotPayrollUI.jsx` and `src/features/*/*.jsx`.
+- **Client bundle:** `src/components/layout/AppShell.jsx`, `src/components/layout/TabContent.jsx` and `src/features/**/*.jsx`.
 - **Dev/ops only:** `scripts/admin/*.ts`, `prisma/seed.ts`, `prisma/migrations/`, `migrations-*.sql`.
 
 ## Checklist
@@ -62,7 +62,7 @@ You are a security reviewer for **Prime Depot Payroll**, a Next.js 16 (App Route
 - **Attendance import:** check the size cap before parsing, what happens when parsing fails, and whether the spreadsheet library version in `package.json` has known prototype-pollution or ReDoS advisories.
 - **Response leakage:** User objects in responses must not include `passwordHash`, `totpSecret`, or `backupCodes`, and should include `email` only where intended. Look for `include: { user: true }` on nested relations too. Check that responses to `CHECKER` don't carry employee PII or payroll figures they don't need. Error responses must not return `err.message`, stack traces, or Prisma error details. Secrets or codes must not end up in `console.log`.
 - **Exports:** CSV/Excel cells that start with `=`, `+`, `-`, `@`, tab, or carriage return must be neutralized (formula injection).
-- **Server-only boundary:** no `'use client'` file (including `src/shell/PrimeDepotPayrollUI.jsx` and `src/features/*/*.jsx`) may import `lib/server/security/auth`, `lib/server/db/prisma`, `lib/server/security/twofactor`, or `lib/server/integrations/email`. Suggest `import 'server-only'` in those modules if it's missing.
+- **Server-only boundary:** no `'use client'` file (including `src/components/layout/AppShell.jsx` and `src/features/**/*.jsx`) may import `lib/server/security/auth`, `lib/server/db/prisma`, `lib/server/security/twofactor`, or `lib/server/integrations/email`. Suggest `import 'server-only'` in those modules if it's missing.
 
 ### 4. Secrets
 - Every credential (DB URL, email API key, etc.) is read from `process.env`. None are hardcoded in `src/`, `prisma/`, `scripts/`, `next.config.mjs`, `prisma.config.ts`, or `migrations-*.sql`.

@@ -46,7 +46,7 @@ The code is organized by layer, so a folder's name tells you what kind of code i
 
 ### Frontend
 
-`src/app/page.js`, `src/app/layout.js`, `src/shell`, `src/features/<feature>`, `src/components` (shared pieces in `src/components/ui`, the sidebar and idle logout in `src/components/layout`), `src/styles` (`globals.css` and the `theme.js` color and font tokens), `src/lib/constants.js`, `src/lib/batangas-areas.js`
+`src/app/page.js`, `src/app/layout.js`, `src/features/<feature>`, `src/components` (shared pieces in `src/components/ui`; the app shell, tab switch, sidebar and idle logout in `src/components/layout`), `src/styles` (`globals.css` and the `theme.js` color and font tokens), `src/lib/constants.js`, `src/lib/batangas-areas.js`
 
 The screens people use: this code runs in the browser, never touches the database, and gets all of its data by calling `/api/...`.
 
