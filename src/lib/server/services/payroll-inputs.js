@@ -238,7 +238,7 @@ export async function crewAvailableOn(prisma, ymd) {
   return out;
 }
 
-const ROLE_ORDER = ['Driver', 'Pahinante', 'Checker', 'Warehouse Officer'];
+const ROLE_ORDER = ['Driver', 'Helper', 'Checker', 'Warehouse Officer'];
 
 export async function loadCrewReport(prisma, from, to) {
   const [employees, everyone, rateRow, entries] = await Promise.all([

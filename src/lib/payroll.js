@@ -197,11 +197,11 @@ export function crewEarnings(deliveries, { driverDaily, helperDaily, bonusHead, 
           p.tripsByKey.set(currentKey, (p.tripsByKey.get(currentKey) || 0) + 1);
         };
         if (currentDriver) mark(get(currentDriver, 'Driver'));
-        currentHelpers.forEach((h) => mark(get(h, 'Pahinante')));
+        currentHelpers.forEach((h) => mark(get(h, 'Helper')));
       }
       if (currentDriver) get(currentDriver, 'Driver').pieceRate += it.d || 0;
       const n = currentHelpers.length;
-      if (n) currentHelpers.forEach((h) => { get(h, 'Pahinante').pieceRate += (it.h || 0) / n; });
+      if (n) currentHelpers.forEach((h) => { get(h, 'Helper').pieceRate += (it.h || 0) / n; });
     });
   });
 

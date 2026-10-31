@@ -17,7 +17,7 @@ import { labelTextError, moneyError, moneyInput, unitError, flagErrors } from '@
 export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, rates, setRates, crewRates = CREW_RATE_FALLBACK, loans, reloadLoans, crewNames = [], toast, mode = 'logging', onOpenDtr, deliveriesFilter = 'all' }) => {
   const payslipsMode = mode === 'payslips';
   const ratesMode = mode === 'rates';
-  const roleLabel = (r) => (r === 'Pahinante' ? 'Helper' : r);
+  const roleLabel = (r) => (r === 'Helper' ? 'Helper' : r);
   const isCustomDouble = (r) => (r.s || []).some((v, k) => round2(r.d?.[k] ?? 0) !== round2((v || 0) * 2));
   const stripCustom = ({ _custom, ...rest }) => rest;
   const [selected, setSelected] = useState(null);
@@ -291,7 +291,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
 
     const people = crewTotals.map(p => ({ ...p, kaltas: kaltasFor(p.name), net: p.total - kaltasFor(p.name) }));
     const drivers = people.filter(p => p.role === 'Driver');
-    const helpers = people.filter(p => p.role === 'Pahinante');
+    const helpers = people.filter(p => p.role === 'Helper');
 
     const bonusNames = people.filter(p => p.bonus > 0).map(p => p.name);
     const grandNet = people.reduce((sum, p) => sum + p.net, 0);
