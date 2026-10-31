@@ -1,0 +1,866 @@
+{
+  "attendance": {
+    "rows": [
+      {
+        "employeeId": "201",
+        "date": "2026-10-01T00:00:00.000Z",
+        "timeIn": "2026-10-01T06:35:00.000Z",
+        "timeOut": "2026-10-01T17:00:00.000Z",
+        "tardinessMins": 0,
+        "overtimeMins": 0,
+        "isAbsent": false,
+        "isAssumedIn": false,
+        "isAssumedOut": false
+      },
+      {
+        "employeeId": "201",
+        "date": "2026-10-02T00:00:00.000Z",
+        "timeIn": "2026-10-02T07:00:00.000Z",
+        "timeOut": "2026-10-02T18:30:00.000Z",
+        "tardinessMins": 20,
+        "overtimeMins": 90,
+        "isAbsent": false,
+        "isAssumedIn": false,
+        "isAssumedOut": false
+      },
+      {
+        "employeeId": "201",
+        "date": "2026-10-03T00:00:00.000Z",
+        "timeIn": "2026-10-03T06:38:00.000Z",
+        "timeOut": "2026-10-03T19:00:00.000Z",
+        "tardinessMins": 0,
+        "overtimeMins": 120,
+        "isAbsent": false,
+        "isAssumedIn": false,
+        "isAssumedOut": false
+      },
+      {
+        "employeeId": "201",
+        "date": "2026-10-04T00:00:00.000Z",
+        "timeIn": "2026-10-04T06:30:00.000Z",
+        "timeOut": "2026-10-04T14:15:00.000Z",
+        "tardinessMins": 0,
+        "overtimeMins": 135,
+        "isAbsent": false,
+        "isAssumedIn": false,
+        "isAssumedOut": false
+      },
+      {
+        "employeeId": "201",
+        "date": "2026-10-05T00:00:00.000Z",
+        "timeIn": null,
+        "timeOut": "2026-10-05T17:00:00.000Z",
+        "tardinessMins": 30,
+        "overtimeMins": 0,
+        "isAbsent": false,
+        "isAssumedIn": true,
+        "isAssumedOut": false
+      },
+      {
+        "employeeId": "201",
+        "date": "2026-10-06T00:00:00.000Z",
+        "timeIn": "2026-10-06T06:12:00.000Z",
+        "timeOut": "2026-10-06T17:00:00.000Z",
+        "tardinessMins": 12,
+        "overtimeMins": 0,
+        "isAbsent": false,
+        "isAssumedIn": false,
+        "isAssumedOut": false
+      },
+      {
+        "employeeId": "201",
+        "date": "2026-10-07T00:00:00.000Z",
+        "timeIn": "2026-10-07T06:40:00.000Z",
+        "timeOut": "2026-10-07T17:00:00.000Z",
+        "tardinessMins": 0,
+        "overtimeMins": 0,
+        "isAbsent": false,
+        "isAssumedIn": false,
+        "isAssumedOut": true
+      },
+      {
+        "employeeId": "201",
+        "date": "2026-10-08T00:00:00.000Z",
+        "isAbsent": true,
+        "tardinessMins": 0,
+        "overtimeMins": 0,
+        "isLeave": true
+      },
+      {
+        "employeeId": "201",
+        "date": "2026-10-09T00:00:00.000Z",
+        "timeIn": "2026-10-09T06:55:00.000Z",
+        "timeOut": "2026-10-09T17:45:00.000Z",
+        "tardinessMins": 15,
+        "overtimeMins": 45,
+        "isAbsent": false,
+        "isAssumedIn": false,
+        "isAssumedOut": false
+      },
+      {
+        "employeeId": "201",
+        "date": "2026-10-10T00:00:00.000Z",
+        "timeIn": "2026-10-10T06:30:00.000Z",
+        "timeOut": "2026-10-10T17:20:00.000Z",
+        "tardinessMins": 0,
+        "overtimeMins": 20,
+        "isAbsent": false,
+        "isAssumedIn": false,
+        "isAssumedOut": false
+      },
+      {
+        "employeeId": "201",
+        "date": "2026-10-12T00:00:00.000Z",
+        "isAbsent": true,
+        "tardinessMins": 0,
+        "overtimeMins": 0
+      },
+      {
+        "employeeId": "201",
+        "date": "2026-10-13T00:00:00.000Z",
+        "timeIn": "2026-10-13T06:05:00.000Z",
+        "timeOut": "2026-10-13T17:00:00.000Z",
+        "tardinessMins": 5,
+        "overtimeMins": 0,
+        "isAbsent": false,
+        "isAssumedIn": false,
+        "isAssumedOut": false
+      },
+      {
+        "employeeId": "201",
+        "date": "2026-10-14T00:00:00.000Z",
+        "timeIn": "2026-10-14T06:41:00.000Z",
+        "timeOut": "2026-10-14T17:00:00.000Z",
+        "tardinessMins": 1,
+        "overtimeMins": 0,
+        "isAbsent": false,
+        "isAssumedIn": false,
+        "isAssumedOut": false
+      },
+      {
+        "employeeId": "201",
+        "date": "2026-10-15T00:00:00.000Z",
+        "timeIn": "2026-10-15T06:20:00.000Z",
+        "timeOut": "2026-10-15T20:00:00.000Z",
+        "tardinessMins": 0,
+        "overtimeMins": 180,
+        "isAbsent": false,
+        "isAssumedIn": false,
+        "isAssumedOut": false
+      }
+    ],
+    "summary": [
+      {
+        "id": "201",
+        "name": "Alfa Santos",
+        "present": 12,
+        "absent": 1,
+        "leave": 1,
+        "daysLate": 6,
+        "lateMins": 83,
+        "otMins": 590,
+        "otWeekdayMins": 315,
+        "otWeekendMins": 275
+      },
+      {
+        "id": "202",
+        "name": "Bravo Cruz",
+        "present": 12,
+        "absent": 0,
+        "leave": 1,
+        "daysLate": 3,
+        "lateMins": 45,
+        "otMins": 60,
+        "otWeekdayMins": 0,
+        "otWeekendMins": 60
+      }
+    ],
+    "callTimes": [
+      "06:00",
+      "06:40",
+      "06:40",
+      "06:30",
+      "06:30",
+      "06:40"
+    ],
+    "minutesLate": [
+      12,
+      12,
+      15,
+      30
+    ]
+  },
+  "staffPayroll": {
+    "alfa": {
+      "hasAttendance": true,
+      "days": 13,
+      "present": 12,
+      "leaveDays": 1,
+      "lateMins": 83,
+      "gross": 15600,
+      "otWeekday": 984.38,
+      "otWeekend": 893.75,
+      "ot": 1878.13,
+      "allowance": 500,
+      "sss": 775,
+      "phic": 390,
+      "mp1": 100,
+      "mp2": 300,
+      "hdmf": 400,
+      "companyCover": 0,
+      "advance": 2200,
+      "loanDeduction": 700,
+      "advanceDeduction": 1500,
+      "deductionLines": [
+        {
+          "kind": "LOAN",
+          "purpose": "EMERGENCY",
+          "amount": 700,
+          "shortfall": 0,
+          "balanceAfter": 3500,
+          "dateGranted": "2026-08-20"
+        },
+        {
+          "kind": "CASH_ADVANCE",
+          "purpose": null,
+          "amount": 1500,
+          "shortfall": 0,
+          "balanceAfter": 0,
+          "dateGranted": "2026-10-05"
+        }
+      ],
+      "tardiness": 415,
+      "tardinessDue": 415,
+      "taxable": 16298.13,
+      "withholdingTax": 882.22,
+      "totalEarnings": 17978.13,
+      "totalDeductions": 5062.22,
+      "net": 12915.91
+    },
+    "bravo": {
+      "hasAttendance": true,
+      "days": 13,
+      "present": 12,
+      "leaveDays": 1,
+      "lateMins": 45,
+      "gross": 6500,
+      "otWeekday": 0,
+      "otWeekend": 81.25,
+      "ot": 81.25,
+      "allowance": 0,
+      "sss": 325,
+      "phic": 162.5,
+      "mp1": 100,
+      "mp2": 0,
+      "hdmf": 100,
+      "companyCover": 0,
+      "advance": 400,
+      "loanDeduction": 400,
+      "advanceDeduction": 0,
+      "deductionLines": [
+        {
+          "kind": "LOAN",
+          "purpose": "HOSPITALIZATION",
+          "amount": 400,
+          "shortfall": 0,
+          "balanceAfter": 1600,
+          "dateGranted": "2026-09-02"
+        }
+      ],
+      "tardiness": 93.75,
+      "tardinessDue": 93.75,
+      "taxable": 5900,
+      "withholdingTax": 0,
+      "totalEarnings": 6581.25,
+      "totalDeductions": 1081.25,
+      "net": 5500
+    },
+    "noAttendance": {
+      "hasAttendance": false,
+      "days": 11,
+      "present": 11,
+      "leaveDays": 0,
+      "lateMins": 0,
+      "gross": 5500,
+      "otWeekday": 0,
+      "otWeekend": 0,
+      "ot": 0,
+      "allowance": 0,
+      "sss": 325,
+      "phic": 162.5,
+      "mp1": 100,
+      "mp2": 0,
+      "hdmf": 100,
+      "companyCover": 0,
+      "advance": 0,
+      "loanDeduction": 0,
+      "advanceDeduction": 0,
+      "deductionLines": [],
+      "tardiness": 0,
+      "tardinessDue": 0,
+      "taxable": 4912.5,
+      "withholdingTax": 0,
+      "totalEarnings": 5500,
+      "totalDeductions": 587.5,
+      "net": 4912.5
+    },
+    "alfaFinalized": {
+      "hasAttendance": true,
+      "days": 13,
+      "present": 12,
+      "leaveDays": 1,
+      "lateMins": 83,
+      "gross": 15600,
+      "otWeekday": 984.38,
+      "otWeekend": 893.75,
+      "ot": 1878.13,
+      "allowance": 500,
+      "sss": 775,
+      "phic": 390,
+      "mp1": 100,
+      "mp2": 300,
+      "hdmf": 400,
+      "companyCover": 0,
+      "advance": 1800,
+      "loanDeduction": 300,
+      "advanceDeduction": 1500,
+      "deductionLines": [
+        {
+          "kind": "LOAN",
+          "purpose": "EMERGENCY",
+          "amount": 300,
+          "shortfall": 400,
+          "balanceAfter": 3900,
+          "dateGranted": "2026-08-20"
+        },
+        {
+          "kind": "CASH_ADVANCE",
+          "purpose": null,
+          "amount": 1500,
+          "shortfall": 0,
+          "balanceAfter": 0,
+          "dateGranted": "2026-10-05"
+        }
+      ],
+      "tardiness": 415,
+      "tardinessDue": 415,
+      "taxable": 16298.13,
+      "withholdingTax": 882.22,
+      "totalEarnings": 17978.13,
+      "totalDeductions": 4662.22,
+      "net": 13315.91
+    }
+  },
+  "withholding": {
+    "threshold": 10416.67,
+    "annual": [
+      0,
+      0,
+      0.15,
+      22500,
+      72500,
+      202500,
+      2552500
+    ],
+    "perCutoff": [
+      0,
+      0,
+      12.5,
+      777.5,
+      2504.17,
+      10937.5
+    ],
+    "taxableFromPayslips": [
+      16298.13,
+      5900
+    ]
+  },
+  "thirteenthMonth": [
+    {
+      "employeeId": "201",
+      "name": "Alfa Santos",
+      "months": 2,
+      "basic": 46800.5,
+      "pay": 3900.04
+    },
+    {
+      "employeeId": "202",
+      "name": "Bravo Cruz",
+      "months": 2,
+      "basic": 12500.25,
+      "pay": 1041.69
+    }
+  ],
+  "crew": {
+    "helperLabelFound": true,
+    "earnings": [
+      {
+        "key": "301",
+        "id": "301",
+        "name": "Delta Garcia",
+        "role": "Driver",
+        "trips": 5,
+        "trucks": [
+          "TRK-01"
+        ],
+        "days": 1,
+        "pieceRate": 595,
+        "dailyRate": 280,
+        "bonus": 100,
+        "total": 975
+      },
+      {
+        "key": "304",
+        "id": "304",
+        "name": "Golf Navarro",
+        "role": "Driver",
+        "trips": 3,
+        "trucks": [
+          "TRK-02"
+        ],
+        "days": 1,
+        "pieceRate": 420,
+        "dailyRate": 280,
+        "bonus": 0,
+        "total": 700
+      },
+      {
+        "key": "302",
+        "id": "302",
+        "name": "Echo Mendoza",
+        "role": "HELPER_ROLE",
+        "trips": 4,
+        "trucks": [
+          "TRK-01"
+        ],
+        "days": 1,
+        "pieceRate": 305,
+        "dailyRate": 240,
+        "bonus": 0,
+        "total": 545
+      },
+      {
+        "key": "303",
+        "id": "303",
+        "name": "Foxtrot Lim",
+        "role": "HELPER_ROLE",
+        "trips": 5,
+        "trucks": [
+          "TRK-01",
+          "TRK-02"
+        ],
+        "days": 1,
+        "pieceRate": 450,
+        "dailyRate": 240,
+        "bonus": 0,
+        "total": 690
+      }
+    ],
+    "dayPay": [
+      {
+        "key": "301",
+        "id": "301",
+        "name": "Delta Garcia",
+        "role": "Driver",
+        "trips": 5,
+        "trucks": [
+          "TRK-01"
+        ],
+        "days": 1,
+        "pieceRate": 595,
+        "dailyRate": 280,
+        "bonus": 100,
+        "total": 975,
+        "lateMins": 12,
+        "late": 36,
+        "payable": 939
+      },
+      {
+        "key": "304",
+        "id": "304",
+        "name": "Golf Navarro",
+        "role": "Driver",
+        "trips": 3,
+        "trucks": [
+          "TRK-02"
+        ],
+        "days": 1,
+        "pieceRate": 420,
+        "dailyRate": 280,
+        "bonus": 0,
+        "total": 700,
+        "lateMins": 0,
+        "late": 0,
+        "payable": 700
+      },
+      {
+        "key": "302",
+        "id": "302",
+        "name": "Echo Mendoza",
+        "role": "HELPER_ROLE",
+        "trips": 4,
+        "trucks": [
+          "TRK-01"
+        ],
+        "days": 1,
+        "pieceRate": 305,
+        "dailyRate": 240,
+        "bonus": 0,
+        "total": 545,
+        "lateMins": 0,
+        "late": 0,
+        "payable": 545
+      },
+      {
+        "key": "303",
+        "id": "303",
+        "name": "Foxtrot Lim",
+        "role": "HELPER_ROLE",
+        "trips": 5,
+        "trucks": [
+          "TRK-01",
+          "TRK-02"
+        ],
+        "days": 1,
+        "pieceRate": 450,
+        "dailyRate": 240,
+        "bonus": 0,
+        "total": 690,
+        "lateMins": 200,
+        "late": 600,
+        "payable": 90
+      },
+      {
+        "key": "401",
+        "id": "401",
+        "name": "India Torres",
+        "role": "Checker",
+        "trucks": [],
+        "trips": 0,
+        "days": 1,
+        "pieceRate": 0,
+        "dailyRate": 450,
+        "bonus": 0,
+        "total": 450,
+        "lateMins": 7,
+        "late": 21,
+        "payable": 429,
+        "attendanceDaily": true
+      }
+    ],
+    "lateDeductions": [
+      36,
+      450,
+      0,
+      0
+    ],
+    "present": [
+      true,
+      true,
+      false,
+      false
+    ],
+    "loanPlan": {
+      "writes": [
+        {
+          "loanId": "CL1",
+          "employeeId": "301",
+          "person": "Delta Garcia",
+          "kind": "LOAN",
+          "crew": true,
+          "final": false,
+          "due": 150,
+          "amount": 150,
+          "unpaid": 0,
+          "shortfall": 0,
+          "carriedIn": 0,
+          "settles": false,
+          "remark": "Crew pay Oct 14, 2026"
+        }
+      ],
+      "eligible": 1,
+      "skipped": 0,
+      "applied": 1,
+      "settled": 0,
+      "total": 150,
+      "short": [],
+      "unpaidTotal": 0
+    }
+  },
+  "loans": {
+    "balances": [
+      4200,
+      1500,
+      2000
+    ],
+    "due": [
+      700,
+      1500,
+      400
+    ],
+    "dueAsCrew": 500,
+    "carry": [
+      {
+        "amount": 200,
+        "fromYmd": "2026-09-30"
+      },
+      {
+        "amount": 0,
+        "fromYmd": null
+      },
+      {
+        "amount": 0,
+        "fromYmd": null
+      }
+    ],
+    "carryBefore": {
+      "amount": 0,
+      "fromYmd": null
+    },
+    "payoff": [
+      {
+        "count": 9,
+        "first": "2026-10-15",
+        "last": "2027-02-15"
+      },
+      {
+        "count": 4,
+        "first": "2026-12-31",
+        "last": "2027-02-15"
+      },
+      null
+    ],
+    "staffPlan": {
+      "writes": [
+        {
+          "loanId": "CA1",
+          "employeeId": "201",
+          "person": "Alfa Santos",
+          "kind": "CASH_ADVANCE",
+          "crew": false,
+          "final": false,
+          "due": 1500,
+          "amount": 1500,
+          "unpaid": 0,
+          "shortfall": 0,
+          "carriedIn": 0,
+          "settles": true,
+          "remark": "Payroll October 1–15, 2026"
+        },
+        {
+          "loanId": "L1",
+          "employeeId": "201",
+          "person": "Alfa Santos",
+          "kind": "LOAN",
+          "crew": false,
+          "final": false,
+          "due": 700,
+          "amount": 300,
+          "unpaid": 400,
+          "shortfall": 400,
+          "carriedIn": 200,
+          "settles": false,
+          "remark": "Payroll October 1–15, 2026 · ₱400.00 short, carried over"
+        },
+        {
+          "loanId": "L2",
+          "employeeId": "202",
+          "person": "Bravo Cruz",
+          "kind": "LOAN",
+          "crew": false,
+          "final": false,
+          "due": 400,
+          "amount": 150,
+          "unpaid": 250,
+          "shortfall": 250,
+          "carriedIn": 0,
+          "settles": false,
+          "remark": "Payroll October 1–15, 2026 · ₱250.00 short, carried over"
+        }
+      ],
+      "eligible": 3,
+      "skipped": 0,
+      "applied": 3,
+      "settled": 1,
+      "total": 1950,
+      "short": [
+        {
+          "employeeId": "201",
+          "person": "Alfa Santos",
+          "kind": "LOAN",
+          "due": 700,
+          "amount": 300,
+          "unpaid": 400
+        },
+        {
+          "employeeId": "202",
+          "person": "Bravo Cruz",
+          "kind": "LOAN",
+          "due": 400,
+          "amount": 150,
+          "unpaid": 250
+        }
+      ],
+      "unpaidTotal": 650
+    },
+    "afterRun": [
+      {
+        "id": "L1",
+        "employeeId": "201",
+        "person": "Alfa Santos",
+        "kind": "LOAN",
+        "purpose": "EMERGENCY",
+        "perCutoff": 500,
+        "principal": 5000,
+        "isCrew": false,
+        "paused": false,
+        "settled": false,
+        "active": true,
+        "dateGranted": "2026-08-20",
+        "createdAt": "2026-08-20T01:00:00.000Z",
+        "entries": [
+          {
+            "type": "grant",
+            "amount": 5000,
+            "ymd": "2026-08-20"
+          },
+          {
+            "type": "deduction",
+            "amount": 500,
+            "shortfall": 0,
+            "payslipId": "staff-September 1–15, 2026",
+            "ymd": "2026-09-15"
+          },
+          {
+            "type": "deduction",
+            "amount": 300,
+            "shortfall": 200,
+            "payslipId": "staff-September 16–30, 2026",
+            "ymd": "2026-09-30"
+          },
+          {
+            "date": "Oct 15, 2026",
+            "ymd": "2026-10-15",
+            "type": "deduction",
+            "amount": 300,
+            "shortfall": 400,
+            "remark": "Payroll October 1–15, 2026 · ₱400.00 short, carried over",
+            "payslipId": "staff-October 1–15, 2026"
+          }
+        ]
+      },
+      {
+        "id": "CA1",
+        "employeeId": "201",
+        "person": "Alfa Santos",
+        "kind": "CASH_ADVANCE",
+        "purpose": null,
+        "perCutoff": 1500,
+        "principal": 1500,
+        "isCrew": false,
+        "paused": false,
+        "settled": true,
+        "active": true,
+        "dateGranted": "2026-10-05",
+        "createdAt": "2026-10-05T02:00:00.000Z",
+        "entries": [
+          {
+            "type": "grant",
+            "amount": 1500,
+            "ymd": "2026-10-05"
+          },
+          {
+            "date": "Oct 15, 2026",
+            "ymd": "2026-10-15",
+            "type": "deduction",
+            "amount": 1500,
+            "shortfall": 0,
+            "remark": "Payroll October 1–15, 2026",
+            "payslipId": "staff-October 1–15, 2026"
+          }
+        ]
+      },
+      {
+        "id": "L2",
+        "employeeId": "202",
+        "person": "Bravo Cruz",
+        "kind": "LOAN",
+        "purpose": "HOSPITALIZATION",
+        "perCutoff": 400,
+        "principal": 2000,
+        "isCrew": false,
+        "paused": false,
+        "settled": false,
+        "active": true,
+        "dateGranted": "2026-09-02",
+        "createdAt": "2026-09-02T03:00:00.000Z",
+        "entries": [
+          {
+            "type": "grant",
+            "amount": 2000,
+            "ymd": "2026-09-02"
+          },
+          {
+            "date": "Oct 15, 2026",
+            "ymd": "2026-10-15",
+            "type": "deduction",
+            "amount": 150,
+            "shortfall": 250,
+            "remark": "Payroll October 1–15, 2026 · ₱250.00 short, carried over",
+            "payslipId": "staff-October 1–15, 2026"
+          }
+        ]
+      }
+    ],
+    "ledger": [
+      {
+        "type": "grant",
+        "amount": 5000,
+        "ymd": "2026-08-20",
+        "runningBalance": 5000
+      },
+      {
+        "type": "deduction",
+        "amount": 500,
+        "shortfall": 0,
+        "payslipId": "staff-September 1–15, 2026",
+        "ymd": "2026-09-15",
+        "runningBalance": 4500
+      },
+      {
+        "type": "deduction",
+        "amount": 300,
+        "shortfall": 200,
+        "payslipId": "staff-September 16–30, 2026",
+        "ymd": "2026-09-30",
+        "runningBalance": 4200
+      }
+    ],
+    "loanBalance": [
+      4200,
+      1500,
+      2000
+    ],
+    "crewDue": 150
+  },
+  "contributions": {
+    "share": {
+      "sss": 1550,
+      "phic": 780,
+      "hdmf": 200,
+      "total": 2530
+    },
+    "perDay": 93.71,
+    "perDayFixed": 35,
+    "oneDay": 93.71,
+    "month": {
+      "byDay": {
+        "2026-10-01": 20,
+        "2026-10-02": 93.71,
+        "2026-10-05": 93.71
+      },
+      "collected": 207.42,
+      "remaining": 2322.58
+    }
+  }
+}
