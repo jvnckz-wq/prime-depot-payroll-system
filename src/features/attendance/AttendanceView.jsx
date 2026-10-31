@@ -1,52 +1,18 @@
 'use client';
-// Attendance screen: daily records, each employee's DTR, device import and pull, and unmapped biometric IDs.
+// Attendance screen: holds the shared state and switches between the Live, Employee DTR, Unmapped IDs and Import History tabs.
 
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, ClipboardList, ArrowLeft, Pencil, Upload, Loader2, CalendarX, CircleCheck, Users } from 'lucide-react';
-import { Avatar, Badge, BigStat, Btn, Chip, EmptyState, Eyebrow, Field, H1, Modal, Panel, SkeletonBlock, Td, Th, inputCls, inputStyle } from '@/components/ui';
-import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
+import { H1 } from '@/components/ui';
 import { timeOrderError } from '@/lib/field-rules';
-import { positionLabel } from '@/lib/constants';
-import { MAX_IMPORT_BYTES, MAX_IMPORT_MB, tooBigMessage } from '@/lib/import-limits';
-
-const agoFrom = (iso) => {
-  if (!iso) return null;
-  const s = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 1000));
-  if (s < 60) return `${s}s ago`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  return `${Math.floor(m / 60)}h ago`;
-};
-
-const asUTC = (iso) => new Date(iso + 'T00:00:00Z');
-const fmtDay = (iso) => asUTC(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-const fmtPeriod = (p) => (p ? `${fmtDay(p.start)} – ${asUTC(p.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}` : '--');
-const shiftYmd = (iso, delta) => { const d = asUTC(iso); d.setUTCDate(d.getUTCDate() + delta); return d.toISOString().slice(0, 10); };
-const liveThBase = { fontFamily: F_HEAD, fontSize: 11.5, fontWeight: 600, color: T.soft, textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'left', padding: '13px 18px', borderTop: `1px solid ${T.line}`, borderBottom: `1px solid ${T.line}` };
-const liveTdBase = { fontFamily: F_BODY, fontSize: 14.5, color: T.ink, padding: '14px 18px', borderBottom: `1px solid ${T.lineSoft}`, verticalAlign: 'middle' };
-const manilaTodayStr = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-const cutoffOf = (y, mi0, half) => {
-  const mm = String(mi0 + 1).padStart(2, '0');
-  if (half === 'A') return { from: `${y}-${mm}-01`, to: `${y}-${mm}-15` };
-  const end = new Date(Date.UTC(y, mi0 + 1, 0)).getUTCDate();
-  return { from: `${y}-${mm}-16`, to: `${y}-${mm}-${String(end).padStart(2, '0')}` };
-};
-const recentCutoffs = (todayStr, n = 3) => {
-  const [y, m, d] = todayStr.split('-').map(Number);
-  let yy = y, mi = m - 1, half = d <= 15 ? 'A' : 'B';
-  const list = [];
-  for (let i = 0; i < n; i += 1) { list.push(cutoffOf(yy, mi, half)); if (half === 'B') { half = 'A'; } else { half = 'B'; mi -= 1; if (mi < 0) { mi = 11; yy -= 1; } } }
-  return list;
-};
-const cutoffLabel = (c) => `${asUTC(c.from).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })} – ${asUTC(c.to).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}`;
-const cutoffFor = (ymd) => { const [y, m, d] = ymd.split('-').map(Number); return cutoffOf(y, m - 1, d <= 15 ? 'A' : 'B'); };
-const shiftCutoff = (sel, dir) => {
-  const [y, m] = sel.from.split('-').map(Number);
-  let yy = y, mi = m - 1, half = sel.from.slice(8) === '01' ? 'A' : 'B';
-  if (dir > 0) { if (half === 'A') half = 'B'; else { half = 'A'; mi += 1; if (mi > 11) { mi = 0; yy += 1; } } }
-  else if (half === 'B') half = 'A'; else { half = 'B'; mi -= 1; if (mi < 0) { mi = 11; yy -= 1; } }
-  return cutoffOf(yy, mi, half);
-};
+import { MAX_IMPORT_BYTES, tooBigMessage } from '@/lib/import-limits';
+import { cutoffFor, fmtDay, manilaTodayStr, recentCutoffs } from '@/features/attendance/attendance-helpers';
+import { UnregisteredBanner } from '@/features/attendance/UnregisteredBanner.jsx';
+import { LiveTab } from '@/features/attendance/LiveTab.jsx';
+import { CutoffsTab } from '@/features/attendance/CutoffsTab.jsx';
+import { UnmappedTab } from '@/features/attendance/UnmappedTab.jsx';
+import { HistoryTab } from '@/features/attendance/HistoryTab.jsx';
+import { HistoryModals } from '@/features/attendance/HistoryModals.jsx';
+import { EmployeeDtr } from '@/features/attendance/EmployeeDtr.jsx';
 
 export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNavigate, focus = null, onFocusConsumed }) => {
   const [view, setView] = useState(focus ? 'dtr' : 'list');
@@ -349,112 +315,10 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
   };
 
   if (view === 'dtr' && selectedId) {
-    const emp = staff.find(s => s.id === selectedId);
-    const isCrew = !!emp?.crew;
-    const summary = data.summaries.find(s => s.id === selectedId);
-    const name = emp?.name || summary?.name || selectedId;
-    const rows = dtr.rows || [];
-    const daysLate = rows.filter(r => r.late > 0).length;
-    const lateMins = rows.reduce((s, r) => s + r.late, 0);
-    const otMins = rows.reduce((s, r) => s + r.ot, 0);
-    const absent = rows.filter(r => r.absent).length;
-    const leave = rows.filter(r => r.leave).length;
-
     return (
-      <div className="p-4 sm:p-6">
-        <button onClick={() => { setView('list'); setSelectedId(null); }} className="pd-link text-sm mb-4" style={{ fontFamily: F_BODY }}>
-          <ArrowLeft size={14} /> Back to Attendance
-        </button>
-        <Panel className="p-5 mb-5">
-          <div className="flex items-center gap-5 flex-wrap">
-            <Avatar name={name} size={52} tone={T.brand} />
-            <div className="flex-1" style={{ minWidth: 160 }}>
-              <div className="text-lg font-bold" style={{ fontFamily: F_HEAD, color: T.ink }}>{name}</div>
-              <div className="text-sm" style={{ fontFamily: F_BODY, color: T.soft }}>{emp?.position ? positionLabel(emp.position) : '--'} · {selectedId}</div>
-            </div>
-            <div className="flex gap-6 flex-wrap">
-              <BigStat value={daysLate} label="Days Late" />
-              <BigStat value={`${lateMins}m`} label="Total Late" tone={T.red} />
-              <BigStat value={`${otMins}m`} label="Overtime" tone={T.green} />
-              <BigStat value={absent} label="Absences" tone={T.amber} />
-              {!isCrew && <BigStat value={leave} label="On Leave" tone={T.brand} />}
-            </div>
-          </div>
-        </Panel>
-
-        <Panel className="overflow-hidden">
-          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${T.line}` }}>
-            <div className="text-sm font-semibold" style={{ fontFamily: F_HEAD, color: T.ink }}>Daily Time Record: {fmtPeriod(dtr.period)}</div>
-          </div>
-          {dtrLoading ? <SkeletonBlock avatar={false} />
-            : rows.length === 0 ? <EmptyState icon={CalendarX} title="No attendance for this employee yet" desc="Scans appear here after you pull this cutoff from the device." />
-            : (
-            <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
-              <thead><tr><Th>Date</Th><Th>Time In</Th><Th>Time Out</Th><Th center>Late (minutes)</Th><Th center>Overtime (minutes)</Th><Th></Th></tr></thead>
-              <tbody>
-                {rows.map((a) => {
-                  const isLate = a.late > 0, isOt = a.ot > 0;
-                  const rowBg = a.absent ? T.amberBg : 'transparent';
-                  return (
-                    <tr key={a.date} onClick={() => openEdit(a)} style={{ backgroundColor: rowBg, cursor: data.finalized ? 'default' : 'pointer' }}>
-                      <Td>
-                        <span className="font-bold mr-2" style={{ fontFamily: F_MONO, color: T.ink }}>{a.date.slice(8)}</span>
-                        <span className="text-xs" style={{ fontFamily: F_BODY, color: a.absent ? T.amber : T.soft }}>{a.weekday}</span>
-                        {a.absent && <span className="ml-2"><Badge tone="amber">ABSENT</Badge></span>}
-                        {a.leave && <span className="ml-2"><Badge tone="blue">ON LEAVE</Badge></span>}
-                        {a.assumedIn && !a.absent && <span className="ml-2"><Badge tone="blue">ASSUMED IN</Badge></span>}
-                        {a.assumedOut && !a.absent && <span className="ml-2"><Badge tone="blue">ASSUMED OUT</Badge></span>}
-                        {a.manual && <span className="ml-2"><Badge tone="blue">EDITED</Badge></span>}
-                      </Td>
-                      <Td mono>{a.assumedIn ? '--' : (a.in || '--')}</Td>
-                      <Td mono>{a.assumedOut ? '--' : (a.out || '--')}</Td>
-                      <Td center mono><span style={{ fontWeight: isLate ? 700 : 400, color: isLate ? T.red : T.soft }}>{isLate ? a.late : '--'}</span></Td>
-                      <Td center mono><span style={{ fontWeight: isOt ? 700 : 400, color: isOt ? T.green : T.soft }}>{isOt ? a.ot : '--'}</span></Td>
-                      <Td right>{!data.finalized && <Pencil size={13} style={{ color: T.soft }} />}</Td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot>
-                <tr style={{ backgroundColor: T.bg }}>
-                  <Td colSpan={3}><b style={{ color: T.red, fontFamily: F_HEAD, letterSpacing: '0.03em' }}>TOTAL</b></Td>
-                  <Td center mono><b style={{ color: T.red }}>{lateMins}m</b></Td>
-                  <Td center mono><b style={{ color: T.green }}>{otMins}m</b></Td>
-                  <Td></Td>
-                </tr>
-              </tfoot>
-            </table></div>
-          )}
-        </Panel>
-
-        <Modal open={!!editDay} onClose={() => setEditDay(null)} title={`Correct ${editDay ? `${name} on ${editDay.date}` : ''}`} width={440}>
-          {editDay && (
-            <div className="space-y-3">
-              <Field label="Status">
-                <div className="flex gap-2">
-                  {(isCrew ? [['present', 'Present'], ['absent', 'Absent']] : [['present', 'Present'], ['leave', 'On Leave'], ['absent', 'Absent']]).map(([val, lbl]) => (
-                    <Chip key={val} on={editForm.status === val} onClick={() => setEditForm((f) => ({ ...f, status: val }))}>{lbl}</Chip>
-                  ))}
-                </div>
-              </Field>
-              {editForm.status === 'leave' && (
-                <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Paid leave, counted toward pay like a present day, tracked against the employee&apos;s leave credits.</div>
-              )}
-              {editForm.status === 'present' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <Field label="Time In"><input type="time" value={editForm.timeIn} onChange={(e) => setEditForm((f) => ({ ...f, timeIn: e.target.value }))} className={inputCls} style={inputStyle} /></Field>
-                  <Field label="Time Out"><input type="time" value={editForm.timeOut} onChange={(e) => setEditForm((f) => ({ ...f, timeOut: e.target.value }))} className={inputCls} style={inputStyle} /></Field>
-                </div>
-              )}
-              <Field label="Reason / note (optional)"><input value={editForm.note} maxLength={200} onChange={(e) => setEditForm((f) => ({ ...f, note: e.target.value }))} placeholder="e.g. brownout, scanner down" className={inputCls} style={inputStyle} /></Field>
-              <div className="flex justify-end gap-2 pt-1">
-                <Btn variant="outline" onClick={() => setEditDay(null)} disabled={savingEdit}>Cancel</Btn>
-                <Btn onClick={saveEdit} loading={savingEdit} disabled={savingEdit}>{savingEdit ? 'Saving…' : 'Save correction'}</Btn>
-              </div>
-            </div>
-          )}
-        </Modal>
-      </div>
+      <EmployeeDtr
+        staff={staff} selectedId={selectedId} setSelectedId={setSelectedId} setView={setView} data={data} dtr={dtr} dtrLoading={dtrLoading}
+        openEdit={openEdit} editDay={editDay} setEditDay={setEditDay} editForm={editForm} setEditForm={setEditForm} savingEdit={savingEdit} saveEdit={saveEdit} />
     );
   }
 
@@ -468,361 +332,25 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
         </div>
       )}
       {subTab === 'live' && <UnregisteredBanner count={liveData.unregistered || 0} onOpen={goUnmapped} />}
-      {subTab === 'live' && (
-        <Panel className="overflow-hidden">
-          <div className="flex items-center justify-between gap-4 flex-wrap" style={{ padding: '18px 18px 0' }}>
-            <div className="flex items-center gap-2.5">
-              <button
-                onClick={() => setLiveDate(shiftYmd(liveData.date || liveData.today, -1))}
-                disabled={!liveData.date}
-                className="rounded-lg flex items-center justify-center pd-clickable"
-                style={{ width: 30, height: 30, border: `1px solid ${T.line}`, background: T.surface, color: T.ink, fontSize: 16, lineHeight: 1 }}
-                aria-label="Previous day"
-              >&lsaquo;</button>
-              <button
-                onClick={() => { const next = shiftYmd(liveData.date, 1); setLiveDate(next >= liveData.today ? null : next); }}
-                disabled={liveData.isToday}
-                className="rounded-lg flex items-center justify-center pd-clickable"
-                style={{ width: 30, height: 30, border: `1px solid ${T.line}`, background: T.surface, color: T.ink, fontSize: 16, lineHeight: 1, opacity: liveData.isToday ? 0.35 : 1 }}
-                aria-label="Next day"
-              >&rsaquo;</button>
-              <div style={{ minWidth: 200 }}>
-                <div className="flex items-center gap-2" style={{ fontFamily: F_HEAD, fontWeight: 700, fontSize: 17, color: T.ink }}>{liveData.isToday ? 'Today' : (liveData.date ? fmtDay(liveData.date) : ' ')}{liveData.finalized && <Badge tone="green">Finalized</Badge>}</div>
-                <div style={{ fontFamily: F_BODY, fontSize: 12, color: T.soft, marginTop: 1 }}>
-                  {liveData.date ? asUTC(liveData.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : ' '}
-                </div>
-                {liveData.finalized && liveData.isToday && <div className="text-xs mt-1" style={{ fontFamily: F_BODY, color: T.warn, maxWidth: 360, lineHeight: 1.5 }}>This cutoff’s payroll is finalized. New scans stay on the device and are not added.</div>}
-              </div>
-              {!liveData.isToday && (
-                <button onClick={() => setLiveDate(null)} className="pd-link text-sm" style={{ fontFamily: F_BODY }}>Back to today</button>
-              )}
-            </div>
-            {(() => {
-              if (!liveData.isToday) {
-                return (
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: T.lineSoft, border: `1px solid ${T.line}`, borderRadius: 999, padding: '7px 13px', fontFamily: F_HEAD, fontWeight: 600, fontSize: 13, color: T.soft }}>
-                    <span style={{ width: 9, height: 9, borderRadius: '50%', background: T.soft }} />
-                    Viewing past day
-                  </div>
-                );
-              }
-              const sync = liveData.sync || {};
-              const ago = agoFrom(sync.lastSyncAt);
-              const cfg = sync.status === 'live'
-                ? { color: T.green, glow: true, label: 'Live', text: `synced ${ago}` }
-                : sync.status === 'stale'
-                  ? { color: T.warn, glow: false, label: 'Reconnecting', text: ago ? `last sync ${ago}` : 'no sync yet' }
-                  : { color: T.soft, glow: false, label: 'Offline', text: ago ? `last sync ${ago}` : 'no sync yet' };
-              return (
-                <div
-                  title={sync.lastSyncAt ? `Last device sync: ${new Date(sync.lastSyncAt).toLocaleTimeString()}` : 'No device sync yet'}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 8,
-                    background: T.surface, border: `1px solid ${cfg.color}`,
-                    borderRadius: 999, padding: '7px 13px',
-                    fontFamily: F_HEAD, fontWeight: 600, fontSize: 13,
-                    boxShadow: cfg.glow ? `0 0 0 3px ${T.greenBg}` : 'none',
-                    transition: 'box-shadow .3s ease, border-color .3s ease',
-                  }}
-                >
-                  <span style={{ position: 'relative', width: 9, height: 9, flex: '0 0 9px' }}>
-                    {cfg.glow && <span className="pd-live-ping" style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: cfg.color }} />}
-                    <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: cfg.color }} />
-                  </span>
-                  <span style={{ color: sync.status === 'live' ? T.ink : T.soft }}>{cfg.label}</span>
-                  <span style={{ color: T.line }}>·</span>
-                  <span style={{ color: T.soft, fontWeight: 500 }}>{cfg.text}</span>
-                </div>
-              );
-            })()}
-          </div>
-
-          <div className="grid grid-cols-3 sm:flex sm:flex-wrap" style={{ gap: 10, padding: '16px 18px' }}>
-            {[
-              [liveData.isToday ? 'Present today' : 'Present', liveData.stats.present, T.ink, false],
-              ['Late', liveData.stats.late, T.red, false],
-              [liveData.isToday ? 'Not yet in' : 'Absent / no scan', liveData.stats.notYetIn, T.soft, true],
-            ].map(([label, n, color, dashed]) => (
-              <div key={label} className="sm:min-w-32" style={{ background: dashed ? 'transparent' : T.surface, border: `1px ${dashed ? 'dashed' : 'solid'} ${T.line}`, borderRadius: 12, padding: '12px 14px' }}>
-                <div style={{ fontFamily: F_HEAD, fontWeight: 700, fontSize: 23, lineHeight: 1, color, fontVariantNumeric: 'tabular-nums' }}>{n}</div>
-                <div style={{ fontFamily: F_HEAD, fontWeight: 600, fontSize: 11.5, color: T.soft, textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 6 }}>{label}</div>
-              </div>
-            ))}
-          </div>
-
-          {liveLoading ? <SkeletonBlock />
-            : liveData.rows.length === 0 ? <EmptyState icon={ClipboardList} title={liveData.isToday ? 'No one has scanned yet today' : 'No records for this day'} desc={liveData.isToday ? 'Scans show up here in real time as employees clock in on the device.' : 'No one scanned on this date, or the sync agent was not running.'} />
-            : (
-            <div className="overflow-x-auto">
-              <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', minWidth: 640 }}>
-                <thead><tr>
-                  <th style={{ ...liveThBase, width: '40%' }}>Employee</th>
-                  <th style={{ ...liveThBase, width: '16%' }}>Time In</th>
-                  <th style={{ ...liveThBase, width: '16%' }}>Time Out</th>
-                  <th style={{ ...liveThBase, width: '14%', textAlign: 'center' }}>Late (minutes)</th>
-                  <th style={{ ...liveThBase, width: '14%', textAlign: 'center' }}>Status</th>
-                </tr></thead>
-                <tbody>
-                  {liveData.rows.map(r => (
-                    <tr key={r.id}>
-                      <td style={liveTdBase}>
-                        <div style={{ fontFamily: F_BODY, fontWeight: 600 }}>{r.name}</div>
-                        <div style={{ fontFamily: F_BODY, fontSize: 12, color: T.soft, marginTop: 1 }}>{r.position ? `${positionLabel(r.position)} · ${r.id}` : r.id}</div>
-                      </td>
-                      <td style={{ ...liveTdBase, fontVariantNumeric: 'tabular-nums' }}>{r.in || <span style={{ color: T.line }}>--</span>}{r.assumedIn && <span style={{ marginLeft: 8, fontSize: 11, color: T.soft }}>assumed</span>}</td>
-                      <td style={{ ...liveTdBase, fontVariantNumeric: 'tabular-nums' }}>{r.out || <span style={{ color: T.line }}>--</span>}</td>
-                      <td style={{ ...liveTdBase, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{r.late > 0 ? <span style={{ color: T.red, fontWeight: 700 }}>{r.late}m</span> : <span style={{ color: T.line }}>--</span>}</td>
-                      <td style={{ ...liveTdBase, textAlign: 'center' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: F_HEAD, fontSize: 11.5, fontWeight: 600, borderRadius: 999, padding: '4px 10px', color: r.status === 'in' ? T.green : T.soft, background: r.status === 'in' ? T.greenBg : T.lineSoft }}>
-                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: r.status === 'in' ? T.green : T.soft }} />
-                          {r.status === 'in' ? 'In' : 'Out'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Panel>
-      )}
+      {subTab === 'live' && <LiveTab liveData={liveData} setLiveDate={setLiveDate} liveLoading={liveLoading} />}
 
       {subTab === 'dtr' && (
-        <>
-          <div className="rounded-xl mb-4 overflow-hidden" style={{ border: `1px solid ${T.line}`, background: T.surface }}>
-            <div className="flex items-center justify-between gap-4 flex-wrap" style={{ padding: '16px 18px' }}>
-              <div className="flex items-center gap-2.5">
-                <button onClick={() => setPullSel(shiftCutoff(pullSel, -1))} disabled={pullActive} className="rounded-lg flex items-center justify-center pd-clickable" style={{ width: 30, height: 30, border: `1px solid ${T.line}`, background: T.surface, color: T.ink, fontSize: 16, lineHeight: 1 }} aria-label="Previous cutoff">&lsaquo;</button>
-                <button onClick={() => setPullSel(shiftCutoff(pullSel, 1))} disabled={pullActive || !canGoNext} className="rounded-lg flex items-center justify-center pd-clickable" style={{ width: 30, height: 30, border: `1px solid ${T.line}`, background: T.surface, color: T.ink, fontSize: 16, lineHeight: 1, opacity: canGoNext ? 1 : 0.35 }} aria-label="Next cutoff">&rsaquo;</button>
-                <div style={{ minWidth: 190 }}>
-                  <div className="flex items-center gap-2" style={{ fontFamily: F_HEAD, fontWeight: 700, fontSize: 17, color: T.ink }}>{cutoffLabel(pullSel)}{data.finalized && <Badge tone="green">Finalized</Badge>}</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2.5 flex-wrap">
-                {(() => {
-                  const connected = pullDevice.status === 'live';
-                  const stale = pullDevice.status === 'stale';
-                  const color = connected ? T.green : stale ? T.warn : T.soft;
-                  return (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, borderRadius: 999, padding: '7px 12px', fontFamily: F_HEAD, fontWeight: 600, fontSize: 12.5, color: connected ? T.ink : T.soft, background: T.surface, border: `1px solid ${connected ? T.green : T.line}`, boxShadow: connected ? `0 0 0 3px ${T.greenBg}` : 'none' }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
-                      {connected ? 'Device connected' : stale ? 'Reconnecting' : 'Device offline'}
-                    </span>
-                  );
-                })()}
-                {!data.finalized && <Btn onClick={queuePull} loading={pullBusy || pullActive} disabled={pullBusy || pullActive}>{pullReq?.status === 'RUNNING' ? 'Pulling…' : pullBusy || pullActive ? 'Queued…' : 'Pull from device'}</Btn>}
-                {!data.finalized && <Btn variant="outline" onClick={() => setShowImport(true)}>Import file</Btn>}
-              </div>
-            </div>
-            {showImport && (
-              <div
-                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={onDrop}
-                className="border-2 border-dashed flex flex-col items-center justify-center text-center gap-2 px-4 py-6 m-4 rounded-md transition-colors"
-                style={{ borderColor: dragOver ? T.brand : T.line, backgroundColor: dragOver ? T.brandBg : T.surface }}>
-                {importing ? <Loader2 size={22} color={T.brand} className="pd-spin" /> : <Upload size={22} color={dragOver ? T.brand : T.soft} />}
-                <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>{importing ? 'Reading and matching the attendance file…' : 'Drag & drop the biometric file here'}</div>
-                <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>Accepted files: .dat, .xls, .xlsx (up to {MAX_IMPORT_MB} MB)</div>
-                <div className="flex gap-2">
-                  <Btn variant="outline" onClick={() => fileRef.current?.click()} loading={importing} disabled={importing}>{importing ? 'Importing…' : 'Browse for a file'}</Btn>
-                  {!importing && <Btn variant="outline" onClick={() => setShowImport(false)}>Cancel</Btn>}
-                </div>
-              </div>
-            )}
-          </div>
-          <UnregisteredBanner count={data.unregisteredInPeriod || 0} onOpen={goUnmapped} />
-          <Panel className="overflow-hidden">
-            {loading ? <SkeletonBlock />
-              : data.summaries.length === 0 ? (staff.length === 0
-                ? <EmptyState icon={Users} title="No employees registered yet" desc="Scans are matched to employees by their biometric ID. Register them first, then pull from the device." action={onNavigate ? <Btn variant="outline" onClick={() => onNavigate('employees')}>Go to Employees</Btn> : null} />
-                : <EmptyState icon={CalendarX} title="No attendance for this cutoff yet" desc="Press Pull from device above to read this cutoff's scans from the scanner." />)
-              : (
-              <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
-                <thead><tr><Th>ID</Th><Th>Employee</Th><Th center>Present</Th><Th center>Days Late</Th><Th center>Late (minutes)</Th><Th center>Overtime (minutes)</Th><Th center>Absences</Th><Th center>Leave</Th><Th>Action</Th></tr></thead>
-                <tbody>
-                  {data.summaries.map(s => (
-                    <tr key={s.id}>
-                      <Td mono>{s.id}</Td>
-                      <Td>
-                        <div className="font-semibold" style={{ fontFamily: F_BODY }}>{s.name}</div>
-                      </Td>
-                      <Td center mono>{s.present}</Td>
-                      <Td center mono><span style={{ color: s.daysLate > 0 ? T.red : T.soft, fontWeight: s.daysLate > 0 ? 700 : 400 }}>{s.daysLate || '--'}</span></Td>
-                      <Td center mono><span style={{ color: s.lateMins > 0 ? T.red : T.soft, fontWeight: s.lateMins > 0 ? 700 : 400 }}>{s.lateMins > 0 ? `${s.lateMins}m` : '--'}</span></Td>
-                      <Td center mono><span style={{ color: s.otMins > 0 ? T.green : T.soft, fontWeight: s.otMins > 0 ? 700 : 400 }}>{s.otMins > 0 ? `${s.otMins}m` : '--'}</span></Td>
-                      <Td center mono><span style={{ color: s.absent > 0 ? T.amber : T.soft, fontWeight: s.absent > 0 ? 700 : 400 }}>{s.absent || '--'}</span></Td>
-                      <Td center mono>{s.leave || '--'}</Td>
-                      <Td><Btn size="sm" variant="outline" onClick={() => { setSelectedId(s.id); setView('dtr'); }}>View</Btn></Td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table></div>
-            )}
-          </Panel>
-        </>
+        <CutoffsTab
+          pullSel={pullSel} setPullSel={setPullSel} pullActive={pullActive} canGoNext={canGoNext} data={data} pullDevice={pullDevice}
+          queuePull={queuePull} pullBusy={pullBusy} pullReq={pullReq} showImport={showImport} setShowImport={setShowImport}
+          dragOver={dragOver} setDragOver={setDragOver} onDrop={onDrop} importing={importing} fileRef={fileRef} goUnmapped={goUnmapped}
+          loading={loading} staff={staff} onNavigate={onNavigate} setSelectedId={setSelectedId} setView={setView} />
       )}
 
       {subTab === 'unmapped' && (
-        <Panel className="overflow-hidden">
-          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${T.line}` }}>
-            <div className="text-sm font-semibold" style={{ fontFamily: F_HEAD, color: T.ink }}>Unmapped Biometric IDs</div>
-          </div>
-          {!unmappedLoading && unmappedError && (
-            <div role="alert" className="m-4 flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm" style={{ backgroundColor: T.brandBg, color: T.brandDark, fontFamily: F_BODY }}>
-              <span className="flex items-center gap-2"><AlertTriangle size={15} aria-hidden="true" /> {unmappedError}</span>
-              <Btn size="sm" variant="outline" onClick={loadUnmapped}>Try again</Btn>
-            </div>
-          )}
-          {(() => {
-            if (unmappedLoading) return <SkeletonBlock avatar={false} />;
-            const byId = new Map(unmapped.map((g) => [g.biometricId, { ...g }]));
-            for (const u of enrolled) {
-              const g = byId.get(u.userId);
-              if (g) { if (!g.biometricName && u.name) g.biometricName = u.name; }
-              else byId.set(u.userId, { biometricId: u.userId, biometricName: u.name, punchCount: 0, firstDate: null, lastDate: null, hasEmployee: false });
-            }
-            const list = [...byId.values()].sort((a, b) => Number(a.biometricId) - Number(b.biometricId) || String(a.biometricId).localeCompare(String(b.biometricId)));
-            if (!list.length) return unmappedError ? null : <EmptyState icon={CircleCheck} title="All scans are matched" desc="Every scan from the device is linked to a registered employee." />;
-            return (
-              <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
-                <thead><tr><Th>Biometric ID</Th><Th>Name</Th><Th center>Scans</Th><Th center>Dates</Th><Th center>Action</Th></tr></thead>
-                <tbody>
-                  {list.map((g) => (
-                    <tr key={g.biometricId}>
-                      <Td mono><span className="font-bold" style={{ color: T.ink }}>{g.biometricId}</span></Td>
-                      <Td>
-                        <span style={{ fontFamily: F_BODY, color: T.ink }}>{g.biometricName || '--'}</span>
-                        {g.hasEmployee && <span className="ml-2"><Badge tone="green">registered</Badge></span>}
-                      </Td>
-                      <Td center mono>{g.punchCount > 0 ? g.punchCount : <span style={{ color: T.soft }}>--</span>}</Td>
-                      <Td center mono>
-                        <span className="text-xs" style={{ color: T.soft }}>
-                          {!g.firstDate ? 'No scans yet' : g.firstDate === g.lastDate ? g.firstDate : `${g.firstDate} → ${g.lastDate}`}
-                        </span>
-                      </Td>
-                      <Td center>
-                        {g.hasEmployee ? (
-                          <Btn size="sm" disabled={resolvingId === g.biometricId} onClick={() => resolveId(g.biometricId)}>
-                            {resolvingId === g.biometricId ? 'Resolving…' : 'Resolve'}
-                          </Btn>
-                        ) : (
-                          <Btn size="sm" variant="outline" onClick={() => onRegister && onRegister(g.biometricId, g.biometricName)}>Register</Btn>
-                        )}
-                      </Td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table></div>
-            );
-          })()}
-        </Panel>
+        <UnmappedTab unmappedLoading={unmappedLoading} unmappedError={unmappedError} loadUnmapped={loadUnmapped} unmapped={unmapped}
+          enrolled={enrolled} resolvingId={resolvingId} resolveId={resolveId} onRegister={onRegister} />
       )}
 
-      {subTab === 'history' && (
-        <Panel className="overflow-hidden">
-          {loading ? <SkeletonBlock avatar={false} />
-            : data.batches.length === 0 ? <EmptyState icon={ClipboardList} title="No pulls or imports yet" desc="Each device pull, and any file import, is listed here so you can review its records later." /> : (
-            <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
-              <thead><tr><Th>Imported</Th><Th>Filename</Th><Th>Period</Th><Th center>Mapped</Th><Th center>Unmapped</Th><Th>Status</Th><Th></Th></tr></thead>
-              <tbody>{data.batches.map((b) => (
-                <tr key={b.id}>
-                  <Td mono>{new Date(b.importedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</Td>
-                  <Td mono>{/^Device pull/i.test(b.filename || '') ? 'Device pull' : b.filename}</Td>
-                  <Td mono>{b.periodStart ? `${b.periodStart} → ${b.periodEnd}` : '--'}</Td>
-                  <Td center mono>{b.mappedRows}</Td>
-                  <Td center mono><span style={{ color: b.unmappedRows > 0 ? T.amber : T.soft }}>{b.unmappedRows}</span></Td>
-                  <Td><Badge tone={b.status === 'COMPLETED' ? 'green' : b.status === 'FAILED' ? 'red' : 'amber'}>{b.status}</Badge></Td>
-                  <Td>{b.periodStart ? <Btn size="sm" variant="outline" onClick={() => openBatch(b)}>View</Btn> : null}</Td>
-                </tr>
-              ))}</tbody>
-            </table></div>
-          )}
-        </Panel>
-      )}
+      {subTab === 'history' && <HistoryTab loading={loading} data={data} openBatch={openBatch} />}
 
-      <Modal open={!!viewBatch} onClose={() => setViewBatch(null)} title={viewBatch ? `Import: ${viewBatch.filename}` : ''} width={680}>
-        {viewBatch && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 flex-wrap text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
-              <Badge tone="blue">{viewBatch.periodStart} → {viewBatch.periodEnd}</Badge>
-              <span>Imported {new Date(viewBatch.importedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-              <Badge tone="amber">Locked, viewing only</Badge>
-            </div>
-            {batchLoading ? <SkeletonBlock avatar={false} />
-              : batchRows.length === 0 ? <EmptyState icon={ClipboardList} title="No records" desc="No attendance rows fall in this import's date range." />
-              : (
-              <div className="overflow-x-auto pd-scroll-shadow" style={{ maxHeight: 380 }}>
-                <table className="w-full">
-                  <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}>
-                    <tr><Th>ID</Th><Th>Employee</Th><Th center>Present</Th><Th center>Days Late</Th><Th center>Late (minutes)</Th><Th center>Overtime (minutes)</Th><Th center>Absences</Th><Th center>Leave</Th><Th></Th></tr>
-                  </thead>
-                  <tbody>
-                    {batchRows.map((s) => (
-                      <tr key={s.id}>
-                        <Td mono>{s.id}</Td>
-                        <Td><span className="font-semibold text-sm" style={{ fontFamily: F_BODY }}>{s.name}</span></Td>
-                        <Td center mono>{s.present}</Td>
-                        <Td center mono>{s.daysLate || '--'}</Td>
-                        <Td center mono>{s.lateMins > 0 ? `${s.lateMins}m` : '--'}</Td>
-                        <Td center mono>{s.otMins > 0 ? `${s.otMins}m` : '--'}</Td>
-                        <Td center mono>{s.absent || '--'}</Td>
-                        <Td center mono>{s.leave || '--'}</Td>
-                        <Td><Btn size="sm" variant="outline" onClick={() => openHistDtr(s)}>View</Btn></Td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-      </Modal>
-
-      <Modal open={!!histDtr} onClose={() => setHistDtr(null)} title={histDtr ? `DTR: ${histDtr.name}` : ''} width={640}>
-        {histDtr && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 flex-wrap text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
-              <Badge tone="blue">{histDtr.period}</Badge>
-              <Badge tone="amber">Locked, viewing only</Badge>
-            </div>
-            {histDtrLoading ? <SkeletonBlock avatar={false} />
-              : histDtr.rows.length === 0 ? <EmptyState icon={ClipboardList} title="No records" desc="No daily records for this employee in this period." />
-              : (
-              <div className="overflow-x-auto pd-scroll-shadow" style={{ maxHeight: 400 }}>
-                <table className="w-full">
-                  <thead style={{ position: 'sticky', top: 0, backgroundColor: T.surface }}>
-                    <tr><Th>Date</Th><Th>Day</Th><Th>Time In</Th><Th>Time Out</Th><Th center>Late</Th><Th center>Overtime</Th><Th>Status</Th></tr>
-                  </thead>
-                  <tbody>
-                    {histDtr.rows.map((r, i) => (
-                      <tr key={i}>
-                        <Td mono>{r.date}</Td>
-                        <Td>{r.weekday}</Td>
-                        <Td mono>{r.absent || r.leave ? '--' : (r.in || '--')}</Td>
-                        <Td mono>{r.absent || r.leave ? '--' : (r.out || '--')}</Td>
-                        <Td center mono>{r.late > 0 ? `${r.late}m` : '--'}</Td>
-                        <Td center mono>{r.ot > 0 ? `${r.ot}m` : '--'}</Td>
-                        <Td>{r.leave ? <Badge tone="blue">On Leave</Badge> : r.absent ? <Badge tone="red">Absent</Badge> : <Badge tone="green">Present</Badge>}</Td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-      </Modal>
+      <HistoryModals viewBatch={viewBatch} setViewBatch={setViewBatch} batchLoading={batchLoading} batchRows={batchRows}
+        openHistDtr={openHistDtr} histDtr={histDtr} setHistDtr={setHistDtr} histDtrLoading={histDtrLoading} />
     </div>
   );
 };
-
-const UnregisteredBanner = ({ count, onOpen }) => (count > 0 ? (
-  <button type="button" onClick={onOpen} className="pd-clickable w-full text-left mb-3 flex items-center gap-3 p-3 rounded-lg" style={{ backgroundColor: T.warnBg, border: `1px solid ${T.line}` }}>
-    <AlertTriangle size={16} color={T.warn} className="shrink-0" aria-hidden="true" />
-    <span className="flex-1 min-w-0 text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>
-      {count} {count === 1 ? 'employee is' : 'employees are'} not registered
-    </span>
-    <span className="text-xs font-semibold shrink-0" style={{ fontFamily: F_HEAD, color: T.brand }}>View Unmapped IDs →</span>
-  </button>
-) : null);
