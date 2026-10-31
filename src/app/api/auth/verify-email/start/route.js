@@ -2,7 +2,9 @@
 import { NextResponse } from 'next/server';
 import { createHash, randomInt } from 'crypto';
 import { prisma } from '@/lib/server/db/prisma';
-import { requireUser, validatePassword, verifyPassword } from '@/lib/server/security/auth';
+import {
+  TOO_MANY_PASSWORDS, checkCurrentPassword, requireUser, validatePassword, verifyPassword,
+} from '@/lib/server/security/auth';
 import { sendEmailVerificationCode } from '@/lib/server/integrations/email';
 import { isEmail } from '@/lib/email-format';
 
@@ -28,8 +30,9 @@ export async function POST(request) {
     const newPassword = typeof body.newPassword === 'string' ? body.newPassword : '';
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
 
-    const ok = await verifyPassword(currentPassword, record.passwordHash);
-    if (!ok) return NextResponse.json({ error: 'Current password is incorrect.', field: 'currentPassword' }, { status: 400 });
+    const pw = await checkCurrentPassword(record, currentPassword);
+    if (pw === 'limited') return NextResponse.json({ error: TOO_MANY_PASSWORDS }, { status: 429 });
+    if (pw === 'wrong') return NextResponse.json({ error: 'Current password is incorrect.', field: 'currentPassword' }, { status: 400 });
 
     const changingPassword = !!newPassword || record.mustChangePassword;
     if (changingPassword) {
