@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { StaffPayrollView } from '@/features/payroll/StaffPayrollView.jsx';
-import { TruckPayrollView } from '@/features/payroll/TruckPayrollView.jsx';
+import { CrewPayrollView } from '@/features/payroll/CrewPayrollView.jsx';
 
 export const PayrollView = (props) => {
   const navSub = props.navSub || 'staff';
@@ -18,12 +18,10 @@ export const PayrollView = (props) => {
           statutory={props.statutory} toast={props.toast} cutoffLabel={props.cutoffLabel}
           reloadStaff={props.reloadStaff} loading={props.staffLoading} onNavigate={props.onNavigate} />
       ) : (
-        <TruckPayrollView
-          mode="payslips"
-          deliveries={props.deliveries} setDeliveries={props.setDeliveries}
-          reloadDeliveries={props.reloadDeliveries} rates={props.rates} setRates={props.setRates}
+        <CrewPayrollView
+          deliveries={props.deliveries}
           crewRates={props.crewRates} loans={props.loans} reloadLoans={props.reloadLoans}
-          crewNames={props.crewNames} toast={props.toast} />
+          toast={props.toast} />
       )}
     </div>
   );
