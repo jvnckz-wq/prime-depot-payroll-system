@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import {
   createSession, destroyAllSessions, hashPassword, logSecurityEvent,
-  releaseAttempt, requireUser, reserveAttempt, validatePassword, verifyPassword,
+  TOO_MANY_PASSWORDS, checkCurrentPassword, releaseAttempt, requireUser, reserveAttempt, validatePassword, verifyPassword,
 } from '@/lib/server/security/auth';
 import { totpStep } from '@/lib/server/security/twofactor';
 
@@ -17,8 +17,9 @@ export async function POST(request) {
     const record = await prisma.user.findUnique({ where: { id: auth.user.id } });
     if (!record) return NextResponse.json({ error: 'Account not found.' }, { status: 404 });
 
-    const ok = await verifyPassword(currentPassword ?? '', record.passwordHash);
-    if (!ok) return NextResponse.json({ error: 'Current password is incorrect.', field: 'currentPassword' }, { status: 400 });
+    const pw = await checkCurrentPassword(record, currentPassword);
+    if (pw === 'limited') return NextResponse.json({ error: TOO_MANY_PASSWORDS }, { status: 429 });
+    if (pw === 'wrong') return NextResponse.json({ error: 'Current password is incorrect.', field: 'currentPassword' }, { status: 400 });
 
     if (record.totpEnabled) {
       const key = `chpwd:${record.id}`;

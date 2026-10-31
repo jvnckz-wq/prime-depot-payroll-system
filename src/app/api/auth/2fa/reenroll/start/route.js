@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { withRetry } from '@/lib/server/db/db-retry';
 import {
-  releaseAttempt, requireAdmin, reserveAttempt, verifyPassword,
+  TOO_MANY_PASSWORDS, checkCurrentPassword, releaseAttempt, requireAdmin, reserveAttempt,
 } from '@/lib/server/security/auth';
 import {
   generateTotpSecret, hashBackupCode, totpKeyUri, totpQrDataUrl, totpStep,
@@ -21,7 +21,9 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Two-factor login is not on for this account.' }, { status: 400 });
     }
 
-    if (!(await verifyPassword(currentPassword ?? '', record.passwordHash))) {
+    const pw = await checkCurrentPassword(record, currentPassword);
+    if (pw === 'limited') return NextResponse.json({ error: TOO_MANY_PASSWORDS }, { status: 429 });
+    if (pw === 'wrong') {
       return NextResponse.json({ error: 'Current password is incorrect.', field: 'currentPassword' }, { status: 400 });
     }
 

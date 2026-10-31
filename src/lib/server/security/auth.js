@@ -208,3 +208,26 @@ export async function releaseAttempt(key) {
     data: { count: { decrement: 1 } },
   });
 }
+
+export const TOO_MANY_PASSWORDS = 'Too many incorrect passwords. Please wait 15 minutes and try again.';
+const PW_RECHECK_MAX = 10;
+
+// Checks a signed-in user's current password (record is their users row), allowing 10 wrong tries per 15 minutes
+// across every form that asks for it. Returns 'ok', 'wrong' or 'limited'; once limited, the password is not compared.
+export async function checkCurrentPassword(record, plain) {
+  const key = `pw-recheck|${record.id}`;
+  if (!(await reserveAttempt(key, { max: PW_RECHECK_MAX }))) {
+    // Only the request that first goes over the limit writes the audit entry.
+    const row = await prisma.loginAttempt.findUnique({ where: { key }, select: { count: true } });
+    if (row?.count === PW_RECHECK_MAX + 1) {
+      await logSecurityEvent('LOGIN_THROTTLED', {
+        actorId: record.id, actorLabel: record.username, targetType: 'user', targetId: record.id,
+        detail: 'Too many incorrect current passwords on account settings; blocked for 15 minutes.',
+      });
+    }
+    return 'limited';
+  }
+  if (!(await verifyPassword(typeof plain === 'string' ? plain : '', record.passwordHash))) return 'wrong';
+  await releaseAttempt(key);
+  return 'ok';
+}
