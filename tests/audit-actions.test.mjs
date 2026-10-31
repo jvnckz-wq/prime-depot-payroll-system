@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = new URL('..', import.meta.url).pathname;
+const root = fileURLToPath(new URL('..', import.meta.url));
 const tests = [];
 const ok = (name, fn) => tests.push([name, fn]);
 
@@ -18,7 +19,7 @@ function walk(dir, out = []) {
 
 const schema = readFileSync(join(root, 'prisma/schema.prisma'), 'utf8');
 const enumBody = schema.match(/enum AuditAction \{([\s\S]*?)\}/)[1];
-const enumValues = new Set(enumBody.split('\n').map((l) => l.replace(/\/\/.*$/, '').trim()).filter(Boolean));
+const enumValues = new Set(enumBody.split(/\r?\n/).map((l) => l.replace(/\/\/.*$/, '').trim()).filter(Boolean));
 
 const used = new Set();
 for (const file of walk(join(root, 'src'))) {
