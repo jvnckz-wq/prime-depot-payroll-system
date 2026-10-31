@@ -1,3 +1,4 @@
+// Root layout: loads the fonts and global styles around every page.
 import { Inter, Source_Serif_4 } from "next/font/google";
 import "@/styles/globals.css";
 

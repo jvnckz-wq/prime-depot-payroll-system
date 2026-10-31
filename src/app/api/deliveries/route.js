@@ -1,3 +1,4 @@
+// /api/deliveries: logged deliveries for a date range (GET) and logging a new trip for today (POST).
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireUser } from '@/lib/server/security/auth';
@@ -32,11 +33,11 @@ function shape(d) {
     barangay: d.barangay ?? null,
     landmark: d.landmark ?? '',
     contactNo: d.contactNo ?? '',
-    dbl: d.isDouble,
+    isDouble: d.isDouble,
     matchedArea: d.matchedArea,
     items: d.items.map((i) => ({
       id: i.id, item: i.itemName, unit: i.unit,
-      qty: num(i.quantity), d: num(i.driverAmount), h: num(i.helperAmount),
+      qty: num(i.quantity), driverAmount: num(i.driverAmount), helperAmount: num(i.helperAmount),
     })),
     loggedBy: d.loggedBy?.displayName ?? null,
     loggedAt: d.createdAt ? d.createdAt.toISOString() : null,
@@ -122,8 +123,8 @@ export async function POST(request) {
         itemName: String(i.item ?? '').trim(),
         unit: String(i.unit ?? '').trim(),
         quantity: parseFloat(i.qty),
-        driverAmount: parseFloat(i.d),
-        helperAmount: parseFloat(i.h),
+        driverAmount: parseFloat(i.driverAmount),
+        helperAmount: parseFloat(i.helperAmount),
       }))
       .filter((i) => i.itemName && !isNaN(i.quantity) && i.quantity > 0);
 
@@ -166,7 +167,7 @@ export async function POST(request) {
           barangay: typeof body.barangay === 'string' && body.barangay.trim() ? body.barangay.trim() : null,
           landmark: typeof body.landmark === 'string' && body.landmark.trim() ? body.landmark.trim() : null,
           contactNo: typeof body.contactNo === 'string' && body.contactNo.trim() ? body.contactNo.trim() : null,
-          isDouble: !!body.dbl,
+          isDouble: !!body.isDouble,
           matchedArea: body.matchedArea || null,
           loggedById: auth.user.id,
           items: { create: clean },

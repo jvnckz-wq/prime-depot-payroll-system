@@ -1,3 +1,4 @@
+// The admin's sidebar menu items and groups.
 import { LayoutDashboard, Users, Clock, Truck, Wallet, Settings as SettingsIcon, FileText, BarChart3 } from 'lucide-react';
 
 export const ADMIN_NAV = [

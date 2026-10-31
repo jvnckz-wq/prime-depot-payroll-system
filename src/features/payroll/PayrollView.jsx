@@ -1,4 +1,5 @@
 'use client';
+// Payroll section: shows Staff Payroll or Crew Payroll.
 
 import React from 'react';
 import { StaffPayrollView } from '@/features/payroll/StaffPayrollView.jsx';

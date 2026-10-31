@@ -1,5 +1,7 @@
+// Payroll math: staff cutoff pay, government contributions, crew piece-rate pay and daily contributions.
 import { dueFor, workingDaysIn } from './loan-rules';
 import { cutoffWithholding } from './withholding';
+import { round2 } from './money';
 
 export function flattenDeliveries(deliveries, filterCrewId, { includeVoided = false } = {}) {
   const out = [];
@@ -15,7 +17,7 @@ export function flattenDeliveries(deliveries, filterCrewId, { includeVoided = fa
 export function deliveriesToLog(apiDeliveries) {
   const out = {};
   for (const d of apiDeliveries || []) {
-    if (!out[d.truckId]) out[d.truckId] = { date: d.date, items: [], kaltas: [] };
+    if (!out[d.truckId]) out[d.truckId] = { date: d.date, items: [], deductions: [] };
     if (d.date > out[d.truckId].date) out[d.truckId].date = d.date;
 
     (d.items || []).forEach((it, i) => {
@@ -27,8 +29,8 @@ export function deliveriesToLog(apiDeliveries) {
         landmark: first ? (d.landmark || '') : '',
         contactNo: first ? (d.contactNo || '') : '',
         customer: first ? d.customer : '',
-        item: it.item, qty: it.qty, unit: it.unit, d: it.d, h: it.h,
-        dbl: d.dbl,
+        item: it.item, qty: it.qty, unit: it.unit, driverAmount: it.driverAmount, helperAmount: it.helperAmount,
+        isDouble: d.isDouble,
         helpers: first ? d.helpers : undefined,
         driver: first ? d.driver : undefined,
         noScan: first ? (d.noScan || []) : undefined,
@@ -47,9 +49,8 @@ export function deliveriesToLog(apiDeliveries) {
   return out;
 }
 
+// With no attendance records for the cutoff, staff are paid for 11 days.
 const DEFAULT_CUTOFF_DAYS = 11;
-
-const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 
 export function computeStaffPayroll(e, loans = [], statutory, attendance = null, runKey = null) {
   const hasAttendance = !!attendance;
@@ -57,6 +58,7 @@ export function computeStaffPayroll(e, loans = [], statutory, attendance = null,
   const days = hasAttendance ? (attendance.present + leaveDays) : DEFAULT_CUTOFF_DAYS;
   const gross = round2(e.rate * days);
 
+  // Overtime (client's rule): hourly rate = daily rate / 8, paid x1.25 on weekdays and x1.30 on weekends.
   const hourly = e.rate / 8;
   const otWeekdayMins = hasAttendance ? (attendance.otWeekdayMins || 0) : 0;
   const otWeekendMins = hasAttendance ? (attendance.otWeekendMins || 0) : 0;
@@ -72,9 +74,13 @@ export function computeStaffPayroll(e, loans = [], statutory, attendance = null,
   const mp2Set = round2(e.piOn ? (Number(e.mp2) || 0) : 0);
 
   const lateMins = hasAttendance ? (attendance.lateMins || 0) : 0;
+  // Office late deduction (client's rule): daily rate x minutes late / 240. Minutes are counted
+  // from the call time in attendance.js.
   const tardinessDue = round2(e.rate * lateMins / 240);
   const totalEarnings = round2(gross + ot + allowance);
 
+  // Contributions come out first. Late, withholding tax and MP2 only take what pay is left, and
+  // if pay cannot cover the contributions the company covers the gap (companyCover).
   let room = round2(totalEarnings - sss - phic - mp1);
   const companyCover = room < 0 ? round2(-room) : 0;
   room = Math.max(0, room);
@@ -115,16 +121,19 @@ export function computeStaffPayroll(e, loans = [], statutory, attendance = null,
   return { hasAttendance, days, present: hasAttendance ? attendance.present : days, leaveDays, lateMins, gross, otWeekday, otWeekend, ot, allowance, sss, phic, mp1, mp2, hdmf, companyCover, advance, loanDeduction, advanceDeduction, deductionLines, tardiness, tardinessDue, taxable, withholdingTax, totalEarnings, totalDeductions, net };
 }
 
+// SSS for one cutoff: half the monthly employee share of the salary's bracket.
 export function computeSSS(monthlySalary, table) {
   if (!monthlySalary || monthlySalary <= 0 || !table.length) return 0;
   const bracket = table.find(b => b.ceiling !== null && monthlySalary < b.ceiling) || table[table.length - 1];
   return bracket.share / 2;
 }
+// PhilHealth for one cutoff: rate% of the salary (kept between floor and ceiling), halved for the employee share, halved again for the cutoff.
 export function computePhilHealth(monthlySalary, ph) {
   if (!monthlySalary || monthlySalary <= 0) return 0;
   const base = Math.max(ph.floor, Math.min(ph.ceiling, monthlySalary));
   return base * (ph.rate / 100) / 2 / 2;
 }
+// Pag-IBIG for one cutoff: the bracket's employee % of the salary, at most the monthly cap, halved for the cutoff.
 export function computePagIBIG(monthlySalary, pi) {
   if (!monthlySalary || monthlySalary <= 0 || !pi.brackets.length) return 0;
   const bracket = pi.brackets.find(b => b.ceiling !== null && monthlySalary <= b.ceiling) || pi.brackets[pi.brackets.length - 1];
@@ -198,17 +207,19 @@ export function crewEarnings(deliveries, { driverDaily, helperDaily, bonusHead, 
           p.tripsByKey.set(currentKey, (p.tripsByKey.get(currentKey) || 0) + 1);
         };
         if (currentDriver) mark(get(currentDriver, 'Driver'));
-        currentHelpers.forEach((h) => mark(get(h, 'Pahinante')));
+        currentHelpers.forEach((h) => mark(get(h, 'Helper')));
       }
-      if (currentDriver) get(currentDriver, 'Driver').pieceRate += it.d || 0;
+      if (currentDriver) get(currentDriver, 'Driver').pieceRate += it.driverAmount || 0;
       const n = currentHelpers.length;
-      if (n) currentHelpers.forEach((h) => { get(h, 'Pahinante').pieceRate += (it.h || 0) / n; });
+      if (n) currentHelpers.forEach((h) => { get(h, 'Helper').pieceRate += (it.helperAmount || 0) / n; });
     });
   });
 
   return [...people.values()]
     .map((p) => {
       const daily = (p.role === 'Driver' ? driverDaily : helperDaily) * p.days.size;
+      // Trip bonus: bonusHead for each truck and day where this person has bonusTrips or more of
+      // their own non-voided trips (by default ₱100 at 5 trips, set in the crew rates).
       const bonus = [...p.tripsByKey.values()].filter((n) => n >= bonusTrips).length * bonusHead;
       return {
         key: p.key,
@@ -226,6 +237,8 @@ export function crewEarnings(deliveries, { driverDaily, helperDaily, bonusHead, 
     })
     .sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === 'Driver' ? -1 : 1));
 }
+// Daily-paid late deduction (client's rule): ₱3 per minute late, counted from the 06:30 call time,
+// and never more than that day's pay.
 export const DAILY_LATE_PER_MINUTE = 3;
 
 export function dailyPresent(row) {
@@ -259,6 +272,7 @@ export function crewDayPay(crewPeople, dailyStaff) {
   return [...piece, ...attendance];
 }
 
+// The full month's employee share (two cutoffs) of SSS, PhilHealth and Pag-IBIG.
 export function monthlyEmployeeShare(e, statutory) {
   const sss = round2(e.sssOn ? computeSSS(e.declaredSalary, statutory.sss) * 2 : 0);
   const phic = round2(e.phOn ? computePhilHealth(e.declaredSalary, statutory.philhealth) * 2 : 0);
@@ -273,6 +287,8 @@ export function monthBounds(ymd) {
   return { start: `${ymd.slice(0, 8)}01`, end: `${ymd.slice(0, 8)}${String(last).padStart(2, '0')}` };
 }
 
+// Daily contribution amount: the fixed amount from the crew rates if one is set, otherwise the
+// monthly share spread over the month's working days (Sundays off), rounded up to the centavo.
 export function contributionPerDay(setting, shareTotal, ymd) {
   if (setting !== null && setting !== undefined && setting !== '') return round2(Math.max(0, Number(setting) || 0));
   const days = workingDaysIn(monthBounds(ymd));

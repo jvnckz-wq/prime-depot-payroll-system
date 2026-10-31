@@ -1,14 +1,16 @@
 'use client';
+// Crew Payroll screen: logged trips, per-person day pay, crew payslips and the rate table.
 
 import React, { useState, useEffect } from 'react';
 import { Package, ArrowLeft, Trash2, AlertTriangle, MapPin, Phone, Printer } from 'lucide-react';
 import { DeliveryForm } from '@/features/deliveries/DeliveryForm.jsx';
 import { DeliveryTable, VoidReasonField } from '@/features/deliveries/DeliveryTable.jsx';
 import { buildVoidReason, voidChoiceError } from '@/lib/void-reasons';
-import { Av, Badge, Btn, Confirm, EmptyState, Eyebrow, Field, H1, Modal, Panel, Skeleton, Td, Th, inputCls, inputStyle } from '@/components/ui';
+import { Avatar, Badge, Btn, Confirm, EmptyState, Eyebrow, Field, H1, Modal, Panel, Skeleton, Td, Th, inputCls, inputStyle } from '@/components/ui';
 import { CREW_RATE_FALLBACK } from '@/lib/constants';
 import { crewDayPay, crewEarnings, dailyContributionFor, deliveriesToLog, loanBalance } from '@/lib/payroll';
 import { grantedBy, planDeductions, todayYmdManila } from '@/lib/loan-rules';
+import { round2 } from '@/lib/money';
 import { peso, telHref } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
 import { labelTextError, moneyError, moneyInput, unitError, flagErrors } from '@/lib/field-rules';
@@ -16,9 +18,8 @@ import { labelTextError, moneyError, moneyInput, unitError, flagErrors } from '@
 export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, rates, setRates, crewRates = CREW_RATE_FALLBACK, loans, reloadLoans, crewNames = [], toast, mode = 'logging', onOpenDtr, deliveriesFilter = 'all' }) => {
   const payslipsMode = mode === 'payslips';
   const ratesMode = mode === 'rates';
-  const roleLabel = (r) => (r === 'Pahinante' ? 'Helper' : r);
-  const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
-  const isCustomDouble = (r) => (r.s || []).some((v, k) => round2(r.d?.[k] ?? 0) !== round2((v || 0) * 2));
+  const roleLabel = (r) => (r === 'Helper' ? 'Helper' : r);
+  const isCustomDouble = (r) => (r.regular || []).some((v, k) => round2(r.double?.[k] ?? 0) !== round2((v || 0) * 2));
   const stripCustom = ({ _custom, ...rest }) => rest;
   const [selected, setSelected] = useState(null);
 
@@ -36,7 +37,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
   const [logOpen, setLogOpen] = useState(false);
   const [confirmApply, setConfirmApply] = useState(false);
   const [addRateOpen, setAddRateOpen] = useState(false);
-  const [newRate, setNewRate] = useState({ cat: '', unit: '', driverRate: '', helperRate: '' });
+  const [newRate, setNewRate] = useState({ itemName: '', unit: '', driverRate: '', helperRate: '' });
   const [rateError, setRateError] = useState('');
   const [confirmRetire, setConfirmRetire] = useState(null);
   const [savingRates, setSavingRates] = useState(false);
@@ -87,7 +88,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
   };
 
   const openDouble = async (it) => {
-    const to = !it.dbl;
+    const to = !it.isDouble;
     setDblTarget({ deliveryId: it.deliveryId, seq: it.seq, to, loading: true, before: null, after: null });
     try {
       const res = await fetch(`/api/deliveries/${it.deliveryId}`, {
@@ -119,9 +120,9 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
     finally { setDblBusy(false); }
   };
   const saveRates = async () => {
-    const bad = ratesDraft.find(r => (r.s || []).some((v, k) => round2(r.d?.[k] ?? 0) < round2(v || 0)));
+    const bad = ratesDraft.find(r => (r.regular || []).some((v, k) => round2(r.double?.[k] ?? 0) < round2(v || 0)));
     if (bad) {
-      toast(`"${bad.cat}": a double rate can't be lower than its single rate. Check the Custom values.`, 'error');
+      toast(`"${bad.itemName}": a double rate can't be lower than its single rate. Check the Custom values.`, 'error');
       return;
     }
     setSavingRates(true);
@@ -133,9 +134,9 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            cat: r.cat, unit: r.unit,
-            driverRate: r.s[0], helperRate: r.s[1],
-            driverRateDouble: r.d[0], helperRateDouble: r.d[1],
+            itemName: r.itemName, unit: r.unit,
+            driverRate: r.regular[0], helperRate: r.regular[1],
+            driverRateDouble: r.double[0], helperRateDouble: r.double[1],
           }),
         });
         if (!res.ok) {
@@ -158,7 +159,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
   const addRateItem = async () => {
     setRateError('');
     const fe = {
-      cat: labelTextError(newRate.cat, { label: 'Item category' }),
+      itemName: labelTextError(newRate.itemName, { label: 'Item category' }),
       unit: unitError(newRate.unit),
       driverRate: moneyError(newRate.driverRate, { label: 'Driver rate', max: 5000 }),
       helperRate: moneyError(newRate.helperRate, { label: 'Helper rate', max: 5000 }),
@@ -176,9 +177,9 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
       const next = [...ratesDraft, { ...data.rate, _custom: isCustomDouble(data.rate) }];
       setRatesDraft(next);
       setRates(next.map(stripCustom));
-      setNewRate({ cat: '', unit: '', driverRate: '', helperRate: '' });
+      setNewRate({ itemName: '', unit: '', driverRate: '', helperRate: '' });
       setAddRateOpen(false);
-      toast(`"${data.rate.cat}" added to the rate table.`);
+      toast(`"${data.rate.itemName}" added to the rate table.`);
     } catch {
       setRateError('Could not reach the server.');
     }
@@ -196,7 +197,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
       const next = ratesDraft.filter(x => x.id !== r.id);
       setRatesDraft(next);
       setRates(next.map(stripCustom));
-      toast(`"${r.cat}" retired. Past deliveries keep their recorded amounts.`);
+      toast(`"${r.itemName}" retired. Past deliveries keep their recorded amounts.`);
     } catch {
       toast('Could not reach the server.', 'error');
     }
@@ -285,13 +286,13 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
       ? crewEarnings({ [selected]: log }, crewRates)
       : [];
 
-    const kaltasFor = (name) => (log?.kaltas || [])
+    const deductionsFor = (name) => (log?.deductions || [])
       .filter(k => !k.name || k.name === name)
       .reduce((sum, k) => sum + (k.name ? (k.amount || 0) : 0), 0);
 
-    const people = crewTotals.map(p => ({ ...p, kaltas: kaltasFor(p.name), net: p.total - kaltasFor(p.name) }));
+    const people = crewTotals.map(p => ({ ...p, deductions: deductionsFor(p.name), net: p.total - deductionsFor(p.name) }));
     const drivers = people.filter(p => p.role === 'Driver');
-    const helpers = people.filter(p => p.role === 'Pahinante');
+    const helpers = people.filter(p => p.role === 'Helper');
 
     const bonusNames = people.filter(p => p.bonus > 0).map(p => p.name);
     const grandNet = people.reduce((sum, p) => sum + p.net, 0);
@@ -305,7 +306,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                   driver: it.driver || null, helpers: it.helpers || [], noScan: it.noScan || [], items: [] };
           trips.push(cur);
         }
-        if (cur && !it.voided) cur.items.push({ item: it.item, qty: it.qty, unit: it.unit, dbl: it.dbl, d: it.d, h: it.h });
+        if (cur && !it.voided) cur.items.push({ item: it.item, qty: it.qty, unit: it.unit, isDouble: it.isDouble, driverAmount: it.driverAmount, helperAmount: it.helperAmount });
       });
     }
     const payTrips = trips.filter(t => t.items.length);
@@ -313,19 +314,19 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
     const driversWorked = drivers.map(d => d.name);
 
     const sumBy = (arr, k) => arr.reduce((s, p) => s + (p[k] || 0), 0);
-    const noNameKaltas = (log?.kaltas || [])
+    const unassignedDeductions = (log?.deductions || [])
       .filter(k => !(k.name || k.who))
       .reduce((s, k) => s + (k.h ?? k.amount ?? 0), 0);
     const T2 = {
       dailyD: sumBy(drivers, 'dailyRate'), dailyP: sumBy(helpers, 'dailyRate'),
       pieceD: sumBy(drivers, 'pieceRate'), pieceP: sumBy(helpers, 'pieceRate'),
       bonusD: sumBy(drivers, 'bonus'),     bonusP: sumBy(helpers, 'bonus'),
-      kaltasD: sumBy(drivers, 'kaltas'),   kaltasP: sumBy(helpers, 'kaltas'),
+      driverDeductions: sumBy(drivers, 'deductions'),   helperDeductions: sumBy(helpers, 'deductions'),
     };
     T2.afterD = T2.dailyD + T2.pieceD + T2.bonusD;
     T2.afterP = T2.dailyP + T2.pieceP + T2.bonusP;
-    T2.netD = T2.afterD - T2.kaltasD;
-    T2.netP = T2.afterP - T2.kaltasP - noNameKaltas;
+    T2.netD = T2.afterD - T2.driverDeductions;
+    T2.netP = T2.afterP - T2.helperDeductions - unassignedDeductions;
 
     return (
       <div className="p-4 sm:p-6">
@@ -379,15 +380,15 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                       <Td>{it.item}</Td>
                       <Td center mono>{it.qty}</Td>
                       <Td>{it.unit}</Td>
-                      <Td right mono>{peso(it.d)}</Td>
-                      <Td right mono>{peso(it.h)}</Td>
-                      <Td>{it.dbl && <Badge tone="amber">DOUBLE</Badge>}</Td>
+                      <Td right mono>{peso(it.driverAmount)}</Td>
+                      <Td right mono>{peso(it.helperAmount)}</Td>
+                      <Td>{it.isDouble && <Badge tone="amber">DOUBLE</Badge>}</Td>
                       <Td right>
                         <span className="inline-flex items-center gap-3">
                           {!readOnly && it.seq && !it.voided && (
                             <button className="pd-link text-xs" style={{ fontFamily: F_BODY }}
-                              title={it.dbl ? 'Turn off double rate for this trip' : 'Mark this trip as double rate'}
-                              onClick={() => openDouble(it)}>{it.dbl ? 'Double: on' : 'Double: off'}</button>
+                              title={it.isDouble ? 'Turn off double rate for this trip' : 'Mark this trip as double rate'}
+                              onClick={() => openDouble(it)}>{it.isDouble ? 'Double: on' : 'Double: off'}</button>
                           )}
                           {!readOnly && it.seq && (it.voided ? (
                             <button className="pd-link text-xs" style={{ fontFamily: F_BODY }}
@@ -422,7 +423,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                         <Td right mono>{peso(p.dailyRate)}</Td>
                         <Td right mono>{peso(p.pieceRate)}</Td>
                         <Td right mono>{p.bonus ? <span style={{ color: T.green }}>+{peso(p.bonus)}</span> : '--'}</Td>
-                        <Td right mono>{p.kaltas ? <span style={{ color: T.red }}>-{peso(p.kaltas)}</span> : '--'}</Td>
+                        <Td right mono>{p.deductions ? <span style={{ color: T.red }}>-{peso(p.deductions)}</span> : '--'}</Td>
                         <Td right mono><b style={{ color: T.green }}>{peso(p.net)}</b></Td>
                       </tr>
                     ))}
@@ -488,9 +489,9 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                           <Td>{it.item}</Td>
                           <Td center mono>{it.qty}</Td>
                           <Td>{it.unit}</Td>
-                          <Td right mono>{peso(it.d)}</Td>
-                          <Td right mono>{peso(it.h)}</Td>
-                          <Td>{it.dbl && <Badge tone="amber">DOUBLE</Badge>}</Td>
+                          <Td right mono>{peso(it.driverAmount)}</Td>
+                          <Td right mono>{peso(it.helperAmount)}</Td>
+                          <Td>{it.isDouble && <Badge tone="amber">DOUBLE</Badge>}</Td>
                         </tr>
                       )))}
                     </tbody>
@@ -508,8 +509,8 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                         ['Piece rate', T2.pieceD, T2.pieceP],
                         ['Trip bonus', T2.bonusD, T2.bonusP],
                         ['Salary after bonus', T2.afterD, T2.afterP],
-                        ['Deductions', -T2.kaltasD, -T2.kaltasP],
-                        ['Deductions (no name)', 0, -noNameKaltas],
+                        ['Deductions', -T2.driverDeductions, -T2.helperDeductions],
+                        ['Deductions (no name)', 0, -unassignedDeductions],
                       ].map(([label, d, p], i) => (
                         <tr key={i}>
                           <Td style={{ fontFamily: F_HEAD, color: T.soft }}>{label}</Td>
@@ -545,7 +546,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                   {voidTarget.address}
                 </div>
                 <div className="text-xs mt-1" style={{ fontFamily: F_MONO, color: T.soft }}>
-                  {voidTarget.item} · {voidTarget.qty} {voidTarget.unit} · {peso(voidTarget.d)} / {peso(voidTarget.h)}
+                  {voidTarget.item} · {voidTarget.qty} {voidTarget.unit} · {peso(voidTarget.driverAmount)} / {peso(voidTarget.helperAmount)}
                 </div>
               </div>
               <div className="text-sm mb-3" style={{ fontFamily: F_BODY, color: T.ink, lineHeight: 1.6 }}>
@@ -602,7 +603,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
   const todayStr = todayYmdManila();
   const dayDate = viewDate || todayStr;
 
-  const loanKaltasFor = (p) => {
+  const loanDeductionsFor = (p) => {
     const runKey = 'crew-' + dayDate;
     return (loans || [])
       .filter(l => l.isCrew && (p.id ? l.employeeId === p.id : l.person === p.name))
@@ -612,14 +613,14 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
   };
   const contributionByName = new Map(dailyStaff.filter(d => d.contribution).map(d => [d.key, d.contribution]));
   const dayPeople = crewDayPay(crewEarnings(D, crewRates), dailyStaff).map(p => {
-    const manualKaltas = Object.values(D).flatMap(l => l.kaltas || [])
+    const manualDeductions = Object.values(D).flatMap(l => l.deductions || [])
       .filter(k => (k.name || k.who) === p.name)
       .reduce((s, k) => s + (k.h ?? k.amount ?? 0), 0);
-    const kaltas = round2(manualKaltas + loanKaltasFor(p));
+    const deductions = round2(manualDeductions + loanDeductionsFor(p));
     const c = contributionByName.get(p.key);
     const contribution = c ? dailyContributionFor(c, p.payable) : 0;
     const month = c ? { collected: round2(c.collectedBefore + contribution), share: c.shareTotal } : null;
-    return { ...p, kaltas, contribution, month, net: round2(p.payable - contribution - kaltas) };
+    return { ...p, deductions, contribution, month, net: round2(p.payable - contribution - deductions) };
   });
 
   const byId = (a, b) => (Number(a.id) || Infinity) - (Number(b.id) || Infinity) || a.name.localeCompare(b.name);
@@ -647,10 +648,10 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
         const isDriver = ids.length ? ids.some(c => c.role === 'Driver' && c.id === p.id) : t.driver === p.name;
         const isHelper = ids.length ? ids.some(c => c.role !== 'Driver' && c.id === p.id) : t.helpers.includes(p.name);
         if (p.role === 'Driver') {
-          if (isDriver) t.items.forEach(it => lines.push({ truckId, seq: t.seq, item: it.item, qty: it.qty, unit: it.unit, dbl: it.dbl, amt: it.d }));
+          if (isDriver) t.items.forEach(it => lines.push({ truckId, seq: t.seq, item: it.item, qty: it.qty, unit: it.unit, isDouble: it.isDouble, amt: it.driverAmount }));
         } else if (isHelper) {
           const n = t.helpers.length || 1;
-          t.items.forEach(it => lines.push({ truckId, seq: t.seq, item: it.item, qty: it.qty, unit: it.unit, dbl: it.dbl, amt: it.h / n }));
+          t.items.forEach(it => lines.push({ truckId, seq: t.seq, item: it.item, qty: it.qty, unit: it.unit, isDouble: it.isDouble, amt: it.helperAmount / n }));
         }
       });
     });
@@ -695,22 +696,22 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
           <thead className="sticky top-0 z-10" style={{ backgroundColor: T.surface }}><tr><Th>Category</Th><Th>Unit</Th><Th right>Driver (Single)</Th><Th right>Helper (Single)</Th><Th right>Driver (Double)</Th><Th right>Helper (Double)</Th>{editingRates && <Th center>Double</Th>}{editingRates && <Th right>Retire</Th>}</tr></thead>
           <tbody>{(editingRates ? ratesDraft : rates).map((r, i) => (
             <tr key={i}>
-              <Td>{editingRates ? <input value={r.cat} onChange={e => setRatesDraft(p => p.map((x, j) => j === i ? { ...x, cat: e.target.value } : x))} className="px-2 py-1 rounded border text-xs w-full" style={{ borderColor: T.line, fontFamily: F_BODY }} /> : r.cat}</Td>
+              <Td>{editingRates ? <input value={r.itemName} onChange={e => setRatesDraft(p => p.map((x, j) => j === i ? { ...x, itemName: e.target.value } : x))} className="px-2 py-1 rounded border text-xs w-full" style={{ borderColor: T.line, fontFamily: F_BODY }} /> : r.itemName}</Td>
               <Td>{r.unit}</Td>
-              {[0, 1].map(k => <Td right mono key={'s' + k}>{editingRates ? <input type="number" value={r.s[k]} onChange={e => { const nv = parseFloat(e.target.value) || 0; setRatesDraft(p => p.map((x, j) => j === i ? { ...x, s: x.s.map((v, vi) => vi === k ? nv : v), d: x._custom ? x.d : x.d.map((v, vi) => vi === k ? round2(nv * 2) : v) } : x)); }} className="px-2 py-1 rounded border text-xs w-16 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} /> : peso(r.s[k])}</Td>)}
+              {[0, 1].map(k => <Td right mono key={'s' + k}>{editingRates ? <input type="number" value={r.regular[k]} onChange={e => { const nv = parseFloat(e.target.value) || 0; setRatesDraft(p => p.map((x, j) => j === i ? { ...x, regular: x.regular.map((v, vi) => vi === k ? nv : v), double: x._custom ? x.double : x.double.map((v, vi) => vi === k ? round2(nv * 2) : v) } : x)); }} className="px-2 py-1 rounded border text-xs w-16 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} /> : peso(r.regular[k])}</Td>)}
               {[0, 1].map(k => <Td right mono key={'d' + k}>{
                 editingRates
                   ? (r._custom
-                      ? <input type="number" value={r.d[k]} onChange={e => setRatesDraft(p => p.map((x, j) => j === i ? { ...x, d: x.d.map((v, vi) => vi === k ? parseFloat(e.target.value) || 0 : v) } : x))} className="px-2 py-1 rounded border text-xs w-16 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} />
-                      : <span style={{ color: T.soft }} title="Auto: single × 2">{peso(round2((r.s[k] || 0) * 2))}</span>)
-                  : peso(r.d[k])
+                      ? <input type="number" value={r.double[k]} onChange={e => setRatesDraft(p => p.map((x, j) => j === i ? { ...x, double: x.double.map((v, vi) => vi === k ? parseFloat(e.target.value) || 0 : v) } : x))} className="px-2 py-1 rounded border text-xs w-16 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} />
+                      : <span style={{ color: T.soft }} title="Auto: single × 2">{peso(round2((r.regular[k] || 0) * 2))}</span>)
+                  : peso(r.double[k])
               }</Td>)}
               {editingRates && (
                 <Td center>
                   <button
                     onClick={() => setRatesDraft(p => p.map((x, j) => j === i
                       ? (x._custom
-                          ? { ...x, _custom: false, d: x.s.map(v => round2((v || 0) * 2)) }
+                          ? { ...x, _custom: false, double: x.regular.map(v => round2((v || 0) * 2)) }
                           : { ...x, _custom: true })
                       : x))}
                     className="text-xs font-semibold px-2 py-1 rounded border"
@@ -743,14 +744,14 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
               <thead><tr><Th>ID</Th><Th>Employee</Th><Th center>Trips</Th><Th right>Gross Pay</Th><Th right>Deductions</Th><Th right>Net Pay</Th><Th right>Payslip</Th></tr></thead>
               <tbody>
                 {[...dayPeople].sort(byId).map(p => {
-                  const deductions = round2((p.late || 0) + (p.contribution || 0) + (p.kaltas || 0));
+                  const totalDeductions = round2((p.late || 0) + (p.contribution || 0) + (p.deductions || 0));
                   return (
                     <tr key={p.key}>
                       <Td mono>{p.id || '--'}</Td>
                       <Td><span className="font-semibold" style={{ fontFamily: F_BODY }}>{p.name}</span></Td>
                       <Td center mono>{p.attendanceDaily ? '--' : p.trips}</Td>
                       <Td right mono>{peso(p.total)}</Td>
-                      <Td right mono><span style={{ color: T.red, fontWeight: 600 }}>-{peso(deductions)}</span></Td>
+                      <Td right mono><span style={{ color: T.red, fontWeight: 600 }}>-{peso(totalDeductions)}</span></Td>
                       <Td right mono><b>{peso(p.net)}</b></Td>
                       <Td right><Btn size="sm" variant="outline" onClick={() => setSlipPerson(p)}>View</Btn></Td>
                     </tr>
@@ -765,7 +766,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                 className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left"
                 style={{ borderTop: pi ? `1px solid ${T.line}` : undefined }}>
                 <div className="flex items-center gap-3">
-                  <Av name={p.name} size={32} tone={p.role === 'Driver' ? T.amber : T.brand} />
+                  <Avatar name={p.name} size={32} tone={p.role === 'Driver' ? T.amber : T.brand} />
                   <div>
                     <div className="text-sm font-semibold" style={{ fontFamily: F_HEAD, color: T.ink }}>{p.name}</div>
                     <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
@@ -841,7 +842,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                             <Td>{l.item}</Td>
                             <Td center mono>{l.qty}</Td>
                             <Td>{l.unit}</Td>
-                            <Td>{l.dbl && <Badge tone="amber">DOUBLE</Badge>}</Td>
+                            <Td>{l.isDouble && <Badge tone="amber">DOUBLE</Badge>}</Td>
                             <Td right mono>{peso(l.amt)}</Td>
                           </tr>
                         ))}
@@ -856,7 +857,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
                         {!p.attendanceDaily && <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Piece rate</Td><Td right mono>{peso(p.pieceRate)}</Td></tr>}
                         {!p.attendanceDaily && <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Trip bonus</Td><Td right mono style={{ color: p.bonus ? T.green : undefined }}>{p.bonus ? `+${peso(p.bonus)}` : peso(0)}</Td></tr>}
                         <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Late</Td><Td right mono style={{ color: p.late ? T.red : undefined }}>{p.late ? `-${peso(p.late)}` : peso(0)}</Td></tr>
-                        <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Deductions</Td><Td right mono style={{ color: p.kaltas ? T.red : undefined }}>{p.kaltas ? `-${peso(p.kaltas)}` : peso(0)}</Td></tr>
+                        <tr><Td style={{ fontFamily: F_HEAD, color: T.soft }}>Deductions</Td><Td right mono style={{ color: p.deductions ? T.red : undefined }}>{p.deductions ? `-${peso(p.deductions)}` : peso(0)}</Td></tr>
                         <tr style={{ borderTop: `1px solid ${T.line}` }}><Td style={{ fontFamily: F_HEAD, color: T.ink }}><b>NET SALARY</b></Td><Td right mono><b style={{ color: T.brand }}>{peso(p.net)}</b></Td></tr>
                       </tbody>
                     </table></div>
@@ -880,8 +881,8 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
         confirmLabel="Apply Deductions" />
 
       <Modal open={addRateOpen} onClose={() => setAddRateOpen(false)} title="Add Rate Item" width={440}>
-        <Field label="Item category" error={rateErrs.cat}>
-          <input value={newRate.cat} maxLength={40} onChange={e => setNewRate(f => ({ ...f, cat: e.target.value }))}
+        <Field label="Item category" error={rateErrs.itemName}>
+          <input value={newRate.itemName} maxLength={40} onChange={e => setNewRate(f => ({ ...f, itemName: e.target.value }))}
             placeholder="e.g. Paint, Plywood, Roofing" className={inputCls} style={inputStyle} />
         </Field>
         <div className="mt-3">
@@ -920,7 +921,7 @@ export const TruckPayrollView = ({ deliveries, setDeliveries, reloadDeliveries, 
 
       <Confirm open={!!confirmRetire} onCancel={() => setConfirmRetire(null)}
         onConfirm={() => { retireRateItem(confirmRetire); setConfirmRetire(null); }}
-        title={`Retire "${confirmRetire?.cat}"?`}
+        title={`Retire "${confirmRetire?.itemName}"?`}
         message="It will stop appearing when logging a delivery. Deliveries already logged keep the amounts they were recorded with, so past payslips are unaffected."
         confirmLabel="Retire item" danger />
     </div>

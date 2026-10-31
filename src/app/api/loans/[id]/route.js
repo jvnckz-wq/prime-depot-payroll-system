@@ -1,3 +1,4 @@
+// PATCH /api/loans/[id]: settle, pause or resume one loan.
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { logSecurityEvent, requireAdmin } from '@/lib/server/security/auth';

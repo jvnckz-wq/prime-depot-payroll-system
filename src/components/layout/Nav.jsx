@@ -1,4 +1,5 @@
 'use client';
+// Sidebar and top bar navigation for the signed-in app.
 
 import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown, LogOut, Menu, User, X } from 'lucide-react';

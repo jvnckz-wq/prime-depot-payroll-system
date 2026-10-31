@@ -1,3 +1,4 @@
+/* Global styles: Tailwind, color variables, focus rings and shared component classes. */
 @import "tailwindcss";
 
 :root {

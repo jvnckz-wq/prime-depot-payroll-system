@@ -1,3 +1,4 @@
+// POST /api/attendance/resolve: turn saved scans of a biometric ID into attendance once that employee is registered (admin).
 import { NextResponse } from 'next/server';
 import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { withRetry } from '@/lib/server/db/db-retry';

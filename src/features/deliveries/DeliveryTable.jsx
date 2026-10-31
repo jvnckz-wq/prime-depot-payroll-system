@@ -1,4 +1,5 @@
 'use client';
+// Delivery list grouped into trips, plus the void reason picker.
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronRight, MapPin, Phone, AlertTriangle, Truck } from 'lucide-react';
@@ -27,7 +28,7 @@ export function tripsFromLog(log) {
         Object.assign(trip, {
           seq: it.seq, driver: it.driver || '', helpers: it.helpers || [], crew: it.crew || [],
           noScan: it.noScan || [], noScanIds: it.noScanIds || [], customer: it.customer, address: it.address,
-          landmark: it.landmark, contactNo: it.contactNo, dbl: it.dbl, voided: it.voided, voidedAt: it.voidedAt,
+          landmark: it.landmark, contactNo: it.contactNo, isDouble: it.isDouble, voided: it.voided, voidedAt: it.voidedAt,
           voidedBy: it.voidedBy, voidReason: it.voidReason, loggedBy: it.loggedBy, loggedAt: it.loggedAt,
         });
       }
@@ -235,7 +236,7 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
               {open.items.map((it, i) => (
                 <Line key={i} left={it.unit ? `${it.item} per ${it.unit}` : it.item} right={<span className="pd-num">{it.qty}</span>} />
               ))}
-              <div className="text-xs mt-1.5" style={{ color: open.dbl ? T.brand : T.soft }}>{open.dbl ? 'Double rate' : 'Normal rate'}</div>
+              <div className="text-xs mt-1.5" style={{ color: open.isDouble ? T.brand : T.soft }}>{open.isDouble ? 'Double rate' : 'Normal rate'}</div>
             </Section>
 
             <Section label="Customer">

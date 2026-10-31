@@ -1,3 +1,4 @@
+// Colors and fonts shared by every screen.
 export const T = {
   bg: '#F6F4F3', surface: '#FFFFFF', ink: '#1B2430', soft: '#5B6472',
   line: '#DED9D7', lineSoft: '#ECE7E5',

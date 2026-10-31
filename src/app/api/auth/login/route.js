@@ -1,3 +1,4 @@
+// POST /api/auth/login: check the username and password, with login throttling, and start a session.
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import {

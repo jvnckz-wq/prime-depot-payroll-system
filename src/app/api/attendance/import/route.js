@@ -1,3 +1,4 @@
+// POST /api/attendance/import: import a cutoff of attendance from an uploaded device file (admin).
 import { NextResponse } from 'next/server';
 import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { withRetry } from '@/lib/server/db/db-retry';

@@ -1,4 +1,5 @@
 'use client';
+// One-box-per-character input for sign-in codes and backup codes.
 
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { F_MONO, T } from '@/styles/theme';

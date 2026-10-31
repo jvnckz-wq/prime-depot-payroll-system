@@ -1,8 +1,9 @@
 'use client';
+// Checker accounts panel: create, link, rename and deactivate checker sign-in accounts.
 
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle, Copy, KeyRound, Link2, Pencil, Plus, UserCheck, UserX } from 'lucide-react';
-import { Av, Badge, Btn, Confirm, Eyebrow, Field, Modal, Skeleton, inputCls, inputStyle } from '@/components/ui';
+import { Avatar, Badge, Btn, Confirm, Eyebrow, Field, Modal, Skeleton, inputCls, inputStyle } from '@/components/ui';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
 import { suggestUsername } from '@/lib/checker-accounts';
 import { usernameInput, flagErrors, flagField, usernameError } from '@/lib/field-rules';
@@ -211,7 +212,7 @@ export const AccountsPanel = ({ currentUser, toast, onGoToEmployees }) => {
           return (
             <div key={u.id} className="flex items-center gap-4 py-4"
               style={{ borderBottom: `1px solid ${T.lineSoft}`, opacity: u.isActive && !blockedByEmployee ? 1 : 0.65 }}>
-              <Av name={u.displayName} size={40} tone={u.role === 'ADMIN' ? T.brand : T.soft} />
+              <Avatar name={u.displayName} size={40} tone={u.role === 'ADMIN' ? T.brand : T.soft} />
 
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold truncate" style={{ fontFamily: F_MONO, color: T.ink }}>{u.username}</div>

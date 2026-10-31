@@ -1,4 +1,5 @@
 'use client';
+// Signs the user out after a period with no activity, with a warning first.
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Btn, Modal } from '@/components/ui';

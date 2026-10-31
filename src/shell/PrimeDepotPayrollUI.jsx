@@ -1,4 +1,5 @@
 'use client';
+// The app shell: signs the user in, loads shared data, and shows the screen picked in the sidebar.
 
 import React, { useEffect, useState } from 'react';
 import { RefreshCw, WifiOff } from 'lucide-react';

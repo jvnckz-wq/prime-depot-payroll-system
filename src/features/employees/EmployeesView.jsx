@@ -1,4 +1,5 @@
 'use client';
+// Employees screen: list, add, edit and deactivate office staff and crew.
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Search, SearchX, Save, Clock, AlertTriangle, Users } from 'lucide-react';

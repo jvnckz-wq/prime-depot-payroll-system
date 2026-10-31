@@ -1,4 +1,5 @@
 'use client';
+// Cash Advances page: grant and track advances for the current cutoff.
 
 import React, { useMemo, useState } from 'react';
 import { Plus, Wallet } from 'lucide-react';
@@ -7,12 +8,12 @@ import {
   advancedInCutoff, balanceOf, cutoffOf, dueFor, grantedBy, isOpen, nextCutoff, periodLabel, prevCutoff, projectedGross,
   shortDate, shortPeriod, workingDaysIn, todayYmdManila } from '@/lib/loan-rules';
 import { computeStaffPayroll } from '@/lib/payroll';
+import { round2 } from '@/lib/money';
 import { peso } from '@/lib/utils';
 import { F_BODY, F_MONO, T } from '@/styles/theme';
 import { D, H, Kpi, Person, Pill, todayLocalYmd } from '@/features/loans/parts.jsx';
 import { moneyInput, flagErrors } from '@/lib/field-rules';
 
-const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 const labelFor = (list) => {
   const counts = new Map();
   list.forEach((e) => counts.set(e.name, (counts.get(e.name) || 0) + 1));

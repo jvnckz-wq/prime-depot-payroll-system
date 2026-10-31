@@ -1,3 +1,4 @@
+// Checks and limits the date range asked for in the delivery list.
 export const MAX_RANGE_DAYS = 93;
 export const UNBOUNDED_LIMIT = 500;
 

@@ -1,8 +1,9 @@
+// Fixed lists and starting values: positions, crew rate fallbacks and the default government tables.
 import { FINAL_POSITIONS } from './positions.js';
 
 export const POSITIONS = FINAL_POSITIONS;
 
-const POSITION_LABELS = { Pahinante: 'Helper' };
+const POSITION_LABELS = {};
 export const positionLabel = (p) => POSITION_LABELS[p] || p;
 
 export const CREW_RATE_FALLBACK = {

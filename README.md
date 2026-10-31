@@ -1,6 +1,6 @@
 # Prime Depot Payroll System
 
-A web-based payroll and attendance system for Prime Depot Hardware and Construction Supply in Mabini, Batangas. It handles two kinds of pay in one place: office staff on a monthly salary with government deductions, and truck crew who are paid per delivery (pakyawan). Attendance comes from a biometric device, so the payroll is based on real time records.
+A web-based payroll and attendance system for Prime Depot Hardware and Construction Supply in Mabini, Batangas. It handles two kinds of pay in one place: office staff on a monthly salary with government deductions, and truck crew who are paid per delivery (piece-rate). Attendance comes from a biometric device, so the payroll is based on real time records.
 
 Live site: https://prime-depot-payroll-system.vercel.app
 
@@ -42,7 +42,7 @@ The code is JavaScript. A few helper scripts under the project use TypeScript.
 
 ## Project structure
 
-The code is organized by layer, so a folder's name tells you what kind of code is inside.
+The code is organized by layer, so a folder's name tells you what kind of code is inside. For a beginner's tour of the folders, three walkthroughs that follow data through the system, and a glossary, see [docs/CODE-MAP.md](docs/CODE-MAP.md).
 
 ### Frontend
 

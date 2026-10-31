@@ -1,4 +1,5 @@
 'use client';
+// Loans page: active loans, their balances and ledgers.
 
 import React, { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Pause, Play, Plus, SearchX, Wallet } from 'lucide-react';

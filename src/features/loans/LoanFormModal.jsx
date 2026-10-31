@@ -1,4 +1,5 @@
 'use client';
+// Dialog for granting a new loan.
 
 import React, { useMemo, useRef, useState } from 'react';
 import { Btn, Field, Modal, SearchSelect, inputCls, inputStyle } from '@/components/ui';

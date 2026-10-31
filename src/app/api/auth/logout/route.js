@@ -1,3 +1,4 @@
+// POST /api/auth/logout: end the current session.
 import { NextResponse } from 'next/server';
 import { destroySession, getCurrentUser, logSecurityEvent } from '@/lib/server/security/auth';
 

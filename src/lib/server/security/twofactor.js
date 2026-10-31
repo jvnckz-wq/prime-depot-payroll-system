@@ -1,4 +1,5 @@
 import 'server-only';
+// Two-factor helpers: authenticator secrets, QR codes and backup codes.
 import { createHash, randomBytes } from 'crypto';
 import { authenticator } from 'otplib';
 import QRCode from 'qrcode';

@@ -1,3 +1,4 @@
+// /api/payroll/finalize: release a staff cutoff and store its payslips (POST), or undo a release (DELETE).
 import { NextResponse } from 'next/server';
 import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { withRetry } from '@/lib/server/db/db-retry';

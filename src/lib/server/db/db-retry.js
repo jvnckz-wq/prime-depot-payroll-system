@@ -1,3 +1,4 @@
+// Retries a database call a few times when the connection drops.
 const CONNECTION_HINTS = [
   'connection terminated',
   'terminated unexpectedly',

@@ -1,4 +1,5 @@
 'use client';
+// Dialogs: a general Modal and a yes or no Confirm.
 
 import { X } from 'lucide-react';
 import { F_BODY, F_HEAD, T } from '@/styles/theme';

@@ -186,13 +186,13 @@ async function cycle() {
 
     if (!LIVE) {
       if (!payload.scans.length) {
-        console.log(`[${stamp}] [DRY RUN] Walang tapik ngayong araw (${payload.date}).`);
+        console.log(`[${stamp}] [DRY RUN] No scans today (${payload.date}).`);
       } else {
-        console.log(`[${stamp}] [DRY RUN] Ipapadala para sa ${payload.date}:`);
+        console.log(`[${stamp}] [DRY RUN] Would send for ${payload.date}:`);
         for (const s of payload.scans) {
           console.log(`           user ${s.biometricId}: [${s.times.join(', ')}]`);
         }
-        console.log('           (walang isinulat -- magdagdag ng --live para tunay na magpadala)');
+        console.log('           (nothing written -- add --live to actually send)');
       }
       return;
     }
@@ -201,19 +201,19 @@ async function cycle() {
     delete payload.rosterKey;
     const { status, body } = await push(payload);
     if (status === 200 && body && body.ok) {
-      if (rosterKey) { lastRosterSent = rosterKey; console.log(`[${stamp}] Naipadala ang listahan ng naka-enroll sa device (${payload.roster.length}).`); }
+      if (rosterKey) { lastRosterSent = rosterKey; console.log(`[${stamp}] Sent the list of users enrolled on the device (${payload.roster.length}).`); }
       if (payload.scans.length) {
         const unmapped = (body.unmapped || []).join(', ');
-        console.log(`[${stamp}] Naipadala: matched ${body.matched}, unmapped [${unmapped}]`);
+        console.log(`[${stamp}] Sent: matched ${body.matched}, unmapped [${unmapped}]`);
       } else {
-        console.log(`[${stamp}] Heartbeat (walang bagong tapik).`);
+        console.log(`[${stamp}] Heartbeat (no new scans).`);
       }
       if (body.pull) await handlePull(body.pull, stamp);
     } else {
-      console.log(`[${stamp}] Push tumanggi (${status}):`, body);
+      console.log(`[${stamp}] Push rejected (${status}):`, body);
     }
   } catch (e) {
-    console.log(`[${stamp}] Hindi nabasa ang device: ${whyFailed(e)}`);
+    console.log(`[${stamp}] Could not read the device: ${whyFailed(e)}`);
   } finally {
     busy = false;
   }
@@ -222,20 +222,20 @@ async function cycle() {
 console.log('Prime Depot sync agent');
 console.log(`  device : ${DEVICE_IP}:${DEVICE_PORT}`);
 console.log(`  target : ${PUSH_URL}`);
-console.log(`  mode   : ${LIVE ? 'LIVE (magsusulat sa database)' : 'DRY RUN (walang isusulat)'}`);
-console.log(`  poll   : bawat ${POLL_MS / 1000}s`);
+console.log(`  mode   : ${LIVE ? 'LIVE (writes to the database)' : 'DRY RUN (writes nothing)'}`);
+console.log(`  poll   : every ${POLL_MS / 1000}s`);
 
 if (LIVE && !TOKEN) {
-  console.error('\nHUMINTO: --live pero walang DEVICE_SYNC_TOKEN sa .env. Idagdag muna ito.');
+  console.error('\nSTOPPED: --live was given but DEVICE_SYNC_TOKEN is missing from .env. Add it first.');
   process.exit(1);
 }
 
-console.log('\nCtrl+C para itigil.\n');
+console.log('\nPress Ctrl+C to stop.\n');
 
 cycle();
 const timer = setInterval(cycle, POLL_MS);
 process.on('SIGINT', () => {
   clearInterval(timer);
-  console.log('\nItinigil ang agent.');
+  console.log('\nAgent stopped.');
   process.exit(0);
 });

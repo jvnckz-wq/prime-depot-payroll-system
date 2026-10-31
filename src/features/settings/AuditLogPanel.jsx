@@ -1,4 +1,5 @@
 'use client';
+// Audit Log screen: search security and payroll events.
 
 import React, { useEffect, useState } from 'react';
 import { ScrollText } from 'lucide-react';

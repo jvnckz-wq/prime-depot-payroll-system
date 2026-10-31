@@ -1,3 +1,4 @@
+// Loads what payroll needs from the database: employees, attendance, loans, rates and deliveries.
 import { summarizeAttendance } from '../../attendance';
 import { POSITION_LABEL, shapeEmployee } from './employees';
 import { isDailyAttendancePosition } from '../../positions';
@@ -8,8 +9,8 @@ import {
 } from '../../payroll';
 import { shapeBir, shapePagibig, shapePhilhealth, shapeSss } from './statutory';
 import { CREW_RATE_FALLBACK } from '../../constants';
+import { round2 } from '../../money';
 
-const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 export const toDate = (ymd) => new Date(`${ymd}T00:00:00.000Z`);
 
 export async function loadStatutory(prisma) {
@@ -69,7 +70,7 @@ const isContributing = (e) => {
   return s.sssOn || s.phOn || s.piOn;
 };
 
-const DAILY_POSITIONS = ['DRIVER', 'PAHINANTE', 'CHECKER', 'WAREHOUSE_OFFICER'];
+const DAILY_POSITIONS = ['DRIVER', 'HELPER', 'CHECKER', 'WAREHOUSE_OFFICER'];
 const ymdOf = (d) => (d ? new Date(d).toISOString().slice(0, 10) : null);
 const dayBefore = (ymd) => ymdOf(new Date(toDate(ymd).getTime() - 86400000));
 
@@ -97,9 +98,9 @@ const toLog = (rows, ymd) => deliveriesToLog(rows.map((d) => ({
   seq: d.sequenceNo,
   driver: d.driverId,
   helpers: [d.helper1Id, d.helper2Id].filter(Boolean),
-  dbl: d.isDouble,
+  isDouble: d.isDouble,
   voided: false,
-  items: (d.items || []).map((i) => ({ item: i.itemName, unit: i.unit, qty: Number(i.quantity), d: Number(i.driverAmount), h: Number(i.helperAmount) })),
+  items: (d.items || []).map((i) => ({ item: i.itemName, unit: i.unit, qty: Number(i.quantity), driverAmount: Number(i.driverAmount), helperAmount: Number(i.helperAmount) })),
 })));
 
 const dailyEmployees = (prisma) => prisma.employee.findMany({
@@ -238,7 +239,7 @@ export async function crewAvailableOn(prisma, ymd) {
   return out;
 }
 
-const ROLE_ORDER = ['Driver', 'Pahinante', 'Checker', 'Warehouse Officer'];
+const ROLE_ORDER = ['Driver', 'Helper', 'Checker', 'Warehouse Officer'];
 
 export async function loadCrewReport(prisma, from, to) {
   const [employees, everyone, rateRow, entries] = await Promise.all([

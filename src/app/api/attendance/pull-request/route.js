@@ -1,3 +1,4 @@
+// /api/attendance/pull-request: the admin asks the sync agent to read a date range from the biometric device (POST) and checks the latest request (GET).
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';

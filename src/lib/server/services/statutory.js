@@ -1,3 +1,4 @@
+// Converts and checks the SSS, PhilHealth, Pag-IBIG and BIR tables.
 const num = (d) => (d == null ? null : Number(d));
 
 export function shapeSss(rows) {

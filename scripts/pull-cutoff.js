@@ -132,7 +132,7 @@ async function main() {
       rl.close(); return;
     }
     if (!TOKEN) {
-      console.error('\nHUMINTO: walang DEVICE_SYNC_TOKEN sa .env. Idagdag muna ito.');
+      console.error('\nSTOPPED: DEVICE_SYNC_TOKEN is missing from .env. Add it first.');
       rl.close(); return;
     }
 

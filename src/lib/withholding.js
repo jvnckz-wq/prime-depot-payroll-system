@@ -1,7 +1,9 @@
-const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+// Withholding tax from the BIR table, worked out per cutoff.
+import { round2 } from './money.js';
 
 export const CUTOFFS_PER_YEAR = 24;
 
+// BIR annual table: the row's base tax plus its rate on the amount over the row's lower limit.
 export function annualIncomeTax(annualTaxable, table = []) {
   const t = Math.max(0, Number(annualTaxable) || 0);
   const row = table.find((r) => t > Number(r.over) && (r.notOver === null || r.notOver === undefined || t <= Number(r.notOver)));
@@ -15,6 +17,8 @@ export function taxableForCutoff(calc) {
   return round2(Math.max(0, n(calc.totalEarnings) - n(calc.tardiness) - n(calc.sss) - n(calc.phic) - n(calc.mp1)));
 }
 
+// Withholding tax per cutoff: annualize the cutoff's taxable pay (x24), apply the BIR annual table,
+// then divide the tax by 24.
 export function cutoffWithholding(taxable, table) {
   return round2(annualIncomeTax((Number(taxable) || 0) * CUTOFFS_PER_YEAR, table) / CUTOFFS_PER_YEAR);
 }

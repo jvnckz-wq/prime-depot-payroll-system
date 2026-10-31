@@ -1,3 +1,4 @@
+// PATCH /api/users/[id]: rename, relink, deactivate or reactivate a checker sign-in account.
 import { NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { prisma } from '@/lib/server/db/prisma';

@@ -1,4 +1,5 @@
 'use client';
+// Terms of Use and Privacy Notice pages.
 
 import React from 'react';
 

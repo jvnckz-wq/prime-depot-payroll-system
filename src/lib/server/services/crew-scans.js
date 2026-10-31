@@ -1,3 +1,4 @@
+// Checks which crew members scanned in on a delivery day.
 import { prisma } from '../db/prisma';
 
 const asDate = (ymd) => new Date(`${ymd}T00:00:00.000Z`);

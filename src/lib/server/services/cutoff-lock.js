@@ -1,3 +1,4 @@
+// Finds released cutoffs so their attendance cannot be changed.
 import { prisma } from '../db/prisma';
 import { cutoffOf } from '../../loan-rules';
 

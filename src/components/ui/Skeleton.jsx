@@ -1,4 +1,5 @@
 'use client';
+// Grey placeholder shapes shown while data loads.
 
 import { Td } from './Table';
 

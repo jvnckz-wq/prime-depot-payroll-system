@@ -1,4 +1,5 @@
 'use client';
+// Message shown when a list or table has nothing in it.
 
 import { Package } from 'lucide-react';
 import { F_BODY, T } from '@/styles/theme';

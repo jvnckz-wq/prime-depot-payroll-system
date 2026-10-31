@@ -1,4 +1,5 @@
 'use client';
+// Small colored status label.
 
 import { F_HEAD, T } from '@/styles/theme';
 

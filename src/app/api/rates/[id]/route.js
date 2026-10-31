@@ -1,3 +1,4 @@
+// PATCH /api/rates/[id]: edit, retire or reactivate one piece-rate item.
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin, logSecurityEvent } from '@/lib/server/security/auth';
@@ -15,7 +16,7 @@ export async function PATCH(request, { params }) {
     const data = {};
     const rate = (v) => { const n = parseFloat(v); return isNaN(n) || n < 0 ? 0 : n; };
 
-    if (typeof body.cat === 'string' && body.cat.trim()) data.itemName = body.cat.trim();
+    if (typeof body.itemName === 'string' && body.itemName.trim()) data.itemName = body.itemName.trim();
     if (typeof body.unit === 'string' && body.unit.trim()) data.unit = body.unit.trim();
     if (body.driverRate != null) data.driverRate = rate(body.driverRate);
     if (body.helperRate != null) data.helperRate = rate(body.helperRate);
@@ -54,9 +55,9 @@ export async function PATCH(request, { params }) {
 
     return NextResponse.json({
       rate: {
-        id: r.id, cat: r.itemName, unit: r.unit,
-        s: [num(r.driverRate), num(r.helperRate)],
-        d: [num(r.driverRateDouble), num(r.helperRateDouble)],
+        id: r.id, itemName: r.itemName, unit: r.unit,
+        regular: [num(r.driverRate), num(r.helperRate)],
+        double: [num(r.driverRateDouble), num(r.helperRateDouble)],
         isActive: r.isActive,
       },
     });

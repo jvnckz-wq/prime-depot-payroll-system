@@ -1,3 +1,4 @@
+// POST /api/auth/2fa/reenroll/confirm: finish moving two-factor to a new authenticator app.
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import {

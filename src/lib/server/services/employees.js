@@ -1,3 +1,4 @@
+// Shapes employee records for the app and builds database updates from the employee form.
 import { hasNoContributions, hasNoEarlyShift, isDailyPosition, isNonRegularPosition, isPieceRatePosition } from '../../positions';
 import { addressError, birthdateError, isUnpaidPosition, LIMITS, moneyError, mp2Error, personNameError, phMobileError, wholeNumberError } from '../../field-rules';
 
@@ -5,7 +6,7 @@ export const POSITION_LABEL = {
   OPERATIONS_HEAD: 'Operations Head',
   CHECKER: 'Checker',
   DRIVER: 'Driver',
-  PAHINANTE: 'Pahinante',
+  HELPER: 'Helper',
   ADMINISTRATIVE_ASSISTANT: 'Assistant',
   COMMUNICATIONS_OFFICER_II: 'Communications Officer II',
   JUNIOR_SECRETARY: 'Junior Secretary',
@@ -19,7 +20,7 @@ const POSITION_ENUM = {
   'Operations Head': 'OPERATIONS_HEAD',
   Checker: 'CHECKER',
   Driver: 'DRIVER',
-  Pahinante: 'PAHINANTE',
+  Helper: 'HELPER',
   Assistant: 'ADMINISTRATIVE_ASSISTANT',
   'Administrative Assistant': 'ADMINISTRATIVE_ASSISTANT',
   'Communications Officer II': 'COMMUNICATIONS_OFFICER_II',

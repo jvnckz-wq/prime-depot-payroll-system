@@ -1,3 +1,4 @@
+// Shared UI pieces, re-exported so screens can import them from '@/components/ui'.
 export { Btn, Chip } from './Button';
 export { Th, Td } from './Table';
 export { Modal, Confirm } from './Modal';
@@ -9,5 +10,5 @@ export { Panel } from './Panel';
 export { H1, Eyebrow } from './Heading';
 export { Badge } from './Badge';
 export { Money } from './Money';
-export { Av } from './Avatar';
+export { Avatar } from './Avatar';
 export { EmptyState } from './EmptyState';

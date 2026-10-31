@@ -1,8 +1,9 @@
 'use client';
+// Attendance screen: daily records, each employee's DTR, device import and pull, and unmapped biometric IDs.
 
 import React, { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, ClipboardList, ArrowLeft, Pencil, Upload, Loader2, CalendarX, CircleCheck, Users } from 'lucide-react';
-import { Av, Badge, BigStat, Btn, Chip, EmptyState, Eyebrow, Field, H1, Modal, Panel, SkeletonBlock, Td, Th, inputCls, inputStyle } from '@/components/ui';
+import { Avatar, Badge, BigStat, Btn, Chip, EmptyState, Eyebrow, Field, H1, Modal, Panel, SkeletonBlock, Td, Th, inputCls, inputStyle } from '@/components/ui';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
 import { timeOrderError } from '@/lib/field-rules';
 import { positionLabel } from '@/lib/constants';
@@ -366,7 +367,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
         </button>
         <Panel className="p-5 mb-5">
           <div className="flex items-center gap-5 flex-wrap">
-            <Av name={name} size={52} tone={T.brand} />
+            <Avatar name={name} size={52} tone={T.brand} />
             <div className="flex-1" style={{ minWidth: 160 }}>
               <div className="text-lg font-bold" style={{ fontFamily: F_HEAD, color: T.ink }}>{name}</div>
               <div className="text-sm" style={{ fontFamily: F_BODY, color: T.soft }}>{emp?.position ? positionLabel(emp.position) : '--'} · {selectedId}</div>

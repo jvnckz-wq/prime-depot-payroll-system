@@ -1,3 +1,4 @@
+// Form validation rules shared by the browser and the API.
 const LETTER = 'A-Za-zÀ-ÖØ-öø-ÿ';
 const NAME_RE = new RegExp(`^[${LETTER}][${LETTER} .'-]*$`);
 const ADDRESS_RE = new RegExp(`^[${LETTER}0-9 .,#/'-]+$`);

@@ -1,4 +1,5 @@
 'use client';
+// Reports screen: payroll register, government remittance, 13th month, crew earnings and withholding tax.
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { AlertTriangle, CalendarX, CircleCheck, ReceiptText, Truck, Users } from 'lucide-react';

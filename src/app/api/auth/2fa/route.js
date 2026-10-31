@@ -1,3 +1,4 @@
+// POST /api/auth/2fa: the second sign-in step, which checks an authenticator or backup code.
 import { NextResponse } from 'next/server';
 import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { withRetry } from '@/lib/server/db/db-retry';

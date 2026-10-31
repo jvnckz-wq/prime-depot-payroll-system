@@ -1,8 +1,10 @@
+// PATCH /api/deliveries/[id]: void, restore, or change the double rate of one logged trip.
 import { NextResponse } from 'next/server';
 import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { withRetry } from '@/lib/server/db/db-retry';
 import { logSecurityEvent, requireUser } from '@/lib/server/security/auth';
 import { todayYmdManila } from '@/lib/loan-rules';
+import { round2 } from '@/lib/money';
 import { voidReasonError } from '@/lib/void-reasons';
 
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
@@ -127,7 +129,6 @@ export async function PATCH(request, { params }) {
         );
       }
 
-      const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
       let beforeD = 0, beforeH = 0, afterD = 0, afterH = 0;
       const lineUpdates = [];
       for (const i of full.items) {

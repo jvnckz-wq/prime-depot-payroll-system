@@ -1,4 +1,5 @@
 'use client';
+// Page title (H1) and the small uppercase section label (Eyebrow).
 
 import { F_HEAD, T } from '@/styles/theme';
 

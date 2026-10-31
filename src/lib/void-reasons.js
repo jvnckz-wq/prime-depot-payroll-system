@@ -1,3 +1,4 @@
+// Reasons for voiding a delivery, and their checks.
 import { freeTextError } from '@/lib/field-rules';
 
 export const VOID_REASONS = [

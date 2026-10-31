@@ -1,3 +1,4 @@
+// /api/loans: list loans and cash advances (GET) and grant a new one (POST).
 import { moneyError } from '@/lib/field-rules';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';

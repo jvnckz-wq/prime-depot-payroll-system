@@ -1,3 +1,4 @@
+// POST /api/auth/reset-password: set a new password with an emailed reset code.
 import { NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { prisma } from '@/lib/server/db/prisma';

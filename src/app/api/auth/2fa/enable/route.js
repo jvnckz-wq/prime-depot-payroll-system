@@ -1,3 +1,4 @@
+// POST /api/auth/2fa/enable: turn on two-factor sign-in once the first authenticator code is confirmed.
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { logSecurityEvent, requireUser } from '@/lib/server/security/auth';

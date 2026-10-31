@@ -1,3 +1,4 @@
+// POST /api/auth/2fa/setup: create a new authenticator secret and QR code.
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireUser } from '@/lib/server/security/auth';

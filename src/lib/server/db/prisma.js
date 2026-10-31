@@ -1,4 +1,5 @@
 import 'server-only';
+// The shared Prisma database client.
 import { PrismaClient } from '../../../generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { wrapWithRetry } from './db-retry';

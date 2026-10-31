@@ -27,6 +27,7 @@
     "test:cutoffs": "tsx tests/past-cutoff-loans.test.cjs",
     "test:shifts": "node tests/shift-schedule.test.mjs",
     "test:attlog": "node tests/attlog.test.mjs",
+    "test:golden": "tsx tests/golden-payroll.test.cjs",
     "sync": "node scripts/sync-agent.js",
     "sync:live": "node scripts/sync-agent.js --live",
     "pull-cutoff": "node scripts/pull-cutoff.js",

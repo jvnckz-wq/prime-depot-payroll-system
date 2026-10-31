@@ -1,3 +1,4 @@
+// GET /api/payroll/history: released cutoffs and their stored payslips.
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';

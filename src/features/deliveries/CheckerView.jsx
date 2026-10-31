@@ -1,10 +1,11 @@
 'use client';
+// Checker's screen: log today's deliveries.
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { LogOut } from 'lucide-react';
 import { DeliveryForm } from '@/features/deliveries/DeliveryForm.jsx';
 import { DeliveryTable, tripsFromLog } from '@/features/deliveries/DeliveryTable.jsx';
-import { Av, BigStat, Confirm, Eyebrow, Panel } from '@/components/ui';
+import { Avatar, BigStat, Confirm, Eyebrow, Panel } from '@/components/ui';
 import { CREW_RATE_FALLBACK } from '@/lib/constants';
 import { FONTS, F_HEAD, T } from '@/styles/theme';
 /* eslint-disable @next/next/no-img-element -- user avatars are base64 data URIs; next/image adds no value and cannot optimize data URIs */
@@ -77,7 +78,7 @@ export const CheckerView = ({ currentUser, deliveries, reloadDeliveries, rates, 
         <div className="flex items-center gap-2">
           {currentUser?.avatar
             ? <img src={currentUser.avatar} alt="" className="rounded-full object-cover" style={{ width: 28, height: 28 }} />
-            : <Av name={currentUser?.displayName || 'Checker'} size={28} tone={T.amber} />}
+            : <Avatar name={currentUser?.displayName || 'Checker'} size={28} tone={T.amber} />}
           <button type="button" onClick={() => setConfirmLogout(true)} aria-label="Sign out" className="-my-1 -mr-2 w-11 h-11 shrink-0 flex items-center justify-center rounded" style={{ color: T.sidebarSoft }}><LogOut size={15} /></button>
         </div>
       </div>

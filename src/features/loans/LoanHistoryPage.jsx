@@ -1,4 +1,5 @@
 'use client';
+// Loan History page: loans by year, with Excel export.
 
 import React, { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Download, History, SearchX } from 'lucide-react';

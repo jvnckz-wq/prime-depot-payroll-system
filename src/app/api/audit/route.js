@@ -1,3 +1,4 @@
+// GET /api/audit: search the audit log by date, action, user and text (admin).
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';

@@ -1,3 +1,4 @@
+// /api/attendance/unmapped: biometric IDs that scanned but match no employee (GET), and ignoring one (POST).
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';

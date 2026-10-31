@@ -1,5 +1,7 @@
-const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+// 13th month pay from released payslips.
+import { round2 } from './money.js';
 
+// 13th month pay: each employee's total basic pay on the given payslips, divided by 12.
 export function thirteenthMonthRows(slips) {
   const byEmployee = new Map();
   for (const s of slips) {
