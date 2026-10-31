@@ -42,7 +42,7 @@ The code is JavaScript. A few helper scripts under the project use TypeScript.
 
 ## Project structure
 
-The code is organized by layer, so a folder's name tells you what kind of code is inside.
+The code is organized by layer, so a folder's name tells you what kind of code is inside. For a beginner's tour of the folders, three walkthroughs that follow data through the system, and a glossary, see [docs/CODE-MAP.md](docs/CODE-MAP.md).
 
 ### Frontend
 
