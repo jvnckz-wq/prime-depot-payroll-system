@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { RefreshCw, WifiOff } from 'lucide-react';
 import { Sidebar, TopBar } from '@/components/layout/Nav.jsx';
-import { Btn, Confirm, Panel, Toasts } from '@/components/ui.jsx';
+import { Btn, Confirm, Panel, Toasts } from '@/components/ui';
 import { IdleTimeout } from '@/components/layout/IdleTimeout.jsx';
 import { BIR_TABLE_INIT, CREW_RATE_FALLBACK, PAGIBIG_INIT, PHILHEALTH_INIT, SSS_TABLE_INIT } from '@/lib/constants';
 import { deliveriesToLog } from '@/lib/payroll';

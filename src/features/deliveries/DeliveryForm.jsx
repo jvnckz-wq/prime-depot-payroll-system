@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Plus, Check, Trash2 } from 'lucide-react';
-import { Btn, Eyebrow, Field, SearchSelect, inputCls, inputStyle } from '@/components/ui.jsx';
+import { Btn, Eyebrow, Field, SearchSelect, inputCls, inputStyle } from '@/components/ui';
 import { peso } from '@/lib/utils';
 import { PH_AREAS, PH_PROVINCES } from '@/lib/batangas-areas';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';

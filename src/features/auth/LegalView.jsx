@@ -2,7 +2,7 @@
 
 import React from 'react';
 
-import { Btn, Eyebrow, Panel } from '@/components/ui.jsx';
+import { Btn, Eyebrow, Panel } from '@/components/ui';
 import { F_BODY, F_HEAD, T } from '@/styles/theme';
 
 const Section = ({ n, title, children }) => (

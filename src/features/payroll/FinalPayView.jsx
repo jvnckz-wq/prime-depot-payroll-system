@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { Btn, Confirm, Field, Panel } from '@/components/ui.jsx';
+import { Btn, Confirm, Field, Panel } from '@/components/ui';
 import { balanceOf, planDeductions, shortDate, todayYmdManila } from '@/lib/loan-rules';
 import { peso } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, F_SERIF, T } from '@/styles/theme';

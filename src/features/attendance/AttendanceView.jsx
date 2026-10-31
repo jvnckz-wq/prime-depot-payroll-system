@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, ClipboardList, ArrowLeft, Pencil, Upload, Loader2, CalendarX, CircleCheck, Users } from 'lucide-react';
-import { Av, Badge, BigStat, Btn, Chip, EmptyState, Eyebrow, Field, H1, Modal, Panel, SkeletonBlock, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
+import { Av, Badge, BigStat, Btn, Chip, EmptyState, Eyebrow, Field, H1, Modal, Panel, SkeletonBlock, Td, Th, inputCls, inputStyle } from '@/components/ui';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
 import { timeOrderError } from '@/lib/field-rules';
 import { positionLabel } from '@/lib/constants';

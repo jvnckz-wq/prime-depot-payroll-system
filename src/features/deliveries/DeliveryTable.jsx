@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronRight, MapPin, Phone, AlertTriangle, Truck } from 'lucide-react';
-import { Badge, Btn, Chip, EmptyState, Eyebrow, Field, Modal, Panel, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
+import { Badge, Btn, Chip, EmptyState, Eyebrow, Field, Modal, Panel, Td, Th, inputCls, inputStyle } from '@/components/ui';
 import { telHref, timeLabel } from '@/lib/utils';
 import { deliveriesToLog } from '@/lib/payroll';
 import { OTHER_REASON, VOID_REASONS, buildVoidReason, voidChoiceError } from '@/lib/void-reasons';

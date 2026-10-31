@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Btn, Modal } from '@/components/ui.jsx';
+import { Btn, Modal } from '@/components/ui';
 import { F_BODY, T } from '@/styles/theme';
 
 const IDLE_MS = 15 * 60 * 1000;

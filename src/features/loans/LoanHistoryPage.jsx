@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Download, History, SearchX } from 'lucide-react';
-import { Btn, EmptyState, H1, inputCls, inputStyle } from '@/components/ui.jsx';
+import { Btn, EmptyState, H1, inputCls, inputStyle } from '@/components/ui';
 import { isOpen, shortDate } from '@/lib/loan-rules';
 import { exportXLSX, peso } from '@/lib/utils';
 import { F_MONO, T } from '@/styles/theme';

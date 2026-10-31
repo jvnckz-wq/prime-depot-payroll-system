@@ -5,7 +5,7 @@ import {
   AlertTriangle, ArrowLeft, Camera, Copy, Download, Eye, EyeOff,
   KeyRound, Pencil, RefreshCw, ShieldCheck, Smartphone, User, Users,
 } from 'lucide-react';
-import { Btn, Confirm, Field, Modal, inputCls, inputStyle } from '@/components/ui.jsx';
+import { Btn, Confirm, Field, Modal, inputCls, inputStyle } from '@/components/ui';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
 import { ChangePasswordPanel, PasswordInput } from '@/features/auth/AccountView.jsx';
 import { isEmail } from '@/lib/email-format';

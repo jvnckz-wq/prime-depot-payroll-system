@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Save, Trash2 } from 'lucide-react';
-import { Badge, Btn, Eyebrow, Field, H1, Money, Panel, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
+import { Badge, Btn, Eyebrow, Field, H1, Money, Panel, Td, Th, inputCls, inputStyle } from '@/components/ui';
 import { computePagIBIG, computePhilHealth, computeSSS } from '@/lib/payroll';
 import { peso } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';

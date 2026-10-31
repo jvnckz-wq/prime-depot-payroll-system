@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { Plus, Wallet } from 'lucide-react';
-import { Btn, EmptyState, Field, H1, Modal, SearchSelect, inputCls, inputStyle } from '@/components/ui.jsx';
+import { Btn, EmptyState, Field, H1, Modal, SearchSelect, inputCls, inputStyle } from '@/components/ui';
 import {
   advancedInCutoff, balanceOf, cutoffOf, dueFor, grantedBy, isOpen, nextCutoff, periodLabel, prevCutoff, projectedGross,
   shortDate, shortPeriod, workingDaysIn, todayYmdManila } from '@/lib/loan-rules';

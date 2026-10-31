@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle, Pencil } from 'lucide-react';
-import { Badge, Btn, Confirm, Eyebrow, Field, Modal, Panel, SkeletonRows, Td, Th, inputCls, inputStyle } from '@/components/ui.jsx';
+import { Badge, Btn, Confirm, Eyebrow, Field, Modal, Panel, SkeletonRows, Td, Th, inputCls, inputStyle } from '@/components/ui';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
 import { labelTextError, plateError, flagErrors } from '@/lib/field-rules';
 
