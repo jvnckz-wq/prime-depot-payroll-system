@@ -69,7 +69,7 @@ export const DeliveryForm = ({ crews, fixedCrewId, rates, onSubmit }) => {
     const dR = pair ? pair[0] : 0;
     const hR = pair ? pair[1] : 0;
     const q = parseFloat(row.qty) || 0;
-    return { item: rate ? rate.itemName : '', qty: q, unit: rate ? rate.unit : '', driverAmount: +(dR * q).toFixed(2), helperAmount: +(hR * q).toFixed(2) };
+    return { rateItemId: rate ? rate.id : '', item: rate ? rate.itemName : '', qty: q, unit: rate ? rate.unit : '', driverAmount: +(dR * q).toFixed(2), helperAmount: +(hR * q).toFixed(2) };
   });
   const totalD = computed.reduce((s, r) => s + r.driverAmount, 0), totalH = computed.reduce((s, r) => s + r.helperAmount, 0);
 

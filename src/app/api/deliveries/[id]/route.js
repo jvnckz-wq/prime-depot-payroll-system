@@ -4,6 +4,7 @@ import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { withRetry } from '@/lib/server/db/db-retry';
 import { logSecurityEvent, requireUser } from '@/lib/server/security/auth';
 import { todayYmdManila } from '@/lib/loan-rules';
+import { lineAmounts } from '@/lib/delivery-items';
 import { round2 } from '@/lib/money';
 import { voidReasonError } from '@/lib/void-reasons';
 
@@ -133,9 +134,7 @@ export async function PATCH(request, { params }) {
       const lineUpdates = [];
       for (const i of full.items) {
         const r = rateById.get(i.rateItemId);
-        const q = Number(i.quantity);
-        const newD = +(q * Number(want ? r.driverRateDouble : r.driverRate)).toFixed(2);
-        const newH = +(q * Number(want ? r.helperRateDouble : r.helperRate)).toFixed(2);
+        const { driverAmount: newD, helperAmount: newH } = lineAmounts(r, i.quantity, want);
         afterD += newD; afterH += newH;
         lineUpdates.push({ id: i.id, data: { driverAmount: newD, helperAmount: newH } });
       }
