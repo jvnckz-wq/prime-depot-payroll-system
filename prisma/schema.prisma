@@ -659,7 +659,8 @@ model Loan {
   isPaused     Boolean     @default(false)
   isSettled    Boolean     @default(false)
   settledAt    DateTime?
-  /// Loans only. Before Phase 2 this lived in `note`; the migration copied it.
+  /// Loans, and cash advances given after purposes were added to them (older
+  /// advances have none). Before Phase 2 a loan's purpose lived in `note`.
   purpose      LoanPurpose?
   note         String?
 

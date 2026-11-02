@@ -54,10 +54,11 @@ export async function POST(request) {
     if (date > todayYmdManila()) return bad('Date given cannot be in the future.');
     const granted = new Date(date + 'T00:00:00Z');
 
+    const purpose = typeof body.purpose === 'string' ? body.purpose.trim() : '';
+    if (!LOAN_PURPOSES.includes(purpose)) return bad(`Choose a purpose: ${LOAN_PURPOSES.join(', ')}.`);
+
     let data;
     if (kind === 'LOAN') {
-      const purpose = typeof body.purpose === 'string' ? body.purpose.trim() : '';
-      if (!LOAN_PURPOSES.includes(purpose)) return bad(`Choose a purpose: ${LOAN_PURPOSES.join(', ')}.`);
       const perRun = money(body.perCutoff);
       const unit = isDailyPosition(employee.position) ? 'day' : 'cutoff';
       if (!Number.isFinite(perRun) || perRun <= 0) return bad(`Enter the deduction per ${unit}.`);
@@ -91,11 +92,11 @@ export async function POST(request) {
           + `. At most ${peso(Math.max(0, room))} can be advanced.`,
         );
       }
-      data = { employeeId, type: 'CASH_ADVANCE', note: 'Cash Advance', principal, deductionPerRun: principal, dateGranted: granted };
+      data = { employeeId, type: 'CASH_ADVANCE', purpose: PURPOSE_ENUM[purpose], note: 'Cash Advance', principal, deductionPerRun: principal, dateGranted: granted };
     }
 
     const loan = await prisma.loan.create({
-      data: { ...data, entries: { create: [{ date: granted, type: 'GRANT', amount: principal, note: kind === 'LOAN' ? `${body.purpose.trim()} loan` : 'Cash advance' }] } },
+      data: { ...data, entries: { create: [{ date: granted, type: 'GRANT', amount: principal, note: kind === 'LOAN' ? `${purpose} loan` : `${purpose} cash advance` }] } },
       include: { employee: true, entries: true },
     });
     return NextResponse.json({ loan: shapeLoan(loan) });
