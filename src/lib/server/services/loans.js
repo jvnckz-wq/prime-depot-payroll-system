@@ -31,7 +31,8 @@ export function shapeLoan(loan) {
     }));
 
   const kind = loan.type === 'CASH_ADVANCE' ? 'CASH_ADVANCE' : 'LOAN';
-  const purpose = kind === 'LOAN' ? purposeOf(loan) : null;
+  // Cash advances given before they had a purpose have none.
+  const purpose = kind === 'LOAN' ? purposeOf(loan) : (PURPOSE_LABEL[loan.purpose] || null);
   return {
     id: loan.id,
     employeeId: loan.employeeId,

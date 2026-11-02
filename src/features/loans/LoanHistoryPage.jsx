@@ -29,23 +29,9 @@ export const LoanHistoryPage = ({ loans }) => {
     && (kind === 'all' || l.kind === kind)
     && (!q.trim() || l.person.toLowerCase().includes(q.trim().toLowerCase())));
 
-  const exportRows = () => exportXLSX(`loans-history-${year}.xlsx`, [{
-    name: 'History',
-    rows: shown.map(({ l, paid, deductions }) => ({
-      Employee: l.person,
-      Position: l.role,
-      Type: l.kind === 'CASH_ADVANCE' ? 'Cash Advance' : 'Loan',
-      Purpose: l.purpose || '',
-      Amount: l.principal,
-      Given: l.dateGranted || '',
-      'Fully paid': paid || '',
-      Deductions: deductions,
-    })),
-  }]);
-
   return (
     <div className="p-4 sm:p-6">
-      <H1 action={<Btn variant="outline" icon={Download} onClick={exportRows} disabled={shown.length === 0}>Export</Btn>}>Loan History</H1>
+      <H1>Loan History</H1>
 
       <div className="rounded-lg border overflow-hidden" style={{ backgroundColor: T.surface, borderColor: T.line }}>
         <div className="flex items-center gap-2.5 flex-wrap px-3.5 py-3" style={{ borderBottom: `1px solid ${T.line}` }}>
