@@ -29,7 +29,7 @@ One folder per area of the app. Each holds the screens for that area.
 - `loans`: the Loans, Cash Advances and Loan History pages, and the new loan dialog.
 - `payroll`: Staff Payroll, Crew Payroll (`CrewPayrollView.jsx`) and Final Pay.
 - `reports`: payroll register, government remittance, 13th month, crew earnings and withholding tax reports.
-- `settings`: the government contribution tables, the fleet, the piece rates (`PieceRatesPanel.jsx`), checker accounts and the audit log.
+- `settings`: the government contribution tables, the fleet, the piece rates (`PieceRatesPanel.jsx`) and checker accounts.
 
 ### `src/lib`
 Rules and helpers with no screen of their own. The payroll rules live here: `payroll.js` (staff pay, contributions, crew pay), `loan-rules.js` (cutoffs and loan deductions), `withholding.js`, `thirteenth-month.js`, `attendance.js` (call times, lateness, overtime), `positions.js`, `delivery-items.js` (prices each delivery line from the rate table on the server) and `delivery-crew.js` (checks the truck and crew of a new delivery). These files run in the browser for previews and on the server for the real result. They use relative imports, so the tests can load them with plain Node.
@@ -41,7 +41,7 @@ The Prisma database client (`prisma.js`) and a helper that retries a database ca
 Outside services. `email.js` sends password reset and email confirmation codes through Gmail.
 
 ### `src/lib/server/security`
-Sign-in and safety: passwords, sessions, roles, the audit log and the limit on wrong current-password tries (`checkCurrentPassword()`), all in `auth.js`; two-factor codes (`twofactor.js`), and upload limits (`uploads.js`).
+Sign-in and safety: passwords, sessions, roles, the audit log (`logSecurityEvent()` writes the `audit_logs` table; the app has no screen for it, so it is read in the database) and the limit on wrong current-password tries (`checkCurrentPassword()`), all in `auth.js`; two-factor codes (`twofactor.js`), and upload limits (`uploads.js`).
 
 ### `src/lib/server/services`
 Business logic that needs the database: loading payroll inputs (`payroll-inputs.js`), writing loan deductions (`loans-apply.js`), shaping employee and loan records, reading device exports, and locking released cutoffs.
