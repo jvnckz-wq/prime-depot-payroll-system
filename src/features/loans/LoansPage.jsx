@@ -57,7 +57,7 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
   const nextCell = ({ l, due, carry, status, nextEnd, left }) => (
     status === 'Paused' ? <span style={{ color: T.soft }}>None while paused</span> : (
       <>
-        <div><b className="tabular-nums" style={{ fontFamily: F_MONO }}>{peso(due)}</b> · {l.isCrew ? 'daily' : shortDate(nextEnd)}</div>
+        <div><b className="tabular-nums" style={{ fontFamily: F_MONO }}>{peso(due)}</b></div>
         {carry.amount > 0 ? (
           <div className="text-xs" style={{ color: '#7A4B12' }}>
             incl. {peso(carry.amount)} short{carry.fromYmd ? ` from ${shortDate(carry.fromYmd)}` : ''}
@@ -130,9 +130,17 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
           </div>
           <div className="hidden md:block overflow-x-auto pd-scroll-shadow">
             <table className="w-full">
-              <thead><tr>
-                <H>Employee</H><H>Purpose</H><H right>Installment</H><H right>Balance / Principal</H><H>Next deduction</H><H center>Status</H><H right>Actions</H>
-              </tr></thead>
+              <thead>
+                <tr>
+                  <H>Employee</H>
+                  <H>Purpose</H>
+                  <H right>Installment</H>
+                  <H right>Balance</H>
+                  <H right>Next deduction</H>
+                  <H center>Status</H>
+                  <H center>Actions</H>
+                </tr>
+              </thead>
               <tbody>
                 {shown.map(({ l, balance, due, carry, status, nextEnd, left }) => {
                   const expanded = openId === l.id;
@@ -150,15 +158,15 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
                         <D>{l.purpose}</D>
                         <D right style={{ fontFamily: F_MONO, whiteSpace: 'nowrap' }}>{peso(l.perCutoff)} / {unit}</D>
                         <D right><BalanceBar balance={balance} principal={l.principal} /></D>
-                        <D style={{ whiteSpace: 'nowrap' }}>
+                        <D right style={{ whiteSpace: 'nowrap' }}>
                           {nextCell({ l, due, carry, status, nextEnd, left })}
                         </D>
                         <D center><Pill tone={status === 'Paused' ? 'amber' : status === 'Scheduled' ? 'slate' : 'green'}>{status}</Pill></D>
-                        <D right>
+                        <D center>
                           <span onClick={(e) => e.stopPropagation()}>
                             {status === 'Paused'
-                              ? <Btn size="sm" variant="outline" icon={Play} loading={busyId === l.id} onClick={() => setPaused(l, false)}>Resume</Btn>
-                              : <Btn size="sm" variant="outline" icon={Pause} loading={busyId === l.id} onClick={() => setPaused(l, true)}>Pause</Btn>}
+                              ? <Btn size="sm" variant="outline" loading={busyId === l.id} onClick={() => setPaused(l, false)}>Resume</Btn>
+                              : <Btn size="sm" variant="outline" loading={busyId === l.id} onClick={() => setPaused(l, true)}>Pause</Btn>}
                           </span>
                         </D>
                       </tr>

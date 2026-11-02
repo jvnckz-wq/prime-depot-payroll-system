@@ -71,14 +71,11 @@ export const CheckerView = ({ currentUser, deliveries, reloadDeliveries, rates, 
         <div className="flex items-center gap-2.5">
           <img src="/logo.png" alt="Prime Depot" className="w-8 h-8 rounded bg-white p-0.5 shrink-0" />
           <div>
-            <div className="text-xs uppercase" style={{ fontFamily: F_HEAD, color: T.sidebarSoft, letterSpacing: '0.08em' }}>Prime Depot · Checker</div>
-            <div className="text-sm font-bold text-white" style={{ fontFamily: F_HEAD }}>Delivery Dispatch: All Trucks</div>
+            <div className="text-xs uppercase" style={{ fontFamily: F_HEAD, color: T.sidebarSoft, letterSpacing: '0.08em' }}>Prime Depot</div>
+            <div className="text-sm font-bold text-white" style={{ fontFamily: F_HEAD }}>Delivery Dispatch</div>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {currentUser?.avatar
-            ? <img src={currentUser.avatar} alt="" className="rounded-full object-cover" style={{ width: 28, height: 28 }} />
-            : <Avatar name={currentUser?.displayName || 'Checker'} size={28} tone={T.amber} />}
           <button type="button" onClick={() => setConfirmLogout(true)} aria-label="Sign out" className="-my-1 -mr-2 w-11 h-11 shrink-0 flex items-center justify-center rounded" style={{ color: T.sidebarSoft }}><LogOut size={15} /></button>
         </div>
       </div>

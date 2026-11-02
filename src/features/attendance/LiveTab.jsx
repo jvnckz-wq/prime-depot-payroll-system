@@ -95,11 +95,11 @@ export const LiveTab = ({ liveData, setLiveDate, liveLoading }) => (
       <div className="overflow-x-auto">
         <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', minWidth: 640 }}>
           <thead><tr>
-            <th style={{ ...liveThBase, width: '40%' }}>Employee</th>
-            <th style={{ ...liveThBase, width: '16%' }}>Time In</th>
-            <th style={{ ...liveThBase, width: '16%' }}>Time Out</th>
-            <th style={{ ...liveThBase, width: '14%', textAlign: 'center' }}>Late (minutes)</th>
-            <th style={{ ...liveThBase, width: '14%', textAlign: 'center' }}>Status</th>
+            <th style={{ ...liveThBase, width: '28%' }}>Employee</th>
+            <th style={{ ...liveThBase, width: '20%', textAlign: 'center' }}>Time In</th>
+            <th style={{ ...liveThBase, width: '20%', textAlign: 'center' }}>Time Out</th>
+            <th style={{ ...liveThBase, width: '16%', textAlign: 'center' }}>Late (minutes)</th>
+            <th style={{ ...liveThBase, width: '16%', textAlign: 'center' }}>Status</th>
           </tr></thead>
           <tbody>
             {liveData.rows.map(r => (
@@ -108,8 +108,8 @@ export const LiveTab = ({ liveData, setLiveDate, liveLoading }) => (
                   <div style={{ fontFamily: F_BODY, fontWeight: 600 }}>{r.name}</div>
                   <div style={{ fontFamily: F_BODY, fontSize: 12, color: T.soft, marginTop: 1 }}>{r.position ? `${r.position} · ${r.id}` : r.id}</div>
                 </td>
-                <td style={{ ...liveTdBase, fontVariantNumeric: 'tabular-nums' }}>{r.in || <span style={{ color: T.line }}>--</span>}{r.assumedIn && <span style={{ marginLeft: 8, fontSize: 11, color: T.soft }}>assumed</span>}</td>
-                <td style={{ ...liveTdBase, fontVariantNumeric: 'tabular-nums' }}>{r.out || <span style={{ color: T.line }}>--</span>}</td>
+                <td style={{ ...liveTdBase, fontVariantNumeric: 'tabular-nums', textAlign: 'center' }}>{r.in || <span style={{ color: T.line }}>--</span>}{r.assumedIn && <span style={{ marginLeft: 8, fontSize: 11, color: T.soft }}>assumed</span>}</td>
+                <td style={{ ...liveTdBase, fontVariantNumeric: 'tabular-nums', textAlign: 'center' }}>{r.out || <span style={{ color: T.line }}>--</span>}</td>
                 <td style={{ ...liveTdBase, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{r.late > 0 ? <span style={{ color: T.red, fontWeight: 700 }}>{r.late}m</span> : <span style={{ color: T.line }}>--</span>}</td>
                 <td style={{ ...liveTdBase, textAlign: 'center' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: F_HEAD, fontSize: 11.5, fontWeight: 600, borderRadius: 999, padding: '4px 10px', color: r.status === 'in' ? T.green : T.soft, background: r.status === 'in' ? T.greenBg : T.lineSoft }}>

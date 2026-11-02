@@ -3,6 +3,14 @@ import { LayoutDashboard, Users, Clock, Truck, Wallet, Settings as SettingsIcon,
 
 export const ADMIN_NAV = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, group: null },
+  { key: 'employees', label: 'Employees', icon: Users, group: 'Workforce' },
+  { key: 'attendance', label: 'Attendance', icon: Clock, group: 'Workforce', children: [
+    { key: 'live', label: 'Live' },
+    { key: 'dtr', label: 'Employee DTR' },
+    { key: 'unmapped', label: 'Unmapped IDs' },
+    { key: 'history', label: 'Import History' },
+  ] },
+  { key: 'deliveries', label: 'Deliveries', icon: Truck, group: 'Workforce' },
   { key: 'payroll', label: 'Payroll', icon: FileText, group: 'Payroll', children: [
     { key: 'staff', label: 'Staff Payroll' },
     { key: 'crew', label: 'Crew Payroll' },
@@ -13,14 +21,6 @@ export const ADMIN_NAV = [
     { key: 'advances', label: 'Cash Advances' },
     { key: 'history', label: 'History' },
   ] },
-  { key: 'employees', label: 'Employees', icon: Users, group: 'Workforce' },
-  { key: 'attendance', label: 'Attendance', icon: Clock, group: 'Workforce', children: [
-    { key: 'live', label: 'Live' },
-    { key: 'dtr', label: 'Employee DTR' },
-    { key: 'unmapped', label: 'Unmapped IDs' },
-    { key: 'history', label: 'Import History' },
-  ] },
-  { key: 'deliveries', label: 'Deliveries', icon: Truck, group: 'Workforce' },
   { key: 'reports', label: 'Reports', icon: BarChart3, group: 'Administration', children: [
     { key: 'register', label: 'Payroll Register' },
     { key: 'remittance', label: 'Government Remittance' },

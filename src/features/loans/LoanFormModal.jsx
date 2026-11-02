@@ -98,7 +98,7 @@ export const LoanFormModal = ({ open, onClose, staff = [], loans = [], onSaved, 
             </div>
           </Field>
           <Field label={`Deduction per ${unit} (₱)`} error={fe.per}>
-            <input inputMode="decimal" value={per} onChange={(e) => setPer(moneyInput(e.target.value))} className={inputCls} style={inputStyle} />
+            <input inputMode="decimal" value={per} onChange={(e) => setPer(moneyInput(e.target.value))} placeholder="0" className={inputCls} style={inputStyle} />
           </Field>
         </div>
 

@@ -204,7 +204,16 @@ export const CashAdvancesPage = ({ staff, loans, reloadLoans, statutory, period:
           </div>
           <div className="hidden md:block overflow-x-auto pd-scroll-shadow">
             <table className="w-full">
-              <thead><tr><H>Employee</H><H>Date given</H><H right>Amount</H><H right>Limit (projected gross)</H><H right>Room left</H><H>Status</H></tr></thead>
+              <thead>
+                <tr>
+                  <H>Employee</H>
+                  <H>Date given</H>
+                  <H right>Amount</H>
+                  <H right>Limit</H>
+                  <H right>Room left</H>
+                  <H center>Status</H>
+                </tr>
+              </thead>
               <tbody>
                 {inCutoff.map((l) => {
                   const emp = staffById.get(l.employeeId);
@@ -220,7 +229,7 @@ export const CashAdvancesPage = ({ staff, loans, reloadLoans, statutory, period:
                       <D right style={{ fontFamily: F_MONO, fontWeight: 700 }}>{peso(l.principal)}</D>
                       <D right style={{ fontFamily: F_MONO }}>{limit == null ? 'n/a' : peso(limit)}</D>
                       <D right style={{ fontFamily: F_MONO }}>{room == null ? 'n/a' : peso(Math.max(0, room))}</D>
-                      <D>
+                      <D center>
                         {paid ? <Pill tone="green">Deducted</Pill>
                           : partly ? <Pill tone="amber">{peso(bal)} carried over</Pill>
                             : <Pill tone="slate">To deduct {shortDate(period.end)}</Pill>}

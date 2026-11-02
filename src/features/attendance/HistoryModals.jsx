@@ -12,9 +12,7 @@ export const HistoryModals = ({ viewBatch, setViewBatch, batchLoading, batchRows
       {viewBatch && (
         <div className="space-y-3">
           <div className="flex items-center gap-2 flex-wrap text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
-            <Badge tone="blue">{viewBatch.periodStart} → {viewBatch.periodEnd}</Badge>
             <span>Imported {new Date(viewBatch.importedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-            <Badge tone="amber">Locked, viewing only</Badge>
           </div>
           {batchLoading ? <SkeletonBlock avatar={false} />
             : batchRows.length === 0 ? <EmptyState icon={ClipboardList} title="No records" desc="No attendance rows fall in this import's date range." />
