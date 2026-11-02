@@ -77,8 +77,8 @@ export const LoansPage = ({ staff, loans, reloadLoans, period, runKey, toast }) 
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3.5 mb-4">
         <Kpi label="Outstanding balance" value={peso(outstanding)} />
-        <Kpi label={`To deduct on ${shortDate(period.end)} payroll`} value={peso(toDeduct.reduce((s, r) => s + r.due, 0))} />
-        <Kpi label="Crew, deducted daily" value={peso(crewRows.reduce((s, r) => s + r.due, 0))} unit="/ day" />
+        <Kpi label={`To deduct on next cutoff`} value={peso(toDeduct.reduce((s, r) => s + r.due, 0))} />
+        <Kpi label="Crew, deducted daily" value={peso(crewRows.reduce((s, r) => s + r.due, 0))}/>
       </div>
 
       <div className="rounded-lg border overflow-hidden" style={{ backgroundColor: T.surface, borderColor: T.line }}>

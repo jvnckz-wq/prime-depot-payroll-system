@@ -114,7 +114,7 @@ const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
 
         <Field label="Amount (₱)" error={fe.amount}>
           <div className="relative">
-            <input inputMode="decimal" value={amount} onChange={(e) => setAmount(moneyInput(e.target.value))}
+            <input inputMode="decimal" value={amount} onChange={(e) => setAmount(moneyInput(e.target.value))} placeholder="0"
               className={inputCls} style={{ ...inputStyle, borderColor: over ? T.brand : T.line, paddingRight: 120 }} aria-invalid={over || undefined} />
             {emp && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: T.soft }}>max {peso(room)}</span>}
           </div>
