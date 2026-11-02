@@ -11,7 +11,6 @@ import { SettingsView } from '@/features/settings/SettingsView.jsx';
 import { PayrollView } from '@/features/payroll/PayrollView.jsx';
 import { DeliveriesView } from '@/features/deliveries/DeliveriesView.jsx';
 import { PieceRatesPanel } from '@/features/settings/PieceRatesPanel.jsx';
-import { AuditLogPanel } from '@/features/settings/AuditLogPanel.jsx';
 
 export const TabContent = ({
   tab, subs, user, setUser, setTab, navSelect, openDtr, toast,
@@ -30,7 +29,6 @@ export const TabContent = ({
     {tab === 'loans' && <LoansView navSub={subs.loans} staff={allStaff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} cutoffPeriod={cutoffPeriod} toast={toast} />}
     {tab === 'reports' && <ReportsView navTab={subs.reports} onNavigate={navSelect} dataLoading={staffLoading || attLoading} staff={staff} deliveries={deliveries} loans={loans} statutory={statutory} cutoffLabel={cutoffText} runKey={staffKey} attendanceSummaries={attSummaries} crewRates={crewRates} />}
     {tab === 'settings' && subs.settings === 'rates' && <PieceRatesPanel rates={rates} setRates={setRates} toast={toast} />}
-    {tab === 'settings' && subs.settings === 'audit' && <AuditLogPanel toast={toast} />}
-    {tab === 'settings' && subs.settings !== 'rates' && subs.settings !== 'audit' && <SettingsView navTab={subs.settings} currentUser={user} onUserChange={u => setUser(prev => ({ ...prev, ...u }))} onSignedOut={() => { setUser(null); setTab('dashboard'); }} checkers={checkers} setCheckers={setCheckers} sssTable={sssTable} setSssTable={setSssTable} philhealthRates={philhealthRates} setPhilhealthRates={setPhilhealthRates} pagibigRates={pagibigRates} setPagibigRates={setPagibigRates} birTable={birTable} setBirTable={setBirTable} toast={toast} />}
+    {tab === 'settings' && subs.settings !== 'rates' && <SettingsView navTab={subs.settings} currentUser={user} onUserChange={u => setUser(prev => ({ ...prev, ...u }))} onSignedOut={() => { setUser(null); setTab('dashboard'); }} checkers={checkers} setCheckers={setCheckers} sssTable={sssTable} setSssTable={setSssTable} philhealthRates={philhealthRates} setPhilhealthRates={setPhilhealthRates} pagibigRates={pagibigRates} setPagibigRates={setPagibigRates} birTable={birTable} setBirTable={setBirTable} toast={toast} />}
   </>
 );

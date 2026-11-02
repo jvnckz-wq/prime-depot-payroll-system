@@ -28,7 +28,7 @@ Accounts are never deleted, only deactivated, so the delivery and payroll histor
 - Password login with a forced password change on first sign in.
 - Two-factor authentication (authenticator app plus backup codes) for the admin.
 - Password reset by verified email.
-- Sensitive actions are written to an audit log.
+- Sensitive actions are written to an audit log in the database. The app has no screen for it; it is read directly in the database when needed.
 
 ## Tech stack
 
