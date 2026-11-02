@@ -5,7 +5,7 @@ import React, { useMemo, useState } from 'react';
 import { Plus, Wallet } from 'lucide-react';
 import { Btn, EmptyState, Field, H1, Modal, SearchSelect, inputCls, inputStyle } from '@/components/ui';
 import {
-  advancedInCutoff, balanceOf, cutoffOf, dueFor, grantedBy, isOpen, nextCutoff, periodLabel, prevCutoff, projectedGross,
+  LOAN_PURPOSES, advancedInCutoff, balanceOf, cutoffOf, dueFor, grantedBy, isOpen, nextCutoff, periodLabel, prevCutoff, projectedGross,
   shortDate, shortPeriod, workingDaysIn, todayYmdManila } from '@/lib/loan-rules';
 import { computeStaffPayroll } from '@/lib/payroll';
 import { round2 } from '@/lib/money';
@@ -26,6 +26,7 @@ const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
   const byLabel = useMemo(() => new Map(people.map((e) => [labelOf(e), e])), [people, labelOf]);
   const [empId, setEmpId] = useState(null);
   const [date, setDate] = useState(todayLocalYmd());
+  const [purpose, setPurpose] = useState(LOAN_PURPOSES[0]);
   const [amount, setAmount] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -69,7 +70,7 @@ const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
     try {
       const res = await fetch('/api/loans', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employeeId: emp.id, kind: 'CASH_ADVANCE', principal: amt, date }),
+        body: JSON.stringify({ employeeId: emp.id, kind: 'CASH_ADVANCE', purpose, principal: amt, date }),
       });
       const data = await res.json();
       if (!res.ok) { toast(data.error || 'Could not save the cash advance.', 'error'); return; }
@@ -96,6 +97,12 @@ const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
             <input type="date" value={date} max={todayYmdManila()} onChange={(e) => setDate(e.target.value)} className={inputCls} style={inputStyle} />
           </Field>
         </div>
+
+        <Field label="Purpose">
+          <select value={purpose} onChange={(e) => setPurpose(e.target.value)} className={inputCls} style={inputStyle}>
+            {LOAN_PURPOSES.map((p) => <option key={p}>{p}</option>)}
+          </select>
+        </Field>
 
         {emp && (
           <div className="rounded-lg px-3.5 py-3" style={{ backgroundColor: T.bg, color: T.ink }}>
@@ -193,7 +200,7 @@ export const CashAdvancesPage = ({ staff, loans, reloadLoans, statutory, period:
                     <span className="font-bold pd-num whitespace-nowrap" style={{ fontFamily: F_MONO, color: T.ink }}>{peso(l.principal)}</span>
                   </div>
                   <div className="mt-2 flex items-center justify-between gap-2 text-xs" style={{ color: T.soft }}>
-                    <span>Given {shortDate(l.dateGranted, true)}{limit == null ? '' : ` · limit ${peso(limit)}`}{room == null ? '' : ` · room left ${peso(Math.max(0, room))}`}</span>
+                    <span>{l.purpose ? `${l.purpose} · ` : ''}Given {shortDate(l.dateGranted, true)}{limit == null ? '' : ` · limit ${peso(limit)}`}{room == null ? '' : ` · room left ${peso(Math.max(0, room))}`}</span>
                     {paid ? <Pill tone="green">Deducted</Pill>
                       : partly ? <Pill tone="amber">{peso(bal)} carried over</Pill>
                         : <Pill tone="slate">To deduct {shortDate(period.end)}</Pill>}
@@ -204,7 +211,7 @@ export const CashAdvancesPage = ({ staff, loans, reloadLoans, statutory, period:
           </div>
           <div className="hidden md:block overflow-x-auto pd-scroll-shadow">
             <table className="w-full">
-              <thead><tr><H>Employee</H><H>Date given</H><H right>Amount</H><H right>Limit (projected gross)</H><H right>Room left</H><H>Status</H></tr></thead>
+              <thead><tr><H>Employee</H><H>Purpose</H><H>Date given</H><H right>Amount</H><H right>Limit (projected gross)</H><H right>Room left</H><H>Status</H></tr></thead>
               <tbody>
                 {inCutoff.map((l) => {
                   const emp = staffById.get(l.employeeId);
@@ -216,6 +223,7 @@ export const CashAdvancesPage = ({ staff, loans, reloadLoans, statutory, period:
                   return (
                     <tr key={l.id}>
                       <D><Person name={l.person} role={l.role} /></D>
+                      <D style={{ color: l.purpose ? T.ink : T.soft }}>{l.purpose || 'n/a'}</D>
                       <D style={{ whiteSpace: 'nowrap' }}>{shortDate(l.dateGranted, true)}</D>
                       <D right style={{ fontFamily: F_MONO, fontWeight: 700 }}>{peso(l.principal)}</D>
                       <D right style={{ fontFamily: F_MONO }}>{limit == null ? 'n/a' : peso(limit)}</D>
