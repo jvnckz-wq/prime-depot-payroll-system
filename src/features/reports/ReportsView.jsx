@@ -152,7 +152,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
         {tab === 'register' && (<>
         {payrollReady && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-            <StatCard compact label="Employees" value={payrollRows.length} />
+            <StatCard compact label="Total Employees" value={payrollRows.length} />
             <StatCard compact label="Total Gross" value={peso(registerTotals.totalEarnings)} />
             <StatCard compact label="Total Deductions" value={peso(registerTotals.totalDeductions)} tone="red" />
             <StatCard compact label="Total Net Pay" value={peso(registerTotals.net)} tone="green" />
