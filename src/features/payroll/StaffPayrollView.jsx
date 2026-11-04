@@ -2,25 +2,18 @@
 // Staff Payroll screen: cutoff payslips for office staff, releasing a cutoff, and past cutoffs.
 
 import React, { useState, useEffect } from 'react';
-import { Users, Wallet, ArrowLeft, CalendarX, ReceiptText, AlertCircle, AlertTriangle } from 'lucide-react';
+import { Users, ArrowLeft, CalendarX, ReceiptText, AlertCircle, AlertTriangle } from 'lucide-react';
 import { Avatar, Badge, Btn, Confirm, EmptyState, Eyebrow, H1, Modal, Money, Panel, SkeletonBlock, SkeletonRows, StatCard, Td, Th } from '@/components/ui';
 import { computeStaffPayroll } from '@/lib/payroll';
 import { cutoffOf, nextCutoff, planDeductions, shortDate, staffRunKey } from '@/lib/loan-rules';
 import { currentCutoffPeriod, peso } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, F_SERIF, T } from '@/styles/theme';
 
+// The only note under Loans or Advance Payment: when pay was short and part of the deduction
+// moves to the next payroll. Purpose, balance and date given are not shown on the payslip.
 const loanNote = (calc, kind, nextEnd) => {
-  const lines = (calc.deductionLines || []).filter((d) => d.kind === kind);
-  if (!lines.length) return null;
-  const short = lines.reduce((s, d) => s + (d.shortfall || 0), 0);
-  const moved = short > 0.004 ? `${peso(short)} short, moves to the ${shortDate(nextEnd)} payroll` : '';
-  let text;
-  if (kind === 'CASH_ADVANCE') {
-    text = lines.length === 1 ? `Cash advance given ${shortDate(lines[0].dateGranted, true)}` : `${lines.length} cash advances this cutoff`;
-  } else {
-    text = `${lines[0].purpose || 'Loan'} · balance after this cutoff ${peso(Math.max(0, lines[0].balanceAfter))}`;
-  }
-  return moved ? `${text} · ${moved}` : text;
+  const short = (calc.deductionLines || []).filter((d) => d.kind === kind).reduce((s, d) => s + (d.shortfall || 0), 0);
+  return short > 0.004 ? `${peso(short)} short, moves to the ${shortDate(nextEnd)} payroll` : null;
 };
 
 const shortNames = (short) => {
@@ -61,15 +54,6 @@ const PayslipCard = ({ e, calc, cutoffLabel, attPeriod, att, statutory, classNam
           <Money value={v} />
         </div>
       ))}
-      {calc.companyCover > 0 && (
-        <div className="flex justify-between gap-3 text-sm py-1" style={{ fontFamily: F_BODY }}>
-          <span style={{ color: T.ink }}>
-            Covered by Company:
-            <span className="block text-xs" style={{ color: T.soft }}>Contributions were more than this cutoff&apos;s pay</span>
-          </span>
-          <Money value={calc.companyCover} />
-        </div>
-      )}
     </div>
     <div className="px-6 py-4" style={{ borderBottom: `1px solid ${T.line}` }}>
       <div className="text-sm italic mb-1.5" style={{ fontFamily: F_BODY, color: T.soft }}>Deductions</div>

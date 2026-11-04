@@ -17,7 +17,7 @@ const fmtShort = (ymd) => new Date(`${ymd}T00:00:00Z`).toLocaleDateString('en-US
 
 const BLANK_EMP = {
   id: '', name: '', position: '', rate: '', declaredSalary: '',
-  status: 'Active', sssOn: false, phOn: false, piOn: false, mp2: 0, leaveCredits: 5,
+  status: 'Active', sssOn: true, phOn: true, piOn: true, mp2: 0, leaveCredits: 5,
   address: '', contact: '', birthdate: '',
   earlyShiftDays: [], earlyShiftTime: '06:00',
 };

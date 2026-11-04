@@ -10,7 +10,7 @@ import { cutoffWithholding, taxableForCutoff } from '@/lib/withholding';
 import { deliveryRange } from '@/lib/delivery-range';
 import { exportXLSX, peso } from '@/lib/utils';
 import { round2 } from '@/lib/money';
-import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
+import { F_BODY, F_MONO, T } from '@/styles/theme';
 
 export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel = '', runKey = '', attendanceSummaries = [], navTab, onNavigate, dataLoading = false }) => {
   const [tab, setTab] = useState(navTab || 'register');
@@ -211,7 +211,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
                   <Td right mono>{amt(calc.advanceDeduction)}</Td>
                   <Td right mono><span style={{ color: T.red, fontWeight: 600 }}>−{plain(calc.totalDeductions)}</span></Td>
                   <Td right mono style={sep}>
-                    <b>{peso(calc.net)}</b>{calc.companyCover > 0 && ' *'}
+                    <b>{peso(calc.net)}</b>
                   </Td>
                 </tr>
               ))}</tbody>
