@@ -13,15 +13,16 @@ export const DeliveryForm = ({ crews, rates, onSubmit }) => {
   const [crewId, setCrewId] = useState((crews[0] && crews[0].id) || '');
   const crew = crews.find(c => c.id === crewId) || crews[0];
 
-  const [pool, setPool] = useState({ drivers: [], helpers: [], scanned: new Set(), online: true });
+  const [pool, setPool] = useState({ drivers: [], helpers: [], scanned: new Set(), out: {}, online: true });
+  const [poolTick, setPoolTick] = useState(0);
   useEffect(() => {
     let cancelled = false;
     fetch('/api/crew')
       .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
-      .then(data => { if (!cancelled) setPool({ drivers: data.drivers, helpers: data.helpers, scanned: new Set(data.scannedIds || []), online: data.deviceOnline !== false }); })
+      .then(data => { if (!cancelled) setPool({ drivers: data.drivers, helpers: data.helpers, scanned: new Set(data.scannedIds || []), out: data.outAt || {}, online: data.deviceOnline !== false }); })
       .catch(err => console.error('Could not load crew roster:', err));
     return () => { cancelled = true; };
-  }, []);
+  }, [poolTick]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
@@ -75,9 +76,17 @@ export const DeliveryForm = ({ crews, rates, onSubmit }) => {
 
   const [busy, setBusy] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
-  const scannedFirst = (list) => [...list].sort((a, b) => (Number(pool.scanned.has(b.id)) - Number(pool.scanned.has(a.id))) || a.name.localeCompare(b.name));
-  const crewLabel = (p) => (pool.scanned.has(p.id) ? p.name : `${p.name} (no scan today)`);
-  const noScanNote = (id) => (id && !pool.scanned.has(id) ? (
+  // Order: scanned, then no scan, then already out (shown but cannot be picked).
+  const rank = (p) => (pool.out[p.id] ? 2 : pool.scanned.has(p.id) ? 0 : 1);
+  const scannedFirst = (list) => [...list].sort((a, b) => (rank(a) - rank(b)) || a.name.localeCompare(b.name));
+  const crewLabel = (p) => (pool.out[p.id] ? `${p.name} (out ${pool.out[p.id]})` : pool.scanned.has(p.id) ? p.name : `${p.name} (no scan today)`);
+  const crewOption = (p) => <option key={p.id} value={p.id} disabled={!!pool.out[p.id]}>{crewLabel(p)}</option>;
+  const outError = (id) => {
+    if (!id || !pool.out[id]) return '';
+    const p = [...pool.drivers, ...pool.helpers].find(x => x.id === id);
+    return `${p ? p.name : 'This person'} is already out (${pool.out[id]}).`;
+  };
+  const noScanNote = (id) => (id && !pool.scanned.has(id) && !pool.out[id] ? (
     <div className="text-xs mt-1" style={{ fontFamily: F_BODY, color: T.warn, lineHeight: 1.5 }}>
       No scan today. You can still save; the Operations Head will review it.{pool.online ? '' : ' The scanner is offline, so scans may be missing.'}
     </div>
@@ -85,6 +94,7 @@ export const DeliveryForm = ({ crews, rates, onSubmit }) => {
   const submit = async () => {
     if (busy) return;
     if (firstError(deliveryErrors({ customer, contactNo, landmark, quantities: lineRows.map(r => r.qty), driverId, truckId: crewId, province, municipality, barangay, checkPlace: true }))) { setShowErrors(true); flagErrors(); return; }
+    if ([driverId, helper1Id, helper2Id].some(outError)) { flagErrors(); return; }
     setBusy(true);
     try {
       const address = `${barangay}, ${municipality}, ${province}`;
@@ -99,6 +109,7 @@ export const DeliveryForm = ({ crews, rates, onSubmit }) => {
         matchedArea: null,
         items: computed.map(r => ({ ...r, isDouble })),
       });
+      if (ok === false) setPoolTick(t => t + 1);
       if (ok !== false) {
         setShowErrors(false); setProvince('Batangas'); setMunicipality(''); setBarangay(''); setCustomer(''); setLandmark(''); setContactNo(''); setLineRows([{ item: rateKey(rates[0]), qty: '' }]);
         setCrewId((crews[0] && crews[0].id) || ''); setDriverId(''); setHelper1Id(''); setHelper2Id(''); setIsDouble(false);
@@ -114,10 +125,10 @@ export const DeliveryForm = ({ crews, rates, onSubmit }) => {
       <div className="text-base font-bold mb-4" style={{ fontFamily: F_HEAD, color: T.ink }}>Trip details</div>
 
       <div className="mb-3">
-        <Field label={<>Driver <span style={{ color: T.brand }}>*</span></>} error={errs.driver}>
+        <Field label={<>Driver <span style={{ color: T.brand }}>*</span></>} error={errs.driver || outError(driverId)}>
           <select value={driverId} onChange={e => setDriverId(e.target.value)} className={inputCls} style={inputStyle}>
             <option value="">Select driver...</option>
-            {scannedFirst(pool.drivers).map(d => <option key={d.id} value={d.id}>{crewLabel(d)}</option>)}
+            {scannedFirst(pool.drivers).map(crewOption)}
           </select>
           {noScanNote(driverId)}
         </Field>
@@ -135,17 +146,17 @@ export const DeliveryForm = ({ crews, rates, onSubmit }) => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-1">
-        <Field label="Delivery Helper 1">
+        <Field label="Delivery Helper 1" error={outError(helper1Id)}>
           <select value={helper1Id} onChange={e => setHelper1Id(e.target.value)} className={inputCls} style={inputStyle}>
             <option value="">None</option>
-            {scannedFirst(pool.helpers).map(h => <option key={h.id} value={h.id}>{crewLabel(h)}</option>)}
+            {scannedFirst(pool.helpers).map(crewOption)}
           </select>
           {noScanNote(helper1Id)}
         </Field>
-        <Field label="Delivery Helper 2">
+        <Field label="Delivery Helper 2" error={outError(helper2Id)}>
           <select value={helper2Id} onChange={e => setHelper2Id(e.target.value)} className={inputCls} style={inputStyle}>
             <option value="">None</option>
-            {scannedFirst(pool.helpers.filter(h => h.id !== helper1Id)).map(h => <option key={h.id} value={h.id}>{crewLabel(h)}</option>)}
+            {scannedFirst(pool.helpers.filter(h => h.id !== helper1Id)).map(crewOption)}
           </select>
           {noScanNote(helper2Id)}
         </Field>

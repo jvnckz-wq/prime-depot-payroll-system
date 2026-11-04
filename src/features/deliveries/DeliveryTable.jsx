@@ -27,7 +27,8 @@ export function tripsFromLog(log) {
       if (it.seq) {
         Object.assign(trip, {
           seq: it.seq, driver: it.driver || '', helpers: it.helpers || [], crew: it.crew || [],
-          noScan: it.noScan || [], noScanIds: it.noScanIds || [], customer: it.customer, address: it.address,
+          noScan: it.noScan || [], noScanIds: it.noScanIds || [], lateIds: it.lateIds || [], heldIds: it.heldIds || [],
+          reviewedAt: it.reviewedAt || null, reviewedBy: it.reviewedBy || null, customer: it.customer, address: it.address,
           landmark: it.landmark, contactNo: it.contactNo, isDouble: it.isDouble, voided: it.voided, voidedAt: it.voidedAt,
           voidedBy: it.voidedBy, voidReason: it.voidReason, loggedBy: it.loggedBy, loggedAt: it.loggedAt,
         });
@@ -75,13 +76,14 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
   const reviewTrips = useMemo(() => (reviewLog ? tripsFromLog(reviewLog) : trips), [reviewLog, trips]);
   const byTruck = (t) => !truckFilter || t.truckId === truckFilter;
   const inTruck = trips.filter(byTruck);
-  const needsReview = reviewTrips.filter((t) => byTruck(t) && !t.voided && t.noScan.length > 0);
+  const needsReview = reviewTrips.filter((t) => byTruck(t) && !t.voided && t.heldIds.length > 0);
   const voided = inTruck.filter((t) => t.voided);
   const shown = filter === 'review' ? needsReview : filter === 'voided' ? voided : inTruck;
   const open = trips.find((t) => t.id === openId) || reviewTrips.find((t) => t.id === openId) || null;
   const refresh = async () => { setReviewTick((n) => n + 1); if (onChanged) await onChanged(); };
   const isPast = !!open && open.date !== today;
-  const canVoid = open && !open.voided && !isPast;
+  const flagged = !!open && !open.voided && open.heldIds.length > 0;
+  const canVoid = open && !open.voided && (!isPast || (isAdmin && flagged));
 
   const resetVoid = () => { setVoiding(false); setReasonChoice(''); setOtherText(''); setReasonErr(''); };
   const close = () => { setOpenId(null); resetVoid(); };
@@ -119,6 +121,18 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
     finally { setBusy(false); }
   };
 
+  const confirmTrip = async () => {
+    setBusy(true);
+    try {
+      const { res, data } = await patch({ action: 'confirm' });
+      if (!res.ok) { toast(data.error || 'Could not confirm the trip.', 'error'); return; }
+      toast('Trip confirmed. It now counts toward pay.');
+      close();
+      await refresh();
+    } catch { toast('Could not reach the server.', 'error'); }
+    finally { setBusy(false); }
+  };
+
   const queuePull = async () => {
     const c = cutoffOf(open.date);
     setBusy(true);
@@ -138,7 +152,7 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
   );
 
   const emptyText = filter === 'review'
-    ? ['Nothing to review', reviewDays ? `Every crew member on the last ${reviewDays} days of trips has a scan.` : 'Every crew member on these trips has a scan for the day.']
+    ? ['Nothing to review', '']
     : filter === 'voided'
       ? ['No voided trips', 'Voided trips stay here, crossed out, so the record is never lost.']
       : ['No deliveries logged yet', 'Deliveries appear here once they are logged.'];
@@ -173,7 +187,12 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
                   <Td mono><span style={strike}>{t.truckId}</span></Td>
                   <Td>
                     <span style={strike}>{t.driver || '--'}</span>
-                    {!t.voided && t.noScan.length > 0 && <div className="mt-1"><Badge tone="amber">No scan: {t.noScan.length}</Badge></div>}
+                    {!t.voided && (t.noScan.length > 0 || t.lateIds.length > 0) && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {t.noScan.length > 0 && <Badge tone="amber">No scan: {t.noScan.length}</Badge>}
+                        {t.lateIds.length > 0 && <Badge tone="amber">Logged after time-out</Badge>}
+                      </div>
+                    )}
                   </Td>
                   <Td><span style={strike}>{t.helpers.length ? t.helpers.join(' & ') : '--'}</span></Td>
                   <Td><span style={strike}>{t.customer || '--'}</span></Td>
@@ -196,6 +215,7 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
           <div style={{ fontFamily: F_BODY }}>
             <div className="text-xs mb-3" style={{ color: T.soft }}>
               {longDate(open.date)}{open.loggedBy ? ` · logged by ${open.loggedBy}` : ''}{open.loggedAt ? ` at ${timeLabel(open.loggedAt)}` : ''}
+              {open.reviewedAt ? ` · confirmed by ${open.reviewedBy || 'Operations Head'}, ${stamp(open.reviewedAt)}` : ''}
             </div>
 
             {open.voided && (
@@ -205,13 +225,14 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
               </div>
             )}
 
-            {!open.voided && open.noScan.length > 0 && (
+            {flagged && (
               <div className="p-3 rounded mb-3 text-sm flex items-start gap-2" style={{ backgroundColor: T.warnBg, color: T.ink, lineHeight: 1.6 }}>
                 <AlertTriangle size={15} color={T.warn} className="mt-0.5 shrink-0" />
                 <span>
-                  <span className="font-semibold">{open.noScan.length === 1 ? '1 crew member has' : `${open.noScan.length} crew members have`} no scan on this day.</span>{' '}
+                  {open.noScan.length > 0 && <span className="font-semibold block">{open.noScan.length === 1 ? '1 crew member has' : `${open.noScan.length} crew members have`} no scan on this day.</span>}
+                  {open.lateIds.length > 0 && <span className="font-semibold block">{open.lateIds.length === 1 ? '1 crew member timed out' : `${open.lateIds.length} crew members timed out`} before this trip was logged.</span>}
                   {isAdmin
-                    ? `If the scanner was offline, pull attendance. If they worked but forgot to scan, fix their DTR.${isPast ? '' : ' If they were not on this trip, void it.'}`
+                    ? 'If they worked but the time is wrong or missing, fix their DTR.'
                     : 'The Operations Head will review it. If the wrong person was picked, void this trip and log it again.'}
                 </span>
               </div>
@@ -219,12 +240,16 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
 
             <Section label="Crew">
               {open.crew.map((c) => {
-                const missing = !open.voided && open.noScanIds.includes(c.id);
+                const missing = open.noScanIds.includes(c.id);
+                const late = open.lateIds.includes(c.id);
+                const held = open.heldIds.includes(c.id);
                 return (
                   <Line key={c.role} left={c.name}
-                    right={<span className="flex items-center gap-3">
+                    right={<span className="flex items-center gap-2">
                       {missing && <Badge tone="amber">No scan</Badge>}
-                      {missing && isAdmin && onOpenDtr && (
+                      {late && <Badge tone="amber">Out before log</Badge>}
+                      {held && <Badge tone="neutral">On hold</Badge>}
+                      {held && isAdmin && onOpenDtr && (
                         <button className="pd-link text-xs" style={{ fontFamily: F_BODY }} onClick={() => { close(); onOpenDtr(c.id, open.date); }}>Open DTR</button>
                       )}
                     </span>} />
@@ -259,10 +284,11 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
               </div>
             ) : (
               <div className="flex justify-end gap-2 mt-5 flex-wrap">
-                {isAdmin && !open.voided && open.noScan.length > 0 && <Btn variant="outline" onClick={queuePull} disabled={busy}>Pull attendance</Btn>}
+                {isAdmin && !isPast && flagged && open.noScan.length > 0 && <Btn variant="outline" onClick={queuePull} disabled={busy}>Pull attendance</Btn>}
                 {isAdmin && open.voided && !isPast && <Btn variant="outline" onClick={undoVoid} disabled={busy}>Undo void</Btn>}
                 {canVoid && <Btn variant="amber" onClick={() => setVoiding(true)} disabled={busy}>Void delivery</Btn>}
-                {isPast && (
+                {isAdmin && flagged && <Btn onClick={confirmTrip} loading={busy}>Confirm trip</Btn>}
+                {isPast && !(isAdmin && flagged) && (
                   <div className="text-xs" style={{ color: T.soft }}>Past days are view only.</div>
                 )}
               </div>

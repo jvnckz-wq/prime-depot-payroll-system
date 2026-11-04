@@ -242,7 +242,12 @@ ok('crew pay is matched by employee ID: two crew with the same name stay apart',
     id, truckId: 'TRK-01', sequenceNo: seq, driverId, helper1Id: helpers[0] || null, helper2Id: helpers[1] || null, isDouble: false,
     items: [{ itemName: 'Cement', unit: 'bag', quantity: 10, driverAmount: amount, helperAmount: amount }],
   });
-  const p = fakePrisma({ deliveries: [del('d1', 1, 'drv-1', ['pah-echo-1']), del('d2', 2, 'drv-1', ['pah-echo-2'], 50)], crewRate1: null });
+  // All three scanned in that day, so no trip is held for review.
+  const scan = (id) => ({ employeeId: id, date: new Date('2026-09-29T00:00:00Z'), timeIn: new Date('2026-09-29T06:20:00Z'), timeOut: null, isAbsent: false, isLeave: false, isAssumedOut: true, tardinessMins: 0 });
+  const p = fakePrisma({
+    deliveries: [del('d1', 1, 'drv-1', ['pah-echo-1']), del('d2', 2, 'drv-1', ['pah-echo-2'], 50)], crewRate1: null,
+    attendance: ['drv-1', 'pah-echo-1', 'pah-echo-2'].map(scan),
+  });
   const earned = await crewAvailableOn(p, '2026-09-29');
   assert.equal(earned.get('drv-1'), 280 + 0 + 50);
   assert.equal(earned.get('pah-echo-1'), 240);

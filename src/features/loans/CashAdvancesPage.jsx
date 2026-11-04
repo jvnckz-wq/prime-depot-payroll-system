@@ -1,7 +1,7 @@
 'use client';
 // Cash Advances page: grant and track advances for the current cutoff.
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, Wallet } from 'lucide-react';
 import { Btn, EmptyState, Field, H1, Modal, SearchSelect, inputCls, inputStyle } from '@/components/ui';
 import {
@@ -32,6 +32,21 @@ const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
 
   const emp = people.find((e) => e.id === empId) || null;
   const period = cutoffOf(/^\d{4}-\d{2}-\d{2}$/.test(date) ? date : todayLocalYmd());
+
+  // No cash advance until the employee has attendance in the cutoff (checked again on save).
+  const [att, setAtt] = useState({ key: '', ok: true });
+  const attKey = emp ? `${emp.id}|${date}` : '';
+  useEffect(() => {
+    if (!attKey) return undefined;
+    let cancelled = false;
+    const [id, d] = attKey.split('|');
+    fetch(`/api/loans/advance-check?employeeId=${encodeURIComponent(id)}&date=${encodeURIComponent(d)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (!cancelled && data) setAtt({ key: attKey, ok: !!data.hasAttendance }); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [attKey]);
+  const noAttendance = !!emp && att.key === attKey && !att.ok;
   const days = workingDaysIn(period);
   const limit = emp ? projectedGross(emp.rate, period) : 0;
   const already = emp ? advancedInCutoff(loans, emp.id, period) : 0;
@@ -56,6 +71,7 @@ const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
   const [showErrors, setShowErrors] = useState(false);
   let problem = '';
   if (!emp) problem = 'Choose the employee.';
+  else if (noAttendance) problem = 'No attendance yet this cutoff.';
   else if (!(amt > 0)) problem = 'Enter an amount.';
   else if (over) problem = `Over the limit. At most ${peso(room)} can be advanced for ${periodLabel(period)}.`;
 
@@ -89,7 +105,7 @@ const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
     <Modal open onClose={onClose} title="New Cash Advance" width={560}>
       <div className="space-y-3.5" style={{ fontFamily: F_BODY }}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field label="Employee" error={fe.employee}>
+          <Field label="Employee" error={noAttendance ? 'No attendance yet this cutoff.' : fe.employee}>
             <SearchSelect value={emp ? labelOf(emp) : ''} placeholder="Start typing a name…" options={people.map(labelOf)}
               onChange={(label) => { const e = byLabel.get(label); setEmpId(e ? e.id : null); }} />
           </Field>
@@ -99,12 +115,13 @@ const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
         </div>
 
         <Field label="Purpose">
-          <select value={purpose} onChange={(e) => setPurpose(e.target.value)} className={inputCls} style={inputStyle}>
+          <select value={purpose} onChange={(e) => setPurpose(e.target.value)} disabled={noAttendance} className={inputCls}
+            style={noAttendance ? { ...inputStyle, backgroundColor: T.bg, color: T.soft } : inputStyle}>
             {LOAN_PURPOSES.map((p) => <option key={p}>{p}</option>)}
           </select>
         </Field>
 
-        {emp && (
+        {emp && !noAttendance && (
           <div className="rounded-lg px-3.5 py-3" style={{ backgroundColor: T.bg, color: T.ink }}>
             {row(`Projected gross, ${periodLabel(period)} (${days} working days × ${peso(emp.rate)})`, peso(limit))}
             {row('Already advanced this cutoff', peso(already))}
@@ -114,9 +131,9 @@ const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
 
         <Field label="Amount (₱)" error={fe.amount}>
           <div className="relative">
-            <input inputMode="decimal" value={amount} onChange={(e) => setAmount(moneyInput(e.target.value))} placeholder="0"
-              className={inputCls} style={{ ...inputStyle, borderColor: over ? T.brand : T.line, paddingRight: 120 }} aria-invalid={over || undefined} />
-            {emp && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: T.soft }}>max {peso(room)}</span>}
+            <input inputMode="decimal" value={amount} onChange={(e) => setAmount(moneyInput(e.target.value))} placeholder="0" disabled={noAttendance}
+              className={inputCls} style={{ ...inputStyle, borderColor: over ? T.brand : T.line, paddingRight: 120, ...(noAttendance ? { backgroundColor: T.bg } : {}) }} aria-invalid={over || undefined} />
+            {emp && !noAttendance && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: T.soft }}>max {peso(room)}</span>}
           </div>
         </Field>
 
@@ -126,7 +143,7 @@ const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
           </div>
         )}
 
-        {short > 0 && (
+        {short > 0 && !noAttendance && (
           <div className="rounded-lg px-3.5 py-3 text-sm" style={{ backgroundColor: T.warnBg, border: '1px solid #EFD3A8', color: '#7A4B12', lineHeight: 1.45 }}>
             <b>Heads up:</b> {first}&apos;s estimated take-home is <b>{peso(Math.max(0, estimate.takeHome))}</b> after contributions
             {estimate.installment > 0 ? ' and the loan installment' : ''}{already > 0 || estimate.carriedIn > 0 ? ' and earlier advances' : ''}, if {first} works every remaining day.
@@ -136,7 +153,7 @@ const AdvanceModal = ({ onClose, staff, loans, statutory, onSaved, toast }) => {
 
         <div className="flex justify-end gap-2 pt-1">
           <Btn variant="outline" onClick={onClose} disabled={busy}>Cancel</Btn>
-          <Btn onClick={save} loading={busy} disabled={busy}>Save advance</Btn>
+          <Btn onClick={save} loading={busy} disabled={busy || noAttendance}>Save advance</Btn>
         </div>
       </div>
     </Modal>

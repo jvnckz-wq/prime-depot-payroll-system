@@ -3,13 +3,14 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { AlertTriangle, CalendarX, CircleCheck, ReceiptText, Truck, Users } from 'lucide-react';
-import { Badge, Btn, EmptyState, Eyebrow, H1, Panel, Skeleton, SkeletonRows, Td, Th } from '@/components/ui';
+import { Badge, Btn, EmptyState, Eyebrow, H1, Panel, Skeleton, SkeletonRows, StatCard, Td, Th } from '@/components/ui';
 import { computeStaffPayroll } from '@/lib/payroll';
 import { shortDate, todayYmdManila } from '@/lib/loan-rules';
 import { cutoffWithholding, taxableForCutoff } from '@/lib/withholding';
 import { deliveryRange } from '@/lib/delivery-range';
 import { exportXLSX, peso } from '@/lib/utils';
-import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
+import { round2 } from '@/lib/money';
+import { F_BODY, F_MONO, T } from '@/styles/theme';
 
 export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel = '', runKey = '', attendanceSummaries = [], navTab, onNavigate, dataLoading = false }) => {
   const [tab, setTab] = useState(navTab || 'register');
@@ -54,6 +55,15 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
     () => staff.filter(e => Number(e.rate) > 0).map(e => ({ emp: e, calc: computeStaffPayroll(e, loans, statutory, attById[e.id], cutoffKey) })).filter(r => r.calc.hasAttendance),
     [staff, loans, statutory, attById, cutoffKey]
   );
+  const registerTotals = useMemo(() => {
+    const keys = ['days', 'gross', 'ot', 'allowance', 'totalEarnings', 'sss', 'phic', 'hdmf',
+      'withholdingTax', 'tardiness', 'loanDeduction', 'advanceDeduction', 'totalDeductions', 'net'];
+    const t = Object.fromEntries(keys.map((k) => [k, 0]));
+    for (const r of payrollRows) {
+      for (const k of keys) t[k] = round2(t[k] + (Number(r.calc[k]) || 0));
+    }
+    return t;
+  }, [payrollRows]);
   const remitRows = payrollRows;
 
   const [t13, setT13] = useState({ loading: true, error: '', year: null, rows: [] });
@@ -85,6 +95,12 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
       desc="Payroll is computed from attendance. Pull it from the device and this report fills in."
       action={<Btn variant="outline" onClick={() => go('attendance', 'dtr')}>Go to Attendance</Btn>} />
   );
+  const plain = (v) => Number(v || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const amt = (v) => (v ? plain(v) : '--');
+  const stickyCell = { position: 'sticky', left: 0, zIndex: 1, backgroundColor: T.surface, boxShadow: `1px 0 0 ${T.line}` };
+  const stickyHead = { ...stickyCell, zIndex: 2, backgroundColor: '#FAF8F7' };
+  const sep = { borderLeft: `1px solid ${T.line}` };
+  const foot = { borderTop: `2px solid ${T.ink}`, borderBottom: 'none', backgroundColor: '#FBF9F8', fontWeight: 700 };
   const payrollReady = !dataLoading && payrollRows.length > 0;
   const whtRows = payrollRows.map(r => {
     const taxable = taxableForCutoff(r.calc);
@@ -94,7 +110,30 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
   const crewRowsAll = rangeApi;
   const crewRows = rangeError ? [] : crewRowsAll;
 
-  const exportRegister = () => exportXLSX('Payroll-Register.xlsx', [{ name: 'Register', rows: payrollRows.map(r => ({ Employee: r.emp.name, Days: r.calc.days, Gross: r.calc.gross, Overtime: r.calc.ot, Deductions: r.calc.totalDeductions, 'Net Pay': r.calc.net })) }]);
+  const exportRegister = () => {
+    const toRow = (name, position, rate, v) => ({
+      Employee: name, 
+      Position: position, 
+      'Daily Rate': rate, 
+      Days: v.days,
+      'Basic Pay': v.gross, 
+      Overtime: v.ot, 
+      Allowance: v.allowance, 
+      'Gross Pay': v.totalEarnings,
+      SSS: v.sss, 
+      PhilHealth: v.phic, 
+      'Pag-IBIG': v.hdmf, 
+      'Withholding Tax': v.withholdingTax,
+      Late: v.tardiness, 
+      Loans: v.loanDeduction, 
+      'Cash Advance': v.advanceDeduction,
+      'Total Deductions': v.totalDeductions, 
+      'Net Pay': v.net,
+    });
+    const rows = payrollRows.map(({ emp, calc }) => toRow(emp.name, emp.position, emp.rate, calc));
+    rows.push(toRow('TOTAL', '', '', registerTotals));
+    exportXLSX('Payroll-Register.xlsx', [{ name: 'Register', rows }]);
+  };
   const exportRemit = () => exportXLSX('Government-Remittance.xlsx', [
     { name: 'Remittance', rows: remitRows.map(r => ({ Employee: r.emp.name, SSS: r.calc.sss, PhilHealth: r.calc.phic, 'Pag-IBIG': r.calc.hdmf, Total: r.calc.sss + r.calc.phic + r.calc.hdmf })) },
   ]);
@@ -110,31 +149,91 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
     <div className="p-4 sm:p-6">
       <H1 sub="Payroll, government compliance, and delivery earnings reports.">Reports</H1>
 
-      {tab === 'register' && (
+        {tab === 'register' && (<>
+        {payrollReady && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+            <StatCard compact label="Total Employees" value={payrollRows.length} />
+            <StatCard compact label="Total Gross" value={peso(registerTotals.totalEarnings)} />
+            <StatCard compact label="Total Deductions" value={peso(registerTotals.totalDeductions)} tone="red" />
+            <StatCard compact label="Total Net Pay" value={peso(registerTotals.net)} tone="green" />
+          </div>
+        )}
         <Panel className="overflow-hidden">
           <div className="px-4 py-2.5 flex justify-between items-center" style={{ borderBottom: `1px solid ${T.line}` }}>
             <Eyebrow>Payroll Register: {cutoffLabel || 'Current cutoff'}</Eyebrow>
             <Btn size="sm" variant="outline" onClick={exportRegister} disabled={!payrollReady}>Export Excel</Btn>
           </div>
-          {!dataLoading && !payrollRows.length ? payrollEmpty : (
+          {!dataLoading && !payrollRows.length ? payrollEmpty : (<>
           <div className="overflow-x-auto pd-scroll-shadow">
             <table className="w-full">
-              <thead><tr><Th>Employee</Th><Th center>Days</Th><Th right>Gross</Th><Th right>Overtime</Th><Th right>Deductions</Th><Th right>Net Pay</Th></tr></thead>
-              <tbody>{dataLoading ? <SkeletonRows cols={6} rows={5} /> : payrollRows.map((r, i) => (
-                <tr key={i}>
-                  <Td>{r.emp.name}</Td>
-                  <Td center mono>{r.calc.days}</Td>
-                  <Td right mono>{peso(r.calc.gross)}</Td>
-                  <Td right mono>{r.calc.ot ? peso(r.calc.ot) : '--'}</Td>
-                  <Td right mono>{r.calc.totalDeductions ? <span style={{ color: T.red }}>−{peso(r.calc.totalDeductions)}</span> : peso(0)}</Td>
-                  <Td right mono><span style={{ fontWeight: 600 }}>{peso(r.calc.net)}</span></Td>
+              <thead>
+                <tr>
+                  <Th rowSpan={2} center style={stickyHead}>Employee</Th>
+                  <Th rowSpan={2} center>Daily Rate</Th>
+                  <Th rowSpan={2} center>Days</Th>
+                  <Th colSpan={4} center style={{ ...sep, borderBottom: 'none', paddingBottom: 2, color: T.green }}>Earnings</Th>
+                  <Th colSpan={8} center style={{ ...sep, borderBottom: 'none', paddingBottom: 2, color: T.red }}>Deductions</Th>
+                  <Th rowSpan={2} center style={sep}>Net Pay</Th>
+                </tr>
+                <tr>
+                  <Th center style={sep}>Gross Salary</Th>
+                  <Th center>Overtime</Th>
+                  <Th center>Allowance</Th>
+                  <Th center>Total</Th>
+                  <Th center style={sep}>SSS</Th>
+                  <Th center>PhilHealth</Th>
+                  <Th center>Pag-IBIG</Th>
+                  <Th center>Withholding Tax</Th>
+                  <Th center>Late</Th>
+                  <Th center>Loans</Th>
+                  <Th center>Cash Advance</Th>
+                  <Th center>Total</Th>
+                </tr>
+              </thead>
+              <tbody>{dataLoading ? <SkeletonRows cols={16} rows={5} /> : payrollRows.map(({ emp, calc }) => (
+                <tr key={emp.id}>
+                  <Td style={stickyCell}>
+                    <span className="font-semibold">{emp.name}</span>
+                    <span className="block text-xs" style={{ color: T.soft }}>{emp.position}</span>
+                  </Td>
+                  <Td right mono>{plain(emp.rate)}</Td>
+                  <Td center mono>{calc.days}</Td>
+                  <Td right mono style={sep}>{amt(calc.gross)}</Td>
+                  <Td right mono>{amt(calc.ot)}</Td>
+                  <Td right mono>{amt(calc.allowance)}</Td>
+                  <Td right mono><b>{plain(calc.totalEarnings)}</b></Td>
+                  <Td right mono style={sep}>{amt(calc.sss)}</Td>
+                  <Td right mono>{amt(calc.phic)}</Td>
+                  <Td right mono>{amt(calc.hdmf)}</Td>
+                  <Td right mono>{amt(calc.withholdingTax)}</Td>
+                  <Td right mono>{amt(calc.tardiness)}</Td>
+                  <Td right mono>{amt(calc.loanDeduction)}</Td>
+                  <Td right mono>{amt(calc.advanceDeduction)}</Td>
+                  <Td right mono><span style={{ color: T.red, fontWeight: 600 }}>−{plain(calc.totalDeductions)}</span></Td>
+                  <Td right mono style={sep}>
+                    <b>{peso(calc.net)}</b>
+                  </Td>
                 </tr>
               ))}</tbody>
+              {payrollReady && (
+                <tfoot>
+                  <tr>
+                    <Td style={{ ...stickyCell, ...foot }}>TOTAL</Td>
+                    <Td style={foot}></Td>
+                    <Td center mono style={foot}></Td>
+                    {['gross', 'ot', 'allowance', 'totalEarnings', 'sss', 'phic', 'hdmf', 'withholdingTax', 'tardiness', 'loanDeduction', 'advanceDeduction'].map((k) => (
+                      <Td key={k} right mono style={k === 'gross' || k === 'sss' ? { ...foot, ...sep } : foot}>{plain(registerTotals[k])}</Td>
+                    ))}
+                    <Td right mono style={{ ...foot, color: T.red }}>−{plain(registerTotals.totalDeductions)}</Td>
+                    <Td right mono style={{ ...foot, ...sep, color: T.brand }}>{peso(registerTotals.net)}</Td>
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
-          )}
+          </>)}
         </Panel>
-      )}
+      </>)}
       {tab === 'remittance' && (
         <Panel className="overflow-hidden">
           <div className="px-4 py-2.5 flex justify-between items-center" style={{ borderBottom: `1px solid ${T.line}` }}>

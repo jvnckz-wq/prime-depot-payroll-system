@@ -53,3 +53,19 @@ export function shapeLoan(loan) {
     entries,
   };
 }
+// A cash advance needs at least one day worked or on paid leave in its cutoff, up to the date given.
+export const NO_ATTENDANCE_MESSAGE = 'No attendance yet this cutoff.';
+
+export async function hasAttendanceForAdvance(prisma, employeeId, fromYmd, toYmd) {
+  const n = await prisma.attendance.count({
+    where: {
+      employeeId,
+      date: { gte: new Date(`${fromYmd}T00:00:00Z`), lte: new Date(`${toYmd}T00:00:00Z`) },
+      OR: [
+        { isLeave: true },
+        { isAbsent: false, OR: [{ timeIn: { not: null } }, { timeOut: { not: null } }, { isAssumedIn: true }] },
+      ],
+    },
+  });
+  return n > 0;
+}

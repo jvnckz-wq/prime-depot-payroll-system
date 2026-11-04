@@ -22,13 +22,18 @@ ok('enough pay: every figure is what it was (net 2,646.25 path, no cover)', () =
   assert.equal(c.net, 7146.25);
 });
 
-ok('1 day present: contributions above pay (it used to be net -510.00); company covers 10.00, MP2 skipped, net 0.00', () => {
+ok('1 day present: contributions above pay; SSS and PhilHealth in full, Pag-IBIG only the 90.00 that fits, no company cover, MP2 skipped, net 0.00', () => {
   const c = computeStaffPayroll(staffA, [], statutory, att(1));
-  assert.deepEqual([c.sss, c.phic, c.mp1], [382.5, 227.5, 100]);
-  assert.equal(c.companyCover, 10);
+  assert.deepEqual([c.sss, c.phic, c.mp1], [382.5, 227.5, 90]);
+  assert.equal(c.companyCover, 0);
   assert.equal(c.mp2, 0);
   assert.equal(c.net, 0);
-  assert.equal(Math.round((c.totalEarnings + c.companyCover - c.totalDeductions) * 100) / 100, c.net);
+  assert.equal(Math.round((c.totalEarnings - c.totalDeductions) * 100) / 100, c.net);
+});
+
+ok('pay smaller than SSS alone: SSS takes all of it, PhilHealth and Pag-IBIG get nothing, never negative', () => {
+  const c = computeStaffPayroll({ ...staffA, rate: 300 }, [], statutory, att(1));
+  assert.deepEqual([c.sss, c.phic, c.mp1, c.companyCover, c.net], [300, 0, 0, 0, 0]);
 });
 
 ok('short but not negative: tardiness first, then only the MP2 that fits', () => {

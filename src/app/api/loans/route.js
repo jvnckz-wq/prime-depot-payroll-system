@@ -3,7 +3,7 @@ import { moneyError } from '@/lib/field-rules';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';
-import { shapeLoan } from '@/lib/server/services/loans';
+import { NO_ATTENDANCE_MESSAGE, hasAttendanceForAdvance, shapeLoan } from '@/lib/server/services/loans';
 import { isDailyPosition } from '@/lib/positions';
 import {
   LOAN_MAX_BALANCE, LOAN_PURPOSES, PURPOSE_ENUM, advancedInCutoff, balanceOf, cutoffOf, isYmd, periodLabel, projectedGross, todayYmdManila, workingDaysIn,
@@ -78,6 +78,7 @@ export async function POST(request) {
       if (isDailyPosition(employee.position)) return bad('Crew are paid daily, so cash advances are for office staff only.');
 
       const period = cutoffOf(date);
+      if (!(await hasAttendanceForAdvance(prisma, employeeId, period.start, date))) return bad(NO_ATTENDANCE_MESSAGE);
       const limit = projectedGross(employee.dailyRate, period);
       const siblings = await prisma.loan.findMany({
         where: { employeeId, type: 'CASH_ADVANCE', dateGranted: { gte: new Date(period.start + 'T00:00:00Z'), lte: new Date(period.end + 'T00:00:00Z') } },

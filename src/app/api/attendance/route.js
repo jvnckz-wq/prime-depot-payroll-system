@@ -6,7 +6,7 @@ import { isCalendarDate, isClockTime, minutesLate, shiftEndFor, summarizeAttenda
 import { timeOrderError } from '@/lib/field-rules';
 import { enrolledNotRegistered } from '@/lib/server/services/device-roster';
 import { cutoffsWithAttendance, finalizedCutoffsBetween, lockedMessage } from '@/lib/server/services/cutoff-lock';
-import { countNoScanDeliveries } from '@/lib/server/services/crew-scans';
+import { countReviewDeliveries } from '@/lib/server/services/crew-scans';
 import { cutoffOf } from '@/lib/loan-rules';
 import { isPieceRatePosition } from '@/lib/positions';
 import { POSITION_LABEL } from '@/lib/server/services/employees';
@@ -247,7 +247,7 @@ export async function GET(request) {
     const enrolledUsers = await enrolledNotRegistered().then((r) => r.users).catch(() => []);
     const enrolledCount = enrolledUsers.length;
     const unregisteredIds = new Set([...unmappedIdRows.map((r) => r.biometricId), ...enrolledUsers.map((u) => u.userId)]).size;
-    const noScanDeliveries = await countNoScanDeliveries().catch(() => 0);
+    const noScanDeliveries = await countReviewDeliveries().catch(() => 0);
 
     const finalized = rangeOut ? (await finalizedCutoffsBetween(rangeOut.start, rangeOut.end)).some((c) => c.start === rangeOut.start && c.end === rangeOut.end) : false;
     const cutoffs = await cutoffsWithAttendance().catch(() => []);

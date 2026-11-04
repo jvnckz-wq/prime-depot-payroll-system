@@ -110,7 +110,8 @@ export function employeeErrors(form, { today = new Date(), crew = false, noContr
     declaredSalary: '', leaveCredits: '', mp2: '',
   };
   if (!noContrib) {
-    const anyOn = form.sssOn || form.phOn || form.piOn;
+    // Contributions are mandatory, so a declared salary is required (except for the unpaid Operations Head).
+    const anyOn = (form.sssOn || form.phOn || form.piOn) && !isUnpaidPosition(form.position);
     e.declaredSalary = moneyError(form.declaredSalary, { label: 'Declared monthly salary', max: LIMITS.declaredSalaryMax, required: anyOn, allowZero: !anyOn });
     e.mp2 = mp2Error(form.mp2);
   }

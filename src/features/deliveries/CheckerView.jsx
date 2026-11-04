@@ -42,7 +42,7 @@ export const CheckerView = ({ currentUser, deliveries, reloadDeliveries, rates, 
 
   const trips = useMemo(() => tripsFromLog(deliveries), [deliveries]);
   const loggedCount = trips.filter(t => !t.voided).length;
-  const reviewCount = trips.filter(t => !t.voided && t.noScan.length > 0).length;
+  const reviewCount = trips.filter(t => !t.voided && t.heldIds.length > 0).length;
   const voidedCount = trips.filter(t => t.voided).length;
   const [tableFilter, setTableFilter] = useState('all');
   const tableRef = useRef(null);

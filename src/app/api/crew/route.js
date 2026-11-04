@@ -1,8 +1,9 @@
-// GET /api/crew: active drivers and helpers, for choosing a truck crew.
+// GET /api/crew: active drivers and helpers, for choosing a truck crew, with who scanned and who already timed out today.
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireUser } from '@/lib/server/security/auth';
-import { deviceOnline, scannedSet } from '@/lib/server/services/crew-scans';
+import { crewDayRows, deviceOnline } from '@/lib/server/services/crew-scans';
+import { hasScan, outClock } from '@/lib/delivery-review';
 import { todayYmdManila } from '@/lib/loan-rules';
 
 export async function GET() {
@@ -19,10 +20,14 @@ export async function GET() {
   });
 
   const today = todayYmdManila();
-  const [seen, online] = await Promise.all([scannedSet([today], crew.map((c) => c.id)), deviceOnline()]);
+  const [rows, online] = await Promise.all([crewDayRows([today], crew.map((c) => c.id)), deviceOnline()]);
+  const rowOf = (id) => rows.get(`${id}|${today}`);
+  const outAt = {};
+  for (const c of crew) { const out = outClock(rowOf(c.id)); if (out) outAt[c.id] = out; }
   return NextResponse.json({
     date: today,
-    scannedIds: crew.map((c) => c.id).filter((id) => seen.has(`${id}|${today}`)),
+    scannedIds: crew.map((c) => c.id).filter((id) => hasScan(rowOf(id))),
+    outAt,
     deviceOnline: online,
     drivers: crew.filter((c) => c.position === 'DRIVER').map(({ id, name }) => ({ id, name })),
     helpers: crew.filter((c) => c.position === 'HELPER').map(({ id, name }) => ({ id, name })),

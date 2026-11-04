@@ -207,10 +207,10 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <div className="lg:col-span-2 grid grid-cols-2 gap-4 pd-stagger">
-          <StatCard label="Total Employees" value={totalEmployees} icon={Users} onClick={() => go('employees')} />
-          <StatCard label="Net Pay This Cutoff" value={peso(netThisCutoff)} tone="neutral" icon={Wallet} onClick={() => go('payroll')} />
-          <StatCard label="Deliveries Logged" value={deliveriesLogged} tone="green" icon={Truck} onClick={() => go('deliveries')} />
-          <StatCard label="Active Loans & Advances" value={peso(activeLoans)} tone="neutral" icon={FileText} onClick={() => go('loans')} />
+          <StatCard label="Total Employees" value={totalEmployees} onClick={() => go('employees')} />
+          <StatCard label="Net Pay This Cutoff" value={peso(netThisCutoff)} tone="neutral" onClick={() => go('payroll')} />
+          <StatCard label="Deliveries Logged" value={deliveriesLogged} tone="green" onClick={() => go('deliveries')} />
+          <StatCard label="Active Loans & Advances" value={peso(activeLoans)} tone="neutral" onClick={() => go('loans')} />
         </div>
         <Panel className="p-4">
           <Eyebrow>Attention Needed</Eyebrow>
@@ -237,8 +237,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
             <button onClick={() => go('deliveries', 'review')} className="pd-clickable w-full text-left mt-2 flex items-start gap-3 p-3 rounded" style={{ backgroundColor: T.warnBg }}>
               <AlertTriangle size={16} color={T.warn} className="mt-0.5 shrink-0" />
               <div>
-                <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>{noScanDeliveries} {noScanDeliveries === 1 ? 'delivery has' : 'deliveries have'} crew with no scan that day</div>
-                <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft }}>Review before crew pay is released.</div>
+                <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>{noScanDeliveries} {noScanDeliveries === 1 ? 'delivery needs' : 'deliveries need'} review</div>
               </div>
             </button>
           )}
@@ -326,9 +325,7 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
         <Panel className="p-4">
           <div className="flex items-center justify-between mb-1">
             <Eyebrow>Bi-monthly Payroll Cost</Eyebrow>
-            <TrendingUp size={14} color={T.soft} />
           </div>
-          <div className="text-xs mb-3" style={{ fontFamily: F_BODY, color: T.soft }}>Net salary released · last 6 cutoffs</div>
           {releasesLoading ? (
             <div className="flex items-center justify-center" style={{ height: 170 }}><Skeleton w="85%" h={110} /></div>
           ) : trendData.length === 0 ? (

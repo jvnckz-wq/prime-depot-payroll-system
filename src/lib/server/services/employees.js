@@ -45,9 +45,11 @@ export function shapeEmployee(e) {
     rate: num(e.dailyRate),
     declaredSalary: noContrib ? 0 : num(e.declaredSalary),
     status: e.status === 'ACTIVE' ? 'Active' : 'Inactive',
-    sssOn: noContrib ? false : e.sssEnrolled,
-    phOn: noContrib ? false : e.philhealthEnrolled,
-    piOn: noContrib ? false : e.pagibigEnrolled,
+    // SSS, PhilHealth and Pag-IBIG are mandatory for every position that has contributions
+    // (adviser's rule, Nov 2026), whatever an older record has saved.
+    sssOn: !noContrib,
+    phOn: !noContrib,
+    piOn: !noContrib,
     mp2: noContrib ? 0 : num(e.mp2Amount),
     allowance: num(e.otherAllowance),
     leaveCredits: Number.isFinite(Number(e.leaveCredits)) ? Number(e.leaveCredits) : 5,
@@ -124,9 +126,13 @@ export function buildEmployeeData(body, { partial = false } = {}) {
     data.status = body.status === 'Inactive' ? 'INACTIVE' : 'ACTIVE';
   }
 
-  if (!partial || has('sssOn')) data.sssEnrolled = !!body.sssOn;
-  if (!partial || has('phOn')) data.philhealthEnrolled = !!body.phOn;
-  if (!partial || has('piOn')) data.pagibigEnrolled = !!body.piOn;
+  // Mandatory: saved as enrolled whatever the request says, once the position is known
+  // (positions without contributions are set to false below).
+  if (data.position !== undefined) {
+    data.sssEnrolled = true;
+    data.philhealthEnrolled = true;
+    data.pagibigEnrolled = true;
+  }
 
   if (!partial || has('address')) {
     const err = addressError(body.address);

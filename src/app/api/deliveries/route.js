@@ -7,7 +7,8 @@ import { deliveryRange } from '@/lib/delivery-range';
 import { deliveryErrors, firstError } from '@/lib/field-rules';
 import { buildDeliveryItems, rateItemIds } from '@/lib/delivery-items';
 import { crewError, crewHelperIds } from '@/lib/delivery-crew';
-import { withNoScan } from '@/lib/server/services/crew-scans';
+import { crewDayRows, withReview } from '@/lib/server/services/crew-scans';
+import { crewOutError } from '@/lib/delivery-review';
 
 const num = (d) => (d == null ? 0 : Number(d));
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
@@ -47,6 +48,8 @@ function shape(d) {
     voidedAt: d.voidedAt ? d.voidedAt.toISOString() : null,
     voidedBy: d.voidedBy?.displayName ?? null,
     voidReason: d.voidReason ?? null,
+    reviewedAt: d.reviewedAt ? d.reviewedAt.toISOString() : null,
+    reviewedBy: d.reviewedBy?.displayName ?? null,
   };
 }
 
@@ -56,6 +59,7 @@ const INCLUDE = {
   helper2: { select: { name: true } },
   loggedBy: { select: { displayName: true } },
   voidedBy: { select: { displayName: true } },
+  reviewedBy: { select: { displayName: true } },
   items: true,
 };
 
@@ -88,7 +92,7 @@ export async function GET(request) {
     if (d.helper1Id && d.helper1) names.set(d.helper1Id, d.helper1.name);
     if (d.helper2Id && d.helper2) names.set(d.helper2Id, d.helper2.name);
   }
-  const flagged = await withNoScan(deliveries.map(shape), names).catch(() => deliveries.map(shape));
+  const flagged = await withReview(deliveries.map(shape), names).catch(() => deliveries.map(shape));
   return NextResponse.json({ deliveries: flagged });
 }
 
@@ -112,7 +116,7 @@ export async function POST(request) {
       prisma.truck.findUnique({ where: { id: truckId }, select: { id: true, isActive: true } }),
       prisma.employee.findMany({
         where: { id: { in: [driverId, ...crewHelperIds(body.helper1Id, body.helper2Id)] } },
-        select: { id: true, position: true, status: true },
+        select: { id: true, name: true, position: true, status: true },
       }),
     ]);
     const crewErr = crewError({ truck, employees: crewRows, driverId, helper1Id: body.helper1Id, helper2Id: body.helper2Id });
@@ -129,6 +133,13 @@ export async function POST(request) {
       }
       dayYmd = asked;
     }
+
+    // Nobody can be logged on a trip after they timed out today (a real time-out, not an assumed one).
+    const crewIds = [driverId, ...crewHelperIds(body.helper1Id, body.helper2Id)];
+    const todayRows = await crewDayRows([dayYmd], crewIds);
+    const byId = new Map(crewRows.map((e) => [e.id, e]));
+    const outErr = crewOutError(crewIds.map((id) => ({ id, name: byId.get(id)?.name })), (id) => todayRows.get(`${id}|${dayYmd}`));
+    if (outErr) return NextResponse.json({ error: outErr, crewOut: true }, { status: 409 });
 
     const ids = rateItemIds(body.items);
     const rateRows = ids.length ? await prisma.rateItem.findMany({ where: { id: { in: ids } } }) : [];

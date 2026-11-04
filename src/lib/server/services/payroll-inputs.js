@@ -10,6 +10,7 @@ import {
 import { shapeBir, shapePagibig, shapePhilhealth, shapeSss } from './statutory';
 import { CREW_RATE_FALLBACK } from '../../constants';
 import { round2 } from '../../money';
+import { crewIdsOf, reviewFlags } from '../../delivery-review';
 
 export const toDate = (ymd) => new Date(`${ymd}T00:00:00.000Z`);
 
@@ -94,13 +95,15 @@ const dailyEntry = (e, row) => {
   };
 };
 
-const toLog = (rows, ymd) => deliveriesToLog(rows.map((d) => ({
+// rowOf(id) gives that person's attendance row on ymd, so trips that need review hold their pay.
+const toLog = (rows, ymd, rowOf = () => undefined) => deliveriesToLog(rows.map((d) => ({
   id: d.id,
   date: ymd,
   truckId: d.truckId,
   seq: d.sequenceNo,
   driver: d.driverId,
   helpers: [d.helper1Id, d.helper2Id].filter(Boolean),
+  heldIds: reviewFlags(d, rowOf).heldIds,
   isDouble: d.isDouble,
   voided: false,
   items: (d.items || []).map((i) => ({ item: i.itemName, unit: i.unit, qty: Number(i.quantity), driverAmount: Number(i.driverAmount), helperAmount: Number(i.helperAmount) })),
@@ -142,7 +145,7 @@ async function dailyPayByDate(prisma, employees, rates, start, end) {
   for (const ymd of dates) {
     const rowsById = attendanceOn.get(ymd) || new Map();
     const staff = employees.map((e) => ({ ...dailyEntry(e, rowsById.get(e.id)), key: e.id }));
-    out.set(ymd, crewDayPay(crewEarnings(toLog(deliveriesOn.get(ymd) || [], ymd), rates), staff));
+    out.set(ymd, crewDayPay(crewEarnings(toLog(deliveriesOn.get(ymd) || [], ymd, (id) => rowsById.get(id)), rates), staff));
   }
   return out;
 }
@@ -230,7 +233,10 @@ export async function crewAvailableOn(prisma, ymd) {
   ]);
 
   const rates = shapeRates(rate);
-  const people = crewDayPay(crewEarnings(toLog(rows, ymd), rates), dailyStaff.map((d) => ({ ...d, key: d.id })));
+  const ids = [...new Set(rows.flatMap(crewIdsOf))];
+  const att = ids.length ? await prisma.attendance.findMany({ where: { date: toDate(ymd), employeeId: { in: ids } } }) : [];
+  const attById = new Map(att.map((a) => [a.employeeId, a]));
+  const people = crewDayPay(crewEarnings(toLog(rows, ymd, (id) => attById.get(id)), rates), dailyStaff.map((d) => ({ ...d, key: d.id })));
   const contributionOf = new Map(dailyStaff.filter((d) => d.contribution).map((d) => [d.id, d.contribution]));
 
   const out = new Map();

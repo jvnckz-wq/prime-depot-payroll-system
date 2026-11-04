@@ -17,7 +17,7 @@ const fmtShort = (ymd) => new Date(`${ymd}T00:00:00Z`).toLocaleDateString('en-US
 
 const BLANK_EMP = {
   id: '', name: '', position: '', rate: '', declaredSalary: '',
-  status: 'Active', sssOn: false, phOn: false, piOn: false, mp2: 0, leaveCredits: 5,
+  status: 'Active', sssOn: true, phOn: true, piOn: true, mp2: 0, leaveCredits: 5,
   address: '', contact: '', birthdate: '',
   earlyShiftDays: [], earlyShiftTime: '06:00',
 };
@@ -437,7 +437,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
             <Eyebrow>Government Contributions</Eyebrow>
             {[['sssOn', 'SSS'], ['phOn', 'PhilHealth'], ['piOn', 'Pag-IBIG (HDMF)']].map(([k, l]) => (
               <label key={k} className="flex items-center gap-2 py-1.5 text-sm" style={{ fontFamily: F_BODY, color: T.ink }}>
-                <input type="checkbox" checked={form[k]} onChange={e => ff(k, e.target.checked)} /> {l}
+                <input type="checkbox" checked disabled readOnly /> {l}
               </label>
             ))}
             <Field label={`Pag-IBIG MP2 (₱/cutoff, 0 or ₱${LIMITS.mp2Min}+)`} error={errs.mp2}><input inputMode="decimal" value={form.mp2} onChange={e => ff('mp2', moneyInput(e.target.value))} className={inputCls} style={inputStyle} /></Field>

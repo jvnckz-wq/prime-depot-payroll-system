@@ -7,7 +7,7 @@ import { DayBar } from '@/features/deliveries/DayBar.jsx';
 import { useDeliveryDay } from '@/features/deliveries/useDeliveryDay';
 import { Avatar, Badge, Btn, Confirm, EmptyState, Eyebrow, H1, Modal, Panel, Td, Th } from '@/components/ui';
 import { CREW_RATE_FALLBACK } from '@/lib/constants';
-import { crewDayPay, crewEarnings, dailyContributionFor, loanBalance } from '@/lib/payroll';
+import { crewDayPay, crewEarnings, crewOnHold, dailyContributionFor, loanBalance } from '@/lib/payroll';
 import { grantedBy, planDeductions, todayYmdManila } from '@/lib/loan-rules';
 import { round2 } from '@/lib/money';
 import { peso } from '@/lib/utils';
@@ -68,12 +68,20 @@ export const CrewPayrollView = ({ deliveries, crewRates = CREW_RATE_FALLBACK, lo
         .reduce((a, en) => a + (en.amount || 0), 0), 0);
   };
   const contributionByName = new Map(dailyStaff.filter(d => d.contribution).map(d => [d.key, d.contribution]));
-  const dayPeople = crewDayPay(crewEarnings(D, crewRates), dailyStaff).map(p => {
+  // Pay held back by trips that need review. Someone whose only trips are on hold still gets a row.
+  const holdByKey = new Map(crewOnHold(D, crewRates).map(h => [h.key, h]));
+  const paidPeople = crewDayPay(crewEarnings(D, crewRates), dailyStaff);
+  const paidKeys = new Set(paidPeople.map(p => p.key));
+  const heldOnly = [...holdByKey.values()].filter(h => !paidKeys.has(h.key)).map(h => ({
+    key: h.key, id: h.id, name: h.name, role: h.role, trucks: [], trips: 0, days: 0,
+    pieceRate: 0, dailyRate: 0, bonus: 0, total: 0, lateMins: 0, late: 0, payable: 0,
+  }));
+  const dayPeople = [...paidPeople, ...heldOnly].map(p => {
     const deductions = round2(loanDeductionsFor(p));
     const c = contributionByName.get(p.key);
     const contribution = c ? dailyContributionFor(c, p.payable) : 0;
     const month = c ? { collected: round2(c.collectedBefore + contribution), share: c.shareTotal } : null;
-    return { ...p, deductions, contribution, month, net: round2(p.payable - contribution - deductions) };
+    return { ...p, deductions, contribution, month, onHold: holdByKey.get(p.key)?.onHold || 0, net: round2(p.payable - contribution - deductions) };
   });
 
   const byId = (a, b) => (Number(a.id) || Infinity) - (Number(b.id) || Infinity) || a.name.localeCompare(b.name);
@@ -93,10 +101,11 @@ export const CrewPayrollView = ({ deliveries, crewRates = CREW_RATE_FALLBACK, lo
     Object.entries(D).forEach(([truckId, log]) => {
       let cur = null; const trips = [];
       (log.items || []).forEach(it => {
-        if (it.seq) { cur = { seq: it.seq, driver: it.driver || null, helpers: it.helpers || [], crew: it.crew || [], items: [] }; trips.push(cur); }
+        if (it.seq) { cur = { seq: it.seq, driver: it.driver || null, helpers: it.helpers || [], crew: it.crew || [], held: it.heldIds || [], items: [] }; trips.push(cur); }
         if (cur && !it.voided) cur.items.push(it);
       });
       trips.forEach(t => {
+        if (p.id && t.held.includes(p.id)) return;
         const ids = t.crew.filter(c => c && c.id);
         const isDriver = ids.length ? ids.some(c => c.role === 'Driver' && c.id === p.id) : t.driver === p.name;
         const isHelper = ids.length ? ids.some(c => c.role !== 'Driver' && c.id === p.id) : t.helpers.includes(p.name);
@@ -129,7 +138,7 @@ export const CrewPayrollView = ({ deliveries, crewRates = CREW_RATE_FALLBACK, lo
           </div>
           <Panel className="overflow-hidden hidden md:block">
             <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
-              <thead><tr><Th>ID</Th><Th>Employee</Th><Th center>Trips</Th><Th right>Gross Pay</Th><Th right>Deductions</Th><Th right>Net Pay</Th><Th right>Payslip</Th></tr></thead>
+              <thead><tr><Th>ID</Th><Th>Employee</Th><Th center>Trips</Th><Th right>Gross Pay</Th><Th right>On Hold</Th><Th right>Deductions</Th><Th right>Net Pay</Th><Th right>Payslip</Th></tr></thead>
               <tbody>
                 {[...dayPeople].sort(byId).map(p => {
                   const totalDeductions = round2((p.late || 0) + (p.contribution || 0) + (p.deductions || 0));
@@ -139,6 +148,7 @@ export const CrewPayrollView = ({ deliveries, crewRates = CREW_RATE_FALLBACK, lo
                       <Td><span className="font-semibold" style={{ fontFamily: F_BODY }}>{p.name}</span></Td>
                       <Td center mono>{p.attendanceDaily ? '--' : p.trips}</Td>
                       <Td right mono>{peso(p.total)}</Td>
+                      <Td right mono>{p.onHold > 0 ? peso(p.onHold) : '--'}</Td>
                       <Td right mono><span style={{ color: T.red, fontWeight: 600 }}>-{peso(totalDeductions)}</span></Td>
                       <Td right mono><b>{peso(p.net)}</b></Td>
                       <Td right><Btn size="sm" variant="outline" onClick={() => setSlipPerson(p)}>View</Btn></Td>
@@ -160,6 +170,7 @@ export const CrewPayrollView = ({ deliveries, crewRates = CREW_RATE_FALLBACK, lo
                     <div className="text-xs" style={{ fontFamily: F_BODY, color: T.soft }}>
                       {p.role} · {p.attendanceDaily ? 'present' : `${p.trips} trip${p.trips === 1 ? '' : 's'}`}
                       {p.lateMins > 0 && <span style={{ color: T.brand }}> · {p.lateMins} minute{p.lateMins === 1 ? '' : 's'} late</span>}
+                      {p.onHold > 0 && <span> · {peso(p.onHold)} on hold</span>}
                     </div>
                   </div>
                 </div>

@@ -52,7 +52,7 @@ ok('even split, full month worked: exactly the share, never more', () => {
   assert.equal(r.byDay['2026-10-31'], 25.36);
 });
 
-ok('even split with absences: the rest shows as company covers', () => {
+ok('even split with absences: the rest is not collected', () => {
   const days = Array.from({ length: 20 }, (_, i) => ({ ymd: `2026-10-${String(i + 1).padStart(2, '0')}`, payable: 330 }));
   const r = collectDailyContributions(days, 688.1, 25.49);
   assert.deepEqual([r.collected, r.remaining], [509.8, 178.3]);
@@ -80,7 +80,7 @@ ok('today\u2019s amount respects what was already collected', () => {
   assert.equal(dailyContributionFor({ perDay: 50, shareTotal: 688.1, collectedBefore: 0 }, 20), 20);
 });
 
-function fakePrisma(dailyContribution = 50) {
+function fakePrisma(dailyContribution = 50, opts = {}) {
   const D = (ymd) => new Date(`${ymd}T00:00:00Z`);
   const inRange = (date, w) => {
     if (!w) return true;
@@ -92,7 +92,10 @@ function fakePrisma(dailyContribution = 50) {
   }));
   return {
     employee: { findMany: async () => [{ id: 'DRV-001', name: 'Andro', position: 'DRIVER', status: 'ACTIVE', dailyRate: 280, declaredSalary: 7280, sssEnrolled: true, philhealthEnrolled: true, pagibigEnrolled: true, mp2Amount: 0, earlyShiftDays: [] }] },
-    attendance: { findMany: async () => [] },
+    // The driver scanned in on each delivery day, so no trip is held for review.
+    attendance: { findMany: async ({ where } = {}) => (opts.noScan ? [] : ['2026-10-01', '2026-10-02', '2026-10-03'].map((ymd) => ({
+      employeeId: 'DRV-001', date: D(ymd), timeIn: new Date(`${ymd}T06:20:00Z`), timeOut: null, isAbsent: false, isLeave: false, isAssumedIn: false, isAssumedOut: true, tardinessMins: 0,
+    }))).filter((a) => inRange(a.date, where?.date)) },
     delivery: { findMany: async ({ where }) => deliveries.filter((d) => inRange(d.date, where?.date)) },
     crewRate: { findUnique: async () => ({ driverDaily: 280, helperDaily: 240, bonusHead: 100, bonusTrips: 5, dailyContribution }) },
     philhealthConfig: { findFirst: async () => ({ effectiveYear: 2026 }), findUnique: async () => ({ ratePercent: 5, salaryFloor: 10000, salaryCeiling: 100000 }) },
@@ -113,11 +116,20 @@ ok('server: daily-paid crew contribute nothing, even if an old record still says
   }
 });
 
+ok('server: a trip whose driver has no scan that day is on hold, so it earns nothing until confirmed', async () => {
+  const available = await crewAvailableOn(fakePrisma(50, { noScan: true }), '2026-10-03');
+  assert.equal(available.get('DRV-001') || 0, 0);
+});
+
 function reportPrisma(dailyContribution) {
   const base = fakePrisma(dailyContribution);
   const D = (ymd) => new Date(`${ymd}T00:00:00Z`);
   const inRange = (date, w) => (!w ? true : w instanceof Date ? date.getTime() === w.getTime() : (!w.gte || date >= w.gte) && (!w.lte || date <= w.lte));
-  const attendance = [{ employeeId: 'DRV-001', date: D('2026-10-03'), timeIn: new Date('2026-10-03T06:40:00+08:00'), isAbsent: false, isLeave: false, tardinessMins: 10 }];
+  // The driver scanned on both days (so neither trip is held for review); late only on Oct 3.
+  const attendance = [
+    { employeeId: 'DRV-001', date: D('2026-10-02'), timeIn: new Date('2026-10-02T06:25:00+08:00'), isAbsent: false, isLeave: false, tardinessMins: 0 },
+    { employeeId: 'DRV-001', date: D('2026-10-03'), timeIn: new Date('2026-10-03T06:40:00+08:00'), isAbsent: false, isLeave: false, tardinessMins: 10 },
+  ];
   const entries = [{ type: 'DEDUCTION', payslipId: 'crew-2026-10-02', date: D('2026-10-02'), amount: 100, loan: { employeeId: 'DRV-001' } },
     { type: 'DEDUCTION', payslipId: 'crew-2026-09-30', date: D('2026-09-30'), amount: 999, loan: { employeeId: 'DRV-001' } }];
   return {

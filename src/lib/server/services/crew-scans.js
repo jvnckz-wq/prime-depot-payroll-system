@@ -1,35 +1,38 @@
-// Checks which crew members scanned in on a delivery day.
+// Checks which crew members scanned in on a delivery day, and which trips need review.
 import { prisma } from '../db/prisma';
+import { crewIdsOf, hasScan, needsReview, reviewFlags } from '../../delivery-review';
 
 const asDate = (ymd) => new Date(`${ymd}T00:00:00.000Z`);
 const ymdOf = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : String(d).slice(0, 10));
 const ONLINE_MS = 2 * 60 * 1000;
 
-// Crew who actually scanned on the given dates (a real time in or out, not absent).
-export async function scannedSet(dates, ids) {
+// Attendance rows of the given crew on the given dates, keyed "id|YYYY-MM-DD".
+export async function crewDayRows(dates, ids) {
   const uniqDates = [...new Set(dates)].filter(Boolean);
   const uniqIds = [...new Set(ids)].filter(Boolean);
-  if (!uniqDates.length || !uniqIds.length) return new Set();
+  if (!uniqDates.length || !uniqIds.length) return new Map();
   const rows = await prisma.attendance.findMany({
-    where: {
-      date: { in: uniqDates.map(asDate) },
-      employeeId: { in: uniqIds },
-      isAbsent: false,
-      OR: [{ timeIn: { not: null } }, { timeOut: { not: null } }],
-    },
-    select: { employeeId: true, date: true },
+    where: { date: { in: uniqDates.map(asDate) }, employeeId: { in: uniqIds } },
+    select: { employeeId: true, date: true, timeIn: true, timeOut: true, isAbsent: true, isAssumedOut: true },
   });
-  return new Set(rows.map((r) => `${r.employeeId}|${ymdOf(r.date)}`));
+  return new Map(rows.map((r) => [`${r.employeeId}|${ymdOf(r.date)}`, r]));
 }
 
-// For shaped deliveries: the crew on each one with no scan that day.
-export async function withNoScan(shaped, namesById) {
-  const live = shaped.filter((d) => !d.voided);
-  const seen = await scannedSet(live.map((d) => d.date), live.flatMap((d) => [d.driverId, d.helper1Id, d.helper2Id]));
+// Crew who actually scanned on the given dates (a real time in or out, not absent).
+export async function scannedSet(dates, ids) {
+  const rows = await crewDayRows(dates, ids);
+  return new Set([...rows].filter(([, r]) => hasScan(r)).map(([k]) => k));
+}
+
+// For shaped deliveries: the review flags of each one (crew with no scan, crew logged after their
+// time-out, and the crew whose pay for the trip is on hold). Confirmed and voided trips have none.
+export async function withReview(shaped, namesById) {
+  const live = shaped.filter((d) => !d.voided && !d.reviewedAt);
+  const rows = await crewDayRows(live.map((d) => d.date), live.flatMap(crewIdsOf));
   return shaped.map((d) => {
-    if (d.voided) return { ...d, noScan: [], noScanIds: [] };
-    const missingIds = [d.driverId, d.helper1Id, d.helper2Id].filter((id) => id && !seen.has(`${id}|${d.date}`));
-    return { ...d, noScan: missingIds.map((id) => namesById.get(id) || id), noScanIds: missingIds };
+    const f = reviewFlags(d, (id) => rows.get(`${id}|${d.date}`));
+    const name = (id) => namesById.get(id) || id;
+    return { ...d, noScan: f.noScanIds.map(name), noScanIds: f.noScanIds, lateIds: f.lateIds, heldIds: f.heldIds };
   });
 }
 
@@ -38,13 +41,13 @@ export async function deviceOnline() {
   return !!(sync && Date.now() - new Date(sync.lastSyncAt).getTime() < ONLINE_MS);
 }
 
-// Recent deliveries (not voided) that include crew with no scan that day.
-export async function countNoScanDeliveries(days = 31) {
+// Recent deliveries that still need the Operations Head's review.
+export async function countReviewDeliveries(days = 31) {
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
   const rows = await prisma.delivery.findMany({
-    where: { date: { gte: since }, voidedAt: null },
-    select: { date: true, driverId: true, helper1Id: true, helper2Id: true },
+    where: { date: { gte: since }, voidedAt: null, reviewedAt: null },
+    select: { date: true, driverId: true, helper1Id: true, helper2Id: true, createdAt: true },
   });
-  const seen = await scannedSet(rows.map((r) => ymdOf(r.date)), rows.flatMap((r) => [r.driverId, r.helper1Id, r.helper2Id]));
-  return rows.filter((r) => [r.driverId, r.helper1Id, r.helper2Id].some((id) => id && !seen.has(`${id}|${ymdOf(r.date)}`))).length;
+  const att = await crewDayRows(rows.map((r) => ymdOf(r.date)), rows.flatMap(crewIdsOf));
+  return rows.filter((r) => needsReview(reviewFlags(r, (id) => att.get(`${id}|${ymdOf(r.date)}`)))).length;
 }

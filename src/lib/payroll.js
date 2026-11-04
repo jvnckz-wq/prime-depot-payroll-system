@@ -35,6 +35,10 @@ export function deliveriesToLog(apiDeliveries) {
         driver: first ? d.driver : undefined,
         noScan: first ? (d.noScan || []) : undefined,
         noScanIds: first ? (d.noScanIds || []) : undefined,
+        lateIds: first ? (d.lateIds || []) : undefined,
+        heldIds: first ? (d.heldIds || []) : undefined,
+        reviewedAt: d.reviewedAt || null,
+        reviewedBy: d.reviewedBy || null,
         crew: first ? (d.crew || []) : undefined,
         voidedAt: d.voidedAt || null,
         voided: d.voided,
@@ -73,9 +77,9 @@ export function computeStaffPayroll(e, loans = [], statutory, attendance = null,
 
   const allowance = round2(Number(e.allowance) || 0);
 
-  const sss = round2(e.sssOn ? computeSSS(e.declaredSalary, statutory.sss) : 0);
-  const phic = round2(e.phOn ? computePhilHealth(e.declaredSalary, statutory.philhealth) : 0);
-  const mp1 = round2(e.piOn ? computePagIBIG(e.declaredSalary, statutory.pagibig) : 0);
+  const sssDue = round2(e.sssOn ? computeSSS(e.declaredSalary, statutory.sss) : 0);
+  const phicDue = round2(e.phOn ? computePhilHealth(e.declaredSalary, statutory.philhealth) : 0);
+  const mp1Due = round2(e.piOn ? computePagIBIG(e.declaredSalary, statutory.pagibig) : 0);
   const mp2Set = round2(e.piOn ? (Number(e.mp2) || 0) : 0);
 
   const lateMins = attendance.lateMins || 0;
@@ -84,11 +88,19 @@ export function computeStaffPayroll(e, loans = [], statutory, attendance = null,
   const tardinessDue = round2(e.rate * lateMins / 240);
   const totalEarnings = round2(gross + ot + allowance);
 
-  // Contributions come out first. Late, withholding tax and MP2 only take what pay is left, and
-  // if pay cannot cover the contributions the company covers the gap (companyCover).
-  let room = round2(totalEarnings - sss - phic - mp1);
-  const companyCover = room < 0 ? round2(-room) : 0;
-  room = Math.max(0, room);
+  // Contributions come out first, in this order: SSS, PhilHealth, Pag-IBIG MP1. Each one only
+  // takes what pay is left, so pay never goes below zero. If pay is short (a cutoff with very few
+  // days), the part that does not fit is not deducted and is not carried over (adviser's rule,
+  // Nov 2026). The company no longer covers the gap, so companyCover is always 0; the field stays
+  // so finalized payslips and the database column keep the same shape.
+  let room = totalEarnings;
+  const sss = round2(Math.min(sssDue, room));
+  room = round2(room - sss);
+  const phic = round2(Math.min(phicDue, room));
+  room = round2(room - phic);
+  const mp1 = round2(Math.min(mp1Due, room));
+  room = round2(room - mp1);
+  const companyCover = 0;
   const tardiness = round2(Math.min(tardinessDue, room));
   room = round2(room - tardiness);
   const taxable = round2(Math.max(0, totalEarnings - tardiness - sss - phic - mp1));
@@ -122,7 +134,7 @@ export function computeStaffPayroll(e, loans = [], statutory, attendance = null,
   const advance = round2(loanDeduction + advanceDeduction);
 
   const totalDeductions = round2(sss + phic + hdmf + advance + tardiness + withholdingTax);
-  const net = round2(totalEarnings + companyCover - totalDeductions);
+  const net = round2(totalEarnings - totalDeductions);
   return { hasAttendance: true, days, present: attendance.present, leaveDays, lateMins, gross, otWeekday, otWeekend, ot, allowance, sss, phic, mp1, mp2, hdmf, companyCover, advance, loanDeduction, advanceDeduction, deductionLines, tardiness, tardinessDue, taxable, withholdingTax, totalEarnings, totalDeductions, net };
 }
 
@@ -166,7 +178,11 @@ export function loanLedger(loan) {
   });
 }
 
-export function crewEarnings(deliveries, { driverDaily, helperDaily, bonusHead, bonusTrips }) {
+// Crew on a trip that needs review (heldIds) earn nothing from it until the Operations Head confirms
+// it: no piece rate, no trip count toward the bonus, and the day does not count for them unless
+// they have another trip. Their share is held back, never passed to the rest of the crew.
+// With { ignoreHold: true } it returns what everyone would earn if every trip were confirmed.
+export function crewEarnings(deliveries, { driverDaily, helperDaily, bonusHead, bonusTrips }, { ignoreHold = false } = {}) {
   const people = new Map();
   const get = (who, role) => {
     const key = who.key;
@@ -198,7 +214,8 @@ export function crewEarnings(deliveries, { driverDaily, helperDaily, bonusHead, 
     };
   };
 
-  let currentDriver = null, currentHelpers = [], currentKey = null;
+  let currentDriver = null, currentHelpers = [], currentKey = null, currentHeld = new Set();
+  const paid = (who) => !currentHeld.has(who.key) && !(who.id && currentHeld.has(who.id));
   Object.entries(deliveries).forEach(([crewId, log]) => {
     (log.items || []).forEach((it) => {
       if (it.voided) return;
@@ -207,16 +224,17 @@ export function crewEarnings(deliveries, { driverDaily, helperDaily, bonusHead, 
         currentDriver = c.driver;
         currentHelpers = c.helpers;
         currentKey = `${crewId}|${log.date}`;
+        currentHeld = new Set(ignoreHold ? [] : (it.heldIds || []));
         const mark = (p) => {
           p.tripKeys.add(currentKey); p.trucks.add(crewId); p.days.add(log.date); p.tripCount += 1;
           p.tripsByKey.set(currentKey, (p.tripsByKey.get(currentKey) || 0) + 1);
         };
-        if (currentDriver) mark(get(currentDriver, 'Driver'));
-        currentHelpers.forEach((h) => mark(get(h, 'Helper')));
+        if (currentDriver && paid(currentDriver)) mark(get(currentDriver, 'Driver'));
+        currentHelpers.forEach((h) => { if (paid(h)) mark(get(h, 'Helper')); });
       }
-      if (currentDriver) get(currentDriver, 'Driver').pieceRate += it.driverAmount || 0;
+      if (currentDriver && paid(currentDriver)) get(currentDriver, 'Driver').pieceRate += it.driverAmount || 0;
       const n = currentHelpers.length;
-      if (n) currentHelpers.forEach((h) => { get(h, 'Helper').pieceRate += (it.helperAmount || 0) / n; });
+      if (n) currentHelpers.forEach((h) => { if (paid(h)) get(h, 'Helper').pieceRate += (it.helperAmount || 0) / n; });
     });
   });
 
@@ -241,6 +259,15 @@ export function crewEarnings(deliveries, { driverDaily, helperDaily, bonusHead, 
       };
     })
     .sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === 'Driver' ? -1 : 1));
+}
+
+// Pay on hold per person: what they would earn if every trip were confirmed, minus what they earn now.
+// Returns [{ key, id, name, role, onHold }] for everyone with something on hold.
+export function crewOnHold(deliveries, rates) {
+  const now = new Map(crewEarnings(deliveries, rates).map((p) => [p.key, p.total]));
+  return crewEarnings(deliveries, rates, { ignoreHold: true })
+    .map((p) => ({ key: p.key, id: p.id, name: p.name, role: p.role, onHold: +(p.total - (now.get(p.key) || 0)).toFixed(2) }))
+    .filter((p) => p.onHold > 0);
 }
 // Daily-paid late deduction (client's rule): ₱3 per minute late, counted from the 06:30 call time,
 // and never more than that day's pay.

@@ -118,6 +118,7 @@ enum AuditAction {
   PAYROLL_UNFINALIZED
   DELIVERY_VOIDED
   DELIVERY_UNVOIDED
+  DELIVERY_CONFIRMED
   CREW_RATES_UPDATED
   /// Added Sep 2026 with two-factor login. Appended at the end to match
   /// Postgres ALTER TYPE ADD VALUE ordering.
@@ -200,6 +201,7 @@ model User {
   employee         Employee?  @relation(fields: [employeeId], references: [id], onDelete: SetNull)
   loggedDeliveries Delivery[] @relation("DeliveryLoggedBy")
   voidedDeliveries Delivery[] @relation("DeliveryVoidedBy")
+  reviewedDeliveries Delivery[] @relation("DeliveryReviewedBy")
   sessions         Session[]
   auditLogs        AuditLog[]
   passwordResets   PasswordReset[]
@@ -548,6 +550,12 @@ model Delivery {
   voidedById   String?
   voidReason   String?
 
+  /// Set when the Operations Head confirms a trip that needed review (crew with
+  /// no scan, or logged after a crew member's time-out). Until then that crew
+  /// member's pay for the trip is on hold; confirming counts it on the trip's own day.
+  reviewedAt   DateTime?
+  reviewedById String?
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -557,6 +565,7 @@ model Delivery {
   helper2      Employee?      @relation("DeliveryHelper2", fields: [helper2Id], references: [id], onDelete: SetNull)
   loggedBy     User?          @relation("DeliveryLoggedBy", fields: [loggedById], references: [id], onDelete: SetNull)
   voidedBy     User?          @relation("DeliveryVoidedBy", fields: [voidedById], references: [id], onDelete: SetNull)
+  reviewedBy   User?          @relation("DeliveryReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
   items        DeliveryItem[]
 
   @@unique([truckId, date, sequenceNo])
@@ -827,9 +836,10 @@ model Payslip {
   advanceDeduction    Decimal @default(0) @db.Decimal(12, 2)
   tardinessDeduction  Decimal @default(0) @db.Decimal(12, 2)
   otherDeductions     Decimal @default(0) @db.Decimal(12, 2)
-  /// Paid by the company when the pay could not cover the government
-  /// contributions (Phase 3). An addition: gross + OT + allowances +
-  /// companyCover - totalDeductions = netPay.
+  /// No longer used: always 0 since Nov 2026 (adviser's rule). Contributions
+  /// now take only what pay can cover and the company pays nothing extra.
+  /// Kept so older payslips keep their saved value. Before: an addition,
+  /// gross + OT + allowances + companyCover - totalDeductions = netPay.
   companyCover        Decimal @default(0) @db.Decimal(12, 2)
 
   totalDeductions Decimal     @default(0) @db.Decimal(12, 2)
