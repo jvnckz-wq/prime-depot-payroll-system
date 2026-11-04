@@ -101,6 +101,6 @@ export async function POST(request) {
     });
   } catch (err) {
     console.error('POST /api/attendance/resolve failed:', err);
-    return NextResponse.json({ error: 'Could not resolve: ' + (err?.message || 'unknown error') }, { status: 500 });
+    return NextResponse.json({ error: 'Could not resolve the ID. Please try again.' }, { status: 500 });
   }
 }

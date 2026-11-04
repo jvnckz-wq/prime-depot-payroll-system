@@ -165,6 +165,6 @@ export async function POST(request) {
         data: { status: 'FAILED', finishedAt: new Date(), error: String(err?.message || 'unknown').slice(0, 500) },
       }).catch(() => {});
     }
-    return NextResponse.json({ error: 'Pull failed: ' + (err?.message || 'unknown error') }, { status: 500 });
+    return NextResponse.json({ error: 'Pull failed. Please try again.' }, { status: 500 });
   }
 }

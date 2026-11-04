@@ -144,6 +144,6 @@ export async function POST(request) {
     });
   } catch (err) {
     console.error('POST /api/attendance/push failed:', err);
-    return NextResponse.json({ error: 'Push failed: ' + (err?.message || 'unknown error') }, { status: 500 });
+    return NextResponse.json({ error: 'Push failed. Please try again.' }, { status: 500 });
   }
 }

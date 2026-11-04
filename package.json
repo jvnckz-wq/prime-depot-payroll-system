@@ -31,6 +31,7 @@
     "test:deliveryitems": "tsx tests/delivery-items.test.cjs",
     "test:deliverycrew": "tsx tests/delivery-crew.test.cjs",
     "test:deliveryreview": "tsx tests/delivery-review.test.cjs",
+    "test:errors": "node tests/no-raw-errors.test.mjs",
     "sync": "node scripts/sync-agent.js",
     "sync:live": "node scripts/sync-agent.js --live",
     "pull-cutoff": "node scripts/pull-cutoff.js",

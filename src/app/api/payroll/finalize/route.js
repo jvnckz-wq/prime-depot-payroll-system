@@ -167,7 +167,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'This cutoff was just released or its deductions applied by someone else. Refresh Staff Payroll.' }, { status: 409 });
     }
     console.error('POST /api/payroll/finalize failed:', err);
-    return NextResponse.json({ error: 'Could not finalize the cutoff: ' + (err?.message || 'unknown error') }, { status: 500 });
+    return NextResponse.json({ error: 'Could not finalize the cutoff. Please try again.' }, { status: 500 });
   }
 }
 
@@ -225,6 +225,6 @@ export async function DELETE(request) {
     return NextResponse.json({ unreleased: true, loanEntriesReversed: reversed.count });
   } catch (err) {
     console.error('DELETE /api/payroll/finalize failed:', err);
-    return NextResponse.json({ error: 'Could not un-finalize the cutoff: ' + (err?.message || 'unknown error') }, { status: 500 });
+    return NextResponse.json({ error: 'Could not un-finalize the cutoff. Please try again.' }, { status: 500 });
   }
 }

@@ -366,7 +366,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
         <>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-5">
             <StatCard compact label="Total Employees" value={rows.length} />
-            <StatCard compact label="Total Gross" value={peso(totalGross)} tone="blue" />
+            <StatCard compact label="Total Gross Salary" value={peso(totalGross)} tone="blue" />
             <StatCard compact label="Total Net Pay" value={peso(totalNet)} tone="green" />
           </div>
           <Panel className="overflow-hidden">
@@ -455,7 +455,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
               action={<Btn variant="outline" onClick={() => go('payroll', 'staff')}>Go to Staff Payroll</Btn>} />
           ) : (
             <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
-              <thead><tr><Th>Cut-off Period</Th><Th center>Employees</Th><Th right>Total Gross</Th><Th right>Total Net</Th><Th center style={{ paddingLeft: 40 }}>Status</Th><Th center style={{ width: '1%', whiteSpace: 'nowrap' }}>Actions</Th></tr></thead>
+              <thead><tr><Th>Cut-off Period</Th><Th center>Employees</Th><Th right>Total Gross Salary</Th><Th right>Total Net</Th><Th center style={{ paddingLeft: 40 }}>Status</Th><Th center style={{ width: '1%', whiteSpace: 'nowrap' }}>Actions</Th></tr></thead>
               <tbody>
                 {history.map((p) => (
                   <tr key={p.id}>

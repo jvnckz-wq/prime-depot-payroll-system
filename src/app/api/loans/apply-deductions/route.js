@@ -47,6 +47,6 @@ export async function POST(request) {
       return NextResponse.json({ error: 'These deductions were just applied by someone else. Refresh to see them.' }, { status: 409 });
     }
     console.error('POST /api/loans/apply-deductions failed:', err);
-    return NextResponse.json({ error: 'Could not apply deductions: ' + (err?.message || 'unknown error') }, { status: 500 });
+    return NextResponse.json({ error: 'Could not apply deductions. Please try again.' }, { status: 500 });
   }
 }

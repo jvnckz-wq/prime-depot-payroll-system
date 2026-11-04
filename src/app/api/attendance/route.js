@@ -97,7 +97,7 @@ export async function PATCH(request) {
     });
   } catch (err) {
     console.error('PATCH /api/attendance failed:', err);
-    return NextResponse.json({ error: 'Could not save the correction: ' + (err?.message || 'unknown error') }, { status: 500 });
+    return NextResponse.json({ error: 'Could not save the correction. Please try again.' }, { status: 500 });
   }
 }
 

@@ -135,6 +135,6 @@ export async function POST(request) {
         data: { status: 'FAILED', errorMessage: String(err?.message || 'unknown').slice(0, 500) },
       }).catch(() => {});
     }
-    return NextResponse.json({ error: 'Import failed: ' + (err?.message || 'unknown error') }, { status: 500 });
+    return NextResponse.json({ error: 'Import failed. Check that this is the attendance export from the device, then try again.' }, { status: 500 });
   }
 }

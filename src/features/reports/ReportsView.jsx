@@ -116,10 +116,10 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
       Position: position, 
       'Daily Rate': rate, 
       Days: v.days,
-      'Basic Pay': v.gross, 
+      'Gross Salary': v.gross,
       Overtime: v.ot, 
       Allowance: v.allowance, 
-      'Gross Pay': v.totalEarnings,
+      'Total Earnings': v.totalEarnings,
       SSS: v.sss, 
       PhilHealth: v.phic, 
       'Pag-IBIG': v.hdmf, 
@@ -153,7 +153,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
         {payrollReady && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
             <StatCard compact label="Total Employees" value={payrollRows.length} />
-            <StatCard compact label="Total Gross" value={peso(registerTotals.totalEarnings)} />
+            <StatCard compact label="Total Earnings" value={peso(registerTotals.totalEarnings)} />
             <StatCard compact label="Total Deductions" value={peso(registerTotals.totalDeductions)} tone="red" />
             <StatCard compact label="Total Net Pay" value={peso(registerTotals.net)} tone="green" />
           </div>
@@ -179,7 +179,7 @@ export const ReportsView = ({ staff, deliveries, loans, statutory, cutoffLabel =
                   <Th center style={sep}>Gross Salary</Th>
                   <Th center>Overtime</Th>
                   <Th center>Allowance</Th>
-                  <Th center>Total</Th>
+                  <Th center>Total Earnings</Th>
                   <Th center style={sep}>SSS</Th>
                   <Th center>PhilHealth</Th>
                   <Th center>Pag-IBIG</Th>

@@ -78,6 +78,6 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, request: serialize(created) });
   } catch (err) {
     console.error('POST /api/attendance/pull-request failed:', err);
-    return NextResponse.json({ error: 'Could not queue the pull: ' + (err?.message || 'unknown error') }, { status: 500 });
+    return NextResponse.json({ error: 'Could not queue the pull. Please try again.' }, { status: 500 });
   }
 }
