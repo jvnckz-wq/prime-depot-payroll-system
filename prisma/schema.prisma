@@ -827,9 +827,10 @@ model Payslip {
   advanceDeduction    Decimal @default(0) @db.Decimal(12, 2)
   tardinessDeduction  Decimal @default(0) @db.Decimal(12, 2)
   otherDeductions     Decimal @default(0) @db.Decimal(12, 2)
-  /// Paid by the company when the pay could not cover the government
-  /// contributions (Phase 3). An addition: gross + OT + allowances +
-  /// companyCover - totalDeductions = netPay.
+  /// No longer used: always 0 since Nov 2026 (adviser's rule). Contributions
+  /// now take only what pay can cover and the company pays nothing extra.
+  /// Kept so older payslips keep their saved value. Before: an addition,
+  /// gross + OT + allowances + companyCover - totalDeductions = netPay.
   companyCover        Decimal @default(0) @db.Decimal(12, 2)
 
   totalDeductions Decimal     @default(0) @db.Decimal(12, 2)

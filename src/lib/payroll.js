@@ -73,9 +73,9 @@ export function computeStaffPayroll(e, loans = [], statutory, attendance = null,
 
   const allowance = round2(Number(e.allowance) || 0);
 
-  const sss = round2(e.sssOn ? computeSSS(e.declaredSalary, statutory.sss) : 0);
-  const phic = round2(e.phOn ? computePhilHealth(e.declaredSalary, statutory.philhealth) : 0);
-  const mp1 = round2(e.piOn ? computePagIBIG(e.declaredSalary, statutory.pagibig) : 0);
+  const sssDue = round2(e.sssOn ? computeSSS(e.declaredSalary, statutory.sss) : 0);
+  const phicDue = round2(e.phOn ? computePhilHealth(e.declaredSalary, statutory.philhealth) : 0);
+  const mp1Due = round2(e.piOn ? computePagIBIG(e.declaredSalary, statutory.pagibig) : 0);
   const mp2Set = round2(e.piOn ? (Number(e.mp2) || 0) : 0);
 
   const lateMins = attendance.lateMins || 0;
@@ -84,11 +84,19 @@ export function computeStaffPayroll(e, loans = [], statutory, attendance = null,
   const tardinessDue = round2(e.rate * lateMins / 240);
   const totalEarnings = round2(gross + ot + allowance);
 
-  // Contributions come out first. Late, withholding tax and MP2 only take what pay is left, and
-  // if pay cannot cover the contributions the company covers the gap (companyCover).
-  let room = round2(totalEarnings - sss - phic - mp1);
-  const companyCover = room < 0 ? round2(-room) : 0;
-  room = Math.max(0, room);
+  // Contributions come out first, in this order: SSS, PhilHealth, Pag-IBIG MP1. Each one only
+  // takes what pay is left, so pay never goes below zero. If pay is short (a cutoff with very few
+  // days), the part that does not fit is not deducted and is not carried over (adviser's rule,
+  // Nov 2026). The company no longer covers the gap, so companyCover is always 0; the field stays
+  // so finalized payslips and the database column keep the same shape.
+  let room = totalEarnings;
+  const sss = round2(Math.min(sssDue, room));
+  room = round2(room - sss);
+  const phic = round2(Math.min(phicDue, room));
+  room = round2(room - phic);
+  const mp1 = round2(Math.min(mp1Due, room));
+  room = round2(room - mp1);
+  const companyCover = 0;
   const tardiness = round2(Math.min(tardinessDue, room));
   room = round2(room - tardiness);
   const taxable = round2(Math.max(0, totalEarnings - tardiness - sss - phic - mp1));
@@ -122,7 +130,7 @@ export function computeStaffPayroll(e, loans = [], statutory, attendance = null,
   const advance = round2(loanDeduction + advanceDeduction);
 
   const totalDeductions = round2(sss + phic + hdmf + advance + tardiness + withholdingTax);
-  const net = round2(totalEarnings + companyCover - totalDeductions);
+  const net = round2(totalEarnings - totalDeductions);
   return { hasAttendance: true, days, present: attendance.present, leaveDays, lateMins, gross, otWeekday, otWeekend, ot, allowance, sss, phic, mp1, mp2, hdmf, companyCover, advance, loanDeduction, advanceDeduction, deductionLines, tardiness, tardinessDue, taxable, withholdingTax, totalEarnings, totalDeductions, net };
 }
 

@@ -52,7 +52,7 @@ ok('even split, full month worked: exactly the share, never more', () => {
   assert.equal(r.byDay['2026-10-31'], 25.36);
 });
 
-ok('even split with absences: the rest shows as company covers', () => {
+ok('even split with absences: the rest is not collected', () => {
   const days = Array.from({ length: 20 }, (_, i) => ({ ymd: `2026-10-${String(i + 1).padStart(2, '0')}`, payable: 330 }));
   const r = collectDailyContributions(days, 688.1, 25.49);
   assert.deepEqual([r.collected, r.remaining], [509.8, 178.3]);
