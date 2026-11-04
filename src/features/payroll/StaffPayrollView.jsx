@@ -381,9 +381,9 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
       {subTab === 'current' && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-5">
-            <StatCard compact label="Total Gross" value={peso(totalGross)} tone="blue" icon={Wallet} />
-            <StatCard compact label="Total Net Pay" value={peso(totalNet)} tone="green" icon={Wallet} />
-            <StatCard compact label="Employees Computed" value={rows.length} icon={Users} />
+            <StatCard compact label="Total Employees" value={rows.length} />
+            <StatCard compact label="Total Gross" value={peso(totalGross)} tone="blue" />
+            <StatCard compact label="Total Net Pay" value={peso(totalNet)} tone="green" />
           </div>
           <Panel className="overflow-hidden">
             <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: `1px solid ${T.line}` }}>
