@@ -8,8 +8,9 @@ export const NO_ITEMS_MESSAGE = 'Add at least one item with a quantity above zer
 export function lineAmounts(rate, quantity, isDouble) {
   const q = Number(quantity);
   return {
-    driverAmount: +(q * Number(isDouble ? rate.driverRateDouble : rate.driverRate)).toFixed(2),
-    helperAmount: +(q * Number(isDouble ? rate.helperRateDouble : rate.helperRate)).toFixed(2),
+    // A double-rate trip pays exactly twice the single rate (no custom double rates, Nov 2026).
+    driverAmount: +(q * Number(rate.driverRate) * (isDouble ? 2 : 1)).toFixed(2),
+    helperAmount: +(q * Number(rate.helperRate) * (isDouble ? 2 : 1)).toFixed(2),
   };
 }
 

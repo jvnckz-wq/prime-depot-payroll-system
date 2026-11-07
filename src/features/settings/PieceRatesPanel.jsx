@@ -1,5 +1,6 @@
 'use client';
-// Settings > Piece Rates: the driver and helper rate for each item, single and double.
+// Settings > Piece Rates: the driver and helper rate for each item. The double rate is always
+// single × 2 (Nov 2026: no custom double rates), so only the single rates are edited.
 
 import React, { useState } from 'react';
 import { Trash2, AlertTriangle } from 'lucide-react';
@@ -10,9 +11,6 @@ import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
 import { labelTextError, moneyError, moneyInput, RATE_UNITS, unitError, flagErrors } from '@/lib/field-rules';
 
 export const PieceRatesPanel = ({ rates, setRates, toast }) => {
-  const isCustomDouble = (r) => (r.regular || []).some((v, k) => round2(r.double?.[k] ?? 0) !== round2((v || 0) * 2));
-  const stripCustom = ({ _custom, ...rest }) => rest;
-
   const [editingRates, setEditingRates] = useState(false);
   const [ratesDraft, setRatesDraft] = useState(rates);
   const [addRateOpen, setAddRateOpen] = useState(false);
@@ -23,14 +21,9 @@ export const PieceRatesPanel = ({ rates, setRates, toast }) => {
   const [rateErrs, setRateErrs] = useState({});
 
   const saveRates = async () => {
-    const bad = ratesDraft.find(r => (r.regular || []).some((v, k) => round2(r.double?.[k] ?? 0) < round2(v || 0)));
-    if (bad) {
-      toast(`"${bad.itemName}": a double rate can't be lower than its single rate. Check the Custom values.`, 'error');
-      return;
-    }
     setSavingRates(true);
     try {
-      const changed = ratesDraft.filter((r, i) => JSON.stringify(stripCustom(r)) !== JSON.stringify(rates[i]));
+      const changed = ratesDraft.filter((r, i) => JSON.stringify(r) !== JSON.stringify(rates[i]));
       for (const r of changed) {
         if (!r.id) continue;
         const res = await fetch(`/api/rates/${r.id}`, {
@@ -39,7 +32,6 @@ export const PieceRatesPanel = ({ rates, setRates, toast }) => {
           body: JSON.stringify({
             itemName: r.itemName, unit: r.unit,
             driverRate: r.regular[0], helperRate: r.regular[1],
-            driverRateDouble: r.double[0], helperRateDouble: r.double[1],
           }),
         });
         if (!res.ok) {
@@ -49,7 +41,7 @@ export const PieceRatesPanel = ({ rates, setRates, toast }) => {
           return;
         }
       }
-      setRates(ratesDraft.map(stripCustom));
+      setRates(ratesDraft.map(r => ({ ...r, double: r.regular.map(v => round2((v || 0) * 2)) })));
       setEditingRates(false);
       toast(changed.length ? `${changed.length} rate${changed.length > 1 ? 's' : ''} saved.` : 'No changes to save.');
     } catch {
@@ -77,9 +69,9 @@ export const PieceRatesPanel = ({ rates, setRates, toast }) => {
       });
       const data = await res.json();
       if (!res.ok) { setRateError(data.error || 'Could not add the item.'); return; }
-      const next = [...ratesDraft, { ...data.rate, _custom: isCustomDouble(data.rate) }];
+      const next = [...ratesDraft, data.rate];
       setRatesDraft(next);
-      setRates(next.map(stripCustom));
+      setRates(next);
       setNewRate({ itemName: '', unit: '', driverRate: '', helperRate: '' });
       setAddRateOpen(false);
       toast(`"${data.rate.itemName}" added to the rate table.`);
@@ -99,7 +91,7 @@ export const PieceRatesPanel = ({ rates, setRates, toast }) => {
       if (!res.ok) { toast('Could not retire the item.', 'error'); return; }
       const next = ratesDraft.filter(x => x.id !== r.id);
       setRatesDraft(next);
-      setRates(next.map(stripCustom));
+      setRates(next);
       toast(`"${r.itemName}" retired. Past deliveries keep their recorded amounts.`);
     } catch {
       toast('Could not reach the server.', 'error');
@@ -119,37 +111,20 @@ export const PieceRatesPanel = ({ rates, setRates, toast }) => {
               <Btn size="sm" onClick={saveRates}>Save</Btn>
               <Btn size="sm" variant="outline" onClick={() => { setRatesDraft(rates); setEditingRates(false); }}>Cancel</Btn>
             </div>
-          ) : <Btn size="sm" variant="outline" onClick={() => { setRatesDraft(rates.map(r => ({ ...r, _custom: isCustomDouble(r) }))); setEditingRates(true); }}>Edit</Btn>}
+          ) : <Btn size="sm" variant="outline" onClick={() => { setRatesDraft(rates); setEditingRates(true); }}>Edit</Btn>}
         </div>
         <div className="overflow-auto pd-scroll-shadow" style={{ maxHeight: 440 }}><table className="w-full">
-          <thead className="sticky top-0 z-10" style={{ backgroundColor: T.surface }}><tr><Th>Category</Th><Th>Unit</Th><Th right>Driver (Single)</Th><Th right>Helper (Single)</Th><Th right>Driver (Double)</Th><Th right>Helper (Double)</Th>{editingRates && <Th center>Double</Th>}{editingRates && <Th right>Retire</Th>}</tr></thead>
+          <thead className="sticky top-0 z-10" style={{ backgroundColor: T.surface }}><tr><Th>Category</Th><Th>Unit</Th><Th right>Driver (Single)</Th><Th right>Helper (Single)</Th><Th right>Driver (Double)</Th><Th right>Helper (Double)</Th>{editingRates && <Th right>Retire</Th>}</tr></thead>
           <tbody>{(editingRates ? ratesDraft : rates).map((r, i) => (
             <tr key={i}>
               <Td>{editingRates ? <input value={r.itemName} onChange={e => setRatesDraft(p => p.map((x, j) => j === i ? { ...x, itemName: e.target.value } : x))} className="px-2 py-1 rounded border text-xs w-full" style={{ borderColor: T.line, fontFamily: F_BODY }} /> : r.itemName}</Td>
               <Td>{r.unit}</Td>
-              {[0, 1].map(k => <Td right mono key={'s' + k}>{editingRates ? <input type="number" value={r.regular[k]} onChange={e => { const nv = parseFloat(e.target.value) || 0; setRatesDraft(p => p.map((x, j) => j === i ? { ...x, regular: x.regular.map((v, vi) => vi === k ? nv : v), double: x._custom ? x.double : x.double.map((v, vi) => vi === k ? round2(nv * 2) : v) } : x)); }} className="px-2 py-1 rounded border text-xs w-16 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} /> : peso(r.regular[k])}</Td>)}
+              {[0, 1].map(k => <Td right mono key={'s' + k}>{editingRates ? <input type="number" value={r.regular[k]} onChange={e => { const nv = parseFloat(e.target.value) || 0; setRatesDraft(p => p.map((x, j) => j === i ? { ...x, regular: x.regular.map((v, vi) => vi === k ? nv : v), double: x.double.map((v, vi) => vi === k ? round2(nv * 2) : v) } : x)); }} className="px-2 py-1 rounded border text-xs w-16 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} /> : peso(r.regular[k])}</Td>)}
               {[0, 1].map(k => <Td right mono key={'d' + k}>{
                 editingRates
-                  ? (r._custom
-                      ? <input type="number" value={r.double[k]} onChange={e => setRatesDraft(p => p.map((x, j) => j === i ? { ...x, double: x.double.map((v, vi) => vi === k ? parseFloat(e.target.value) || 0 : v) } : x))} className="px-2 py-1 rounded border text-xs w-16 text-right" style={{ borderColor: T.line, fontFamily: F_MONO }} />
-                      : <span style={{ color: T.soft }} title="Auto: single × 2">{peso(round2((r.regular[k] || 0) * 2))}</span>)
-                  : peso(r.double[k])
+                  ? <span style={{ color: T.soft }}>{peso(round2((r.regular[k] || 0) * 2))}</span>
+                  : peso(round2((r.regular[k] || 0) * 2))
               }</Td>)}
-              {editingRates && (
-                <Td center>
-                  <button
-                    onClick={() => setRatesDraft(p => p.map((x, j) => j === i
-                      ? (x._custom
-                          ? { ...x, _custom: false, double: x.regular.map(v => round2((v || 0) * 2)) }
-                          : { ...x, _custom: true })
-                      : x))}
-                    className="text-xs font-semibold px-2 py-1 rounded border"
-                    style={{ fontFamily: F_HEAD, borderColor: T.line, color: r._custom ? T.brand : T.soft, backgroundColor: r._custom ? T.brandBg : 'transparent' }}
-                    title={r._custom ? 'Custom double rate. Click to reset to single × 2' : 'Auto: double = single × 2. Click to set a custom double rate.'}>
-                    {r._custom ? 'Custom' : 'Auto ×2'}
-                  </button>
-                </Td>
-              )}
               {editingRates && (
                 <Td right>
                   <button className="pd-icon-btn pd-icon-danger" title="Retire this item" onClick={() => setConfirmRetire(r)}>
@@ -186,10 +161,6 @@ export const PieceRatesPanel = ({ rates, setRates, toast }) => {
               onChange={e => setNewRate(f => ({ ...f, helperRate: moneyInput(e.target.value) }))}
               className={inputCls} style={{ ...inputStyle, fontFamily: F_MONO }} />
           </Field>
-        </div>
-        <div className="text-xs mt-2.5" style={{ fontFamily: F_BODY, color: T.soft, lineHeight: 1.6 }}>
-          Double-area rates default to twice these amounts. If this item works differently, switch
-          its row to &quot;Custom&quot; in the table to set the double rate by hand.
         </div>
         {rateError && (
           <div className="flex items-start gap-2 mt-3 px-3 py-2.5 rounded text-xs"

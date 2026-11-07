@@ -20,8 +20,9 @@ export async function PATCH(request, { params }) {
     if (typeof body.unit === 'string' && body.unit.trim()) data.unit = body.unit.trim();
     if (body.driverRate != null) data.driverRate = rate(body.driverRate);
     if (body.helperRate != null) data.helperRate = rate(body.helperRate);
-    if (body.driverRateDouble != null) data.driverRateDouble = rate(body.driverRateDouble);
-    if (body.helperRateDouble != null) data.helperRateDouble = rate(body.helperRateDouble);
+    // The double rate is always the single rate × 2; it is never taken from the request.
+    if (data.driverRate != null) data.driverRateDouble = rate(data.driverRate * 2);
+    if (data.helperRate != null) data.helperRateDouble = rate(data.helperRate * 2);
     if (typeof body.isActive === 'boolean') data.isActive = body.isActive;
 
     if (!Object.keys(data).length) {
@@ -57,7 +58,7 @@ export async function PATCH(request, { params }) {
       rate: {
         id: r.id, itemName: r.itemName, unit: r.unit,
         regular: [num(r.driverRate), num(r.helperRate)],
-        double: [num(r.driverRateDouble), num(r.helperRateDouble)],
+        double: [num(r.driverRate) * 2, num(r.helperRate) * 2],
         isActive: r.isActive,
       },
     });

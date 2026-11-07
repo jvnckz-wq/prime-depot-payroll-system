@@ -12,8 +12,10 @@ const rows = [cement, sand, blocks, retired];
 
 // The formula the old double-rate toggle in PATCH /api/deliveries/[id] used inline before lineAmounts existed.
 const oldSetDouble = (q, r, want) => ({
-  driverAmount: +(q * Number(want ? r.driverRateDouble : r.driverRate)).toFixed(2),
-  helperAmount: +(q * Number(want ? r.helperRateDouble : r.helperRate)).toFixed(2),
+  // Double rate is always single × 2 (Nov 2026). Sand keeps an old custom stored double (130/95)
+  // on purpose: it must be ignored.
+  driverAmount: +(q * Number(r.driverRate) * (want ? 2 : 1)).toFixed(2),
+  helperAmount: +(q * Number(r.helperRate) * (want ? 2 : 1)).toFixed(2),
 });
 // Prisma Decimal values convert with Number() through their string value.
 const dec = (v) => ({ valueOf: () => String(v), toString: () => String(v) });
@@ -21,7 +23,8 @@ const dec = (v) => ({ valueOf: () => String(v), toString: () => String(v) });
 ok('regular and double amounts', () => {
   assert.deepEqual(lineAmounts(cement, 40, false), { driverAmount: 120, helperAmount: 100 });
   assert.deepEqual(lineAmounts(cement, 40, true), { driverAmount: 240, helperAmount: 200 });
-  assert.deepEqual(lineAmounts(sand, 2, true), { driverAmount: 260, helperAmount: 190 });
+  // Sand's stored custom double (130/95) is ignored: double is single × 2.
+  assert.deepEqual(lineAmounts(sand, 2, true), { driverAmount: 240, helperAmount: 180 });
 });
 
 ok('a decimal quantity is priced and rounded to centavos', () => {
@@ -46,7 +49,7 @@ ok('builds rows from the rate table, with rateItemId, name and unit from the rat
     { rateItemId: 'r-cement', itemName: 'Cement', unit: 'bag', quantity: 40, driverAmount: 120, helperAmount: 100 },
     { rateItemId: 'r-sand', itemName: 'Sand', unit: 'cu.m', quantity: 2, driverAmount: 120, helperAmount: 90 },
   ] });
-  assert.equal(buildDeliveryItems([{ rateItemId: 'r-sand', qty: 2 }], rows, true).items[0].driverAmount, 260);
+  assert.equal(buildDeliveryItems([{ rateItemId: 'r-sand', qty: 2 }], rows, true).items[0].driverAmount, 240);
 });
 
 ok('amounts, names and units sent by the browser are ignored', () => {

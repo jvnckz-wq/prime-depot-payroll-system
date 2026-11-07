@@ -8,7 +8,8 @@ const num = (d) => (d == null ? 0 : Number(d));
 const shape = (r) => ({
   id: r.id, itemName: r.itemName, unit: r.unit,
   regular: [num(r.driverRate), num(r.helperRate)],
-  double: [num(r.driverRateDouble), num(r.helperRateDouble)],
+  // Always single × 2, whatever an older row has stored.
+  double: [num(r.driverRate) * 2, num(r.helperRate) * 2],
   isActive: r.isActive,
 });
 
@@ -132,8 +133,8 @@ export async function POST(request) {
       data: {
         itemName, unit,
         driverRate: rate(body.driverRate), helperRate: rate(body.helperRate),
-        driverRateDouble: body.driverRateDouble != null ? rate(body.driverRateDouble) : rate(body.driverRate) * 2,
-        helperRateDouble: body.helperRateDouble != null ? rate(body.helperRateDouble) : rate(body.helperRate) * 2,
+        driverRateDouble: rate(body.driverRate) * 2,
+        helperRateDouble: rate(body.helperRate) * 2,
       },
     });
 
