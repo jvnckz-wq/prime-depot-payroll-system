@@ -162,6 +162,16 @@ export default function AppShell() {
     reloadDeliveries();
   }, [user, reloadDeliveries]);
 
+  // Keep today's trips current without a page refresh: a trip a checker just logged shows up for the
+  // Operations Head, and review flags clear when scans arrive. Every 20 seconds on the screens that
+  // use today's trips, and only while the browser tab is visible.
+  const liveTripsTab = user?.role === 'CHECKER' || tab === 'dashboard' || tab === 'deliveries' || tab === 'payroll';
+  useEffect(() => {
+    if (!user || user.mustChangePassword || !liveTripsTab) return undefined;
+    const id = setInterval(() => { if (!document.hidden) reloadDeliveries(); }, 20000);
+    return () => clearInterval(id);
+  }, [user, liveTripsTab, reloadDeliveries]);
+
   const [rates, setRates] = useState([]);
 
   const [crewRates, setCrewRates] = useState(CREW_RATE_FALLBACK);

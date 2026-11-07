@@ -70,9 +70,9 @@ ok('unknown, missing or retired rate ids give the rate table error', () => {
 ok('zero or blank quantity lines are dropped, even with a bad id', () => {
   const out = buildDeliveryItems([
     { rateItemId: 'r-cement', qty: 0 }, { rateItemId: 'r-sand', qty: '' }, { rateItemId: 'r-nope', qty: '0' },
-    { rateItemId: 'r-blocks', qty: 100 }, { qty: undefined },
+    { rateItemId: 'r-blocks', qty: 40 }, { qty: undefined },
   ], rows, false);
-  assert.deepEqual(out.items.map((i) => [i.rateItemId, i.quantity]), [['r-blocks', 100]]);
+  assert.deepEqual(out.items.map((i) => [i.rateItemId, i.quantity]), [['r-blocks', 40]]);
 });
 
 ok('no valid lines gives the existing "Add at least one item" error', () => {
@@ -80,6 +80,16 @@ ok('no valid lines gives the existing "Add at least one item" error', () => {
   assert.deepEqual(buildDeliveryItems([], rows, false), { error: NO_ITEMS_MESSAGE });
   assert.deepEqual(buildDeliveryItems(undefined, rows, false), { error: NO_ITEMS_MESSAGE });
   assert.deepEqual(buildDeliveryItems([{ rateItemId: 'r-cement', qty: 0 }, { rateItemId: 'r-sand', qty: '' }], rows, false), { error: NO_ITEMS_MESSAGE });
+});
+
+ok('limits per trip: 50 of an item, 10 for elf and mini dump; whole numbers only', () => {
+  const elf = { id: 'r-elf', itemName: 'Aggregates', unit: 'elf', driverRate: 15, helperRate: 70, isActive: true };
+  const rows2 = [cement, elf];
+  assert.equal(buildDeliveryItems([{ rateItemId: 'r-cement', qty: 50 }], rows2, false).items[0].quantity, 50);
+  assert.match(buildDeliveryItems([{ rateItemId: 'r-cement', qty: 51 }], rows2, false).error, /at most 50 per trip/);
+  assert.equal(buildDeliveryItems([{ rateItemId: 'r-elf', qty: 10 }], rows2, false).items[0].quantity, 10);
+  assert.match(buildDeliveryItems([{ rateItemId: 'r-elf', qty: 11 }], rows2, false).error, /Aggregates \(elf\): at most 10 per trip/);
+  assert.match(buildDeliveryItems([{ rateItemId: 'r-cement', qty: 2.5 }], rows2, false).error, /whole number/);
 });
 
 ok('rateItemIds collects the unique string ids for the database lookup', () => {

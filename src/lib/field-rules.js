@@ -180,6 +180,11 @@ export function unitError(v) {
   return '';
 }
 
+// Most a trip can carry of one item: 10 for whole loads (elf, mini dump), 50 for anything else (Nov 2026).
+export const QTY_MAX = 50;
+export const QTY_MAX_LOAD = 10;
+export const quantityMaxFor = (unit) => (unit === 'elf' || unit === 'mini dump' ? QTY_MAX_LOAD : QTY_MAX);
+
 // The declared monthly salary is not typed: it is always the daily rate × 26 (Nov 2026).
 export const declaredSalaryFor = (rate) => Math.round((Number(rate) || 0) * 26 * 100) / 100;
 
@@ -211,8 +216,8 @@ export function dateRangeError(from, to, maxDays = 366) {
 
 export const usernameInput = (v) => String(v ?? '').toLowerCase().replace(/[^a-z0-9._-]/g, '').slice(0, 32);
 
-export function deliveryErrors({ customer, contactNo, landmark, quantities = [], driverId, truckId, province, municipality, barangay, checkPlace = false }) {
-  const qtyErr = quantities.map((q) => quantityError(q)).find(Boolean) || '';
+export function deliveryErrors({ customer, contactNo, landmark, quantities = [], units = [], driverId, truckId, province, municipality, barangay, checkPlace = false }) {
+  const qtyErr = quantities.map((q, i) => quantityError(q, { max: quantityMaxFor(units[i]) })).find(Boolean) || '';
   return {
     ...(checkPlace ? {
       driver: driverId ? '' : 'Choose the driver.',

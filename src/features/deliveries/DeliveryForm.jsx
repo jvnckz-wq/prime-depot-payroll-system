@@ -7,7 +7,7 @@ import { Btn, EmptyState, Eyebrow, Field, SearchSelect, inputCls, inputStyle } f
 import { peso } from '@/lib/utils';
 import { PH_AREAS, PH_PROVINCES } from '@/lib/batangas-areas';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
-import { deliveryErrors, digitsOnly, firstError, flagErrors } from '@/lib/field-rules';
+import { deliveryErrors, digitsOnly, firstError, flagErrors, quantityMaxFor } from '@/lib/field-rules';
 
 export const DeliveryForm = ({ crews, rates, onSubmit }) => {
   const [crewId, setCrewId] = useState((crews[0] && crews[0].id) || '');
@@ -102,7 +102,7 @@ export const DeliveryForm = ({ crews, rates, onSubmit }) => {
   ) : null);
   const submit = async () => {
     if (busy) return;
-    if (firstError(deliveryErrors({ customer, contactNo, landmark, quantities: lineRows.map(r => r.qty), driverId, truckId: crewId, province, municipality, barangay, checkPlace: true }))) { setShowErrors(true); flagErrors(); return; }
+    if (firstError(deliveryErrors({ customer, contactNo, landmark, quantities: lineRows.map(r => r.qty), units: computed.map(r => r.unit), driverId, truckId: crewId, province, municipality, barangay, checkPlace: true }))) { setShowErrors(true); flagErrors(); return; }
     if ([driverId, helper1Id, helper2Id].some(outError)) { flagErrors(); return; }
     setBusy(true);
     try {
@@ -127,7 +127,7 @@ export const DeliveryForm = ({ crews, rates, onSubmit }) => {
       setBusy(false);
     }
   };
-  const errs = showErrors ? deliveryErrors({ customer, contactNo, landmark, quantities: lineRows.map(r => r.qty), driverId, truckId: crewId, province, municipality, barangay, checkPlace: true }) : {};
+  const errs = showErrors ? deliveryErrors({ customer, contactNo, landmark, quantities: lineRows.map(r => r.qty), units: computed.map(r => r.unit), driverId, truckId: crewId, province, municipality, barangay, checkPlace: true }) : {};
 
   // A checker logs trips only while on duty (after their time-in, before their time-out).
   const gate = pool.checker;
@@ -230,6 +230,8 @@ export const DeliveryForm = ({ crews, rates, onSubmit }) => {
           const dR = pair ? pair[0] : 0;
           const hR = pair ? pair[1] : 0;
           const q = parseFloat(row.qty) || 0;
+          const max = quantityMaxFor(rate?.unit);
+          const over = q > max;
           return (
             <div key={i} className="border rounded-md p-2.5" style={{ borderColor: T.line, backgroundColor: T.surface }}>
               <div className="flex items-center gap-2 mb-2">
@@ -248,10 +250,11 @@ export const DeliveryForm = ({ crews, rates, onSubmit }) => {
               <div className="flex items-end gap-3 flex-wrap">
                 <div style={{ width: 110 }}>
                   <div className="text-xs mb-1" style={{ fontFamily: F_HEAD, color: T.soft, letterSpacing: '0.04em' }}>QTY</div>
-                  <input inputMode="numeric" placeholder="0" value={row.qty} aria-invalid={errs.items && !(Number(row.qty) > 0) ? true : undefined}
-                    onChange={e => updateRow(i, { qty: digitsOnly(e.target.value, 4) })}
+                  <input inputMode="numeric" placeholder="0" value={row.qty} aria-invalid={(errs.items && !(Number(row.qty) > 0)) || over ? true : undefined}
+                    onChange={e => updateRow(i, { qty: digitsOnly(e.target.value, 3) })}
                     className="w-full px-2.5 py-2 rounded border text-sm text-right"
-                    style={{ fontFamily: F_MONO, borderColor: T.line, color: T.ink }} />
+                    style={{ fontFamily: F_MONO, borderColor: over ? T.brand : T.line, color: T.ink }} />
+                  {over && <div className="text-xs mt-1" style={{ fontFamily: F_BODY, color: T.brand }}>Max {max}</div>}
                 </div>
 
                 <div className="flex-1 min-w-0">

@@ -47,6 +47,14 @@ export const CrewPayrollView = ({ deliveries, crewRates = CREW_RATE_FALLBACK, lo
 
   const [dailyStaff, setDailyStaff] = useState([]);
   const dailyDate = viewDate || todayYmdManila();
+  // For today, fetch the crew's attendance again every 20 seconds, so a late time-in (and its
+  // deduction) shows without a page refresh.
+  const [dailyTick, setDailyTick] = useState(0);
+  useEffect(() => {
+    if (viewDate) return undefined;
+    const id = setInterval(() => { if (!document.hidden) setDailyTick(t => t + 1); }, 20000);
+    return () => clearInterval(id);
+  }, [viewDate]);
   useEffect(() => {
     let cancelled = false;
     fetch(`/api/payroll/daily?date=${dailyDate}`)
@@ -54,7 +62,7 @@ export const CrewPayrollView = ({ deliveries, crewRates = CREW_RATE_FALLBACK, lo
       .then(data => { if (!cancelled) setDailyStaff((data.staff || []).map(d => ({ ...d, key: d.id }))); })
       .catch(err => { if (!cancelled) setDailyStaff([]); console.error('Could not load daily attendance:', err); });
     return () => { cancelled = true; };
-  }, [dailyDate]);
+  }, [dailyDate, dailyTick]);
 
   const todayStr = todayYmdManila();
   const dayDate = viewDate || todayStr;
