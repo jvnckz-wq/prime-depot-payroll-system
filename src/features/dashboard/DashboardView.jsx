@@ -7,7 +7,6 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, L
 import { Avatar, EmptyState, Eyebrow, H1, Panel, Skeleton, SkeletonRows, StatCard, Td, Th } from '@/components/ui';
 import { computeStaffPayroll, flattenDeliveries, loanBalance } from '@/lib/payroll';
 import { peso } from '@/lib/utils';
-import { unregisteredNames } from '@/features/attendance/UnregisteredBanner.jsx';
 import { F_BODY, T } from '@/styles/theme';
 
 const useIsoLayoutEffect = typeof document !== 'undefined' ? useLayoutEffect : useEffect;
@@ -131,7 +130,7 @@ const TodayCard = ({ onOpenLive }) => {
   );
 };
 
-export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loans = [], statutory, setTab, onNavigate, dataLoading = false, cutoffLabel = '', runKey = '', attendanceSummaries = [], unmappedCount = 0, unregisteredIds = 0, unregisteredPeople = [], noScanDeliveries = 0 }) => {
+export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loans = [], statutory, setTab, onNavigate, dataLoading = false, cutoffLabel = '', runKey = '', attendanceSummaries = [], unmappedCount = 0, unregisteredIds = 0, noScanDeliveries = 0 }) => {
   const loggedToday = Object.keys(deliveries).length;
   const deliveriesLogged = useMemo(() => flattenDeliveries(deliveries).length, [deliveries]);
 
@@ -209,14 +208,15 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
     <div className="p-4 sm:p-6">
       <H1 sub="Snapshot of headcount, this cutoff's payroll, deliveries, and outstanding advances.">Dashboard</H1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6 lg:items-start">
         <div className="lg:col-span-2 grid grid-cols-2 gap-4 pd-stagger">
           <StatCard label="Total Employees" value={totalEmployees} onClick={() => go('employees')} />
           <StatCard label="Net Pay This Cutoff" value={peso(netThisCutoff)} tone="neutral" onClick={() => go('payroll')} />
           <StatCard label="Deliveries Logged" value={deliveriesLogged} tone="green" onClick={() => go('deliveries')} />
           <StatCard label="Active Loans & Advances" value={peso(activeLoans)} tone="neutral" onClick={() => go('loans')} />
         </div>
-        <Panel className="p-4">
+        {/* The stat cards keep their own height; this panel is at least as tall as them. */}
+        <Panel className="p-4 lg:self-stretch">
           <Eyebrow>Attention Needed</Eyebrow>
           {dataLoading && <div className="mt-3 flex flex-col gap-2"><Skeleton h={14} w="70%" /><Skeleton h={11} w="90%" /></div>}
           {noEmployees && (
@@ -224,7 +224,6 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
               <Users size={16} color={T.blue} className="mt-0.5 shrink-0" />
               <div>
                 <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>No employees registered yet</div>
-                <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft }}>Register staff and crew with their biometric ID so attendance and payroll can be computed.</div>
               </div>
             </button>
           )}
@@ -233,7 +232,6 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
               <CalendarX size={16} color={T.blue} className="mt-0.5 shrink-0" />
               <div>
                 <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>No attendance for {cutoffLabel || 'this cutoff'} yet</div>
-                <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft }}>Pull it from the device so this cutoff&apos;s payroll can be computed.</div>
               </div>
             </button>
           )}
@@ -250,18 +248,14 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
               <UserPlus size={16} color={T.warn} className="mt-0.5 shrink-0" />
               <div>
                 <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>{unregisteredIds} biometric ID{unregisteredIds === 1 ? ' is' : 's are'} not registered</div>
-                {unregisteredPeople.length > 0 && (
-                  <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft }}>{unregisteredNames(unregisteredPeople, unregisteredIds)}</div>
-                )}
               </div>
             </button>
           )}
           {activeLoanCount > 0 && (
-            <button onClick={() => go('loans')} className="pd-clickable w-full text-left mt-3 flex items-start gap-3 p-3 rounded" style={{ backgroundColor: T.brandBg }}>
+            <button onClick={() => go('loans')} className="pd-clickable w-full text-left mt-2 flex items-start gap-3 p-3 rounded" style={{ backgroundColor: T.brandBg }}>
               <FileText size={16} color={T.brand} className="mt-0.5 shrink-0" />
               <div>
                 <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>{activeLoanCount} loan{activeLoanCount > 1 ? 's' : ''} awaiting cutoff deduction</div>
-                <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft }}>Review balances before releasing this cutoff&apos;s payroll.</div>
               </div>
             </button>
           )}
@@ -270,7 +264,6 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
               <Check size={16} color={T.green} className="mt-0.5 shrink-0" />
               <div>
                 <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>All clear</div>
-                <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft }}>Nothing needs attention this cutoff.</div>
               </div>
             </div>
           )}

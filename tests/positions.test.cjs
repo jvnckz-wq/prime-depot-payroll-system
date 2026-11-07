@@ -163,6 +163,11 @@ ok('daily-paid and Job Order never carry declared salary or contributions', () =
   assert.deepEqual([staff.declaredSalary, staff.sssOn, staff.phOn, staff.piOn], [15600, true, true, true]);
 });
 
+ok('declared salary is always the daily rate × 26, whatever the request sends', () => {
+  const { data } = buildEmployeeData({ id: '501', name: 'Juan Dela Cruz', position: 'Junior Secretary', rate: 700, declaredSalary: 182000000, mp2: 0, status: 'Active' });
+  assert.equal(data.declaredSalary, 18200);
+});
+
 (async () => {
   let passed = 0;
   for (const [name, fn] of tests) {

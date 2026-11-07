@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { freeTextError, quantityError, plateError, labelTextError, unitError, dateNotFutureError, timeOrderError, dateRangeError, usernameInput, deliveryErrors, employeeIdError, personNameError, moneyError, wholeNumberError, mp2Error, phMobileError, birthdateError, addressError, moneyInput, digitsOnly, employeeErrors, LIMITS } from '../src/lib/field-rules.js';
+import { freeTextError, quantityError, plateError, labelTextError, unitError, dateNotFutureError, timeOrderError, dateRangeError, usernameInput, deliveryErrors, employeeIdError, personNameError, moneyError, wholeNumberError, mp2Error, phMobileError, birthdateError, addressError, moneyInput, digitsOnly, employeeErrors, LIMITS, declaredSalaryFor } from '../src/lib/field-rules.js';
 const tests = []; const ok = (n, f) => tests.push([n, f]);
 const bad = (v) => assert.notEqual(v, ''); const good = (v) => assert.equal(v, '');
 
@@ -49,8 +49,11 @@ ok('deliveries, trucks, rate items', () => {
   ['', 'AB1', 'ABCD12345', 'AB@1234', 'AB 12 34'].forEach((v) => bad(plateError(v)));
   ['Paint', 'Roofing & Steel', 'Blue MD (Isuzu)'].forEach((v) => good(labelTextError(v, { label: 'Item category' })));
   ['', 'X', 'Paint<b>', 'x'.repeat(41)].forEach((v) => bad(labelTextError(v, { label: 'Item category' })));
-  ['bag', 'piece', 'elf'].forEach((v) => good(unitError(v)));
-  ['', 'bag2', 'per bag', 'x'.repeat(16)].forEach((v) => bad(unitError(v)));
+  ['bag', 'box', 'elf', 'mini dump', 'piece'].forEach((v) => good(unitError(v)));
+  ['', 'haha', 'bag2', 'per bag', 'x'.repeat(16)].forEach((v) => bad(unitError(v)));
+  assert.equal(declaredSalaryFor(700), 18200);
+  assert.equal(declaredSalaryFor('612.50'), 15925);
+  assert.equal(declaredSalaryFor(LIMITS.dailyRateMax) <= LIMITS.declaredSalaryMax, true);
   good(freeTextError('Katabi ng tindahan, asul na gate', { label: 'Landmark', min: 3 }));
   ['', '   ', 'ab', '<script>'].forEach((v) => bad(freeTextError(v, { label: 'Landmark', min: 3 })));
   const d = deliveryErrors({ customer: 'Juan', contactNo: '', landmark: '', quantities: ['', '0'] });

@@ -7,7 +7,7 @@ import { Btn, Confirm, Eyebrow, Field, H1, Modal, Panel, Td, Th, inputCls, input
 import { round2 } from '@/lib/money';
 import { peso } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
-import { labelTextError, moneyError, moneyInput, unitError, flagErrors } from '@/lib/field-rules';
+import { labelTextError, moneyError, moneyInput, RATE_UNITS, unitError, flagErrors } from '@/lib/field-rules';
 
 export const PieceRatesPanel = ({ rates, setRates, toast }) => {
   const isCustomDouble = (r) => (r.regular || []).some((v, k) => round2(r.double?.[k] ?? 0) !== round2((v || 0) * 2));
@@ -169,8 +169,10 @@ export const PieceRatesPanel = ({ rates, setRates, toast }) => {
         </Field>
         <div className="mt-3">
           <Field label="Unit" error={rateErrs.unit}>
-            <input value={newRate.unit} onChange={e => setNewRate(f => ({ ...f, unit: e.target.value.replace(/[^A-Za-z]/g, '').slice(0, 15) }))}
-              placeholder="bag, piece, box, elf" className={inputCls} style={inputStyle} />
+            <select value={newRate.unit} onChange={e => setNewRate(f => ({ ...f, unit: e.target.value }))} className={inputCls} style={inputStyle}>
+              <option value="" disabled>Choose unit...</option>
+              {RATE_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+            </select>
           </Field>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">

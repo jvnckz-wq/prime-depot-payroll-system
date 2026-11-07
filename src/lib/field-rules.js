@@ -6,7 +6,7 @@ const MONEY_RE = /^\d+(\.\d{1,2})?$/;
 
 export const LIMITS = {
   dailyRateMax: 10000,
-  declaredSalaryMax: 200000,
+  declaredSalaryMax: 260000, // the highest daily rate × 26
   leaveCreditsMax: 60,
   mp2Min: 500,
   mp2Max: 50000,
@@ -170,12 +170,18 @@ export function labelTextError(v, { label, min = 2, max = 40 } = {}) {
   return '';
 }
 
+// Units a delivery item can be counted in (the ones the rate table uses). Chosen from a list, not typed.
+export const RATE_UNITS = ['bag', 'box', 'elf', 'mini dump', 'piece'];
+
 export function unitError(v) {
   const s = squash(v);
-  if (!s) return 'Unit is required (bag, piece, box, elf...).';
-  if (!/^[A-Za-z]{1,15}$/.test(s)) return 'Unit must be one word of letters only, up to 15 characters.';
+  if (!s) return 'Choose the unit.';
+  if (!RATE_UNITS.includes(s)) return `Unit must be one of: ${RATE_UNITS.join(', ')}.`;
   return '';
 }
+
+// The declared monthly salary is not typed: it is always the daily rate × 26 (Nov 2026).
+export const declaredSalaryFor = (rate) => Math.round((Number(rate) || 0) * 26 * 100) / 100;
 
 const ymdToday = (today = new Date()) => {
   const y = today.getFullYear(), m = String(today.getMonth() + 1).padStart(2, '0'), d = String(today.getDate()).padStart(2, '0');

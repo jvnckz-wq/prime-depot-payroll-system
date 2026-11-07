@@ -1,6 +1,6 @@
 // Shapes employee records for the app and builds database updates from the employee form.
 import { hasNoContributions, hasNoEarlyShift, isDailyPosition, isNonRegularPosition, isPieceRatePosition } from '../../positions';
-import { addressError, birthdateError, isUnpaidPosition, LIMITS, moneyError, mp2Error, personNameError, phMobileError, wholeNumberError } from '../../field-rules';
+import { addressError, birthdateError, declaredSalaryFor, isUnpaidPosition, LIMITS, moneyError, mp2Error, personNameError, phMobileError, wholeNumberError } from '../../field-rules';
 
 export const POSITION_LABEL = {
   OPERATIONS_HEAD: 'Operations Head',
@@ -90,7 +90,6 @@ export function buildEmployeeData(body, { partial = false } = {}) {
 
   for (const [field, column] of [
     ['rate', 'dailyRate'],
-    ['declaredSalary', 'declaredSalary'],
     ['mp2', 'mp2Amount'],
   ]) {
     if (!partial || has(field)) {
@@ -105,6 +104,8 @@ export function buildEmployeeData(body, { partial = false } = {}) {
       data[column] = Number.isFinite(Number(raw)) ? Number(raw) : 0;
     }
   }
+  // Declared salary is never taken from the request: it is always the daily rate × 26.
+  if (data.dailyRate !== undefined) data.declaredSalary = declaredSalaryFor(data.dailyRate);
 
   if (has('allowance')) {
     const err = moneyError(String(body.allowance ?? '0'), { label: MONEY_LABEL.allowance, max: LIMITS.allowanceMax });

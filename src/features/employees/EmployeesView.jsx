@@ -9,8 +9,8 @@ import { hasNoContributions, hasNoEarlyShift, isDailyPosition, isNonRegularPosit
 import { WEEKDAYS, describeEarlyShift } from '@/lib/attendance';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
 import { FinalPayView } from '@/features/payroll/FinalPayView.jsx';
-import { cutoffLabel } from '@/lib/utils';
-import { addressError, birthdateError, digitsOnly, employeeErrors, firstError, LIMITS, moneyInput, flagErrors } from '@/lib/field-rules';
+import { cutoffLabel, peso } from '@/lib/utils';
+import { addressError, birthdateError, declaredSalaryFor, digitsOnly, employeeErrors, firstError, LIMITS, moneyInput, flagErrors } from '@/lib/field-rules';
 const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const dayBefore = (ymd) => { const d = new Date(`${ymd}T00:00:00Z`); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10); };
 const fmtShort = (ymd) => new Date(`${ymd}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
@@ -82,7 +82,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
   }));
 
   const openAdd = () => { setEditing(null); setForm({ ...BLANK_EMP }); setShowErrors(false); setModal(true); };
-  const openEdit = (r) => { setEditing(r); setForm({ ...BLANK_EMP, ...r, rate: String(r.rate), declaredSalary: String(r.declaredSalary || '') }); setShowErrors(false); setModal(true); };
+  const openEdit = (r) => { setEditing(r); setForm({ ...BLANK_EMP, ...r, rate: String(r.rate), declaredSalary: hasNoContributions(r.position) ? '' : String(declaredSalaryFor(r.rate)) }); setShowErrors(false); setModal(true); };
 
   useEffect(() => {
     if (!prefill) return;
@@ -337,7 +337,7 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
             </select>
           </Field>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="Daily rate (₱)" error={errs.rate}><input inputMode="decimal" value={form.rate} onChange={e => { const v = moneyInput(e.target.value); setForm(f => ({ ...f, rate: v, declaredSalary: (v === '' || hasNoContributions(f.position)) ? '' : String((parseFloat(v) || 0) * 26) })); }} placeholder="0" className={inputCls} style={inputStyle} /></Field>
+            <Field label="Daily rate (₱)" error={errs.rate}><input inputMode="decimal" value={form.rate} onChange={e => { const v = moneyInput(e.target.value); setForm(f => ({ ...f, rate: v, declaredSalary: (v === '' || hasNoContributions(f.position)) ? '' : String(declaredSalaryFor(v)) })); }} placeholder="0" className={inputCls} style={inputStyle} /></Field>
             <Field label="Status">
               <select value={form.status} onChange={e => ff('status', e.target.value)} className={inputCls} style={inputStyle}>
                 <option>Active</option><option>Inactive</option>
@@ -358,7 +358,9 @@ export const EmployeesView = ({ staff, reloadStaff, toast, prefill, onPrefillCon
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
               {!hasNoContributions(form.position) && (
                 <Field label="Declared salary (₱)" error={errs.declaredSalary}>
-                  <input inputMode="decimal" value={form.declaredSalary} onChange={e => ff('declaredSalary', moneyInput(e.target.value))} placeholder="0" className={inputCls} style={inputStyle} />
+                  {/* Always the daily rate × 26; follows the rate and cannot be typed. */}
+                  <input readOnly disabled value={form.declaredSalary === '' ? '' : peso(Number(form.declaredSalary) || 0)} placeholder="Daily rate × 26"
+                    className={inputCls} style={{ ...inputStyle, backgroundColor: T.bg, color: T.ink }} />
                 </Field>
               )}
               {!isDailyPosition(form.position) && (
