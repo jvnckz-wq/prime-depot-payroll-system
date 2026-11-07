@@ -1,7 +1,7 @@
 'use client';
 // Delivery list grouped into trips, plus the void reason picker.
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronRight, MapPin, Phone, AlertTriangle, Truck } from 'lucide-react';
 import { Badge, Btn, Chip, EmptyState, Eyebrow, Field, Modal, Panel, Td, Th, inputCls, inputStyle } from '@/components/ui';
 import { telHref, timeLabel } from '@/lib/utils';
@@ -78,6 +78,21 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
   const inTruck = trips.filter(byTruck);
   const needsReview = reviewTrips.filter((t) => byTruck(t) && !t.voided && (t.heldIds.length > 0 || t.checkerFlag));
   const voided = inTruck.filter((t) => t.voided);
+
+  // A trip logged before the crew's scans synced shows as needing review until the list is fetched
+  // again. While any of today's trips is flagged, fetch every 30 seconds so the flag clears on its
+  // own once the scans (or a Pull from device) arrive.
+  const flaggedToday = trips.some((t) => t.date === today && !t.voided && (t.heldIds.length > 0 || t.checkerFlag));
+  const onChangedRef = useRef(onChanged);
+  useEffect(() => { onChangedRef.current = onChanged; }, [onChanged]);
+  useEffect(() => {
+    if (!flaggedToday) return undefined;
+    const id = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      if (onChangedRef.current) onChangedRef.current();
+    }, 30000);
+    return () => clearInterval(id);
+  }, [flaggedToday]);
   const shown = filter === 'review' ? needsReview : filter === 'voided' ? voided : inTruck;
   const open = trips.find((t) => t.id === openId) || reviewTrips.find((t) => t.id === openId) || null;
   const refresh = async () => { setReviewTick((n) => n + 1); if (onChanged) await onChanged(); };
