@@ -57,7 +57,7 @@ export const CutoffsTab = ({
         </div>
       )}
     </div>
-    <UnregisteredBanner count={data.unregisteredInPeriod || 0} onOpen={goUnmapped} />
+    <UnregisteredBanner count={data.unregisteredInPeriod || 0} people={data.unregisteredInPeriodPeople || []} onOpen={goUnmapped} />
     <Panel className="overflow-hidden">
       {loading ? <SkeletonBlock />
         : data.summaries.length === 0 ? (staff.length === 0

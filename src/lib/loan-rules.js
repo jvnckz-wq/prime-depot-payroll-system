@@ -19,6 +19,18 @@ export function todayYmdManila(now = new Date()) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
 }
 
+// A released cutoff can be un-finalized only on the same Manila day it was finalized (Nov 2026).
+export function canUnfinalize(releasedAt, now = new Date()) {
+  return !!releasedAt && todayYmdManila(new Date(releasedAt)) === todayYmdManila(now);
+}
+
+// What to tell someone who tries to change attendance in a finalized cutoff.
+export function finalizedMessage(name, releasedAt, now = new Date()) {
+  return canUnfinalize(releasedAt, now)
+    ? `The payroll for ${name} was finalized today. Un-finalize it first to change its attendance.`
+    : `The payroll for ${name} is already finalized and can no longer be changed.`;
+}
+
 // Payroll cutoffs run from the 1st to the 15th, and from the 16th to the end of the month.
 export function cutoffOf(ymd) {
   const { y, m, d } = parts(ymd);

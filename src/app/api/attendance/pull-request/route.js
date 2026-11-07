@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';
 import { finalizedCutoffsBetween, lockedMessage } from '@/lib/server/services/cutoff-lock';
+import { syncStatusOf } from '@/lib/device-sync';
 
 export const runtime = 'nodejs';
 
@@ -31,8 +32,7 @@ export async function GET() {
   try {
     const s = await prisma.deviceSync.findUnique({ where: { id: 'primary' } });
     if (s && s.lastSyncAt) {
-      const ageMs = Date.now() - new Date(s.lastSyncAt).getTime();
-      device = { status: ageMs < 30000 ? 'live' : ageMs < 60000 ? 'stale' : 'offline', lastSyncAt: s.lastSyncAt };
+      device = { status: syncStatusOf(s.lastSyncAt), lastSyncAt: s.lastSyncAt };
     }
   } catch { }
   try {

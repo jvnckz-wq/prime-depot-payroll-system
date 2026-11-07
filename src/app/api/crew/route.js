@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireUser } from '@/lib/server/security/auth';
 import { crewDayRows, deviceOnline } from '@/lib/server/services/crew-scans';
-import { hasScan, outClock } from '@/lib/delivery-review';
+import { checkerGate, hasScan, outClock } from '@/lib/delivery-review';
 import { todayYmdManila } from '@/lib/loan-rules';
 
 export async function GET() {
@@ -20,7 +20,8 @@ export async function GET() {
   });
 
   const today = todayYmdManila();
-  const [rows, online] = await Promise.all([crewDayRows([today], crew.map((c) => c.id)), deviceOnline()]);
+  const me = auth.user.role === 'CHECKER' ? auth.user.employeeId : null;
+  const [rows, online] = await Promise.all([crewDayRows([today], [...crew.map((c) => c.id), ...(me ? [me] : [])]), deviceOnline()]);
   const rowOf = (id) => rows.get(`${id}|${today}`);
   const outAt = {};
   for (const c of crew) { const out = outClock(rowOf(c.id)); if (out) outAt[c.id] = out; }
@@ -28,6 +29,10 @@ export async function GET() {
     date: today,
     scannedIds: crew.map((c) => c.id).filter((id) => hasScan(rowOf(id))),
     outAt,
+    // For a checker account: whether they may log trips now (on duty, or the device is offline).
+    checker: auth.user.role === 'CHECKER'
+      ? (me ? checkerGate(rowOf(me), online) : { status: 'unlinked', error: 'This checker account is not linked to an employee. Ask the Operations Head to link it.' })
+      : null,
     deviceOnline: online,
     drivers: crew.filter((c) => c.position === 'DRIVER').map(({ id, name }) => ({ id, name })),
     helpers: crew.filter((c) => c.position === 'HELPER').map(({ id, name }) => ({ id, name })),

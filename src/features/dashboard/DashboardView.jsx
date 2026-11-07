@@ -7,6 +7,7 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, L
 import { Avatar, EmptyState, Eyebrow, H1, Panel, Skeleton, SkeletonRows, StatCard, Td, Th } from '@/components/ui';
 import { computeStaffPayroll, flattenDeliveries, loanBalance } from '@/lib/payroll';
 import { peso } from '@/lib/utils';
+import { unregisteredNames } from '@/features/attendance/UnregisteredBanner.jsx';
 import { F_BODY, T } from '@/styles/theme';
 
 const useIsoLayoutEffect = typeof document !== 'undefined' ? useLayoutEffect : useEffect;
@@ -44,7 +45,8 @@ const TodayCard = ({ onOpenLive }) => {
     return () => { cancelled = true; clearInterval(id); };
   }, []);
 
-  const inToday = (data?.rows || []).filter(r => r.in).sort((a, b) => String(b.in).localeCompare(String(a.in)));
+  // The server already orders the rows newest scan first (time-out or time-in), same as Attendance > Live.
+  const inToday = (data?.rows || []).filter(r => r.in);
   const maxRows = data?.sync?.status === 'offline' ? MAX_ROWS - 2 : MAX_ROWS;
   const sync = SYNC_LOOK[data?.sync?.status] || SYNC_LOOK.offline;
   const stats = [
@@ -102,11 +104,13 @@ const TodayCard = ({ onOpenLive }) => {
 
           {inToday.length > 0 ? (
             <div className="mb-3">
-              <div className="text-xs mb-1" style={{ fontFamily: F_BODY, color: T.soft }}>In today</div>
+              <div className="text-xs mb-1" style={{ fontFamily: F_BODY, color: T.soft }}>Latest scans</div>
               {inToday.slice(0, maxRows).map(r => (
                 <div key={r.id} className="flex items-center justify-between text-sm py-1.5" style={{ fontFamily: F_BODY, borderBottom: `1px solid ${T.lineSoft}` }}>
                   <span style={{ color: T.ink }}>{r.name}</span>
-                  <span className="pd-num" style={{ color: r.late > 0 ? T.brand : T.ink }}>{r.in}</span>
+                  {r.out
+                    ? <span className="pd-num" style={{ color: T.soft }}>Out {r.out}</span>
+                    : <span className="pd-num" style={{ color: r.late > 0 ? T.brand : T.ink }}>In {r.in}</span>}
                 </div>
               ))}
               {inToday.length > maxRows && <MoreLink count={inToday.length - maxRows} onClick={onOpenLive} />}
@@ -127,7 +131,7 @@ const TodayCard = ({ onOpenLive }) => {
   );
 };
 
-export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loans = [], statutory, setTab, onNavigate, dataLoading = false, cutoffLabel = '', runKey = '', attendanceSummaries = [], unmappedCount = 0, unregisteredIds = 0, noScanDeliveries = 0 }) => {
+export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loans = [], statutory, setTab, onNavigate, dataLoading = false, cutoffLabel = '', runKey = '', attendanceSummaries = [], unmappedCount = 0, unregisteredIds = 0, unregisteredPeople = [], noScanDeliveries = 0 }) => {
   const loggedToday = Object.keys(deliveries).length;
   const deliveriesLogged = useMemo(() => flattenDeliveries(deliveries).length, [deliveries]);
 
@@ -246,11 +250,9 @@ export const DashboardView = ({ deliveries, staff = [], totalEmployees = 0, loan
               <UserPlus size={16} color={T.warn} className="mt-0.5 shrink-0" />
               <div>
                 <div className="text-sm font-semibold" style={{ fontFamily: F_BODY, color: T.ink }}>{unregisteredIds} biometric ID{unregisteredIds === 1 ? ' is' : 's are'} not registered</div>
-                <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft }}>
-                  {unmappedCount > 0
-                    ? `${unregisteredIds === 1 ? 'Its' : 'Their'} ${unmappedCount} scan${unmappedCount === 1 ? '' : 's'} ${unmappedCount === 1 ? 'doesn\u2019t' : 'don\u2019t'} count toward attendance yet. Register them in Unmapped IDs.`
-                    : 'Register them in Unmapped IDs so their scans count toward attendance.'}
-                </div>
+                {unregisteredPeople.length > 0 && (
+                  <div className="text-xs mt-0.5" style={{ fontFamily: F_BODY, color: T.soft }}>{unregisteredNames(unregisteredPeople, unregisteredIds)}</div>
+                )}
               </div>
             </button>
           )}

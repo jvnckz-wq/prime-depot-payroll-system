@@ -94,8 +94,10 @@ export async function getCurrentUser() {
     await prisma.session.update({ where: { id: session.id }, data: { expiresAt: new Date(slidTo) } }).catch(() => {});
   }
 
-  const { id, username, displayName, avatar, role, mustChangePassword, totpEnabled } = session.user;
-  return { id, username, displayName, avatar, role, mustChangePassword, totpEnabled };
+  // employeeId links a checker account to its employee record, so deliveries can check that the
+  // checker has timed in (Nov 2026).
+  const { id, username, displayName, avatar, role, mustChangePassword, totpEnabled, employeeId } = session.user;
+  return { id, username, displayName, avatar, role, mustChangePassword, totpEnabled, employeeId: employeeId ?? null };
 }
 
 export async function getPendingTwoFactorLogin() {

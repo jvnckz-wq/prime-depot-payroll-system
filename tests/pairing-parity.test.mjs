@@ -37,7 +37,7 @@ check('a second morning scan never becomes the time-out', () => {
 
 const emp = { id: '1001', position: 'Driver', earlyShiftDays: [] };
 const date = '2026-05-18';
-const raw = ['06:44', '17:20'];
+const raw = ['06:44', '17:50'];
 
 const paired = pairPunches(raw);
 const fileRow = buildAttendanceRow(emp, date, paired, { importBatchId: 'batch-1' });
@@ -55,7 +55,7 @@ check('the row carries the expected tardiness and overtime', () => {
   assert.equal(fileRow.isAssumedOut, false);
 });
 
-check('missing time-out is assumed 17:00 with no overtime', () => {
+check('missing time-out is assumed 17:30 with no overtime', () => {
   const r = buildAttendanceRow(emp, date, pairPunches(['06:20']));
   assert.equal(r.isAssumedOut, true);
   assert.equal(r.overtimeMins, 0);
@@ -82,23 +82,31 @@ check('a double scan (taps about a minute apart) counts once', () => {
   assert.deepEqual(pairPunches(['06:44', '06:46']), { timeIn: '06:44', timeOut: null });
 });
 
-check('shift ends 12:00 on Sunday and 17:00 Monday to Saturday', () => {
+check('shift ends 12:00 on Sunday and 17:30 Monday to Saturday', () => {
   assert.equal(shiftEndFor('2026-10-04'), '12:00');
-  assert.equal(shiftEndFor('2026-10-03'), '17:00');
-  assert.equal(shiftEndFor('2026-10-05'), '17:00');
+  assert.equal(shiftEndFor('2026-10-03'), '17:30');
+  assert.equal(shiftEndFor('2026-10-05'), '17:30');
   const sun = buildAttendanceRow(emp, '2026-10-04', pairPunches(['06:35', '09:10']));
   assert.equal(sun.timeOut.toISOString().slice(11, 16), '12:00');
   assert.equal(sun.isAssumedOut, true);
   assert.equal(sun.overtimeMins, 0);
   const sat = buildAttendanceRow(emp, '2026-10-03', pairPunches(['06:35']));
-  assert.equal(sat.timeOut.toISOString().slice(11, 16), '17:00');
+  assert.equal(sat.timeOut.toISOString().slice(11, 16), '17:30');
 });
 
-check('Sunday overtime counts from 12:00, weekdays and Saturday from 17:00', () => {
+check('overtime starts after 17:30; leaving before 17:30 is not deducted', () => {
+  const at = (out) => buildAttendanceRow(emp, '2026-10-05', pairPunches(['06:25', out]));
+  assert.deepEqual([at('17:00').overtimeMins, at('17:00').tardinessMins], [0, 0]);
+  assert.equal(at('17:20').overtimeMins, 0);
+  assert.equal(at('17:45').overtimeMins, 15);
+  assert.equal(at('19:00').overtimeMins, 90);
+});
+
+check('Sunday overtime counts from 12:00, weekdays and Saturday from 17:30', () => {
   assert.equal(buildAttendanceRow(emp, '2026-10-04', pairPunches(['06:35', '14:00'])).overtimeMins, 120);
   assert.equal(buildAttendanceRow(emp, '2026-10-04', pairPunches(['06:35', '11:50', '12:00'])).overtimeMins, 0);
   assert.equal(buildAttendanceRow(emp, '2026-10-03', pairPunches(['06:35', '14:00'])).overtimeMins, 0);
-  assert.equal(buildAttendanceRow(emp, '2026-10-03', pairPunches(['06:35', '17:45'])).overtimeMins, 45);
+  assert.equal(buildAttendanceRow(emp, '2026-10-03', pairPunches(['06:35', '17:45'])).overtimeMins, 15);
 });
 
 console.log(`\nALL ${passed} PAIRING PARITY CHECKS PASSED`);

@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { prisma, prismaBase } from '@/lib/server/db/prisma';
 import { withRetry } from '@/lib/server/db/db-retry';
 import { logSecurityEvent, requireAdmin } from '@/lib/server/security/auth';
-import { cutoffOf, planDeductions, staffRunKey } from '@/lib/loan-rules';
+import { canUnfinalize, cutoffOf, planDeductions, staffRunKey } from '@/lib/loan-rules';
 import { computeStaffPayroll } from '@/lib/payroll';
 import { loadStaffPayrollInputs, staffAvailable, toDate } from '@/lib/server/services/payroll-inputs';
 
@@ -181,11 +181,19 @@ export async function DELETE(request) {
     if (!ymdRe.test(String(start)) || !ymdRe.test(String(end))) {
       return NextResponse.json({ error: 'A valid cutoff start and end are required.' }, { status: 400 });
     }
+    // A correction needs a written reason; it goes to the audit log.
+    const reason = String(body.reason ?? '').replace(/\s+/g, ' ').trim().slice(0, 200);
+    if (reason.length < 5) return NextResponse.json({ error: 'Write the reason for un-finalizing.', field: 'reason' }, { status: 400 });
     const startDate = toDate(start);
     const endDate = toDate(end);
 
     const period = await prisma.payrollPeriod.findUnique({ where: { startDate_endDate: { startDate, endDate } } });
     if (!period) return NextResponse.json({ error: 'That cutoff has not been released.' }, { status: 404 });
+
+    // Only on the day it was finalized (Manila time). After that the released payroll is final.
+    if (!canUnfinalize(period.releasedAt)) {
+      return NextResponse.json({ error: 'This cutoff can only be un-finalized on the day it was finalized.' }, { status: 403 });
+    }
 
     const startYmd = ymdOf(period.startDate);
     const cut = cutoffOf(startYmd);
@@ -219,7 +227,7 @@ export async function DELETE(request) {
       actorLabel: auth.user.username,
       targetType: 'payrollPeriod',
       targetId: period.id,
-      detail: `Un-released ${period.label}; ${reversed.count} loan deduction(s) reversed.`,
+      detail: `Un-released ${period.label}; ${reversed.count} loan deduction(s) reversed. Reason: ${reason}`,
     });
 
     return NextResponse.json({ unreleased: true, loanEntriesReversed: reversed.count });

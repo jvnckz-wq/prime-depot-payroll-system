@@ -5,6 +5,7 @@ import React from 'react';
 import { AlertTriangle, CircleCheck } from 'lucide-react';
 import { Badge, Btn, EmptyState, Panel, SkeletonBlock, Td, Th } from '@/components/ui';
 import { F_BODY, F_HEAD, T } from '@/styles/theme';
+import { todayYmdManila } from '@/lib/loan-rules';
 
 export const UnmappedTab = ({ unmappedLoading, unmappedError, loadUnmapped, unmapped, enrolled, resolvingId, resolveId, onRegister }) => (
   <Panel className="overflow-hidden">
@@ -25,15 +26,20 @@ export const UnmappedTab = ({ unmappedLoading, unmappedError, loadUnmapped, unma
         if (g) { if (!g.biometricName && u.name) g.biometricName = u.name; }
         else byId.set(u.userId, { biometricId: u.userId, biometricName: u.name, punchCount: 0, firstDate: null, lastDate: null, hasEmployee: false });
       }
-      const list = [...byId.values()].sort((a, b) => Number(a.biometricId) - Number(b.biometricId) || String(a.biometricId).localeCompare(String(b.biometricId)));
+      // Newest scan first, so whoever the banner named (usually today's) is at the top.
+      const list = [...byId.values()].sort((a, b) => String(b.lastDate || '').localeCompare(String(a.lastDate || '')) || Number(a.biometricId) - Number(b.biometricId) || String(a.biometricId).localeCompare(String(b.biometricId)));
+      const today = todayYmdManila();
       if (!list.length) return unmappedError ? null : <EmptyState icon={CircleCheck} title="All scans are matched" desc="Every scan from the device is linked to a registered employee." />;
       return (
         <div className="overflow-x-auto pd-scroll-shadow"><table className="w-full">
           <thead><tr><Th>Biometric ID</Th><Th>Name</Th><Th center>Scans</Th><Th center>Dates</Th><Th center>Action</Th></tr></thead>
           <tbody>
             {list.map((g) => (
-              <tr key={g.biometricId}>
-                <Td mono><span className="font-bold" style={{ color: T.ink }}>{g.biometricId}</span></Td>
+              <tr key={g.biometricId} style={g.lastDate === today ? { backgroundColor: T.warnBg } : undefined}>
+                <Td mono>
+                  <span className="font-bold" style={{ color: T.ink }}>{g.biometricId}</span>
+                  {g.lastDate === today && <span className="ml-2"><Badge tone="amber">today</Badge></span>}
+                </Td>
                 <Td>
                   <span style={{ fontFamily: F_BODY, color: T.ink }}>{g.biometricName || '--'}</span>
                   {g.hasEmployee && <span className="ml-2"><Badge tone="green">registered</Badge></span>}

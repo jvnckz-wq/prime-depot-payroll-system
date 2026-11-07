@@ -16,12 +16,12 @@ export const TabContent = ({
   tab, subs, user, setUser, setTab, navSelect, openDtr, toast,
   allStaff, staff, staffLoading, reloadStaff, employeePrefill, setEmployeePrefill, attendanceFocus, setAttendanceFocus,
   loans, reloadLoans, statutory, cutoffPeriod, cutoffText, staffKey, attLoading, attSummaries,
-  unmappedCount, unregisteredIds, noScanDeliveries, deliveries, reloadDeliveries, rates, setRates, crewRates,
+  unmappedCount, unregisteredIds, unregisteredPeople, noScanDeliveries, deliveries, reloadDeliveries, rates, setRates, crewRates,
   checkers, setCheckers, sssTable, setSssTable, philhealthRates, setPhilhealthRates, pagibigRates, setPagibigRates,
   birTable, setBirTable,
 }) => (
   <>
-    {tab === 'dashboard' && <DashboardView deliveries={deliveries} staff={staff} totalEmployees={allStaff.filter(e => e.status !== 'Inactive').length} loans={loans} statutory={statutory} setTab={setTab} onNavigate={navSelect} dataLoading={staffLoading || attLoading} cutoffLabel={cutoffText} runKey={staffKey} attendanceSummaries={attSummaries} unmappedCount={unmappedCount} unregisteredIds={unregisteredIds} noScanDeliveries={noScanDeliveries} />}
+    {tab === 'dashboard' && <DashboardView deliveries={deliveries} staff={staff} totalEmployees={allStaff.filter(e => e.status !== 'Inactive').length} loans={loans} statutory={statutory} setTab={setTab} onNavigate={navSelect} dataLoading={staffLoading || attLoading} cutoffLabel={cutoffText} runKey={staffKey} attendanceSummaries={attSummaries} unmappedCount={unmappedCount} unregisteredIds={unregisteredIds} unregisteredPeople={unregisteredPeople} noScanDeliveries={noScanDeliveries} />}
     {tab === 'employees' && <EmployeesView staff={allStaff} loading={staffLoading} reloadStaff={reloadStaff} toast={toast} prefill={employeePrefill} onPrefillConsumed={() => setEmployeePrefill(null)} />}
     {tab === 'attendance' && <AttendanceView navSub={subs.attendance} staff={allStaff} toast={toast} onNavigate={navSelect} focus={attendanceFocus} onFocusConsumed={() => setAttendanceFocus(null)} onRegister={(id, name) => { setEmployeePrefill({ id, name }); setTab('employees'); }} />}
     {tab === 'payroll' && <PayrollView navSub={subs.payroll} onNavigate={navSelect} staff={staff} loans={loans} reloadLoans={reloadLoans} statutory={statutory} toast={toast} cutoffLabel={cutoffText} reloadStaff={reloadStaff} staffLoading={staffLoading} deliveries={deliveries} crewRates={crewRates} />}

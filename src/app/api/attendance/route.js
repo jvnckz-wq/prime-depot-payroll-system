@@ -2,9 +2,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db/prisma';
 import { requireAdmin } from '@/lib/server/security/auth';
-import { isCalendarDate, isClockTime, minutesLate, shiftEndFor, summarizeAttendance } from '@/lib/attendance';
+import { isCalendarDate, isClockTime, latestScanFirst, minutesLate, shiftEndFor, summarizeAttendance } from '@/lib/attendance';
 import { timeOrderError } from '@/lib/field-rules';
 import { enrolledNotRegistered } from '@/lib/server/services/device-roster';
+import { syncStatusOf } from '@/lib/device-sync';
 import { cutoffsWithAttendance, finalizedCutoffsBetween, lockedMessage } from '@/lib/server/services/cutoff-lock';
 import { countReviewDeliveries } from '@/lib/server/services/crew-scans';
 import { cutoffOf } from '@/lib/loan-rules';
@@ -16,15 +17,32 @@ const ymd = (d) => new Date(d).toISOString().slice(0, 10);
 const toMin = (t) => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
 const WD = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
-async function countUnregisteredBetween(fromYmd, toYmd) {
-  const rows = await prisma.unmappedLog.groupBy({
-    by: ['biometricId'],
-    where: { isResolved: false, date: { gte: new Date(`${fromYmd}T00:00:00.000Z`), lte: new Date(`${toYmd}T00:00:00.000Z`) } },
+// Biometric IDs with scans but no employee yet, newest scan first, with the name saved on the
+// device when there is one. Without dates it covers every unresolved scan and also the people
+// enrolled on the device who were never registered (they may have no scans yet).
+const ymdOf = (d) => new Date(d).toISOString().slice(0, 10);
+async function unregisteredPeople(fromYmd, toYmd) {
+  const range = fromYmd ? { date: { gte: new Date(`${fromYmd}T00:00:00.000Z`), lte: new Date(`${toYmd}T00:00:00.000Z`) } } : {};
+  const logs = await prisma.unmappedLog.findMany({
+    where: { isResolved: false, ...range },
+    select: { biometricId: true, biometricName: true, date: true },
+    orderBy: { date: 'desc' },
   });
-  if (!rows.length) return 0;
-  const ids = rows.map((r) => r.biometricId);
-  const registered = await prisma.employee.count({ where: { id: { in: ids } } });
-  return ids.length - registered;
+  const byId = new Map();
+  for (const l of logs) {
+    const p = byId.get(l.biometricId);
+    if (!p) byId.set(l.biometricId, { id: l.biometricId, name: l.biometricName || null, lastDate: ymdOf(l.date) });
+    else if (!p.name && l.biometricName) p.name = l.biometricName;
+  }
+  const enrolled = await enrolledNotRegistered().then((r) => r.users).catch(() => []);
+  for (const u of enrolled) {
+    const p = byId.get(u.userId);
+    if (p) { if (!p.name && u.name) p.name = u.name; } else if (!fromYmd) byId.set(u.userId, { id: u.userId, name: u.name || null, lastDate: null });
+  }
+  const ids = [...byId.keys()];
+  if (!ids.length) return [];
+  const registered = new Set((await prisma.employee.findMany({ where: { id: { in: ids } }, select: { id: true } })).map((e) => e.id));
+  return [...byId.values()].filter((p) => !registered.has(p.id));
 }
 
 export async function PATCH(request) {
@@ -149,7 +167,7 @@ export async function GET(request) {
           status: a.isAssumedOut ? 'in' : 'out',
           assumedIn: a.isAssumedIn,
         }))
-        .sort((x, y) => Number(x.id) - Number(y.id) || String(x.id).localeCompare(String(y.id)));
+        .sort(latestScanFirst);
       const stats = {
         present: present.length,
         late: present.filter((r) => r.late > 0).length,
@@ -161,8 +179,7 @@ export async function GET(request) {
         try {
           const s = await prisma.deviceSync.findUnique({ where: { id: 'primary' } });
           if (s && s.lastSyncAt) {
-            const ageMs = Date.now() - new Date(s.lastSyncAt).getTime();
-            const status = ageMs < 30000 ? 'live' : ageMs < 60000 ? 'stale' : 'offline';
+            const status = syncStatusOf(s.lastSyncAt);
             sync = { status, lastSyncAt: s.lastSyncAt, lastScanAt: s.lastScanAt || null };
           }
         } catch { }
@@ -170,7 +187,7 @@ export async function GET(request) {
 
       return NextResponse.json({
         finalized: (await finalizedCutoffsBetween(dateStr, dateStr)).length > 0, date: dateStr, today: todayStr, isToday, rows: present, notYetIn, stats, sync,
-        unregistered: await countUnregisteredBetween(dateStr, dateStr).catch(() => 0) });
+        ...(await unregisteredPeople(dateStr, dateStr).then((people) => ({ unregistered: people.length, unregisteredPeople: people })).catch(() => ({ unregistered: 0, unregisteredPeople: [] }))) });
     }
 
     if (searchParams.get('trend')) {
@@ -246,7 +263,9 @@ export async function GET(request) {
     const unmappedIdRows = await prisma.unmappedLog.groupBy({ by: ['biometricId'], where: { isResolved: false } });
     const enrolledUsers = await enrolledNotRegistered().then((r) => r.users).catch(() => []);
     const enrolledCount = enrolledUsers.length;
-    const unregisteredIds = new Set([...unmappedIdRows.map((r) => r.biometricId), ...enrolledUsers.map((u) => u.userId)]).size;
+    const allUnregistered = await unregisteredPeople().catch(() => null);
+    const unregisteredIds = allUnregistered ? allUnregistered.length : new Set([...unmappedIdRows.map((r) => r.biometricId), ...enrolledUsers.map((u) => u.userId)]).size;
+    const periodUnregistered = rangeOut ? await unregisteredPeople(rangeOut.start, rangeOut.end).catch(() => []) : [];
     const noScanDeliveries = await countReviewDeliveries().catch(() => 0);
 
     const finalized = rangeOut ? (await finalizedCutoffsBetween(rangeOut.start, rangeOut.end)).some((c) => c.start === rangeOut.start && c.end === rangeOut.end) : false;
@@ -254,13 +273,15 @@ export async function GET(request) {
 
     return NextResponse.json({
       period: rangeOut,
-      unregisteredInPeriod: rangeOut ? await countUnregisteredBetween(rangeOut.start, rangeOut.end).catch(() => 0) : 0,
+      unregisteredInPeriod: periodUnregistered.length,
+      unregisteredInPeriodPeople: periodUnregistered,
       finalized,
       cutoffs,
       summaries,
       unmappedCount,
       enrolledCount,
       unregisteredIds,
+      unregisteredPeople: allUnregistered || [],
       noScanDeliveries,
       batches: batches.map((b) => ({
         id: b.id,

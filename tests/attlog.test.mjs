@@ -34,12 +34,12 @@ t('status column is ignored: pairing by time', () => {
   assert.equal(r.punches.get('65').days['2026-10-22'], undefined);
 });
 
-t('rows: Saturday morning-only gets assumed 17:00 out; 07:16 is late for daily', () => {
+t('rows: Saturday morning-only gets assumed 17:30 out; 07:16 is late for daily', () => {
   const r = attlogForCutoff(text, '2026-10-16', today);
   const emp = { id: '60', position: 'DRIVER', shiftSchedules: [] };
   const sat = buildAttendanceRow(emp, '2026-10-17', r.punches.get('60').days['2026-10-17']);
   assert.equal(sat.isAbsent, false);
-  assert.equal(sat.timeOut.toISOString().slice(11, 16), '17:00');
+  assert.equal(sat.timeOut.toISOString().slice(11, 16), '17:30');
   const wed = buildAttendanceRow(emp, '2026-10-21', r.punches.get('60').days['2026-10-21']);
   assert.equal(wed.tardinessMins, 46);
   const none = buildAttendanceRow(emp, '2026-10-19', null);

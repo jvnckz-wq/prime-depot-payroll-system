@@ -7,8 +7,8 @@ import { deliveryRange } from '@/lib/delivery-range';
 import { deliveryErrors, firstError } from '@/lib/field-rules';
 import { buildDeliveryItems, rateItemIds } from '@/lib/delivery-items';
 import { crewError, crewHelperIds } from '@/lib/delivery-crew';
-import { crewDayRows, withReview } from '@/lib/server/services/crew-scans';
-import { crewOutError } from '@/lib/delivery-review';
+import { crewDayRows, deviceOnline, withReview } from '@/lib/server/services/crew-scans';
+import { checkerGate, crewOutError } from '@/lib/delivery-review';
 
 const num = (d) => (d == null ? 0 : Number(d));
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
@@ -43,6 +43,8 @@ function shape(d) {
       qty: num(i.quantity), driverAmount: num(i.driverAmount), helperAmount: num(i.helperAmount),
     })),
     loggedBy: d.loggedBy?.displayName ?? null,
+    // The employee behind a checker account, so the trip can be checked against their attendance.
+    checkerId: d.loggedBy?.role === 'CHECKER' ? (d.loggedBy.employeeId ?? null) : null,
     loggedAt: d.createdAt ? d.createdAt.toISOString() : null,
     voided: !!d.voidedAt,
     voidedAt: d.voidedAt ? d.voidedAt.toISOString() : null,
@@ -57,7 +59,7 @@ const INCLUDE = {
   driver: { select: { name: true } },
   helper1: { select: { name: true } },
   helper2: { select: { name: true } },
-  loggedBy: { select: { displayName: true } },
+  loggedBy: { select: { displayName: true, role: true, employeeId: true } },
   voidedBy: { select: { displayName: true } },
   reviewedBy: { select: { displayName: true } },
   items: true,
@@ -132,6 +134,15 @@ export async function POST(request) {
         return NextResponse.json({ error: 'Deliveries can only be logged for today. Past days are view only.' }, { status: 403 });
       }
       dayYmd = asked;
+    }
+
+    // A checker can log only while on duty: after their time-in and before their time-out. With the
+    // device offline the time-in cannot be known, so the trip is allowed and goes to Needs review.
+    if (auth.user.role === 'CHECKER') {
+      if (!auth.user.employeeId) return NextResponse.json({ error: 'This checker account is not linked to an employee. Ask the Operations Head to link it.' }, { status: 403 });
+      const mine = await crewDayRows([dayYmd], [auth.user.employeeId]);
+      const gate = checkerGate(mine.get(`${auth.user.employeeId}|${dayYmd}`), await deviceOnline());
+      if (gate.error) return NextResponse.json({ error: gate.error, checkerStatus: gate.status }, { status: 403 });
     }
 
     // Nobody can be logged on a trip after they timed out today (a real time-out, not an assumed one).

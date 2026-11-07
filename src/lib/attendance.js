@@ -84,9 +84,10 @@ export function pairPunches(times) {
   };
 }
 
-// The shift ends at 17:00, or 12:00 on Sundays. Overtime counts after that.
+// The shift ends at 17:30 Monday to Saturday, or 12:00 on Sundays (client's rule, Nov 2026;
+// previously 17:00). Overtime counts after that; leaving earlier is not deducted.
 export function shiftEndFor(dateStr) {
-  return new Date(`${dateStr}T00:00:00.000Z`).getUTCDay() === 0 ? '12:00' : '17:00';
+  return new Date(`${dateStr}T00:00:00.000Z`).getUTCDay() === 0 ? '12:00' : '17:30';
 }
 
 export function buildAttendanceRow(emp, dateStr, paired, extra = {}) {
@@ -145,3 +146,8 @@ export function isCalendarDate(s) {
   const d = new Date(`${s}T00:00:00.000Z`);
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
 }
+
+// Live list order: whoever scanned last comes first. A row's last scan is its real time-out,
+// or its time-in when it has none yet ("HH:MM" strings, so they compare as text).
+export const lastScanOf = (r) => r.out || r.in || '';
+export const latestScanFirst = (a, b) => lastScanOf(b).localeCompare(lastScanOf(a)) || String(a.name).localeCompare(String(b.name));

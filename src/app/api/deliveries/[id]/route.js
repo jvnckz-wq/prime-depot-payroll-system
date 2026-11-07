@@ -23,6 +23,7 @@ export async function PATCH(request, { params }) {
       select: {
         id: true, date: true, sequenceNo: true, truckId: true, voidedAt: true, reviewedAt: true,
         driverId: true, helper1Id: true, helper2Id: true, createdAt: true,
+        loggedBy: { select: { role: true, employeeId: true } },
       },
     });
     if (!delivery) return NextResponse.json({ error: 'Delivery not found.' }, { status: 404 });
@@ -35,8 +36,9 @@ export async function PATCH(request, { params }) {
     // everything else about a past day stays view only.
     let flagged = false;
     if (isAdmin && (action === 'confirm' || action === 'void')) {
-      const rows = await crewDayRows([day], [delivery.driverId, delivery.helper1Id, delivery.helper2Id]);
-      flagged = needsReview(reviewFlags(delivery, (eid) => rows.get(`${eid}|${day}`)));
+      const checkerId = delivery.loggedBy?.role === 'CHECKER' ? delivery.loggedBy.employeeId : null;
+      const rows = await crewDayRows([day], [delivery.driverId, delivery.helper1Id, delivery.helper2Id, checkerId].filter(Boolean));
+      flagged = needsReview(reviewFlags({ ...delivery, checkerId }, (eid) => rows.get(`${eid}|${day}`)));
     }
 
     if (action === 'confirm') {

@@ -1,6 +1,6 @@
 // Finds released cutoffs so their attendance cannot be changed.
 import { prisma } from '../db/prisma';
-import { cutoffOf } from '../../loan-rules';
+import { cutoffOf, finalizedMessage } from '../../loan-rules';
 
 const asDate = (ymd) => new Date(`${ymd}T00:00:00.000Z`);
 const ymdOf = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : String(d).slice(0, 10));
@@ -9,15 +9,15 @@ const isCutoffShaped = (start, end) => { const c = cutoffOf(start); return c.sta
 export async function finalizedCutoffsBetween(fromYmd, toYmd) {
   const rows = await prisma.payrollPeriod.findMany({
     where: { isReleased: true, startDate: { lte: asDate(toYmd) }, endDate: { gte: asDate(fromYmd) } },
-    select: { startDate: true, endDate: true, label: true },
+    select: { startDate: true, endDate: true, label: true, releasedAt: true },
   });
   return rows
-    .map((r) => ({ start: ymdOf(r.startDate), end: ymdOf(r.endDate), label: r.label }))
+    .map((r) => ({ start: ymdOf(r.startDate), end: ymdOf(r.endDate), label: r.label, releasedAt: r.releasedAt }))
     .filter((r) => isCutoffShaped(r.start, r.end));
 }
 
-export const lockedMessage = (locked) =>
-  `The payroll for ${locked[0].label || `${locked[0].start} to ${locked[0].end}`} is already finalized. Un-finalize it first to change its attendance.`;
+// Only a cutoff finalized today can still be un-finalized, so only then does the message say so.
+export const lockedMessage = (locked) => finalizedMessage(locked[0].label || `${locked[0].start} to ${locked[0].end}`, locked[0].releasedAt);
 
 export async function cutoffsWithAttendance() {
   const [dates, released] = await Promise.all([

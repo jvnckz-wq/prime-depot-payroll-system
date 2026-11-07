@@ -27,7 +27,7 @@ export function tripsFromLog(log) {
       if (it.seq) {
         Object.assign(trip, {
           seq: it.seq, driver: it.driver || '', helpers: it.helpers || [], crew: it.crew || [],
-          noScan: it.noScan || [], noScanIds: it.noScanIds || [], lateIds: it.lateIds || [], heldIds: it.heldIds || [],
+          noScan: it.noScan || [], noScanIds: it.noScanIds || [], lateIds: it.lateIds || [], earlyIds: it.earlyIds || [], heldIds: it.heldIds || [], checkerFlag: !!it.checkerFlag,
           reviewedAt: it.reviewedAt || null, reviewedBy: it.reviewedBy || null, customer: it.customer, address: it.address,
           landmark: it.landmark, contactNo: it.contactNo, isDouble: it.isDouble, voided: it.voided, voidedAt: it.voidedAt,
           voidedBy: it.voidedBy, voidReason: it.voidReason, loggedBy: it.loggedBy, loggedAt: it.loggedAt,
@@ -76,13 +76,13 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
   const reviewTrips = useMemo(() => (reviewLog ? tripsFromLog(reviewLog) : trips), [reviewLog, trips]);
   const byTruck = (t) => !truckFilter || t.truckId === truckFilter;
   const inTruck = trips.filter(byTruck);
-  const needsReview = reviewTrips.filter((t) => byTruck(t) && !t.voided && t.heldIds.length > 0);
+  const needsReview = reviewTrips.filter((t) => byTruck(t) && !t.voided && (t.heldIds.length > 0 || t.checkerFlag));
   const voided = inTruck.filter((t) => t.voided);
   const shown = filter === 'review' ? needsReview : filter === 'voided' ? voided : inTruck;
   const open = trips.find((t) => t.id === openId) || reviewTrips.find((t) => t.id === openId) || null;
   const refresh = async () => { setReviewTick((n) => n + 1); if (onChanged) await onChanged(); };
   const isPast = !!open && open.date !== today;
-  const flagged = !!open && !open.voided && open.heldIds.length > 0;
+  const flagged = !!open && !open.voided && (open.heldIds.length > 0 || open.checkerFlag);
   const canVoid = open && !open.voided && (!isPast || (isAdmin && flagged));
 
   const resetVoid = () => { setVoiding(false); setReasonChoice(''); setOtherText(''); setReasonErr(''); };
@@ -176,7 +176,7 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
       {shown.length === 0 ? <EmptyState icon={Truck} title={emptyText[0]} desc={emptyText[1]} /> : (
         <div className="overflow-x-auto pd-scroll-shadow">
           <table className="w-full">
-            <thead><tr><Th>Date</Th><Th>Truck</Th><Th>Driver</Th><Th>Helpers</Th><Th>Customer</Th><Th>Address</Th><Th>Logged by</Th><Th action> </Th></tr></thead>
+            <thead><tr><Th>Date</Th><Th>Truck</Th><Th>Driver</Th><Th>Helpers</Th><Th>Customer</Th><Th>Address</Th><Th>Logged by</Th><Th>Notice</Th><Th action> </Th></tr></thead>
             <tbody>{shown.map((t) => {
               const strike = t.voided ? { textDecoration: 'line-through' } : undefined;
               return (
@@ -185,23 +185,26 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
                   className="pd-clickable" style={{ cursor: 'pointer', opacity: t.voided ? 0.55 : 1 }}>
                   <Td mono><span style={strike}>{t.date}</span></Td>
                   <Td mono><span style={strike}>{t.truckId}</span></Td>
-                  <Td>
-                    <span style={strike}>{t.driver || '--'}</span>
-                    {!t.voided && (t.noScan.length > 0 || t.lateIds.length > 0) && (
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {t.noScan.length > 0 && <Badge tone="amber">No scan: {t.noScan.length}</Badge>}
-                        {t.lateIds.length > 0 && <Badge tone="amber">Logged after time-out</Badge>}
-                      </div>
-                    )}
-                  </Td>
+                  <Td><span style={strike}>{t.driver || '--'}</span></Td>
                   <Td><span style={strike}>{t.helpers.length ? t.helpers.join(' & ') : '--'}</span></Td>
                   <Td><span style={strike}>{t.customer || '--'}</span></Td>
                   <Td>
                     <div style={strike}>{t.address}</div>
-                    {t.voided && <div className="mt-1"><Badge tone="red">Voided</Badge></div>}
                     {!t.voided && t.contactNo && <div className="flex items-center gap-1 text-xs mt-0.5" style={{ color: T.brand }}><Phone size={11} className="shrink-0" />{t.contactNo}</div>}
                   </Td>
                   <Td>{t.loggedBy ? <span className="text-xs" style={{ color: T.ink }}>{t.loggedBy}{t.loggedAt && <span style={{ color: T.soft }}> · {timeLabel(t.loggedAt)}</span>}</span> : <span style={{ color: T.soft }}>--</span>}</Td>
+                  <Td>
+                    {/* Why the trip needs attention, kept out of the other columns so they stay easy to scan. */}
+                    {t.voided ? <Badge tone="red">Voided</Badge>
+                      : (t.noScan.length > 0 || t.lateIds.length > 0 || t.earlyIds.length > 0 || t.checkerFlag) ? (
+                        <div className="flex flex-col items-start gap-1">
+                          {t.checkerFlag && <Badge tone="amber">Checker not timed in</Badge>}
+                          {t.noScan.length > 0 && <Badge tone="amber">No scan: {t.noScan.length}</Badge>}
+                          {t.earlyIds.length > 0 && <Badge tone="amber">Logged before time-in</Badge>}
+                          {t.lateIds.length > 0 && <Badge tone="amber">Logged after time-out</Badge>}
+                        </div>
+                      ) : <span style={{ color: T.soft }}>--</span>}
+                  </Td>
                   <Td action><ChevronRight size={16} color={T.soft} /></Td>
                 </tr>
               );
@@ -230,6 +233,8 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
                 <AlertTriangle size={15} color={T.warn} className="mt-0.5 shrink-0" />
                 <span>
                   {open.noScan.length > 0 && <span className="font-semibold block">{open.noScan.length === 1 ? '1 crew member has' : `${open.noScan.length} crew members have`} no scan on this day.</span>}
+                  {open.checkerFlag && <span className="font-semibold block">The checker had not timed in when this trip was logged.</span>}
+                  {open.earlyIds.length > 0 && <span className="font-semibold block">{open.earlyIds.length === 1 ? '1 crew member timed in' : `${open.earlyIds.length} crew members timed in`} after this trip was logged.</span>}
                   {open.lateIds.length > 0 && <span className="font-semibold block">{open.lateIds.length === 1 ? '1 crew member timed out' : `${open.lateIds.length} crew members timed out`} before this trip was logged.</span>}
                   {isAdmin
                     ? 'If they worked but the time is wrong or missing, fix their DTR.'
@@ -242,11 +247,13 @@ export const DeliveryTable = ({ log, trucks = [], isAdmin = false, bonusTrips = 
               {open.crew.map((c) => {
                 const missing = open.noScanIds.includes(c.id);
                 const late = open.lateIds.includes(c.id);
+                const early = open.earlyIds.includes(c.id);
                 const held = open.heldIds.includes(c.id);
                 return (
                   <Line key={c.role} left={c.name}
                     right={<span className="flex items-center gap-2">
                       {missing && <Badge tone="amber">No scan</Badge>}
+                      {early && <Badge tone="amber">In after log</Badge>}
                       {late && <Badge tone="amber">Out before log</Badge>}
                       {held && <Badge tone="neutral">On hold</Badge>}
                       {held && isAdmin && onOpenDtr && (

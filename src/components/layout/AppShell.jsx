@@ -228,6 +228,7 @@ export default function AppShell() {
   const [attLoading, setAttLoading] = useState(true);
   const [unmappedCount, setUnmappedCount] = useState(0);
   const [unregisteredIds, setUnregisteredIds] = useState(0);
+  const [unregisteredPeople, setUnregisteredPeople] = useState([]);
   const [noScanDeliveries, setNoScanDeliveries] = useState(0);
   useEffect(() => {
     if (!user || user.role !== 'ADMIN' || !user.totpEnabled) return;
@@ -241,6 +242,7 @@ export default function AppShell() {
         setAttSummaries(d.summaries || []);
         setUnmappedCount(d.unmappedCount || 0);
         setUnregisteredIds(d.unregisteredIds || 0);
+        setUnregisteredPeople(d.unregisteredPeople || []);
         setNoScanDeliveries(d.noScanDeliveries || 0);
       })
       .catch(err => console.error('Could not load current cutoff:', err))
@@ -372,7 +374,7 @@ export default function AppShell() {
             tab={tab} subs={subs} user={user} setUser={setUser} setTab={setTab} navSelect={navSelect} openDtr={openDtr} toast={toast}
             allStaff={allStaff} staff={staff} staffLoading={staffLoading} reloadStaff={reloadStaff} employeePrefill={employeePrefill} setEmployeePrefill={setEmployeePrefill} attendanceFocus={attendanceFocus} setAttendanceFocus={setAttendanceFocus}
             loans={loans} reloadLoans={reloadLoans} statutory={statutory} cutoffPeriod={cutoffPeriod} cutoffText={cutoffText} staffKey={staffKey} attLoading={attLoading} attSummaries={attSummaries}
-            unmappedCount={unmappedCount} unregisteredIds={unregisteredIds} noScanDeliveries={noScanDeliveries} deliveries={deliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} crewRates={crewRates}
+            unmappedCount={unmappedCount} unregisteredIds={unregisteredIds} unregisteredPeople={unregisteredPeople} noScanDeliveries={noScanDeliveries} deliveries={deliveries} reloadDeliveries={reloadDeliveries} rates={rates} setRates={setRates} crewRates={crewRates}
             checkers={checkers} setCheckers={setCheckers} sssTable={sssTable} setSssTable={setSssTable} philhealthRates={philhealthRates} setPhilhealthRates={setPhilhealthRates} pagibigRates={pagibigRates} setPagibigRates={setPagibigRates}
             birTable={birTable} setBirTable={setBirTable} />
           </div>

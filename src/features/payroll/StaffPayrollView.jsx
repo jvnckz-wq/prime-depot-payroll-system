@@ -3,9 +3,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Users, ArrowLeft, CalendarX, ReceiptText, AlertCircle, AlertTriangle } from 'lucide-react';
-import { Avatar, Badge, Btn, Confirm, EmptyState, Eyebrow, H1, Modal, Money, Panel, SkeletonBlock, SkeletonRows, StatCard, Td, Th } from '@/components/ui';
+import { Avatar, Badge, Btn, Confirm, EmptyState, Eyebrow, Field, H1, Modal, Money, Panel, SkeletonBlock, SkeletonRows, StatCard, Td, Th, inputCls, inputStyle } from '@/components/ui';
 import { computeStaffPayroll } from '@/lib/payroll';
-import { cutoffOf, nextCutoff, planDeductions, shortDate, staffRunKey } from '@/lib/loan-rules';
+import { canUnfinalize, cutoffOf, nextCutoff, planDeductions, shortDate, staffRunKey } from '@/lib/loan-rules';
 import { currentCutoffPeriod, peso } from '@/lib/utils';
 import { F_BODY, F_HEAD, F_MONO, F_SERIF, T } from '@/styles/theme';
 
@@ -102,6 +102,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [confirmUnfinalize, setConfirmUnfinalize] = useState(null);
+  const [unfinalizeReason, setUnfinalizeReason] = useState('');
   const [unfinalizing, setUnfinalizing] = useState(false);
   const [viewPeriod, setViewPeriod] = useState(null);
   const [viewPeriodLoading, setViewPeriodLoading] = useState(false);
@@ -190,10 +191,11 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
     try {
       const res = await fetch('/api/payroll/finalize', {
         method: 'DELETE', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ start: p.start, end: p.end }),
+        body: JSON.stringify({ start: p.start, end: p.end, reason: unfinalizeReason }),
       });
       const data = await res.json();
       if (!res.ok) { toast(data.error || 'Could not un-finalize.', 'error'); return; }
+      setUnfinalizeReason('');
       toast(`Un-finalized ${p.label}` + (data.loanEntriesReversed ? `: ${data.loanEntriesReversed} loan deduction(s) reversed.` : '.'));
       await loadHistory();
       await reloadLoans();
@@ -464,7 +466,7 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
                     <Td right mono>{peso(p.totalGross)}</Td>
                     <Td right mono>{peso(p.totalNet)}</Td>
                     <Td center style={{ paddingLeft: 40 }}><Badge tone="green">Released</Badge></Td>
-                    <Td right style={{ width: '1%', whiteSpace: 'nowrap' }}><div className="flex gap-1.5 justify-end flex-nowrap"><Btn size="sm" variant="outline" onClick={() => openPeriod(p)}>View</Btn><Btn size="sm" variant="outline" onClick={() => setConfirmUnfinalize(p)}>Un-finalize</Btn></div></Td>
+                    <Td right style={{ width: '1%', whiteSpace: 'nowrap' }}><div className="flex gap-1.5 justify-end flex-nowrap"><Btn size="sm" variant="outline" onClick={() => openPeriod(p)}>View</Btn>{canUnfinalize(p.releasedAt) && <Btn size="sm" variant="outline" onClick={() => { setUnfinalizeReason(''); setConfirmUnfinalize(p); }}>Un-finalize</Btn>}</div></Td>
                   </tr>
                 ))}
               </tbody>
@@ -504,7 +506,12 @@ export const StaffPayrollView = ({ staff, loans, reloadLoans, statutory, toast, 
       <Confirm open={!!confirmUnfinalize} onCancel={() => setConfirmUnfinalize(null)} onConfirm={() => unfinalize(confirmUnfinalize)} busy={unfinalizing}
         title={confirmUnfinalize ? `Un-finalize ${confirmUnfinalize.label}?` : ''}
         message="This removes the released snapshot and reverses this cut-off's loan deductions, restoring the balances, so it can be recomputed and released again. Only do this to correct a mistake."
-        confirmLabel="Un-finalize" danger />
+        confirmLabel="Un-finalize" danger confirmDisabled={unfinalizeReason.trim().length < 5}>
+        <Field label="Reason">
+          <input value={unfinalizeReason} onChange={(e) => setUnfinalizeReason(e.target.value)} maxLength={200}
+            placeholder="e.g. Nov 12: scanner did not read finger, logbook shows present" className={inputCls} style={inputStyle} />
+        </Field>
+      </Confirm>
 
       <Modal open={!!viewPeriod} onClose={() => setViewPeriod(null)} title={viewPeriod ? `Released: ${viewPeriod.period.label}` : ''} width={720}>
         {viewPeriod && (

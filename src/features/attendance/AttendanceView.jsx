@@ -331,7 +331,7 @@ export const AttendanceView = ({ staff = [], toast, onRegister, navSub, onNaviga
         <div className="mb-4">
         </div>
       )}
-      {subTab === 'live' && <UnregisteredBanner count={liveData.unregistered || 0} onOpen={goUnmapped} />}
+      {subTab === 'live' && <UnregisteredBanner count={liveData.unregistered || 0} people={liveData.unregisteredPeople || []} onOpen={goUnmapped} />}
       {subTab === 'live' && <LiveTab liveData={liveData} setLiveDate={setLiveDate} liveLoading={liveLoading} />}
 
       {subTab === 'dtr' && (

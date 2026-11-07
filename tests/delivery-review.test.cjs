@@ -1,7 +1,8 @@
 // Delivery review: who is out, no scan, logged after time-out, and crew pay on hold.
 const assert = require('node:assert/strict');
-const { clockOf, crewOutError, manilaClock, needsReview, outClock, reviewFlags } = require('../src/lib/delivery-review.js');
+const { checkerGate, clockOf, crewOutError, inClock, manilaClock, needsReview, outClock, reviewFlags } = require('../src/lib/delivery-review.js');
 const { crewEarnings, crewOnHold, deliveriesToLog } = require('../src/lib/payroll.js');
+const { syncStatusOf } = require('../src/lib/device-sync.js');
 
 const tests = [];
 const ok = (name, fn) => tests.push([name, fn]);
@@ -28,6 +29,8 @@ ok('out only counts a real time-out, not an assumed one or an absent day', () =>
   assert.equal(outClock(att('06:26', '17:00', { isAssumedOut: true })), null);
   assert.equal(outClock(att(null, null, { isAbsent: true })), null);
   assert.equal(outClock(undefined), null);
+  assert.equal(inClock(att('06:30', null)), '06:30');
+  assert.equal(inClock(att('06:30', null, { isAssumedIn: true })), null);
 });
 
 ok('log block: the first crew member already out today stops the save', () => {
@@ -50,6 +53,57 @@ ok('logged after time-out: DTR edited to 7:00 PM after an 8:41 PM log puts the d
   // Same minute is not late.
   const same = reviewFlags(trip({ loggedAt: loggedAt('19:00') }), (id) => rows[id]);
   assert.deepEqual(same.lateIds, []);
+});
+
+ok('logged before time-in: an 06:00 log for a helper who timed in at 06:30 holds that helper only', () => {
+  const rows = { D02: att('05:50', null, { isAssumedOut: true }), H03: att('05:55', null, { isAssumedOut: true }), H04: att('06:30', null, { isAssumedOut: true }) };
+  const f = reviewFlags(trip({ loggedAt: loggedAt('06:00') }), (id) => rows[id]);
+  assert.deepEqual([f.noScanIds, f.lateIds, f.earlyIds, f.heldIds], [[], [], ['H04'], ['H04']]);
+  assert.equal(needsReview(f), true);
+});
+
+ok('logged before time-in: same minute is fine, and an assumed time-in is not compared', () => {
+  const same = { D02: att('06:00', null, { isAssumedOut: true }), H03: att('06:00', null, { isAssumedOut: true }), H04: att('06:00', null, { isAssumedOut: true }) };
+  assert.deepEqual(reviewFlags(trip({ loggedAt: loggedAt('06:00') }), (id) => same[id]).earlyIds, []);
+  const assumed = { D02: att('06:30', '17:40', { isAssumedIn: true }), H03: att('05:55', '17:40'), H04: att('05:55', '17:40') };
+  assert.deepEqual(reviewFlags(trip({ loggedAt: loggedAt('06:00') }), (id) => assumed[id]).heldIds, []);
+});
+
+ok('no scan yet at log time, then the scan arrives later than the log: still held, now as before time-in', () => {
+  const before = reviewFlags(trip({ loggedAt: loggedAt('06:00') }), () => undefined);
+  assert.deepEqual(before.noScanIds, ['D02', 'H03', 'H04']);
+  const rows = { D02: att('05:50', null, { isAssumedOut: true }), H03: att('05:55', null, { isAssumedOut: true }), H04: att('06:40', null, { isAssumedOut: true }) };
+  const after = reviewFlags(trip({ loggedAt: loggedAt('06:00') }), (id) => rows[id]);
+  assert.deepEqual([after.noScanIds, after.earlyIds, after.heldIds], [[], ['H04'], ['H04']]);
+});
+
+ok('scanner status: one rule for every screen and for the checker (live < 30 s, stale < 60 s, then offline)', () => {
+  const now = Date.parse('2026-11-07T08:00:00Z');
+  const ago = (s) => new Date(now - s * 1000).toISOString();
+  assert.deepEqual([syncStatusOf(ago(10), now), syncStatusOf(ago(45), now), syncStatusOf(ago(61), now), syncStatusOf(ago(110), now), syncStatusOf(null, now)],
+    ['live', 'stale', 'offline', 'offline', 'offline']);
+});
+
+ok('checker gate: logs only after a real time-in and before a time-out; offline device lets it through', () => {
+  assert.equal(checkerGate(att('06:25', null, { isAssumedOut: true }), true).status, 'ok');
+  assert.deepEqual([checkerGate(undefined, true).status, !!checkerGate(undefined, true).error], ['not-in', true]);
+  assert.deepEqual([checkerGate(undefined, false).status, checkerGate(undefined, false).error], ['offline', null]);
+  const out = checkerGate(att('06:25', '17:31'), true);
+  assert.equal(out.status, 'out');
+  assert.equal(out.error, 'You timed out at 17:31. Trips can only be logged while you are on duty.');
+  assert.equal(checkerGate(att('06:25', '17:31'), false).status, 'out');
+});
+
+ok('checker flag: logged by a checker with no time-in by then goes to review, but holds no crew pay', () => {
+  const crewRows = { D02: att('05:50', null, { isAssumedOut: true }), H03: att('05:55', null, { isAssumedOut: true }), H04: att('05:55', null, { isAssumedOut: true }) };
+  const noScan = reviewFlags(trip({ checkerId: 'C01', loggedAt: loggedAt('06:00') }), (id) => crewRows[id]);
+  assert.deepEqual([noScan.checkerFlag, noScan.heldIds, needsReview(noScan)], [true, [], true]);
+  const lateScan = reviewFlags(trip({ checkerId: 'C01', loggedAt: loggedAt('06:00') }), (id) => ({ ...crewRows, C01: att('06:20', null, { isAssumedOut: true }) })[id]);
+  assert.equal(lateScan.checkerFlag, true);
+  const onDuty = reviewFlags(trip({ checkerId: 'C01', loggedAt: loggedAt('06:00') }), (id) => ({ ...crewRows, C01: att('05:40', null, { isAssumedOut: true }) })[id]);
+  assert.deepEqual([onDuty.checkerFlag, needsReview(onDuty)], [false, false]);
+  const byOpsHead = reviewFlags(trip({ checkerId: null, loggedAt: loggedAt('06:00') }), (id) => crewRows[id]);
+  assert.equal(byOpsHead.checkerFlag, false);
 });
 
 ok('confirmed or voided trips carry no flags and hold nothing', () => {

@@ -2,8 +2,8 @@
 // Form for logging one delivery trip: truck, crew, address, items and double rate.
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Check, Trash2 } from 'lucide-react';
-import { Btn, Eyebrow, Field, SearchSelect, inputCls, inputStyle } from '@/components/ui';
+import { Plus, Check, Trash2, Fingerprint, LogOut, UserX } from 'lucide-react';
+import { Btn, EmptyState, Eyebrow, Field, SearchSelect, inputCls, inputStyle } from '@/components/ui';
 import { peso } from '@/lib/utils';
 import { PH_AREAS, PH_PROVINCES } from '@/lib/batangas-areas';
 import { F_BODY, F_HEAD, F_MONO, T } from '@/styles/theme';
@@ -19,10 +19,19 @@ export const DeliveryForm = ({ crews, rates, onSubmit }) => {
     let cancelled = false;
     fetch('/api/crew')
       .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
-      .then(data => { if (!cancelled) setPool({ drivers: data.drivers, helpers: data.helpers, scanned: new Set(data.scannedIds || []), out: data.outAt || {}, online: data.deviceOnline !== false }); })
+      .then(data => { if (!cancelled) setPool({ drivers: data.drivers, helpers: data.helpers, scanned: new Set(data.scannedIds || []), out: data.outAt || {}, online: data.deviceOnline !== false, checker: data.checker || null }); })
       .catch(err => console.error('Could not load crew roster:', err));
     return () => { cancelled = true; };
   }, [poolTick]);
+
+  // While a checker waits for their time-in, check again every 15 seconds (the sync agent's pace),
+  // so the form opens on its own after the scan, or when the scanner goes offline.
+  const waiting = pool.checker?.status === 'not-in';
+  useEffect(() => {
+    if (!waiting) return undefined;
+    const id = setInterval(() => setPoolTick(t => t + 1), 15000);
+    return () => clearInterval(id);
+  }, [waiting]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load/sync state on mount or when deps change
@@ -119,6 +128,19 @@ export const DeliveryForm = ({ crews, rates, onSubmit }) => {
     }
   };
   const errs = showErrors ? deliveryErrors({ customer, contactNo, landmark, quantities: lineRows.map(r => r.qty), driverId, truckId: crewId, province, municipality, barangay, checkPlace: true }) : {};
+
+  // A checker logs trips only while on duty (after their time-in, before their time-out).
+  const gate = pool.checker;
+  if (gate && gate.status === 'not-in') {
+    return <EmptyState icon={Fingerprint} title="Time in first" desc="Scan your finger on the device to start logging trips."
+      action={<Btn variant="outline" size="sm" onClick={() => setPoolTick(t => t + 1)}>Check again</Btn>} />;
+  }
+  if (gate && gate.status === 'out') {
+    return <EmptyState icon={LogOut} title={`You timed out at ${gate.out}`} desc="Trips can only be logged while you are on duty." />;
+  }
+  if (gate && gate.status === 'unlinked') {
+    return <EmptyState icon={UserX} title="Account not linked" desc="Ask the Operations Head to link this checker account to your employee record." />;
+  }
 
   return (
     <div>
